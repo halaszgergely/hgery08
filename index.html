@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HGERY08 PARTY</title>
+    <style>
+        body {
+            background-color: #000; /* Fekete háttér */
+            margin: 0;
+            overflow: hidden; /* Hogy ne jelenjenek meg görgetősávok */
+            font-family: 'Arial Black', sans-serif;
+        }
+
+        .hgery-text {
+            position: absolute; /* Szabadon mozgatható elemek */
+            user-select: none; /* Ne lehessen kijelölni a szöveget */
+            white-space: nowrap;
+        }
+
+        /* Forgás animáció */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Villogás/Színváltás animáció */
+        @keyframes flash {
+            0% { color: #ff0000; text-shadow: 0 0 10px #ff0000; }
+            25% { color: #00ff00; text-shadow: 0 0 10px #00ff00; }
+            50% { color: #0000ff; text-shadow: 0 0 10px #0000ff; }
+            75% { color: #ffff00; text-shadow: 0 0 10px #ffff00; }
+            100% { color: #ff00ff; text-shadow: 0 0 10px #ff00ff; }
+        }
+    </style>
+</head>
+<body>
+
+<script>
+    // Beállítások
+    const textContent = "hgery08";
+    const itemCount = 150; // Ennyi darab felirat legyen a képernyőn
+
+    function createChaos() {
+        const body = document.body;
+        
+        for (let i = 0; i < itemCount; i++) {
+            const el = document.createElement('div');
+            el.innerText = textContent;
+            el.classList.add('hgery-text');
+
+            // Véletlenszerű pozíció
+            const x = Math.random() * window.innerWidth;
+            const y = Math.random() * window.innerHeight;
+            
+            // Véletlenszerű méret (20px és 80px között)
+            const fontSize = Math.floor(Math.random() * 60) + 20;
+
+            // Véletlenszerű sebességek az animációkhoz, hogy kaotikus legyen
+            const spinDuration = (Math.random() * 2 + 1) + 's'; // 1-3 másodperc
+            const flashDuration = (Math.random() * 0.5 + 0.1) + 's'; // 0.1-0.6 másodperc
+            
+            // Véletlenszerű forgás irány (óra vagy ellentétes)
+            const direction = Math.random() > 0.5 ? 'normal' : 'reverse';
+
+            // Stílusok alkalmazása
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            el.style.fontSize = fontSize + 'px';
+            
+            // Az animációk összefűzése
+            el.style.animation = `spin ${spinDuration} linear infinite ${direction}, flash ${flashDuration} linear infinite`;
+
+            body.appendChild(el);
+        }
+    }
+
+    // Indítás
+    createChaos();
+
+    // Ha átméretezik az ablakot, frissítjük, hogy kitöltse az újat is (opcionális)
+    window.addEventListener('resize', () => {
+        document.body.innerHTML = ''; // Törlés
+        createChaos(); // Újragenerálás
+    });
+</script>
+
+</body>
+</html>
