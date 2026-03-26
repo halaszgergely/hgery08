@@ -1,92 +1,1197 @@
 <!DOCTYPE html>
 <html lang="hu">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HGERY08 PARTY</title>
-    <style>
-        body {
-            background-color: #000; /* Fekete háttér */
-            margin: 0;
-            overflow: hidden; /* Hogy ne jelenjenek meg görgetősávok */
-            font-family: 'Arial Black', sans-serif;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magyar Receptek</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&family=Crimson+Pro:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paprika: #C1351D;
+    --paprika-dark: #8B1A0E;
+    --paprika-glow: rgba(193,53,29,0.12);
+    --cream: #FDF6EC;
+    --warm-white: #FFFCF5;
+    --wheat: #E8D5B7;
+    --dark: #2A1810;
+    --dark-soft: #4A3528;
+    --gold: #D4A843;
+    --gold-light: rgba(212,168,67,0.12);
+    --sage: #7A8B6F;
+    --sage-light: #E8EDE4;
+    --border: #E0D0BB;
+  }
 
-        .hgery-text {
-            position: absolute; /* Szabadon mozgatható elemek */
-            user-select: none; /* Ne lehessen kijelölni a szöveget */
-            white-space: nowrap;
-        }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        /* Forgás animáció */
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
+  body {
+    font-family: 'Source Serif 4', Georgia, serif;
+    background: var(--cream);
+    color: var(--dark);
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
 
-        /* Villogás/Színváltás animáció */
-        @keyframes flash {
-            0% { color: #ff0000; text-shadow: 0 0 10px #ff0000; }
-            25% { color: #00ff00; text-shadow: 0 0 10px #00ff00; }
-            50% { color: #0000ff; text-shadow: 0 0 10px #0000ff; }
-            75% { color: #ffff00; text-shadow: 0 0 10px #ffff00; }
-            100% { color: #ff00ff; text-shadow: 0 0 10px #ff00ff; }
-        }
-    </style>
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(ellipse at 20% 80%, var(--paprika-glow) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, var(--gold-light) 0%, transparent 50%),
+      var(--cream);
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 49px, var(--border) 49px, var(--border) 50px),
+      repeating-linear-gradient(90deg, transparent, transparent 49px, var(--border) 49px, var(--border) 50px);
+    opacity: 0.12;
+    pointer-events: none;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--paprika);
+    color: white;
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    padding: 0.5rem 1.5rem;
+    border-radius: 100px;
+    margin-bottom: 2rem;
+    animation: fadeDown 0.8s ease-out;
+  }
+
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(3rem, 8vw, 7rem);
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--dark);
+    margin-bottom: 1rem;
+    animation: fadeUp 0.8s ease-out 0.2s both;
+  }
+
+  .hero h1 span {
+    display: block;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 0.45em;
+    color: var(--paprika);
+    letter-spacing: 0.05em;
+    margin-top: 0.3em;
+  }
+
+  .hero-subtitle {
+    font-family: 'Crimson Pro', serif;
+    font-size: 1.15rem;
+    font-weight: 300;
+    color: var(--dark-soft);
+    max-width: 500px;
+    animation: fadeUp 0.8s ease-out 0.4s both;
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 2.5rem;
+    margin-top: 2.5rem;
+    animation: fadeUp 0.8s ease-out 0.5s both;
+  }
+
+  .hero-stat { text-align: center; }
+
+  .hero-stat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: var(--paprika);
+    line-height: 1;
+  }
+
+  .hero-stat-label {
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--dark-soft);
+    margin-top: 0.3rem;
+  }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--dark-soft);
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    animation: fadeUp 0.8s ease-out 0.6s both;
+  }
+
+  .scroll-hint .arrow {
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(to bottom, var(--paprika), transparent);
+    animation: scrollPulse 2s ease-in-out infinite;
+  }
+
+  /* NAV */
+  .sticky-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(253,246,236,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 2rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .nav-brand {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--dark);
+  }
+
+  .nav-brand em { color: var(--paprika); font-style: italic; }
+
+  .search-box {
+    position: relative;
+    flex: 0 1 280px;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 0.45rem 1rem 0.45rem 2.2rem;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    background: var(--warm-white);
+    font-family: 'Source Serif 4', serif;
+    font-size: 0.85rem;
+    color: var(--dark);
+    outline: none;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  .search-box input:focus {
+    border-color: var(--paprika);
+    box-shadow: 0 0 0 3px var(--paprika-glow);
+  }
+
+  .search-box::before {
+    content: '🔍';
+    position: absolute;
+    left: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.8rem;
+    pointer-events: none;
+  }
+
+  .recipe-count-label {
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.8rem;
+    color: var(--dark-soft);
+  }
+
+  .recipe-count-label strong { color: var(--paprika); }
+
+  .nav-categories {
+    display: flex;
+    gap: 0.3rem;
+    padding: 0 2rem 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .cat-btn {
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dark-soft);
+    background: none;
+    border: 1px solid transparent;
+    padding: 0.3rem 0.9rem;
+    border-radius: 100px;
+    cursor: pointer;
+    transition: all 0.25s;
+  }
+
+  .cat-btn:hover { border-color: var(--border); background: var(--warm-white); }
+
+  .cat-btn.active {
+    background: var(--paprika);
+    color: white;
+    border-color: var(--paprika);
+  }
+
+  /* RECIPES */
+  .recipes-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 6rem;
+  }
+
+  .no-results {
+    text-align: center;
+    padding: 4rem 2rem;
+    display: none;
+  }
+
+  .no-results h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .no-results p {
+    font-family: 'Crimson Pro', serif;
+    color: var(--dark-soft);
+  }
+
+  .recipe-card {
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    margin-bottom: 2.5rem;
+    overflow: hidden;
+    box-shadow: 0 4px 30px rgba(42,24,16,0.06);
+    transition: transform 0.4s ease, box-shadow 0.4s ease, opacity 0.4s;
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  .recipe-card.hidden { display: none; }
+
+  .recipe-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .recipe-card.visible:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 50px rgba(42,24,16,0.1);
+  }
+
+  .card-header {
+    position: relative;
+    padding: 2rem 2.5rem 1.5rem;
+    background: linear-gradient(135deg, rgba(193,53,29,0.04) 0%, transparent 60%);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .card-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 2.5rem;
+    right: 2.5rem;
+    height: 1px;
+    background: linear-gradient(to right, var(--paprika), var(--border), transparent);
+  }
+
+  .header-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.4rem;
+  }
+
+  .recipe-number {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--gold);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .difficulty-badge {
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.7rem;
+    border-radius: 100px;
+  }
+
+  .difficulty-badge.easy { background: #E8F5E9; color: #2E7D32; }
+  .difficulty-badge.medium { background: #FFF3E0; color: #E65100; }
+  .difficulty-badge.hard { background: #FCE4EC; color: #C62828; }
+
+  .recipe-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+    font-weight: 700;
+    color: var(--dark);
+    line-height: 1.15;
+    margin-bottom: 0.3rem;
+  }
+
+  .recipe-tagline {
+    font-family: 'Crimson Pro', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 1rem;
+    color: var(--dark-soft);
+  }
+
+  .recipe-meta {
+    display: flex;
+    gap: 1.2rem;
+    padding: 0.8rem 2.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.82rem;
+    color: var(--dark-soft);
+  }
+
+  .category-tag {
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.7rem;
+    border-radius: 100px;
+    background: var(--gold-light);
+    color: var(--gold);
+  }
+
+  .meta-spacer { margin-left: auto; }
+
+  .toggle-arrow {
+    font-size: 1.2rem;
+    transition: transform 0.35s;
+    color: var(--dark-soft);
+    cursor: pointer;
+  }
+
+  .recipe-card.open .toggle-arrow { transform: rotate(180deg); }
+
+  .card-body {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease;
+  }
+
+  .recipe-card.open .card-body { max-height: 2000px; }
+
+  .ingredients-panel {
+    padding: 1.8rem 2.5rem;
+    background: var(--sage-light);
+    border-right: 1px solid rgba(122,139,111,0.2);
+  }
+
+  .panel-title {
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--sage);
+    margin-bottom: 1rem;
+  }
+
+  .ingredient-list { list-style: none; }
+
+  .ingredient-list li {
+    padding: 0.4rem 0;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(122,139,111,0.15);
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .ingredient-list li:last-child { border-bottom: none; }
+
+  .ingredient-amount {
+    font-weight: 600;
+    color: var(--paprika-dark);
+    min-width: 60px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .steps-panel { padding: 1.8rem 2.5rem; }
+
+  .step {
+    display: flex;
+    gap: 0.9rem;
+    margin-bottom: 1.3rem;
+    align-items: flex-start;
+  }
+
+  .step:last-child { margin-bottom: 0; }
+
+  .step-num {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--paprika);
+    color: white;
+    font-family: 'Playfair Display', serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 50%;
+    margin-top: 2px;
+  }
+
+  .step p { font-size: 0.9rem; line-height: 1.6; }
+
+  .recipe-tip {
+    margin: 0 2.5rem 0;
+    padding: 0.9rem 1.3rem;
+    background: linear-gradient(135deg, var(--gold-light), rgba(212,168,67,0.04));
+    border-left: 3px solid var(--gold);
+    border-radius: 0 8px 8px 0;
+    font-size: 0.85rem;
+    color: var(--dark-soft);
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.5s ease, opacity 0.4s, margin 0.4s;
+  }
+
+  .recipe-card.open .recipe-tip {
+    max-height: 200px;
+    opacity: 1;
+    margin-bottom: 1.8rem;
+  }
+
+  .recipe-tip strong {
+    color: var(--gold);
+    font-family: 'Crimson Pro', serif;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+  }
+
+  .featured-badge {
+    position: absolute;
+    top: 1.2rem;
+    right: 1.5rem;
+    background: var(--paprika);
+    color: white;
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 0.3rem 0.8rem;
+    border-radius: 100px;
+  }
+
+  footer {
+    text-align: center;
+    padding: 3rem 2rem;
+    background: var(--dark);
+    color: var(--wheat);
+    font-family: 'Crimson Pro', serif;
+  }
+
+  footer .footer-brand {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  footer p { font-size: 0.85rem; opacity: 0.6; }
+
+  @media (max-width: 700px) {
+    .card-body { grid-template-columns: 1fr; }
+    .card-header { padding: 1.5rem; }
+    .card-header::after { left: 1.5rem; right: 1.5rem; }
+    .recipe-meta { padding: 0.8rem 1.5rem; }
+    .ingredients-panel { padding: 1.5rem !important; border-right: none; border-bottom: 1px solid rgba(122,139,111,0.2); }
+    .steps-panel { padding: 1.5rem !important; }
+    .recipe-tip { margin-left: 1.5rem; margin-right: 1.5rem; }
+    .nav-top { padding: 0.5rem 1rem; }
+    .nav-categories { padding: 0 1rem 0.5rem; }
+    .hero-stats { gap: 1.5rem; }
+    .search-box { flex: 1 1 100%; order: 3; }
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes scrollPulse {
+    0%, 100% { opacity: 0.4; transform: scaleY(1); }
+    50% { opacity: 1; transform: scaleY(1.3); }
+  }
+</style>
 </head>
 <body>
 
+<section class="hero">
+  <div class="hero-badge">🌶️ Hagyományos ízek</div>
+  <h1>Magyar<span>Receptek</span></h1>
+  <p class="hero-subtitle">Nagymamáink konyhájából a te asztalodra — egyszerű, ízletes, otthonos fogások válogatása.</p>
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <div class="hero-stat-num">12</div>
+      <div class="hero-stat-label">Recept</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-num">5</div>
+      <div class="hero-stat-label">Kategória</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-num">∞</div>
+      <div class="hero-stat-label">Szeretet</div>
+    </div>
+  </div>
+  <div class="scroll-hint">Görgess lejjebb<div class="arrow"></div></div>
+</section>
+
+<nav class="sticky-nav">
+  <div class="nav-top">
+    <div class="nav-brand">Magyar <em>Receptek</em></div>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Keresés a receptek között...">
+    </div>
+    <div class="recipe-count-label"><strong id="visibleCount">12</strong> recept</div>
+  </div>
+  <div class="nav-categories">
+    <button class="cat-btn active" data-cat="all">Mind</button>
+    <button class="cat-btn" data-cat="leves">Levesek</button>
+    <button class="cat-btn" data-cat="foetel">Főételek</button>
+    <button class="cat-btn" data-cat="koret">Köretek</button>
+    <button class="cat-btn" data-cat="teszta">Tészták</button>
+    <button class="cat-btn" data-cat="desszert">Desszertek</button>
+  </div>
+</nav>
+
+<main class="recipes-container">
+
+  <!-- 1. HAGYMÁS BAB -->
+  <article class="recipe-card" data-category="koret" data-name="hagymás bab babfőzelék">
+    <div class="card-header" onclick="toggleCard(this)">
+      <div class="featured-badge">★ Kiemelt</div>
+      <div class="header-top-row">
+        <div class="recipe-number">No. 01</div>
+        <span class="difficulty-badge easy">Könnyű</span>
+      </div>
+      <h2 class="recipe-title">Hagymás bab</h2>
+      <p class="recipe-tagline">Egyszerű, laktató, otthonos — a magyar konyha egyik alapköve</p>
+    </div>
+    <div class="recipe-meta">
+      <span class="meta-item">⏱ 60 perc</span>
+      <span class="meta-item">👤 4 fő</span>
+      <span class="category-tag">Köret</span>
+      <span class="meta-spacer"></span>
+      <span class="toggle-arrow" onclick="toggleCard(this.closest('.recipe-card').querySelector('.card-header'))">▼</span>
+    </div>
+    <div class="card-body">
+      <div class="ingredients-panel">
+        <div class="panel-title">Hozzávalók</div>
+        <ul class="ingredient-list">
+          <li><span class="ingredient-amount">50 dkg</span> száraz fehérbab</li>
+          <li><span class="ingredient-amount">3 fej</span> vöröshagyma</li>
+          <li><span class="ingredient-amount">3 ek</span> napraforgóolaj</li>
+          <li><span class="ingredient-amount">2 ek</span> finomliszt</li>
+          <li><span class="ingredient-amount">1 ek</span> pirospaprika</li>
+          <li><span class="ingredient-amount">2 gerezd</span> fokhagyma</li>
+          <li><span class="ingredient-amount">1 db</span> babérlevél</li>
+          <li><span class="ingredient-amount">2 ek</span> ecet</li>
+          <li><span class="ingredient-amount">1 tk</span> cukor</li>
+          <li><span class="ingredient-amount"></span> só, bors ízlés szerint</li>
+        </ul>
+      </div>
+      <div class="steps-panel">
+        <div class="panel-title">Elkészítés</div>
+        <div class="step"><span class="step-num">1</span><p>A babot este áztasd be bőséges hideg vízben. Másnap öntsd le, öntsd fel friss vízzel, add hozzá a babérlevelet, és főzd puhára kb. 40–50 perc alatt.</p></div>
+        <div class="step"><span class="step-num">2</span><p>A hagymát vágd apró kockákra és süsd meg olajon üvegesre. Szórd meg liszttel és pirítsd néhány percig.</p></div>
+        <div class="step"><span class="step-num">3</span><p>Vedd le a tűzről, szórd bele a pirospaprikát és keverd el gyorsan. Nyomj bele fokhagymát is.</p></div>
+        <div class="step"><span class="step-num">4</span><p>Öntsd fel a bab főzőlevével, keverd simára, majd add hozzá a megfőtt babot. Ízesítsd ecettel, cukorral, sóval és borssal.</p></div>
+        <div class="step"><span class="step-num">5</span><p>Főzd össze kb. 10 percig, hogy az ízek összeérjenek.</p></div>
+      </div>
+    </div>
+    <div class="recipe-tip"><strong>Tipp 💡</strong><br>Friss fehér kenyérrel vagy főtt virslivel tálald. Egy kevés tejfölt is tehetsz a tetejére!</div>
+  </article>
+
+  <!-- 2. GULYÁSLEVES -->
+  <article class="recipe-card" data-category="leves" data-name="gulyásleves gulyás marhahús">
+    <div class="card-header" onclick="toggleCard(this)">
+      <div class="header-top-row">
+        <div class="recipe-number">No. 02</div>
+        <span class="difficulty-badge medium">Közepes</span>
+      </div>
+      <h2 class="recipe-title">Gulyásleves</h2>
+      <p class="recipe-tagline">Hazánk emblematikus étele — párolt hagyma, pirospaprika, csipetke</p>
+    </div>
+    <div class="recipe-meta">
+      <span class="meta-item">⏱ 2 óra</span>
+      <span class="meta-item">👤 6 fő</span>
+      <span class="category-tag">Leves</span>
+      <span class="meta-spacer"></span>
+      <span class="toggle-arrow" onclick="toggleCard(this.closest('.recipe-card').querySelector('.card-header'))">▼</span>
+    </div>
+    <div class="card-body">
+      <div class="ingredients-panel">
+        <div class="panel-title">Hozzávalók</div>
+        <ul class="ingredient-list">
+          <li><span class="ingredient-amount">60 dkg</span> marhahús (lábszár)</li>
+          <li><span class="ingredient-amount">3 fej</span> vöröshagyma</li>
+          <li><span class="ingredient-amount">2 ek</span> pirospaprika</li>
+          <li><span class="ingredient-amount">3 db</span> burgonya</li>
+          <li><span class="ingredient-amount">2 db</span> sárgarépa</li>
+          <li><span class="ingredient-amount">1 db</span> zöldpaprika</li>
+          <li><span class="ingredient-amount">1 db</span> paradicsom</li>
+          <li><span class="ingredient-amount">2 gerezd</span> fokhagyma</li>
+          <li><span class="ingredient-amount"></span> csipetke, köménymag, só</li>
+        </ul>
+      </div>
+      <div class="steps-panel">
+        <div class="panel-title">Elkészítés</div>
+        <div class="step"><span class="step-num">1</span><p>A hagymát apróra vágd és süsd meg olajon üvegesre. Vedd le a tűzről, szórd meg pirospaprikával, öntsd fel kevés vízzel.</p></div>
+        <div class="step"><span class="step-num">2</span><p>A húst vágd kockákra, add a hagymához. Sózd, szórd meg köménymaggal, és párold lefedve kb. 30 percig.</p></div>
+        <div class="step"><span class="step-num">3</span><p>Öntsd fel vízzel, add hozzá a sárgarépát, és főzd 30–40 percig.</p></div>
+        <div class="step"><span class="step-num">4</span><p>Add hozzá a burgonyát, paprikát, paradicsomot, fokhagymát. Főzd, míg megpuhulnak.</p></div>
+        <div class="step"><span class="step-num">5</span><p>A csipetkét szórd bele és főzd még 5 percig. Tálald jó forrón.</p></div>
+      </div>
+    </div>
+    <div class="recipe-tip"><strong>Tipp 💡</strong><br>Erős paprikát is tégy az asztalra — mindenki annyi csípőset tegyen bele, amennyit szeret.</div>
+  </article>
+
+  <!-- 3. TÖLTÖTT KÁPOSZTA -->
+  <article class="recipe-card" data-category="foetel" data-name="töltött káposzta savanyú karácsonyi">
+    <div class="card-header" onclick="toggleCard(this)">
+      <div class="header-top-row">
+        <div class="recipe-number">No. 03</div>
+        <span class="difficulty-badge hard">Haladó</span>
+      </div>
+      <h2 class="recipe-title">Töltött káposzta</h2>
+      <p class="recipe-tagline">Karácsonyi asztal koronája, savanyú káposztalevélbe göngyölt boldogság</p>
+    </div>
+    <div class="recipe-meta">
+      <span class="meta-item">⏱ 2,5 óra</span>
+      <span class="meta-item">👤 6 fő</span>
+      <span class="category-tag">Főétel</span>
+      <span class="meta-spacer"></span>
+      <span class="toggle-arrow" onclick="toggleCard(this.closest('.recipe-card').querySelector('.card-header'))">▼</span>
+    </div>
+    <div class="card-body">
+      <div class="ingredients-panel">
+        <div class="panel-title">Hozzávalók</div>
+        <ul class="ingredient-list">
+          <li><span class="ingredient-amount">1 fej</span> savanyú káposzta</li>
+          <li><span class="ingredient-amount">50 dkg</span> darált sertéshús</li>
+          <li><span class="ingredient-amount">15 dkg</span> rizs</li>
+          <li><span class="ingredient-amount">2 fej</span> vöröshagyma</li>
+          <li><span class="ingredient-amount">2 gerezd</span> fokhagyma</li>
+          <li><span class="ingredient-amount">1 ek</span> pirospaprika</li>
+          <li><span class="ingredient-amount">1 db</span> tojás</li>
+          <li><span class="ingredient-amount">3 dl</span> tejföl</li>
+          <li><span class="ingredient-amount"></span> só, bors, kapor</li>
+        </ul>
+      </div>
+      <div class="steps-panel">
+        <div class="panel-title">Elkészítés</div>
+        <div class="step"><span class="step-num">1</span><p>A rizst főzd félig puhára. A hagymát pirítsd meg, szórd meg paprikával, hűtsd ki.</p></div>
+        <div class="step"><span class="step-num">2</span><p>A húst keverd össze a rizssel, hagymával, tojással, fokhagymával, sóval és borssal.</p></div>
+        <div class="step"><span class="step-num">3</span><p>A káposztalevelekbe tégy tölteléket és göngyöld be szorosan.</p></div>
+        <div class="step"><span class="step-num">4</span><p>Rétegelj egy nagy fazékba, öntsd fel vízzel és főzd 1,5–2 órát lassú tűzön.</p></div>
+        <div class="step"><span class="step-num">5</span><p>A tejfölt liszttel elkeverve öntsd hozzá, forrald fel még 10 percig.</p></div>
+      </div>
+    </div>
+    <div class="recipe-tip"><strong>Tipp 💡</strong><br>Másnap még finomabb! Nyugodtan készítsd el egy nappal előbb.</div>
+  </article>
+
+  <!-- 4. TÚRÓS CSUSZA -->
+  <article class="recipe-card" data-category="teszta" data-name="túrós csusza tészta szalonna">
+    <div class="card-header" onclick="toggleCard(this)">
+      <div class="header-top-row">
+        <div class="recipe-number">No. 04</div>
+        <span class="difficulty-badge easy">Könnyű</span>
+      </div>
+      <h2 class="recipe-title">Túrós csusza</h2>
+      <p class="recipe-tagline">Ropogós szalonna, krémes tejföl és túró — a gyors vacsora mestere</p>
+    </div>
+    <div class="recipe-meta">
+      <span class="meta-item">⏱ 30 perc</span>
+      <span class="meta-item">👤 4 fő</span>
+      <span class="category-tag">Tészta</span>
+      <span class="meta-spacer"></span>
+      <span class="toggle-arrow" onclick="toggleCard(this.closest('.recipe-card').querySelector('.card-header'))">▼</span>
+    </div>
+    <div class="card-body">
+      <div class="ingredients-panel">
+        <div class="panel-title">Hozzávalók</div>
+        <ul class="ingredient-list">
+          <li><span class="ingredient-amount">50 dkg</span> széles metélt tészta</li>
+          <li><span class="ingredient-amount">25 dkg</span> tehéntúró</li>
+          <li><span class="ingredient-amount">2 dl</span> tejföl</li>
+          <li><span class="ingredient-amount">20 dkg</span> füstölt szalonna</li>
+          <li><span class="ingredient-amount"></span> só ízlés szerint</li>
+        </ul>
+      </div>
+      <div class="steps-panel">
+        <div class="panel-title">Elkészítés</div>
+        <div class="step"><span class="step-num">1</span><p>A szalonnát vágd apró kockákra és süsd ki ropogósra. A zsírt tartsd meg.</p></div>
+        <div class="step"><span class="step-num">2</span><p>A tésztát főzd meg sós vízben, majd szűrd le.</p></div>
+        <div class="step"><span class="step-num">3</span><p>A forró tésztát keverd össze a túróval, tejföllel, és locsold meg a szalonna zsírjával.</p></div>
+        <div class="step"><span class="step-num">4</span><p>Tálald a ropogós szalonnával megszórva — melegen a legfinomabb!</p></div>
+      </div>
+    </div>
+    <div class="recipe-tip"><strong>Tipp 💡</strong><br>Ha krémes verziót szeretnél, adj hozzá pár kanál főzővizet keverés közben.</div>
+  </article>
+
+  <!-- 5. HALÁSZLÉ -->
+  <article class="recipe-card" data-category="leves" data-name="halászlé hal ponty harcsa szegedi">
+    <div class="card-header" onclick="toggleCard(this)">
+      <div class="header-top-row">
+        <div class="recipe-number">No. 05</div>
+        <span class="difficulty-badge hard">Haladó</span>
+      </div>
+      <h2 class="recipe-title">Halászlé</h2>
+      <p class="recipe-tagline">Szegedi vagy bajai? — a lényeg a jó hal és a bőséges paprika</p>
+    </div>
+    <div class="recipe-meta">
+      <span class="meta-item">⏱ 1,5 óra</span>
+      <span class="meta-item">👤 6 fő</span>
+      <span class="category-tag">Leves</span>
+      <span class="meta-spacer"></span>
+      <span class="toggle-arrow" onclick="toggleCard(this.closest('.recipe-card').querySelector('.card-header'))">▼</span>
+    </div>
+    <div class="card-body">
+      <div class="ingredients-panel">
+        <div class="panel-title">Hozzávalók</div>
+        <ul class="ingredient-list">
+          <li><span class="ingredient-amount">1,5 kg</span> vegyes hal (ponty, harcsa)</li>
+          <li><span class="ingredient-amount">3 fej</span> vöröshagyma</li>
+          <li><span class="ingredient-amount">3 ek</span> pirospaprika</li>
+          <li><span class="ingredient-amount">2 db</span> zöldpaprika</li>
+          <li><span class="ingredient-amount">2 db</span> paradicsom</li>
+          <li><span class="ingredient-amount"></span> erős paprika, só</li>
+        </ul>
+      </div>
+      <div class="steps-panel">
+        <div class="panel-title">Elkészítés</div>
+        <div class="step"><span class="step-num">1</span><p>A kisebb halakat tisztítsd meg és főzd ki a hagymával 40 percig.</p></div>
+        <div class="step"><span class="step-num">2</span><p>Szűrd át, a kishalakat nyomd át szitán. Add vissza a léhez a pirospaprikával.</p></div>
+        <div class="step"><span class="step-num">3</span><p>A nagyobb szeleteket tedd a forrásban lévő lébe a paprikával és paradicsommal.</p></div>
+        <div class="step"><span class="step-num">4</span><p>Főzd lassú tűzön 20–25 percig — ne kevergess, csak rázogasd a bográcsot!</p></div>
+      </div>
+    </div>
+    <div class="recipe-tip"><strong>Tipp 💡</strong><br>Soha ne kevergesd kanállal — csak rázogasd a fazekat, különben szétesik a hal.</div>
+  </article>
+
+  <!-- 6. PAPRIKÁS CSIRKE -->
+  <article class="recipe-card" data-category="foetel" data-name="paprikás csirke nokedli galuska">
+    <div class="card-header" onclick="toggleCard(this)">
+      <div class="header-top-row">
+        <div class="recipe-number">No. 06</div>
+        <span class="difficulty-badge medium">Közepes</span>
+      </div>
+      <h2 class="recipe-title">Paprikás csirke</h2>
+      <p class="recipe-tagline">Tejfölös, paprikás szaft nokedlivel — vasárnapi ebéd a javából</p>
+    </div>
+    <div class="recipe-meta">
+      <span class="meta-item">⏱ 1 óra</span>
+      <span class="meta-item">👤 4 fő</span>
+      <span class="category-tag">Főétel</span>
+      <span class="meta-spacer"></span>
+      <span class="toggle-arrow" onclick="toggleCard(this.closest('.recipe-card').querySelector('.card-header'))">▼</span>
+    </div>
+    <div class="card-body">
+      <div class="ingredients-panel">
+        <div class="panel-title">Hozzávalók</div>
+        <ul class="ingredient-list">
+          <li><span class="ingredient-amount">1 egész</span> csirke (feldarabolva)</li>
+          <li><span class="ingredient-amount">2 fej</span> vöröshagyma</li>
+          <li><span class="ingredient-amount">2 ek</span> pirospaprika</li>
+          <li><span class="ingredient-amount">1 db</span> zöldpaprika</li>
+          <li><span class="ingredient-amount">1 db</span> paradicsom</li>
+          <li><span class="ingredient-amount">2 dl</span> tejföl</li>
+          <li><span class="ingredient-amount">1 ek</span> liszt</li>
+          <li><span class="ingredient-amount"></span> só, olaj</li>
+        </ul>
+      </div>
+      <div class="steps-panel">
+        <div class="panel-title">Elkészítés</div>
+        <div class="step"><span class="step-num">1</span><p>A hagymát apróra vágd, süsd meg olajon. Szórd meg pirospaprikával, öntsd fel kevés vízzel.</p></div>
+        <div class="step"><span class="step-num">2</span><p>Add hozzá a csirkedarabokat, sózd meg, tedd rá a paprikát és paradicsomot. Párold lefedve 35–40 percig.</p></div>
+        <div class="step"><span class="step-num">3</span><p>A tejfölt keverd el a liszttel, öntsd a csirkéhez. Forrald fel és főzd még 5 percig.</p></div>
+        <div class="step"><span class="step-num">4</span><p>Nokedlivel vagy galuskával tálald — a szaftot bőségesen merd rá!</p></div>
+      </div>
+    </div>
+    <div class="recipe-tip"><strong>Tipp 💡</strong><br>A nokedlit frissen készítsd, és egyenesen a szaftos csirkére tálald.</div>
+  </article>
+
+  <!-- 7. LECSÓ -->
+  <article class="recipe-card" data-category="foetel" data-name="lecsó paprika paradicsom kolbász tojás">
+    <div class="card-header" onclick="toggleCard(this)">
+      <div class="header-top-row">
+        <div class="recipe-number">No. 07</div>
+        <span class="difficulty-badge easy">Könnyű</span>
+      </div>
+      <h2 class="recipe-title">Lecsó</h2>
+      <p class="recipe-tagline">Nyár íze paprikából és paradicsomból — tojással vagy kolbásszal</p>
+    </div>
+    <div class="recipe-meta">
+      <span class="meta-item">⏱ 40 perc</span>
+      <span class="meta-item">👤 4 fő</span>
+      <span class="category-tag">Főétel</span>
+      <span class="meta-spacer"></span>
+      <span class="toggle-arrow" onclick="toggleCard(this.closest('.recipe-card').querySelector('.card-header'))">▼</span>
+    </div>
+    <div class="card-body">
+      <div class="ingredients-panel">
+        <div class="panel-title">Hozzávalók</div>
+        <ul class="ingredient-list">
+          <li><span class="ingredient-amount">6 db</span> zöldpaprika (tv. paprika)</li>
+          <li><span class="ingredient-amount">4 db</span> paradicsom</li>
+          <li><span class="ingredient-amount">2 fej</span> vöröshagyma</li>
+          <li><span class="ingredient-amount">20 dkg</span> füstölt kolbász</li>
+          <li><span class="ingredient-amount">4 db</span> tojás (opcionális)</li>
+          <li><span class="ingredient-amount">2 ek</span> olaj</li>
+          <li><span class="ingredient-amount"></span> só, cukor, bors</li>
+        </ul>
+      </div>
+      <div class="steps-panel">
+        <div class="panel-title">Elkészítés</div>
+        <div class="step"><span class="step-num">1</span><p>A hagymát karikázd fel és pirítsd meg olajon. A kolbászt szeleteld és süsd át.</p></div>
+        <div class="step"><span class="step-num">2</span><p>A paprikát szeld csíkokra, add a hagymás kolbászhoz, párold 5 percig.</p></div>
+        <div class="step"><span class="step-num">3</span><p>A paradicsomot darabold, add hozzá, főzd lefedve 15–20 percig.</p></div>
+        <div class="step"><span class="step-num">4</span><p>Tojással: verd bele és keverd össze. Sózd, borsozd, tálald kenyérrel.</p></div>
+      </div>
+    </div>
+    <div class="recipe-tip"><strong>Tipp 💡</strong><br>Az igazi lecsóhoz csakis húsos, érett tv. paprikát és paradicsomot használj!</div>
+  </article>
+
+  <!-- 8. MEGGYLEVES -->
+  <article class="recipe-card" data-category="leves" data-name="meggyleves hideg gyümölcsleves nyári">
+    <div class="card-header" onclick="toggleCard(this)">
+      <div class="header-top-row">
+        <div class="recipe-number">No. 08</div>
+        <span class="difficulty-badge easy">Könnyű</span>
+      </div>
+      <h2 class="recipe-title">Meggyleves</h2>
+      <p class="recipe-tagline">Hűsítő nyári fogás — krémes, savanykás, édeskés</p>
+    </div>
+    <div class="recipe-meta">
+      <span class="meta-item">⏱ 25 perc + hűtés</span>
+      <span class="meta-item">👤 4 fő</span>
+      <span class="category-tag">Leves</span>
+      <span class="meta-spacer"></span>
+      <span class="toggle-arrow" onclick="toggleCard(this.closest('.recipe-card').querySelector('.card-header'))">▼</span>
+    </div>
+    <div class="card-body">
+      <div class="ingredients-panel">
+        <div class="panel-title">Hozzávalók</div>
+        <ul class="ingredient-list">
+          <li><span class="ingredient-amount">50 dkg</span> meggy</li>
+          <li><span class="ingredient-amount">15 dkg</span> cukor</li>
+          <li><span class="ingredient-amount">1 db</span> fahéjrúd</li>
+          <li><span class="ingredient-amount">2 dl</span> tejföl</li>
+          <li><span class="ingredient-amount">2 ek</span> liszt</li>
+          <li><span class="ingredient-amount">1 l</span> víz</li>
+        </ul>
+      </div>
+      <div class="steps-panel">
+        <div class="panel-title">Elkészítés</div>
+        <div class="step"><span class="step-num">1</span><p>A meggyet mosd meg és magozd ki. Főzd fel a vízzel, cukorral és fahéjjal 10 percig.</p></div>
+        <div class="step"><span class="step-num">2</span><p>A tejfölt keverd simára a liszttel. Adj hozzá egy merőkanálnyi forró levest, keverd el.</p></div>
+        <div class="step"><span class="step-num">3</span><p>Öntsd a tejfölös keveréket a leveshez, forrald fel, majd vedd le a tűzről.</p></div>
+        <div class="step"><span class="step-num">4</span><p>Hűtsd le, tedd hűtőbe. Jéghidegen tálald!</p></div>
+      </div>
+    </div>
+    <div class="recipe-tip"><strong>Tipp 💡</strong><br>Egy kevés vaníliás cukorral még finomabb!</div>
+  </article>
+
+  <!-- 9. RAKOTT KRUMPLI -->
+  <article class="recipe-card" data-category="foetel" data-name="rakott krumpli burgonya tojás kolbász">
+    <div class="card-header" onclick="toggleCard(this)">
+      <div class="header-top-row">
+        <div class="recipe-number">No. 09</div>
+        <span class="difficulty-badge easy">Könnyű</span>
+      </div>
+      <h2 class="recipe-title">Rakott krumpli</h2>
+      <p class="recipe-tagline">Rétegezett boldogság — burgonya, tojás, kolbász, tejföl</p>
+    </div>
+    <div class="recipe-meta">
+      <span class="meta-item">⏱ 1 óra</span>
+      <span class="meta-item">👤 4 fő</span>
+      <span class="category-tag">Főétel</span>
+      <span class="meta-spacer"></span>
+      <span class="toggle-arrow" onclick="toggleCard(this.closest('.recipe-card').querySelector('.card-header'))">▼</span>
+    </div>
+    <div class="card-body">
+      <div class="ingredients-panel">
+        <div class="panel-title">Hozzávalók</div>
+        <ul class="ingredient-list">
+          <li><span class="ingredient-amount">1 kg</span> burgonya</li>
+          <li><span class="ingredient-amount">6 db</span> tojás</li>
+          <li><span class="ingredient-amount">30 dkg</span> füstölt kolbász</li>
+          <li><span class="ingredient-amount">4 dl</span> tejföl</li>
+          <li><span class="ingredient-amount"></span> vaj, só, bors</li>
+        </ul>
+      </div>
+      <div class="steps-panel">
+        <div class="panel-title">Elkészítés</div>
+        <div class="step"><span class="step-num">1</span><p>A burgonyát és tojásokat főzd meg héjában, hámozd meg és szeleteld karikára.</p></div>
+        <div class="step"><span class="step-num">2</span><p>A kolbászt szeleteld fel. Kend ki a tepsit vajjal.</p></div>
+        <div class="step"><span class="step-num">3</span><p>Rétegelj: burgonya, tojás, kolbász, tejföl — ismételd. A tetejére bőségesen kenj tejfölt.</p></div>
+        <div class="step"><span class="step-num">4</span><p>Süsd 180°C-on 25–30 percig, míg szép pirosra sül.</p></div>
+      </div>
+    </div>
+    <div class="recipe-tip"><strong>Tipp 💡</strong><br>Reszelt sajttal a tetején még finomabb!</div>
+  </article>
+
+  <!-- 10. SOMLÓI GALUSKA -->
+  <article class="recipe-card" data-category="desszert" data-name="somlói galuska piskóta csoki vanília">
+    <div class="card-header" onclick="toggleCard(this)">
+      <div class="header-top-row">
+        <div class="recipe-number">No. 10</div>
+        <span class="difficulty-badge hard">Haladó</span>
+      </div>
+      <h2 class="recipe-title">Somlói galuska</h2>
+      <p class="recipe-tagline">Háromféle piskóta, vaníliasodó, tejszínhab és csokiöntet</p>
+    </div>
+    <div class="recipe-meta">
+      <span class="meta-item">⏱ 1,5 óra</span>
+      <span class="meta-item">👤 8 fő</span>
+      <span class="category-tag">Desszert</span>
+      <span class="meta-spacer"></span>
+      <span class="toggle-arrow" onclick="toggleCard(this.closest('.recipe-card').querySelector('.card-header'))">▼</span>
+    </div>
+    <div class="card-body">
+      <div class="ingredients-panel">
+        <div class="panel-title">Hozzávalók</div>
+        <ul class="ingredient-list">
+          <li><span class="ingredient-amount">6 db</span> tojás</li>
+          <li><span class="ingredient-amount">18 dkg</span> cukor</li>
+          <li><span class="ingredient-amount">18 dkg</span> liszt</li>
+          <li><span class="ingredient-amount">2 ek</span> kakaópor</li>
+          <li><span class="ingredient-amount">5 dl</span> tej (vaníliasodóhoz)</li>
+          <li><span class="ingredient-amount">1 cs</span> vaníliás pudingpor</li>
+          <li><span class="ingredient-amount">10 dkg</span> étcsoki</li>
+          <li><span class="ingredient-amount">2 dl</span> tejszín</li>
+          <li><span class="ingredient-amount">5 dkg</span> darált dió</li>
+          <li><span class="ingredient-amount">3 dkg</span> mazsola, rum</li>
+        </ul>
+      </div>
+      <div class="steps-panel">
+        <div class="panel-title">Elkészítés</div>
+        <div class="step"><span class="step-num">1</span><p>Készíts három piskótát: sima, kakaós, diós. A fehérjét verd habbá cukorral, keverd a sárgájához és liszthez.</p></div>
+        <div class="step"><span class="step-num">2</span><p>Süsd ki 180°C-on 12–15 percig. A mazsolát áztasd rumba.</p></div>
+        <div class="step"><span class="step-num">3</span><p>Főzd meg a vaníliasodót. A csokiöntetet olvaszd fel vízfürdőben.</p></div>
+        <div class="step"><span class="step-num">4</span><p>Tépkedj darabokat, rétegelj: piskóta, vaníliasodó, dió, mazsola. Ismételd.</p></div>
+        <div class="step"><span class="step-num">5</span><p>Tejszínhab a tetejére, csokiöntet rálocsolva. Hűtsd meg tálalás előtt.</p></div>
+      </div>
+    </div>
+    <div class="recipe-tip"><strong>Tipp 💡</strong><br>A piskótát egy nappal előre is elkészítheted — másnap jobban magába szívja a sodót.</div>
+  </article>
+
+  <!-- 11. LÁNGOS -->
+  <article class="recipe-card" data-category="foetel" data-name="lángos fokhagymás tejfölös sajtos street food">
+    <div class="card-header" onclick="toggleCard(this)">
+      <div class="header-top-row">
+        <div class="recipe-number">No. 11</div>
+        <span class="difficulty-badge medium">Közepes</span>
+      </div>
+      <h2 class="recipe-title">Lángos</h2>
+      <p class="recipe-tagline">Ropogós, fokhagymás, tejfölös, sajtos — a magyar street food legjobbja</p>
+    </div>
+    <div class="recipe-meta">
+      <span class="meta-item">⏱ 1 óra + kelesztés</span>
+      <span class="meta-item">👤 6 fő</span>
+      <span class="category-tag">Főétel</span>
+      <span class="meta-spacer"></span>
+      <span class="toggle-arrow" onclick="toggleCard(this.closest('.recipe-card').querySelector('.card-header'))">▼</span>
+    </div>
+    <div class="card-body">
+      <div class="ingredients-panel">
+        <div class="panel-title">Hozzávalók</div>
+        <ul class="ingredient-list">
+          <li><span class="ingredient-amount">50 dkg</span> finomliszt</li>
+          <li><span class="ingredient-amount">2,5 dl</span> langyos víz</li>
+          <li><span class="ingredient-amount">2 dkg</span> friss élesztő</li>
+          <li><span class="ingredient-amount">1 tk</span> cukor</li>
+          <li><span class="ingredient-amount">1 tk</span> só</li>
+          <li><span class="ingredient-amount"></span> olaj, tejföl, sajt, fokhagyma</li>
+        </ul>
+      </div>
+      <div class="steps-panel">
+        <div class="panel-title">Elkészítés</div>
+        <div class="step"><span class="step-num">1</span><p>Az élesztőt morzsold a langyos vízbe, add hozzá a cukrot, hagyd 10 percig felfutni.</p></div>
+        <div class="step"><span class="step-num">2</span><p>A lisztet sózd meg, öntsd hozzá az élesztős vizet, gyúrd össze puha tésztává. Keleszd 30–40 percig.</p></div>
+        <div class="step"><span class="step-num">3</span><p>Szaggass pogácsákat, nyújtsd ki kézzel vékonyra, süsd ki bő forró olajban aranybarnára.</p></div>
+        <div class="step"><span class="step-num">4</span><p>Kend meg fokhagymás vízzel, tejföllel, szórd meg sajttal — tálald azonnal!</p></div>
+      </div>
+    </div>
+    <div class="recipe-tip"><strong>Tipp 💡</strong><br>A tésztát a közepéből nyújtsd — a széle maradjon vastagabb, hogy buborékos legyen.</div>
+  </article>
+
+  <!-- 12. GUNDEL PALACSINTA -->
+  <article class="recipe-card" data-category="desszert" data-name="gundel palacsinta dió csoki rum">
+    <div class="card-header" onclick="toggleCard(this)">
+      <div class="header-top-row">
+        <div class="recipe-number">No. 12</div>
+        <span class="difficulty-badge hard">Haladó</span>
+      </div>
+      <h2 class="recipe-title">Gundel palacsinta</h2>
+      <p class="recipe-tagline">Diós töltelék, csokiszósz, lángoló rum — az elegancia maga</p>
+    </div>
+    <div class="recipe-meta">
+      <span class="meta-item">⏱ 1 óra</span>
+      <span class="meta-item">👤 4 fő</span>
+      <span class="category-tag">Desszert</span>
+      <span class="meta-spacer"></span>
+      <span class="toggle-arrow" onclick="toggleCard(this.closest('.recipe-card').querySelector('.card-header'))">▼</span>
+    </div>
+    <div class="card-body">
+      <div class="ingredients-panel">
+        <div class="panel-title">Hozzávalók</div>
+        <ul class="ingredient-list">
+          <li><span class="ingredient-amount">8 db</span> palacsinta</li>
+          <li><span class="ingredient-amount">20 dkg</span> darált dió</li>
+          <li><span class="ingredient-amount">1 dl</span> tej</li>
+          <li><span class="ingredient-amount">8 dkg</span> cukor</li>
+          <li><span class="ingredient-amount">5 dkg</span> mazsola</li>
+          <li><span class="ingredient-amount">1 ek</span> rum</li>
+          <li><span class="ingredient-amount">10 dkg</span> étcsokoládé</li>
+          <li><span class="ingredient-amount">1 dl</span> tejszín</li>
+          <li><span class="ingredient-amount">2 db</span> tojássárgája</li>
+          <li><span class="ingredient-amount"></span> narancshéj reszelék</li>
+        </ul>
+      </div>
+      <div class="steps-panel">
+        <div class="panel-title">Elkészítés</div>
+        <div class="step"><span class="step-num">1</span><p>A diót főzd fel tejjel és cukorral, add hozzá a mazsolát, rumot és narancshéjat. Főzd sűrűre.</p></div>
+        <div class="step"><span class="step-num">2</span><p>Töltsd meg a palacsintákat, hajtsd negyedbe, rendezd tepsibe.</p></div>
+        <div class="step"><span class="step-num">3</span><p>A csokit olvaszd fel tejszínnel vízfürdőben. Keverd bele a tojássárgákat.</p></div>
+        <div class="step"><span class="step-num">4</span><p>Öntsd a csokiszószt a palacsintákra. Melegítsd 180°C-on 10 percig. Locsolj rá rumot és gyújtsd meg!</p></div>
+      </div>
+    </div>
+    <div class="recipe-tip"><strong>Tipp 💡</strong><br>A lángoló rum igazi show — de csak vigyázva, és kezeld óvatosan a tüzet!</div>
+  </article>
+
+  <div class="no-results" id="noResults">
+    <h3>Nincs találat 😕</h3>
+    <p>Próbálj más keresőszót vagy válassz másik kategóriát!</p>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-brand">Magyar Receptek</div>
+  <p>Hagyományos ízek, modern konyhában <a href="https://kuruc.info/" target="_blank" rel="noopener" style="text-decoration:none;cursor:pointer;">🌶️</a></p>
+</footer>
+
 <script>
-    // Beállítások
-    const textContent = "hgery08 oldala WIP";
-    const itemCount = 20; // Ennyi darab felirat legyen a képernyőn
+  function toggleCard(header) {
+    const card = header.closest('.recipe-card');
+    card.classList.toggle('open');
+  }
 
-    function createChaos() {
-        const body = document.body;
-        
-        for (let i = 0; i < itemCount; i++) {
-            const el = document.createElement('div');
-            el.innerText = textContent;
-            el.classList.add('hgery-text');
+  // Open the first card by default
+  document.querySelector('.recipe-card').classList.add('open');
 
-            // Véletlenszerű pozíció
-            const x = Math.random() * window.innerWidth;
-            const y = Math.random() * window.innerHeight;
-            
-            // Véletlenszerű méret (20px és 80px között)
-            const fontSize = Math.floor(Math.random() * 60) + 20;
+  // Category filter
+  const catBtns = document.querySelectorAll('.cat-btn');
+  const cards = document.querySelectorAll('.recipe-card');
 
-            // Véletlenszerű sebességek az animációkhoz, hogy kaotikus legyen
-            const spinDuration = (Math.random() * 2 + 1) + 's'; // 1-3 másodperc
-            const flashDuration = (Math.random() * 0.5 + 0.1) + 's'; // 0.1-0.6 másodperc
-            
-            // Véletlenszerű forgás irány (óra vagy ellentétes)
-            const direction = Math.random() > 0.5 ? 'normal' : 'reverse';
-
-            // Stílusok alkalmazása
-            el.style.left = x + 'px';
-            el.style.top = y + 'px';
-            el.style.fontSize = fontSize + 'px';
-            
-            // Az animációk összefűzése
-            el.style.animation = `spin ${spinDuration} linear infinite ${direction}, flash ${flashDuration} linear infinite`;
-
-            body.appendChild(el);
-        }
-    }
-
-    // Indítás
-    createChaos();
-
-    // Ha átméretezik az ablakot, frissítjük, hogy kitöltse az újat is (opcionális)
-    window.addEventListener('resize', () => {
-        document.body.innerHTML = ''; // Törlés
-        createChaos(); // Újragenerálás
+  catBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      catBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filterRecipes();
     });
+  });
+
+  // Search
+  const searchInput = document.getElementById('searchInput');
+  searchInput.addEventListener('input', filterRecipes);
+
+  function filterRecipes() {
+    const activeCat = document.querySelector('.cat-btn.active').dataset.cat;
+    const query = searchInput.value.toLowerCase().trim();
+    let visible = 0;
+
+    cards.forEach(card => {
+      const matchesCat = activeCat === 'all' || card.dataset.category === activeCat;
+      const name = card.dataset.name + ' ' +
+        card.querySelector('.recipe-title').textContent.toLowerCase() + ' ' +
+        card.querySelector('.recipe-tagline').textContent.toLowerCase();
+      const matchesSearch = !query || name.includes(query);
+
+      if (matchesCat && matchesSearch) {
+        card.classList.remove('hidden');
+        visible++;
+      } else {
+        card.classList.add('hidden');
+      }
+    });
+
+    document.getElementById('visibleCount').textContent = visible;
+    document.getElementById('noResults').style.display = visible === 0 ? 'block' : 'none';
+  }
+
+  // Scroll reveal
+  const revealObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { rootMargin: '0px 0px -40px 0px', threshold: 0.02 });
+
+  cards.forEach((card, i) => {
+    card.style.transitionDelay = `${Math.min(i * 0.06, 0.4)}s`;
+    revealObserver.observe(card);
+  });
 </script>
 
 </body>
-
 </html>
-
-
