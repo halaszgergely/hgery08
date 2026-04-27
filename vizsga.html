@@ -2,182 +2,494 @@
 <html lang="hu">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Közigazgatási Alapvizsga – Gyakorló Teszt</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Georgia,serif;background:#faf6ef;color:#1e1c18;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 14px 60px}
-header{width:100%;max-width:700px;text-align:center;padding:36px 0 22px;border-bottom:2px solid #c8941a;margin-bottom:28px}
-header h1{font-size:clamp(18px,4vw,26px);color:#1a2744;line-height:1.3;margin-bottom:4px}
-header p{color:#7a7060;font-size:13px}
-.screen{display:none;width:100%;max-width:700px}.screen.active{display:block}
-.card{background:#fff;border:1px solid #d8cdb8;border-radius:12px;padding:28px 32px;margin-bottom:16px;box-shadow:0 1px 10px rgba(0,0,0,.06)}
-h2{font-size:19px;color:#1a2744;margin-bottom:12px}
-p.info{font-size:15px;line-height:1.7;color:#3a3530;margin-bottom:8px}
-.stats{display:flex;gap:12px;margin:12px 0;flex-wrap:wrap}
-.stat{background:#f0ead8;border-radius:8px;padding:10px 14px;flex:1;min-width:110px;text-align:center}
-.stat-n{font-size:24px;font-weight:700;color:#1a2744}.stat-l{font-size:11px;color:#7a7060;margin-top:1px}
-.row{display:flex;align-items:center;gap:10px;margin:12px 0 4px;flex-wrap:wrap}
-.row label{font-size:14px;color:#1a2744;font-weight:600}
-select{font-family:Georgia,serif;font-size:14px;padding:8px 12px;border:2px solid #d8cdb8;border-radius:8px;background:#faf6ef;color:#1e1c18;cursor:pointer;outline:none}
-select:focus{border-color:#c8941a}
-.btn-main{display:block;width:100%;padding:13px;font-family:Georgia,serif;font-size:16px;font-weight:700;background:#1a2744;color:#fff;border:none;border-radius:10px;cursor:pointer;margin-top:8px;transition:all .2s}
-.btn-main:hover{background:#263660;transform:translateY(-1px)}
-.qprog-wrap{margin-bottom:14px}
-.qprog-info{display:flex;justify-content:space-between;font-size:12px;color:#7a7060;margin-bottom:5px}
-.qprog-track{height:5px;background:#f0ead8;border-radius:99px;overflow:hidden}
-.qprog-fill{height:100%;background:linear-gradient(90deg,#1a2744,#c8941a);border-radius:99px;transition:width .35s}
-.q-card{background:#fff;border:1px solid #d8cdb8;border-radius:14px;padding:28px 32px;box-shadow:0 2px 14px rgba(0,0,0,.07);margin-bottom:14px;animation:si .28s ease}
-@keyframes si{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.q-badge{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#c8941a;margin-bottom:10px}
-.q-text{font-size:clamp(15px,2.3vw,18px);line-height:1.72;margin-bottom:20px}
-.opts{display:flex;flex-direction:column;gap:8px}
-.opt{background:#faf6ef;border:2px solid #d8cdb8;border-radius:10px;padding:12px 16px;font-family:Georgia,serif;font-size:15px;color:#1e1c18;text-align:left;cursor:pointer;transition:all .15s;line-height:1.5;display:flex;align-items:flex-start;gap:10px}
-.opt-l{min-width:20px;font-weight:700;color:#7a7060;font-size:12px;padding-top:2px;flex-shrink:0}
-.opt:hover:not(:disabled){border-color:#1a2744;background:#eeeaf5;transform:translateX(2px)}
-.opt.correct{background:#e8f5ee;border-color:#2d6a4f;color:#1d4a33}.opt.correct .opt-l{color:#2d6a4f}
-.opt.wrong{background:#faeae7;border-color:#8b2010;color:#6b1a0d}.opt.wrong .opt-l{color:#8b2010}
-.opt.reveal{background:#e8f5ee;border-color:#2d6a4f;color:#1d4a33}.opt.reveal .opt-l{color:#2d6a4f}
-.opt:disabled{cursor:default}
-.fb{border-radius:10px;padding:14px 18px;margin-top:10px;font-size:14px;line-height:1.65;display:none;animation:fi .2s ease}
-@keyframes fi{from{opacity:0}to{opacity:1}}
-.fb.ok{background:#e8f5ee;border-left:4px solid #2d6a4f;color:#1d4a33}
-.fb.err{background:#faeae7;border-left:4px solid #8b2010;color:#6b1a0d}
-.fb-ans{font-weight:700;margin-bottom:6px}
-.fb-exp{font-size:13px;opacity:.88;margin-top:5px;padding-top:5px;border-top:1px solid rgba(0,0,0,.08);line-height:1.6}
-#next-btn{display:none;width:100%;margin-top:2px}
-#score-screen{text-align:center}
-.sc{background:#fff;border:1px solid #d8cdb8;border-radius:16px;padding:42px 32px 36px;box-shadow:0 4px 22px rgba(0,0,0,.08);margin-bottom:18px}
-.sc-e{font-size:52px;margin-bottom:12px}.sc-t{font-size:22px;color:#1a2744;margin-bottom:6px;font-weight:700}
-.sc-s{color:#7a7060;font-size:14px;margin-bottom:22px}.sc-n{font-size:60px;font-weight:700;color:#1a2744;line-height:1;margin-bottom:4px}
-.sc-d{font-size:15px;color:#7a7060;margin-bottom:22px}
-.sc-bt{height:10px;background:#f0ead8;border-radius:99px;overflow:hidden;max-width:240px;margin:0 auto 20px}
-.sc-bf{height:100%;border-radius:99px;transition:width 1s ease .3s}
-.sc-g{display:inline-block;padding:7px 22px;border-radius:30px;font-size:15px;font-weight:600;margin-bottom:4px}
-.btn-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:4px}
-@media(max-width:480px){.q-card,.card{padding:18px 16px}.sc{padding:28px 16px}.stats{flex-direction:column}}
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Serif+4:wght@300;400;500&display=swap');
+
+  :root {
+    --navy: #1a2744;
+    --gold: #c8941a;
+    --cream: #faf6ef;
+    --light: #f0ead8;
+    --green: #2d6a4f;
+    --red: #8b2010;
+    --text: #1e1c18;
+    --muted: #7a7060;
+    --card: #ffffff;
+    --border: #d8cdb8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--cream);
+    font-family: 'Source Serif 4', Georgia, serif;
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 16px 60px;
+  }
+
+  /* HEADER */
+  header {
+    width: 100%;
+    max-width: 720px;
+    text-align: center;
+    padding: 48px 0 32px;
+    border-bottom: 2px solid var(--gold);
+    margin-bottom: 36px;
+  }
+  header .cimer {
+    font-size: 32px;
+    margin-bottom: 10px;
+  }
+  header h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: clamp(22px, 4vw, 30px);
+    color: var(--navy);
+    line-height: 1.25;
+    margin-bottom: 6px;
+  }
+  header p {
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 300;
+  }
+
+  /* SCREENS */
+  .screen { display: none; width: 100%; max-width: 720px; }
+  .screen.active { display: block; }
+
+  /* START SCREEN */
+  #start-screen .intro-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 36px 40px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  #start-screen h2 {
+    font-family: 'Playfair Display', serif;
+    color: var(--navy);
+    font-size: 22px;
+    margin-bottom: 16px;
+  }
+  #start-screen p {
+    font-size: 17px;
+    line-height: 1.7;
+    color: #3a3530;
+    margin-bottom: 12px;
+  }
+  .settings-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 20px 0 8px;
+    flex-wrap: wrap;
+  }
+  .settings-row label {
+    font-size: 16px;
+    color: var(--navy);
+    font-weight: 500;
+  }
+  select {
+    font-family: 'Source Serif 4', serif;
+    font-size: 16px;
+    padding: 10px 16px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    background: var(--cream);
+    color: var(--text);
+    cursor: pointer;
+    outline: none;
+    transition: border-color .2s;
+  }
+  select:focus { border-color: var(--gold); }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-block;
+    padding: 15px 40px;
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all .2s;
+    text-align: center;
+  }
+  .btn-primary {
+    background: var(--navy);
+    color: #fff;
+    width: 100%;
+    margin-top: 8px;
+    letter-spacing: .5px;
+  }
+  .btn-primary:hover { background: #263660; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(26,39,68,.25); }
+  .btn-secondary {
+    background: transparent;
+    color: var(--navy);
+    border: 2px solid var(--navy);
+    font-size: 15px;
+    padding: 12px 30px;
+  }
+  .btn-secondary:hover { background: var(--navy); color: #fff; }
+
+  /* PROGRESS BAR */
+  .progress-wrap {
+    margin-bottom: 20px;
+  }
+  .progress-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .progress-track {
+    height: 6px;
+    background: var(--light);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--navy), var(--gold));
+    border-radius: 99px;
+    transition: width .4s ease;
+  }
+
+  /* QUESTION CARD */
+  .q-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 36px 40px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+    margin-bottom: 20px;
+    animation: slideIn .3s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .q-modul {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 14px;
+  }
+  .q-type-badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--light);
+    color: var(--muted);
+    margin-bottom: 18px;
+    letter-spacing: .5px;
+  }
+  .q-text {
+    font-size: clamp(17px, 2.5vw, 20px);
+    line-height: 1.65;
+    color: var(--text);
+    margin-bottom: 28px;
+    font-weight: 400;
+  }
+
+  /* ANSWER OPTIONS */
+  .options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .opt-btn {
+    background: var(--cream);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 22px;
+    font-family: 'Source Serif 4', serif;
+    font-size: 17px;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    transition: all .18s;
+    line-height: 1.5;
+  }
+  .opt-btn:hover:not(:disabled) {
+    border-color: var(--navy);
+    background: #f0edf7;
+    transform: translateX(3px);
+  }
+  .opt-btn.correct {
+    background: #e8f5ee;
+    border-color: var(--green);
+    color: var(--green);
+  }
+  .opt-btn.wrong {
+    background: #faeae7;
+    border-color: var(--red);
+    color: var(--red);
+  }
+  .opt-btn.reveal {
+    background: #e8f5ee;
+    border-color: var(--green);
+    color: var(--green);
+    animation: pulse .4s ease;
+  }
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.015); }
+    100% { transform: scale(1); }
+  }
+  .opt-btn:disabled { cursor: default; }
+
+  /* FEEDBACK */
+  .feedback {
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-top: 16px;
+    font-size: 16px;
+    line-height: 1.6;
+    display: none;
+    animation: fadeIn .25s ease;
+  }
+  @keyframes fadeIn { from {opacity:0} to {opacity:1} }
+  .feedback.ok  { background: #e8f5ee; border-left: 4px solid var(--green); color: #1d4a33; }
+  .feedback.err { background: #faeae7; border-left: 4px solid var(--red);   color: #6b1a0d; }
+  .feedback .fb-icon { font-size: 20px; margin-right: 8px; }
+
+  /* NEXT BUTTON */
+  #next-btn {
+    display: none;
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  /* SCORE SCREEN */
+  #score-screen {
+    text-align: center;
+  }
+  .score-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 52px 40px 44px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    margin-bottom: 24px;
+  }
+  .score-emoji { font-size: 64px; margin-bottom: 20px; }
+  .score-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    color: var(--navy);
+    margin-bottom: 10px;
+  }
+  .score-sub {
+    color: var(--muted);
+    font-size: 16px;
+    margin-bottom: 36px;
+  }
+  .score-big {
+    font-family: 'Playfair Display', serif;
+    font-size: 72px;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .score-denom { font-size: 18px; color: var(--muted); margin-bottom: 32px; }
+  .score-bar-wrap { margin: 0 auto 32px; max-width: 300px; }
+  .score-bar-track { height: 14px; background: var(--light); border-radius: 99px; overflow: hidden; }
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 1s ease .3s;
+  }
+  .score-grade {
+    display: inline-block;
+    padding: 10px 30px;
+    border-radius: 30px;
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: 10px;
+  }
+  .btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+  @media (max-width: 520px) {
+    .q-card, #start-screen .intro-box { padding: 24px 20px; }
+    .score-card { padding: 36px 20px; }
+  }
 </style>
 </head>
 <body>
+
 <header>
+  <div class="cimer">⚖️</div>
   <h1>Közigazgatási Alapvizsga<br>Gyakorló Teszt</h1>
-  <p>319 kérdés – helyes és 3 generált rossz válasz közül kell választani</p>
+  <p>Felkészülés az alapvizsgára – kérdések és válaszok</p>
 </header>
+
+<!-- START SCREEN -->
 <div id="start-screen" class="screen active">
-  <div class="card">
+  <div class="intro-box">
     <h2>Üdvözöljük!</h2>
-    <p class="info">Minden kérdésnél 4 lehetőség közül kell kiválasztani a helyeset. Igaz/Hamis kérdéseknél 2 lehetőség van. Ha rossz választ ad, megjelenik a helyes válasz és egy rövid magyarázat.</p>
-    <div class="stats">
-      <div class="stat"><div class="stat-n">319</div><div class="stat-l">Összes kérdés</div></div>
-      <div class="stat"><div class="stat-n">133</div><div class="stat-l">Igaz / Hamis</div></div>
-      <div class="stat"><div class="stat-n">186</div><div class="stat-l">Feleletválasztós</div></div>
-    </div>
-    <div class="row"><label>Kérdések száma:</label>
+    <p>Ez a program segít felkészülni a közigazgatási alapvizsgára. Különböző témakörökből tesz fel kérdéseket, és minden válasz után megmutatja, hogy helyes volt-e.</p>
+    <p>Nincs semmi különleges teendő: csak kattintson a válaszra, majd folytassa a következő kérdéssel.</p>
+    <div class="settings-row">
+      <label for="q-count">Kérdések száma:</label>
       <select id="q-count">
         <option value="10">10 kérdés</option>
         <option value="20" selected>20 kérdés</option>
         <option value="30">30 kérdés</option>
         <option value="50">50 kérdés</option>
-        <option value="9999">Összes (319)</option>
+        <option value="999">Összes kérdés</option>
       </select>
     </div>
-    <div class="row"><label>Típus:</label>
-      <select id="q-type">
-        <option value="all">Minden típus</option>
-        <option value="IF">Csak Igaz / Hamis</option>
-        <option value="MC">Csak feleletválasztós</option>
+    <div class="settings-row">
+      <label for="q-modul">Témakör:</label>
+      <select id="q-modul">
+        <option value="all">Minden témakör</option>
+        <option value="1">Alkotmányos és jogi alapismeretek</option>
+        <option value="2">Közigazgatási alapismeretek</option>
+        <option value="3">Európai Uniós alapismeretek</option>
+        <option value="4">Gazdálkodási és pénzügyi alapismeretek</option>
+        <option value="5">Információbiztonsági és adatvédelmi</option>
+        <option value="6">Közigazgatási szervezetek működése</option>
+        <option value="7">Nemzetpolitika</option>
       </select>
     </div>
   </div>
-  <button class="btn-main" onclick="startQuiz()">▶ Teszt indítása</button>
+  <button class="btn btn-primary" onclick="startQuiz()">▶ Teszt indítása</button>
 </div>
+
+<!-- QUIZ SCREEN -->
 <div id="quiz-screen" class="screen">
-  <div class="qprog-wrap">
-    <div class="qprog-info"><span id="q-num">1. kérdés</span><span id="q-live">✓ 0</span></div>
-    <div class="qprog-track"><div class="qprog-fill" id="qprog-fill" style="width:0%"></div></div>
+  <div class="progress-wrap">
+    <div class="progress-info">
+      <span id="q-num">1. kérdés</span>
+      <span id="q-score-live">Helyes: 0</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="prog-fill" style="width:0%"></div>
+    </div>
   </div>
+
   <div class="q-card">
-    <div class="q-badge" id="q-badge"></div>
+    <div class="q-modul" id="q-modul-label"></div>
+    <div class="q-type-badge" id="q-type-label"></div>
     <div class="q-text" id="q-text"></div>
-    <div class="opts" id="opts"></div>
-    <div class="fb" id="fb"></div>
+    <div class="options" id="options"></div>
+    <div class="feedback" id="feedback"></div>
   </div>
-  <button class="btn-main" id="next-btn" onclick="nextQ()">Következő →</button>
+
+  <button class="btn btn-primary" id="next-btn" onclick="nextQuestion()">Következő kérdés →</button>
 </div>
+
+<!-- SCORE SCREEN -->
 <div id="score-screen" class="screen">
-  <div class="sc">
-    <div class="sc-e" id="sc-e"></div><div class="sc-t" id="sc-t"></div>
-    <div class="sc-s" id="sc-s"></div><div class="sc-n" id="sc-n"></div>
-    <div class="sc-d" id="sc-d"></div>
-    <div class="sc-bt"><div class="sc-bf" id="sc-bf" style="width:0%"></div></div>
-    <div class="sc-g" id="sc-g"></div>
+  <div class="score-card">
+    <div class="score-emoji" id="score-emoji">🎉</div>
+    <div class="score-title" id="score-title">Gratulálunk!</div>
+    <div class="score-sub" id="score-sub">A teszt véget ért.</div>
+    <div class="score-big" id="score-big">0</div>
+    <div class="score-denom" id="score-denom">/ 0 helyes válasz</div>
+    <div class="score-bar-wrap">
+      <div class="score-bar-track">
+        <div class="score-bar-fill" id="score-bar-fill" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="score-grade" id="score-grade"></div>
   </div>
   <div class="btn-row">
-    <button class="btn-main" onclick="showScreen('start-screen')" style="max-width:260px">↺ Újra / Beállítások</button>
+    <button class="btn btn-primary" onclick="startQuiz()">↺ Újra (ugyanannyi)</button>
+    <button class="btn btn-secondary" onclick="showStart()">⚙ Beállítások</button>
   </div>
 </div>
+
 <script>
-const ALL_QS=[{"q":"A Titkos! minősítésű adatot alapesetben max. 30 évre lehet minősíteni.","a":"IGAZ","t":"IF","e":"A minősítési szintek érvényességi ideje: Korlátozott terjesztésű – 10 év, Bizalmas – 20 év, Titkos – 30 év, Szigorúan titkos – 30 év."},{"q":"Az országgyűlési képviselőket mentelmi jog illeti meg, amelynek két eleme a felelőtlenség és a sérthetetlenség.","a":"IGAZ","t":"IF","e":"A mentelmi jog két eleme: a felelőtlenség (szavazataikért, parlamenti felszólalásaikért nem vonhatók felelősségre) és a sérthetetlenség (büntetőeljárás csak az OGY hozzájárulásával)."},{"q":"A Magyar Népköztársaság Elnöki Tanácsa mint jogalkotó szerv mikor szűnt meg?","a":"1989-ben","t":"MC","w":["1990-ben","1988-ban","1991-ben"],"e":"A Népköztársaság Elnöki Tanácsa (NET) 1989-ben szűnt meg a rendszerváltás során, amikor visszaállították a köztársasági elnöki tisztséget."},{"q":"Az országgyűlés működési rendjét és a tárgyalás szabályait mi tartalmazza?","a":"A Házszabály","t":"MC","w":["Az Alaptörvény","Az Országgyűlési törvény","A Kormány ügyrendje"],"e":"Az Országgyűlés Házszabálya tartalmazza a parlamenti eljárás és tárgyalás részletes szabályait."},{"q":"Melyik a központi alrendszer legjelentősebb bevétele?","a":"Az adójellegű bevételek","t":"MC","w":["Az illetékek","Az EU-s támogatások","A vámok"],"e":"Az adójellegű bevételek (SZJA, ÁFA, társasági adó stb.) adják a központi alrendszer legjelentősebb bevételi forrását."},{"q":"A minisztert rendelet kiadásában az államtitkár helyettesítheti.","a":"HAMIS","t":"IF","e":"Az államtitkár NEM helyettesítheti a minisztert rendelet kiadásában – csak a közigazgatási államtitkár helyettesítheti tanácskozási joggal, rendeletalkotásban nem."},{"q":"A Magyary Program hatékonyság-fogalmának melyik összetevőjére jellemző, hogy a feladatvégrehajtás egy nagyobb folyamat részeként is értelmezhető?","a":"Alkalmazkodó","t":"MC","w":["Eredményes","Felügyelhető","Gazdaságos"],"e":"A 'felügyelhető' összetevő: a feladatvégrehajtás nyomon követhető, szükség esetén beavatkozható, és a felelős számon kérhető."},{"q":"Ki választja meg a legfőbb ügyészt?","a":"Az Országgyűlés","t":"MC","w":["A köztársasági elnök","A Kormány","Az igazságügyi miniszter"],"e":"A legfőbb ügyészt az Országgyűlés választja 9 éves mandátumra, a köztársasági elnök javaslatára."},{"q":"A szignálást követően az iktatott iratokat nyomon követhető és hitelt érdemlő módon kell továbbítani.","a":"IGAZ","t":"IF","e":"Az iratkezelési szabályok szerint a szignálás (ügyintézőhöz utalás) után az iratokat dokumentáltan, nyomon követhető módon kell továbbítani."},{"q":"A kormánytagok rendeletei csak végrehajtási típusúak lehetnek.","a":"HAMIS","t":"IF","e":"A miniszteri rendeletek CSAK végrehajtási (szekunder) típusúak lehetnek – autonóm rendeletet csak a Kormány, az MNB elnöke és az önálló szabályozó szervek vezetői adhatnak ki."},{"q":"Melyik nem alapvető kötelezettség az Alaptörvény alapján?","a":"Feljelentési kötelezettség bűncselekmény esetén","t":"MC","w":["Honvédelmi kötelezettség","Közteherviselési kötelezettség","Iskolai kötelezettség"],"e":"Az Alaptörvény szerinti kötelezettségek: honvédelmi, közteherviselési, iskolai. A bűncselekmény feljelentési kötelezettség NEM alkotmányos alapkötelezettség."},{"q":"Egészítse ki: A hazai fizetőeszköz gyengülése a belföldi gazdaság élénkülésének köszönhetően ... a munkanélküliséget.","a":"Csökkenti","t":"MC","w":["Növeli","Nem befolyásolja","Megduplázza"],"e":"Ha a forint gyengül, az export olcsóbbá válik, nő a külső kereslet, ami élénkíti a gazdaságot és csökkenti a munkanélküliséget."},{"q":"Az elektronikus úton érkezett irat esetében a visszaigazolást követően 3 nap áll a hatóság rendelkezésére.","a":"IGAZ","t":"IF","e":"Az elektronikusan érkezett irat esetén a visszaigazolástól számított 3 munkanapon belül meg kell vizsgálni a beadványt."},{"q":"Hogy nevezzük másként a közjogi jogviszonyból származó bevételeket?","a":"Közhatalmi jellegű bevételek","t":"MC","w":["Magánjogi bevételek","Adójellegű bevételek","Járulékbevételek"],"e":"A közhatalmi jellegű bevételek (adók, járulékok, díjak, bírságok) azok, amelyek közhatalmi jogviszonyból erednek."},{"q":"Melyik jogszabály szabályozza a közigazgatási hatósági eljárás általános kérdéseit?","a":"2004. évi CXL. törvény","t":"MC","w":["2011. évi CXII. törvény","2010. évi CLXXXIX. törvény","2011. évi CXCV. törvény"],"e":"A közigazgatási hatósági eljárás általános szabályait a 2004. évi CXL. törvény (Ket.) tartalmazza."},{"q":"A költségvetési törvénynek meddig kell elkészülni?","a":"December 31-ig","t":"MC","w":["November 30-ig","Október 31-ig","Szeptember 30-ig"],"e":"Az Áht. szerint a következő évi költségvetési törvényjavaslat december 31-ig fogadható el."},{"q":"A Magyary Program egyik stratégiai célkitűzése a belső eljárások racionalizálása.","a":"IGAZ","t":"IF","e":"A Magyary Program négy pillére: Szervezet, Személyzet, Eljárás (belső eljárások racionalizálása), Ügyfélkapcsolatok – tehát az Eljárás pillér tartalmazza ezt."},{"q":"Mit jelent az expediálás?","a":"Az iratok továbbítása","t":"MC","w":["Az iratok iktatása","Az iratok selejtezése","Az iratok hitelesítése"],"e":"Az expediálás az iratok postázását, kézbesítését, továbbítását jelenti az iratkezelési folyamatban."},{"q":"A munkáltató a felmentést úgy köteles megindokolni, hogy abból a felmentés oka világosan kitűnjön.","a":"IGAZ","t":"IF","e":"A Kttv. szerint a felmentési okiratban egyértelműen meg kell jelölni a felmentés indokát."},{"q":"Melyik hatóság jogosult az újrafelvételi eljárás lefolytatására?","a":"Az első fokon eljáró hatóság","t":"MC","w":["A másodfokú hatóság","A felügyeleti szerv","A bíróság"],"e":"Az újrafelvételi eljárást az első fokon eljárt hatóság folytatja le, nem a felügyeleti szerv."},{"q":"A hatósági eljárásban olyan bizonyíték használható fel, amely alkalmas a tényállás tisztázásának megkönnyítésére.","a":"IGAZ","t":"IF","e":"A Ket. szerint bármilyen bizonyíték felhasználható, ami alkalmas a tényállás tisztázásának megkönnyítésére – nincs taxatív felsorolás."},{"q":"A rendkívüli munkavégzés időtartama éves szinten mennyi lehet kormánytisztviselőknél?","a":"200 óra","t":"MC","w":["100 óra","150 óra","250 óra"],"e":"A Kttv. szerint a rendkívüli munkavégzés éves szinten legfeljebb 200 óra lehet."},{"q":"Egészítse ki: Területi önkormányzatnak kizárólag a(z)... önkormányzatokat tekintjük.","a":"Megyei","t":"MC","w":["Fővárosi kerületi","Járási","Városi"],"e":"Területi önkormányzatnak csak a megyei önkormányzatok minősülnek – a járásoknak nincs önkormányzatuk."},{"q":"Egészítse ki: A hatóság a bizonyítékokat egyenként és összességükben értékelve állapítja meg a ...","a":"Tényállást","t":"MC","w":["Jogkövetkezményt","Döntést","Kötelezettséget"],"e":"A szabad bizonyítás elvének megfelelően a hatóság a tényállást a bizonyítékok szabad mérlegelésével állapítja meg."},{"q":"Ki képviseli Magyarországot az Európai Tanácsban?","a":"A miniszterelnök","t":"MC","w":["A külügyminiszter","A köztársasági elnök","Az EU-s ügyekért felelős miniszter"],"e":"Az Európai Tanács (EU csúcsszerv) tagjai az állam- és kormányfők – Magyarország képviselője a miniszterelnök."},{"q":"A törzskönyvi nyilvántartásba vételt a Magyar Államkincstár végzi.","a":"IGAZ","t":"IF","e":"A Magyar Államkincstár vezeti a költségvetési szervek törzskönyvi nyilvántartását."},{"q":"Az alapszabadság mekkora részét kell a köztisztviselő által kért időpontban kiadni?","a":"Kétötödét","t":"MC","w":["Felét","Egyharmadát","Háromnegyedét"],"e":"A Kttv. szerint az alapszabadság kétötödét (10 napot) a köztisztviselő által kért időpontban kell kiadni."},{"q":"Mit jelent a nyílt kormányzás elve?","a":"Transzparens állami működés biztosítása","t":"MC","w":["Az állami döntések gyors meghozatala","A piaci elvek alkalmazása az igazgatásban","A civil szervezetek kötelező bevonása"],"e":"A nyílt kormányzás (open government) a transzparens, átlátható állami működést jelenti – az állampolgárok hozzáférhetnek a közérdekű információkhoz."},{"q":"A helyi önkormányzatok a helyi közügyekben önállóan járnak el.","a":"IGAZ","t":"IF","e":"Az Alaptörvény rögzíti, hogy a helyi önkormányzatok a helyi közügyekben önállóan járnak el – ez a helyi autonómia alapja."},{"q":"Végrehajtási rendelet kiadásához külön felhatalmazás kell.","a":"IGAZ","t":"IF","e":"Igen – a végrehajtási rendelet kiadásához törvényi vagy kormányrendeleti felhatalmazás szükséges (szekunder jogalkotás)."},{"q":"A szervezet belső szabályzata tartalmazza a működési rendjét és gazdasági működésének szabályait.","a":"IGAZ","t":"IF","e":"A szervezet belső szabályzataiban (SZMSZ, ügyrend, stb.) rögzítik a működési rendet és a gazdálkodási szabályokat."},{"q":"A New Public Management a közigazgatási fejlődés csúcsa, végpontja.","a":"HAMIS","t":"IF","e":"NEM – az Új Weberizmus és a Jó Kormányzás irányzatok meghaladják az NPM-et. A közigazgatás-fejlesztés folytatódik."},{"q":"A helyettes államtitkárt a miniszter javaslatára ki nevezi ki?","a":"A miniszterelnök","t":"MC","w":["A köztársasági elnök","A közigazgatási államtitkár","A miniszter"],"e":"A helyettes államtitkárt a miniszter javaslatára a miniszterelnök nevezi ki határozatlan időre."},{"q":"Egészítse ki: A helyi önkormányzat ... szerv.","a":"Decentralizált","t":"MC","w":["Dekoncentrált","Centralizált","Autonóm igazgatási"],"e":"A helyi önkormányzat decentralizált szerv – a központi szervektől különálló, saját hatáskörrel és vagyonnal rendelkező önkormányzati szervrendszer."},{"q":"A kiválasztási eljárás során a pályáztatás minden esetben kötelező.","a":"HAMIS","t":"IF","e":"Nem minden esetben kötelező a pályáztatás – jogszabály meghatározza, mikor kötelező és mikor mellőzhető."},{"q":"Egészítse ki: A végrehajtó hatalmi ág csúcsán a(z)... áll.","a":"Kormány","t":"MC","w":["Köztársasági elnök","Miniszterelnök","Országgyűlés"],"e":"Az Alaptörvény szerint a végrehajtó hatalmi ág csúcsán a Kormány áll."},{"q":"A hatékonyság az erőforrások bármelyik csoportjára vonatkozik.","a":"IGAZ","t":"IF","e":"A hatékonyság fogalma az összes erőforrás-csoportra – emberi, pénzügyi, tárgyi – egyaránt vonatkozik, nem csak egyikre."},{"q":"Mit takar az ún. III. pillér az EU korábbi rendszerében?","a":"A Bel- és Igazságügyi Együttmuköodést","t":"MC","w":["A Közös Kül- és Biztonságpolitikát","A Gazdasági és Monetáris Uniót","A Közös Kereskedelempolitikát"],"e":"Az EU 1993-2009 közötti háromoszlopos (pillér) struktúrájában a III. pillér a Bel- és Igazságügyi Együttmuköodést takarta."},{"q":"A 2011-es népszámlálás alkalmával hány fő vallotta magát magyar nemzetiségűnek Szlovákiában?","a":"458 467","t":"MC","w":["320 000","520 000","1 268 444"],"e":"A 2011-es szlovákiai népszámlálás adatai szerint 458 467 fő vallotta magát magyar nemzetiségűnek."},{"q":"Egészítse ki: A Liszaboni Szerződés az Európai Parlamentet társjogalkotóvá tette – ez melyik dokumentum?","a":"Lisszaboni Szerződés","t":"MC","w":["Maastrichti Szerződés","Amszterdami Szerződés","Nizzai Szerződés"],"e":"A Lisszaboni Szerződés (2009) tette az EU-t jogi személlyé és az Európai Parlamentet társjogalkotóvá a Tanács mellett."},{"q":"Melyik elem nem tartozik a Magyary Program hatékonyság-fogalmának összetevői közé?","a":"Takarékos","t":"MC","w":["Eredményes","Felügyelhető","Alkalmazkodó"],"e":"A Magyary Program hatékonyság-összetevői: eredményes, felügyelhető, alkalmazkodó – a 'takarékos' nem szerepel ebben a rendszerben."},{"q":"Egészítse ki: Az irat előzményét ... nevezzük.","a":"Előiratnak","t":"MC","w":["Ügyiratnak","Mellékletnek","Alapiratnak"],"e":"Az előirat az adott irat korábbi, összefüggő ügyiratait jelenti – az iratkezelésben az előiratot az aktuális iratnál helyezik el."},{"q":"Ki felelős az önkormányzati költségvetési koncepció elkészítéséért?","a":"A jegyző","t":"MC","w":["A polgármester","Az alpolgármester","A pénzügyi osztályvezető"],"e":"A költségvetési koncepciót a JEGYZŐ készíti el, a polgármester terjeszti a képviselő-testület elé."},{"q":"Mikor lépett érvénybe a Ket.?","a":"2005. november 1-jén","t":"MC","w":["2004. január 1-jén","2006. január 1-jén","2004. november 1-jén"],"e":"A közigazgatási hatósági eljárás és szolgáltatás általános szabályairól szóló 2004. évi CXL. törvény 2005. november 1-jén lépett hatályba."},{"q":"Milyen választójog van Magyarországon?","a":"Általános, egyenlő, közvetlen és titkos","t":"MC","w":["Általános, arányos, közvetlen és nyílt","Korlátozott, egyenlő, közvetlen és titkos","Általános, egyenlő, közvetett és titkos"],"e":"Az Alaptörvény szerint a választójog általános, egyenlő, közvetlen és titkos."},{"q":"A bírói és a közigazgatási jogalkalmazás azonos fogalmak.","a":"HAMIS","t":"IF","e":"A bírói jogalkalmazás az igazságszolgáltatási hatalmi ághoz tartozik és jogvitákat dönt el, míg a közigazgatási jogalkalmazás a végrehajtó hatalomhoz tartozik és egyedi hatósági ügyekben jár el."},{"q":"Kormányülés általában hetente egyszer van.","a":"IGAZ","t":"IF","e":"A Kormány általában hetente ülésezik – az ülés a Kormány döntéshozatali fóruma."},{"q":"Törvényerejű rendeletet mivel lehet módosítani?","a":"Törvénnyel","t":"MC","w":["Kormányrendelettel","Miniszteri rendelettel","Törvényerejű rendelettel"],"e":"A törvényerejű rendeletek (tvr.) törvényerejű rendeletek – csak törvénnyel vagy törvényerejű rendelettel módosíthatók."},{"q":"A Közszolgálati Törvényszék az uniós alkalmazottak munkaügyi vitáiban jár el.","a":"IGAZ","t":"IF","e":"A Közszolgálati Törvényszék az EU intézményeinek alkalmazottai és az intézmények közötti munkajogi vitákban jár el."},{"q":"Az írásbeli meghatalmazást közokiratba vagy teljes bizonyító erejű magánokiratba kell foglalni.","a":"IGAZ","t":"IF","e":"A Ket. szerint az írásbeli meghatalmazást közokiratba vagy teljes bizonyító erejű magánokiratba kell foglalni."},{"q":"A besorolási osztályok fizetési fokozatok szerint tagolódnak.","a":"IGAZ","t":"IF","e":"A Kttv. szerint a besorolási osztályokon belül fizetési fokozatok vannak, amelyek az előmeneteli rendszer alapját képezik."},{"q":"A jogszabály mely hatálya mutatja meg, hogy az adott jogszabály mely személyekre vonatkozik?","a":"Személyi hatály","t":"MC","w":["Tárgyi hatály","Területi hatály","Időbeli hatály"],"e":"A személyi hatály azt mutatja meg, hogy a jogszabály kikre – mely személyekre, szervezetekre – terjed ki."},{"q":"Mikor alakult az Európai Gazdasági Közösség és hol?","a":"1957-ben, Rómában","t":"MC","w":["1951-ben, Párizsban","1992-ben, Maastrichtban","1993-ban, Brüsszelben"],"e":"Az EGK-t 1957. március 25-én alapították Rómában a Római Szerződéssel."},{"q":"A vizsgálat során a másodfokú hatóság kötve van a fellebbezésben foglaltakhoz.","a":"HAMIS","t":"IF","e":"NEM – a másodfokú hatóság nem kötött a fellebbezés tartalmához, az elsőfokú döntést teljes egészében felülvizsgálhatja (reformatórius jogkör)."},{"q":"A kérelmet mindig tartalma alapján kell megítélni, még akkor is, ha az nem azonos azzal a megnevezéssel, amelyet az ügyfél nevesített.","a":"IGAZ","t":"IF","e":"A hatóság a kérelmet annak tényleges tartama szerint bírálja el, nem az elnevezés alapján – ez a kérelem tartalom szerinti elbírálásának elve."},{"q":"Egészítse ki: A közigazgatási eljárási törvény (Ket.) ... megmutatja, hogy a Ket.-et milyen ügyekben kell alkalmazni.","a":"Tárgyi hatálya","t":"MC","w":["Személyi hatálya","Területi hatálya","Időbeli hatálya"],"e":"A Ket. tárgyi hatálya határozza meg, hogy a törvény milyen közigazgatási hatósági ügyekben alkalmazandó."},{"q":"Milyen összegig téríti meg az OBA a betétesek kárát?","a":"100 ezer euróig","t":"MC","w":["50 ezer euróig","75 ezer euróig","200 ezer euróig"],"e":"Az Országos Betétbiztosítási Alap személyenként és hitelintézetenként összevontan legfeljebb 100 000 euróig téríti meg a betétek értékét."},{"q":"Melyik elv mondja ki, hogy a költségvetéssel kapcsolatos dokumentumoknak mindenki számára hozzáférhetőnek kell lenniük?","a":"Nyilvánosság elve","t":"MC","w":["Teljesség elve","Egységesség elve","Valódiság elve"],"e":"A nyilvánosság elve szerint a költségvetési dokumentumoknak (törvények, rendeletek) a társadalom minden tagja számára hozzáférhetőnek kell lenniük."},{"q":"A Magyary Program részeként mi a neve a legmegfelelőbb elhelyezést és felszerelést célzó tervnek?","a":"Ereky terv","t":"MC","w":["Magyary terv","Moór terv","Széchenyi terv"],"e":"Az Ereky terv Ereky István munkásságára utal, és a szervezetek és személyi állomány legmegfelelőbb elhelyezésének és felszerelésének biztosítását célozza."},{"q":"Mennyi a próbaidő?","a":"3-6 hónap","t":"MC","w":["1-3 hónap","6-12 hónap","1 év"],"e":"Az újonnan kinevezett köztisztviselő próbaideje 3-6 hónap."},{"q":"A jelenleg hatályos jogszabály alapján van államtitokköri jegyzék.","a":"HAMIS","t":"IF","e":"Az államtitokköri jegyzék intézményét a minősített adat védelméről szóló 2009. évi CLV. törvény megszüntette – ma már nincs ilyen."},{"q":"A képviselő-testület akkor határozatképes, ha az ülésen a települési képviselőknek több mint a kétharmada jelen van.","a":"HAMIS","t":"IF","e":"Téves: a képviselő-testület akkor határozatképes, ha az ülésen a megválasztott képviselők TÖBB MINT A FELE jelen van, nem kétharmada."},{"q":"A Kormány ülésein kik rendelkeznek szavazati joggal?","a":"A miniszterelnök és a miniszterek","t":"MC","w":["A miniszterek és az államtitkárok","A miniszterelnök és a helyettes államtitkárok","A miniszterek és a kormánymegbízottak"],"e":"A Kormány ülésein szavazati joga a miniszterelnöknek és a minisztereknek van – az állandó meghívottak tanácskozási joggal vesznek részt."},{"q":"Az államháztartás ellenőrzése külső és belső szintből áll.","a":"HAMIS","t":"IF","e":"NEM csak kétszintű: az ellenőrzés három szintből áll: külső (ÁSZ), kormányzati szintű (KEHI), és belső kontroll (intézményi belső ellenőrzés)."},{"q":"A helyi önkormányzat kötelező feladata a közművelődés biztosítása.","a":"HAMIS","t":"IF","e":"A közművelődés biztosítása nem kötelező, hanem önként vállalt önkormányzati feladat. A kötelező feladatok közé pl. az óvoda, alapfokú egészségügyi ellátás tartozik."},{"q":"A személyes adatoknál nem lehet készletezve gyűjteni az adatokat.","a":"IGAZ","t":"IF","e":"A célhoz kötöttség elve alapján tilos a jövőbeni felhasználásra való 'készletező' adatgyűjtés – az adatot csak meghatározott célból lehet kezelni."},{"q":"Amennyiben a köztisztviselő szándékosan okozott kárt, mekkora részét kell megtérítenie?","a":"A teljes kárt","t":"MC","w":["Három havi illetményének megfelelő összeget","Hat havi illetményének megfelelő összeget","A kár felét"],"e":"Szándékos károkozásnál a köztisztviselőnek a TELJES kárt meg kell térítenie. Gondatlan károkozásnál csak korlátozott felelősség áll fenn."},{"q":"Egészítse ki: Bizonyos uniós jogszabályok tagállami intézkedések nélkül hoznak létre jogokat – ez a ... problematikája.","a":"Közvetlen hatály","t":"MC","w":["Elsőbbség elve","Szupranacionalitás","Arányosság elve"],"e":"A közvetlen hatály azt jelenti, hogy egyes uniós jogszabályok (pl. rendeletek) automatikusan alkalmazandók, tagállami végrehajtási intézkedés nélkül is."},{"q":"Az önkéntességen alapuló jogszerű adatkezelés feltétele az érintett tudatos beleegyezése.","a":"IGAZ","t":"IF","e":"Önkéntes adatkezelésnél az érintett szabad, tájékozott és egyértelmű hozzájárulása szükséges – ez a tudatos beleegyezés."},{"q":"A kormánytisztviselő napi munkájának befejezése és a másnapi munkakezdés között legalább hány óra pihenőidőt kell biztosítani?","a":"11 óra","t":"MC","w":["8 óra","10 óra","12 óra"],"e":"A napi pihenőidő minimuma 11 óra egybefüggő pihenőidő."},{"q":"Gondatlan károkozást a dolgozónak teljes mértékben kell megtérítenie.","a":"HAMIS","t":"IF","e":"NEM – gondatlan károkozásért a köztisztviselő korlátozott felelősséggel tartozik (legfeljebb 4 havi illetmény). Csak szándékos károkozás esetén kell a teljes kárt megtéríteni."},{"q":"Legmagasabb besorolási fokozat a köztisztviselőknél?","a":"Vezető-főtanácsos","t":"MC","w":["Főtanácsos","Vezető-tanácsos","Főmunkatárs"],"e":"A köztisztviselői besorolási rendszer legmagasabb fokozata a vezető-főtanácsos."},{"q":"Hogyan módosíthatók az elsődleges jog forrásai az EU-ban?","a":"Az érintett tagállamok konszenzusával","t":"MC","w":["Az Európai Parlament minősített többségével","Az Európai Bizottság javaslatára","Az Európai Tanács egyszerű többségével"],"e":"Az EU elsődleges joga (alapszerződések) csak a tagállamok egyhangú konszenzusával módosítható."},{"q":"Személyes adatnak minősül a bármely természetes személlyel kapcsolatba hozható adat.","a":"IGAZ","t":"IF","e":"Az infotv. szerint személyes adat minden olyan adat, amely természetes személlyel kapcsolatba hozható, függetlenül attól, hogy az azonosítás közvetlenül vagy közvetve lehetséges."},{"q":"Az Európai Tanács főszabály szerint konszenzussal dönt.","a":"IGAZ","t":"IF","e":"Az Európai Tanács (állam- és kormányfők csúcsszerve) főszabályként konszenzussal dönt – az egyhangúság az alaptétel."},{"q":"Hány hivatalos nyelve van az EU-nak jelenleg?","a":"24","t":"MC","w":["20","27","28"],"e":"Az EU-nak jelenleg 24 hivatalos nyelve van – minden tagállami nyelv hivatalos."},{"q":"Melyik nem települési önkormányzat?","a":"A megyei önkormányzat","t":"MC","w":["A községi önkormányzat","A városi önkormányzat","A fővárosi kerületi önkormányzat"],"e":"A MEGYEI önkormányzat területi (nem települési) önkormányzat – a települései önkormányzatok: község, város, járásszékhely, megyei jogú város, főváros és kerületei."},{"q":"Alapesetben mennyi a Bizalmas minősítési szintű adatok maximális érvényességi ideje?","a":"20 év","t":"MC","w":["10 év","30 év","50 év"],"e":"A Bizalmas! szintű minősítés alapesetben legfeljebb 20 évre szólhat."},{"q":"A költségvetés végrehajtásának ellenőrzése a költségvetési évet követő évben történik.","a":"IGAZ","t":"IF","e":"A zárszámadás az adott költségvetési évet követő évben készül el – az Országgyűlés törvénnyel hagyja jóvá."},{"q":"Minden közérdekű adat nyilvános?","a":"Nem minden","t":"MC","w":["Igen, minden","Csak a hatóság által közzétett adatok","Csak az interneten közzétett adatok"],"e":"Nem minden közérdekű adat nyilvános – pl. a minősített adatok, üzleti titok, vagy törvényi korláttal védett adatok kivételt képeznek."},{"q":"A tanácsi munka szakmai előkészítése a munkacsoportokban zajlik.","a":"IGAZ","t":"IF","e":"Az EU Tanácsának döntéseit a tagállamok szakértőiből álló munkacsoportok készítik elő, ahol a részletek szakmai egyeztetése zajlik."},{"q":"A közszektor szervezeteinek elsődleges célja milyen igények kielégítése?","a":"Kollektív igények","t":"MC","w":["Egyéni igények","Piaci igények","Vállalati igények"],"e":"A közszektor szervezetei nem egyéni, hanem közösségi (kollektív) igényeket elégítenek ki – ez különbözteti meg őket a piaci szektortól."},{"q":"Kinek tartozik beszámolási kötelezettséggel az MNB elnöke?","a":"Az Országgyűlésnek","t":"MC","w":["A Kormánynak","A pénzügyminiszternek","A köztársasági elnöknek"],"e":"Az MNB elnöke évente köteles az Országgyűlésnek beszámolni a jegybank tevékenységéről."},{"q":"Melyik nem a közigazgatási hatósági tevékenység egyik fajtája?","a":"Végrehajtási tevékenység","t":"MC","w":["Hatósági ellenőrzés","Hatósági nyilvántartás","Engedélyezési tevékenység"],"e":"A végrehajtási tevékenység NEM hatósági tevékenység – a hatósági tevékenységek: ellenőrzés, nyilvántartás, engedélyezés, bizonyítvány kiállítása."},{"q":"A felügyeleti eljárás során a felettes szerv vizsgálhatja a neki alárendelt hatóságok eljárását.","a":"IGAZ","t":"IF","e":"A felügyeleti szerv (felettes hatóság) kérelemre vagy hivatalból vizsgálhatja az alárendelt hatóságok eljárását és döntéseit."},{"q":"Melyik fegyelmi büntetés jár a közszolgálati jogviszony megszűnésével?","a":"Hivatalvesztés","t":"MC","w":["Megrovás","Illetménycsökkentés","Lefokozás"],"e":"A legsúlyosabb fegyelmi büntetés a hivatalvesztés, amelynek következménye a közszolgálati jogviszony megszűnése."},{"q":"Melyik szervezetre igaz: Az Országgyűlés pénzügyi-gazdasági ellenőrző szerve.","a":"Az Állami Számvevőszék","t":"MC","w":["A Magyar Nemzeti Bank","A Kincstár","A Gazdasági Versenyhivatal"],"e":"Az Állami Számvevőszék az Országgyűlés pénzügyi-gazdasági ellenőrző szerve – az ÁSZ elnökét az OGY választja."},{"q":"Hány nap a köztisztviselők alapszabadsága évente?","a":"25 nap","t":"MC","w":["20 nap","22 nap","30 nap"],"e":"A Kttv. szerint az alapszabadság évi 25 munkanap."},{"q":"Ki nevezi ki a helyettes államtitkárt?","a":"A miniszterelnök","t":"MC","w":["A köztársasági elnök","A miniszter","Az Országgyűlés"],"e":"A helyettes államtitkárt a miniszter javaslatára a miniszterelnök nevezi ki."},{"q":"A Magyary Program értelmezésében melyik nem a feladat kötelező tartalmi eleme?","a":"Fedezet","t":"MC","w":["Cél","Felelős","Határidő"],"e":"A feladat kötelező tartalmi elemei: cél, felelős, határidő, forrás. A FEDEZET az eshetőleges (nem kötelező) elemek közé tartozik."},{"q":"A végrehajtó hatalom élén a Kormány áll.","a":"IGAZ","t":"IF","e":"Az Alaptörvény szerint a végrehajtó hatalom csúcsán a Kormány áll."},{"q":"A jogalkalmazás eredményeként kibocsátott közigazgatási aktus a jövőre nézve hoz létre jogokat, kötelezettségeket.","a":"IGAZ","t":"IF","e":"A közigazgatási aktusok (határozatok) a jövőre nézve hoznak létre jogokat és kötelezettségeket – az aktus meghozatalától kezdve hatályos."},{"q":"Az Európai Parlamentnek elhanyagolható szerepe van a rendes jogalkotásban.","a":"HAMIS","t":"IF","e":"NEM – a Lisszaboni Szerződés óta az EP társjogalkotó a Tanáccsal: a rendes jogalkotási eljárásban mindkettő hozzájárulása szükséges."},{"q":"Hány főtanácsnok működik az Európai Unió Bírósága mellett?","a":"11","t":"MC","w":["7","9","15"],"e":"Az EU Bírósága mellett jelenleg 11 főtanácsnok működik, akik independens véleményeket (indítványokat) készítenek."},{"q":"Az innováció jellemző eszközei az irányítási, jogi jellegű eszközök.","a":"HAMIS","t":"IF","e":"NEM – az innovációra az informális, szervezeti kultúrán alapuló, spontán terjedő eszközök jellemzők. A jogi, irányítási eszközök inkább a reformra jellemzők."},{"q":"Mikor kap végkielégítést egy kormánytisztviselő?","a":"Felmentés és a közigazgatási szerv jogutód nélküli megszüntetése esetén","t":"MC","w":["Lemondás esetén","Nyugdíjazás esetén","Fegyelmi eljárás lezárásakor"],"e":"Végkielégítés jár felmentés esetén és a munkáltató jogutód nélküli megszűnésekor – lemondáskor és nyugdíjazáskor nem."},{"q":"A köztársasági elnök személye sérthetetlen, döntéseiért sem politikai, sem jogi felelősséggel nem tartozik.","a":"IGAZ","t":"IF","e":"A köztársasági elnök személye sérthetetlen. Döntéseiért – a Honvédelmi Tanácsban leadott szavazat kivételével – sem politikai, sem jogi felelősséggel nem tartozik."},{"q":"Az országos listára a magyar választási rendszerben közvetlenül lehet szavazni.","a":"HAMIS","t":"IF","e":"NEM – az országos listás mandátumok a töredékszavazatok alapján kerülnek szétosztásra, nem lehet közvetlenül az országos listára szavazni."},{"q":"A kormánytagok rendeletét hol kell kihirdetni?","a":"A Magyar Közlönyben","t":"MC","w":["A Hivatalos Értesítőben","A kormány honlapján","A minisztérium honlapján"],"e":"A Kormány és a miniszterek rendeleteit a Magyar Közlönyben kell kihirdetni."},{"q":"A kiadmányozásra jogosultak személyét az adott közigazgatási szerv szervezeti és működési szabályzatában rögzítik.","a":"IGAZ","t":"IF","e":"Az SZMSZ tartalmazza, hogy ki jogosult kiadmányozásra (az iratok végleges kiadására, aláírására)."},{"q":"Legfeljebb mennyi időre lehet a szigorúan titkos adatot minősíteni?","a":"30 évre","t":"MC","w":["10 évre","20 évre","50 évre"],"e":"A Szigorúan titkos! és a Titkos! szintű minősítés legfeljebb 30 évig érvényes."},{"q":"Ki nevezi ki a fővárosi és megyei kormányhivatalok főigazgatóját?","a":"A miniszterelnök","t":"MC","w":["A belügyminiszter","A köztársasági elnök","A kormánymegbízott"],"e":"A fővárosi és megyei kormányhivatalok főigazgatóját a miniszterelnök nevezi ki és menti fel."},{"q":"A szabadságot legkésőbb a tárgyévet követő év március 31-ig kell kiadni.","a":"IGAZ","t":"IF","e":"A Kttv. szerint az adott évben ki nem adott szabadságot legkésőbb a következő év március 31-ig kell kiadni."},{"q":"Melyik ország nem az Európai Szén és Acélközösség alapító tagja?","a":"Nagy-Britannia","t":"MC","w":["Franciaország","Olaszország","Belgium"],"e":"Az ESZAK-ot 1951-ben alapította Franciaország, NSZK, Olaszország, Belgium, Hollandia és Luxemburg – Nagy-Britannia nem volt alapító tag."},{"q":"Hogy hívják más néven a jogalkalmazás címzettjét?","a":"Jogalany","t":"MC","w":["Jogosult","Jogszabály alanya","Ügyfél"],"e":"A jogalkalmazás 'jogalanyt' (jogalanyt, ügyfelet) céloz meg – akit a jogi norma kötelez vagy jogosít."},{"q":"Melyik nem a Magyary Program pillére (beavatkozási területe)?","a":"Működése","t":"MC","w":["Szervezet","Személyzet","Eljárás"],"e":"A Magyary Program 4 pillére: Szervezet, Személyzet, Eljárás, Ügyfélkapcsolatok – a 'Működés' nem önálló pillér."},{"q":"A kormánytisztviselő mentesül a munkavégzés alól a kötelező orvosi vizsgálat időtartamára.","a":"IGAZ","t":"IF","e":"A kötelező orvosi vizsgálat idejére a kormánytisztviselőt fel kell menteni a munkavégzési kötelezettség alól – ez a Kttv. rendelkezése."},{"q":"Az alapilletmény eltérítése: legfeljebb 20%-kal emelhető meg.","a":"HAMIS","t":"IF","e":"NEM igaz: az alapilletmény felfelé akár 50%-kal is eltéríthető, lefelé legfeljebb 20%-kal."},{"q":"A normatív utasítás kibocsátására testület jogosult.","a":"HAMIS","t":"IF","e":"A normatív határozatot testületek hozzák, de a normatív utasítást egyszemélyi vezető adja ki – nem testület. A kettő különbözik."},{"q":"Ki hirdeti ki a rendkívüli állapotot?","a":"Az Országgyűlés","t":"MC","w":["A köztársasági elnök","A Kormány","A Honvédelmi Tanács"],"e":"A rendkívüli állapotot az Országgyűlés hirdeti ki – ha nem ülésezik, az Honvédelmi Tanács."},{"q":"Ki nevezi ki az államtitkárokat?","a":"A köztársasági elnök","t":"MC","w":["A miniszterelnök","A miniszter","Az Országgyűlés"],"e":"Az államtitkárokat a miniszterelnök javaslatára a köztársasági elnök nevezi ki."},{"q":"Ki foszthatja meg a köztársasági elnököt tisztségétől?","a":"Az Alkotmánybíróság","t":"MC","w":["Az Országgyűlés","A Legfelsőbb Bíróság","A Kúria"],"e":"Az Alkotmánybíróság mondhatja ki az összeférhetetlenséget vagy a méltatlanságot, ami a köztársasági elnöki tisztség elvesztéséhez vezet."},{"q":"Az éves fizetett szabadság alapszabadságból és pótszabadságból áll.","a":"IGAZ","t":"IF","e":"Igen – az éves fizetett szabadság az alapszabadságból (25 nap) és különböző jogcímeken járó pótszabadságokból (pl. gyermekek után, vezető beosztás) áll."},{"q":"Ki vonhatja felelősségre a köztársasági elnököt?","a":"Az Alkotmánybíróság","t":"MC","w":["Az Országgyűlés","A Kúria","A Legfőbb Ügyészség"],"e":"Az Alkotmánybíróság előtt zajlik az eljárás, ha a köztársasági elnök megszegi az Alaptörvényt."},{"q":"Hogyan hat a hazai fizetőeszköz erősödése a beruházásokra?","a":"Visszafogja","t":"MC","w":["Növeli","Nem befolyásolja","Megduplázza"],"e":"Az erős forint drágábbá teszi a magyar termékeket a külföldi vevőknek, csökkenti az exportbevételeket, ami visszafogja a beruházási kedvet."},{"q":"A rendőrök a Magyary Program személyzet fogalmának személyi hatálya alá tartoznak.","a":"IGAZ","t":"IF","e":"A Magyary Program személyi hatálya kiterjed a rendvédelmi feladatokat ellátó szervek hivatásos állományára is, beleértve a rendőröket."},{"q":"A képviseleti demokrácia akkor valósul meg, amikor a nép közvetlenül gyakorolja a hatalmat.","a":"HAMIS","t":"IF","e":"Fordítva igaz: a képviseleti demokráciában a nép képviselőin keresztül, a közvetlen demokráciában pedig közvetlenül (pl. népszavazás útján) gyakorolja a hatalmat."},{"q":"Egészítse ki: A monetáris politika legfőbb irányítója a(z)...","a":"Központi bank","t":"MC","w":["Pénzügyminisztérium","Állami Számvevőszék","Pénzügyi Szervezetek Állami Felügyelete"],"e":"A monetáris politika (pénzkínálat, kamatpolitika) legfőbb irányítója a Magyar Nemzeti Bank (MNB)."},{"q":"Az adatgyűjtés is adatkezelésnek minősül.","a":"IGAZ","t":"IF","e":"Az adatkezelés fogalma rendkívül tág: az adatokon végzett bármely művelet – így a gyűjtés, rögzítés, tárolás, módosítás, törlés – mind adatkezelésnek minősül."},{"q":"Melyik nem saját önkormányzati bevétel?","a":"Normatív állami támogatások","t":"MC","w":["Helyi adók","Önkormányzati vagyon hozadéka","Illetékek"],"e":"A normatív állami támogatás NEM saját bevétel – az állam juttatja az önkormányzatoknak feladatfinanszírozás céljából."},{"q":"Hány tagja van az Alkotmánybíróságnak?","a":"15","t":"MC","w":["9","11","21"],"e":"Az Alkotmánybíróságnak 15 tagja van, akiket az Országgyűlés választ."},{"q":"Mi a Magyar Nemzeti Bank elsődleges feladata?","a":"Az árstabilitás elérése és fenntartása","t":"MC","w":["A gazdasági növekedés elősegítése","A forint árfolyamának rögzítése","A bankok felügyelete"],"e":"Az MNB elsődleges feladata az árstabilitás elérése és fenntartása – ezt az Alaptörvény és az MNB törvény egyaránt rögzíti."},{"q":"Mely stratégiai célkitűzések tartoznak a Magyary Program Eljárás pilléréhez?","a":"Az ügyfélkapcsolatok javítása és a belső eljárások racionalizálása","t":"MC","w":["A személyzeti igazgatás fejlesztése és az életpálya javítása","A szervezetek csökkentése és az informatika fejlesztése","A jogalkotás egyszerűsítése és a dereguláció"],"e":"Az Eljárás pillér célkitűzései: ügyfélkapcsolatok javítása, belső eljárások racionalizálása és az e-közigazgatás fejlesztése."},{"q":"Egészítse ki: A közigazgatás igazgatása, vagyis a ...","a":"Vezetés","t":"MC","w":["Szervezés","Irányítás","Ellenőrzés"],"e":"A 'vezetés' fogalma: egy szervezeten belül a vezető tevékenysége az alárendeltekkel szemben – az igazgatás igazgatása."},{"q":"A hatóság az ügy érdemében végzést bocsát ki.","a":"HAMIS","t":"IF","e":"Az ügy érdemében (érdemi döntés) a hatóság HATÁROZATOT hoz. Végzést csak eljárási (nem érdemi) kérdésekben bocsát ki."},{"q":"Az Európai Parlament képviselői rendelkeznek mentelmi joggal.","a":"IGAZ","t":"IF","e":"Az EP képviselői mentelmi joggal rendelkeznek: a tagállamuk területén az ottani parlamenti képviselőkével azonos mentelmi jogot élveznek."},{"q":"Hány szintű Magyarországon a rendes bíróságok rendszere?","a":"4 szintű","t":"MC","w":["2 szintű","3 szintű","5 szintű"],"e":"A magyar bírósági rendszer 4 szintű: járásbíróságok – törvényszékek – ítélőtáblák – Kúria."},{"q":"Az ügyészség nyomozást folytathat, és felügyeletet gyakorol a nyomozás felett.","a":"IGAZ","t":"IF","e":"Az Alaptörvény és az ügyészségi törvény szerint az ügyészség nyomozást folytathat és törvényességi felügyeletet gyakorol a nyomozás felett."},{"q":"A vezetés egy szervezeten belül az igazgatás igazgatása.","a":"IGAZ","t":"IF","e":"A közigazgatás-tudományban a 'vezetés' fogalma a szervezeten BELÜLI irányítást jelenti – az igazgatás igazgatása."},{"q":"A jövőbeni felhasználásra történő készletező adatgyűjtés jogszerű.","a":"HAMIS","t":"IF","e":"A célhoz kötöttség elve alapján TILOS a 'készletező' adatgyűjtés – adatot csak meghatározott, konkrét célból lehet gyűjteni."},{"q":"A központi bank többféle eszközzel befolyásolja a gazdaságban lévő pénz mennyiségét.","a":"IGAZ","t":"IF","e":"Az MNB (központi bank) különböző monetáris politikai eszközökkel – alapkamat, kötelező tartalékráta, nyílt piaci műveletek – befolyásolja a pénzkínálatot."},{"q":"A közigazgatási és az igazságszolgáltatási jogalkalmazás azonos tevékenység.","a":"HAMIS","t":"IF","e":"A kettő különböző: a közigazgatási jogalkalmazás a végrehajtó hatalomhoz tartozik és hatósági ügyekben jár el, míg az igazságszolgáltatás az igazságszolgáltatási hatalmi ághoz tartozik és jogvitákat dönt el."},{"q":"Az Amszterdami szerződés az EU-t jogi személlyé tette.","a":"HAMIS","t":"IF","e":"NEM az Amszterdami (1997), hanem a LISSZABONI SZERZŐDÉS (2009) tette az EU-t jogi személlyé."},{"q":"A pénzpiacon az egy évnél hosszabb idejű pénzcserék zajlanak.","a":"HAMIS","t":"IF","e":"NEM – a pénzpiacon rövid lejáratú (1 évnél rövidebb) ügyletek zajlanak. Az egy évnél hosszabb lejáratú ügyletek a TŐKEPIACON zajlanak."},{"q":"Melyik szerv látja el az államháztartás külső ellenőrzésével kapcsolatos feladatokat?","a":"Az Állami Számvevőszék","t":"MC","w":["A Magyar Nemzeti Bank","A Pénzügyminisztérium","A Kormányzati Ellenőrzési Hivatal"],"e":"Az Állami Számvevőszék az Országgyűlésnek felelős, független pénzügyi-gazdasági ellenőrző szerv."},{"q":"Hány besorolási osztály van a Kttv.-ben?","a":"3 (három)","t":"MC","w":["2 (kettő)","4 (négy)","5 (öt)"],"e":"A Kttv. két fő besorolási osztályt ismer: I. osztály (felsőfokú végzettséggel) és II. osztály (középfokú végzettséggel) – összesen 3, ha a vezetői kategóriát is számítjuk."},{"q":"Egészítse ki: A törvényhozás a(z) ... fenntartott kizárólagos tevékenysége.","a":"Az Országgyűlésnek","t":"MC","w":["A Kormánynak","A köztársasági elnöknek","Az Alkotmánybíróságnak"],"e":"A törvényhozás kizárólagosan az Országgyűlés hatáskörébe tartozik – más szerv nem hozhat törvényt."},{"q":"Mikor volt az első EU-bővítés?","a":"1972-ben","t":"MC","w":["1968-ban","1981-ben","1986-ban"],"e":"Az első bővítés 1973-ban történt, amikor Dánia, Írország és az Egyesült Királyság csatlakozott – de az előkészítés és aláírás 1972-ben volt."},{"q":"Ki gyakorolja a munkáltatói jogokat a minisztérium kormánytisztviselői felett?","a":"A közigazgatási államtitkár","t":"MC","w":["A miniszter","Az államtitkár","A helyettes államtitkár"],"e":"A minisztériumi kormánytisztviselők felett a munkáltatói jogokat a KÖZIGAZGATÁSI ÁLLAMTITKÁR gyakorolja."},{"q":"Melyik tanácsi formáció rövidítése az ENVI?","a":"Környezetvédelmi Tanács","t":"MC","w":["Energiaügyi Tanács","Fogyasztóvédelmi Tanács","Belügyi Tanács"],"e":"Az ENVI az Európai Parlament Környezetvédelmi, Közegészségügyi és Élelmiszer-biztonsági Bizottságának rövidítése."},{"q":"A reform felülről lefelé irányuló folyamat.","a":"IGAZ","t":"IF","e":"A reform tervezett, irányított változtatás, amely felülről (a vezetéstől, politikától) indul és lefelé terjed. Az innováció ezzel szemben alulról felfelé terjed."},{"q":"A bírósági felülvizsgálat feltétele, hogy az ügyfél a jogerős határozatot jogsértőnek tartja.","a":"IGAZ","t":"IF","e":"Igen, a bírósági felülvizsgálat igénybevételéhez az szükséges, hogy az ügyfél a jogerős közigazgatási határozatot jogsértőnek tartsa."},{"q":"Hogy nevezzük a köztisztviselőket munkájukért megillető havi díjazást?","a":"Illetmény","t":"MC","w":["Bér","Fizetés","Juttatás"],"e":"A köz- és kormánytisztviselőket munkavégzésükért illetmény illeti meg – nem bér, mert közszolgálati jogviszonyban állnak."},{"q":"A jogi személyeknek vannak személyes adataik.","a":"HAMIS","t":"IF","e":"Személyes adat CSAK természetes személyhez kapcsolódhat. A jogi személyeknek (cégek, szervezetek) nincsenek személyes adataik – rájuk az adatvédelmi jog nem terjed ki."},{"q":"Milyen adatot nem tartalmaz a személyi adat- és lakcímnyilvántartás?","a":"Adószám","t":"MC","w":["Lakcím","Születési hely és idő","Anyja neve"],"e":"Az adószám a NAV nyilvántartásában szerepel, nem a személyi adat- és lakcímnyilvántartásban."},{"q":"A Magyar Nemzeti Bank milyen jogszabályt hozhat?","a":"Rendeletet","t":"MC","w":["Törvényt","Határozatot","Utasítást"],"e":"Az MNB elnöke feladatkörében rendeletet bocsáthat ki, amely törvénnyel nem lehet ellentétes."},{"q":"Mennyi az általános eljárási határidő?","a":"30 nap","t":"MC","w":["8 nap","15 nap","60 nap"],"e":"A közigazgatási hatósági eljárás általános ügyintézési határideje 30 nap."},{"q":"A tárca nélküli miniszterek nem tartoznak a Kormány tagjai közé.","a":"HAMIS","t":"IF","e":"NEM igaz – a tárca nélküli miniszterek IS a Kormány tagjai, csak nincs önálló minisztériumuk."},{"q":"Hol van az Európai Unió Bíróságának székhelye?","a":"Luxemburgban","t":"MC","w":["Brüsszelben","Strasbourgban","Hágában"],"e":"Az Európai Unió Bírósága Luxemburgban székeli."},{"q":"A hatóság mikor vizsgálja az illetékességet az eljárás során?","a":"Az eljárás minden szakaszában","t":"MC","w":["Csak az eljárás megindításakor","Csak az eljárás lezárásakor","Csak kérelem esetén"],"e":"A Ket. szerint a hatóság az eljárás MINDEN szakaszában köteles vizsgálni illetékességét – ha elveszti, az ügyet át kell tenni."},{"q":"Mennyi a felmentési idő?","a":"2 hónap","t":"MC","w":["1 hónap","3 hónap","6 hónap"],"e":"A Kttv. szerint a felmentési idő főszabályként 2 hónap."},{"q":"Az alapvető jogok biztosa évente beszámol az Országgyűlésnek tevékenységéről.","a":"IGAZ","t":"IF","e":"Az Alaptörvény kötelezi az alapvető jogok biztosát, hogy évenként számoljon be az Országgyűlésnek tevékenységéről."},{"q":"Az alapilletményt mennyivel térítheti el lefelé a vezető?","a":"20%-kal","t":"MC","w":["10%-kal","30%-kal","50%-kal"],"e":"Az alapilletmény lefelé legfeljebb 20%-kal téríthető el, felfelé legfeljebb 50%-kal."},{"q":"Hány évre szól az Európai Bizottság tagjainak megbízatása?","a":"5 évre","t":"MC","w":["4 évre","6 évre","7 évre"],"e":"Az Európai Bizottság tagjai 5 éves mandátummal rendelkeznek, ami igazodik az EP ciklusához."},{"q":"COREPER hány szintje van?","a":"2 szintje van","t":"MC","w":["3 szintje van","4 szintje van","1 szintje van"],"e":"A COREPER (Állandó Képviselők Bizottsága) két szinten működik: COREPER I. (helyettes nagykövetekből) és COREPER II. (nagykövetekből)."},{"q":"A közigazgatási hatósági jogalkalmazói tevékenység a bírói jogalkalmazás egyik speciális formája.","a":"HAMIS","t":"IF","e":"NEM: a két jogalkalmazás különálló. A bírói a bírósági szervezetrendszeren belül zajlik, a közigazgatási a végrehajtó hatalmon belül – egymástól elkülönült tevékenységek."},{"q":"Hány nap áll rendelkezésre ügyészi fellépésre?","a":"30 nap","t":"MC","w":["8 nap","15 nap","60 nap"],"e":"Az ügyész 30 napon belül élhet jogorvoslattal (fellépéssel) a hatóság határozatával szemben."},{"q":"Melyik évben lépett életbe a Lisszaboni Szerződés?","a":"2009-ben","t":"MC","w":["2004-ben","2007-ben","2012-ben"],"e":"A Lisszaboni Szerződést 2007-ben írták alá, de 2009. december 1-jén lépett hatályba."},{"q":"Egészítse ki: A kötelezettségvállalás a kötelezettség vállalásáról szóló szabályszerűen megtett ...","a":"Jognyilatkozat","t":"MC","w":["Határozat","Közlemény","Megállapodás"],"e":"A kötelezettségvállalás egy jognyilatkozat, amellyel a szervezet pénzügyi kötelezettséget vállal magára."},{"q":"Az államháztartási kiadások esetében állami működési funkciót, jóléti funkciót és gazdasági funkciókat tudunk megkülönböztetni.","a":"IGAZ","t":"IF","e":"Az állam gazdasági funkcióit e három fő csoportra osztjuk: állami működési funkció, jóléti funkció (oktatás, egészségügy stb.) és gazdasági funkció."},{"q":"Az ügyfél a közigazgatási eljárásban csak személyesen járhat el.","a":"HAMIS","t":"IF","e":"NEM – az ügyfél képviselettel is eljárhat: meghatalmazottján, törvényes képviselőjén vagy ügygondnokán keresztül."},{"q":"Mit nevezünk nemzeti vagyonnak?","a":"Az állam és a helyi önkormányzat tulajdonát","t":"MC","w":["Csak az állam tulajdonát","Csak a helyi önkormányzat tulajdonát","Az állampolgárok összesített vagyonát"],"e":"A nemzeti vagyon az állam és a helyi önkormányzatok tulajdonában álló vagyon összessége."},{"q":"A közigazgatási változások két alapvető típusa a reform és az innováció.","a":"IGAZ","t":"IF","e":"A reform felülről lefelé irányuló, tervezett folyamat; az innováció alulról felfelé terjedő, spontán változás – ez a két alaptípus."},{"q":"A fellebbezési eljárás során a fellebbezési kérelmet kinek kell benyújtani?","a":"Az elsőfokon eljárt hatósághoz","t":"MC","w":["A másodfokú hatósághoz","A bírósághoz","A miniszterhez"],"e":"A Ket. szerint a fellebbezést az elsőfokon eljárt hatósághoz kell benyújtani, amely azt felterjeszti a másodfokú hatósághoz."},{"q":"Ki csatlakozott 10.-ként az EU-hoz?","a":"Görögország","t":"MC","w":["Spanyolország","Portugália","Ausztria"],"e":"Görögország 1981-ben, a tizedik tagállamként csatlakozott az Európai Közösséghez."},{"q":"Hol található az Európai Központi Bank székhelye?","a":"Frankfurt am Main","t":"MC","w":["Brüsszel","Strasbourg","Luxemburg"],"e":"Az Európai Központi Bank (EKB) székhelye Frankfurt am Mainban, Németországban található."},{"q":"A képviselővel szemben tettenérés esetét kivéve csak ki előzetes hozzájárulásával indítható büntető eljárás?","a":"Az Országgyűlés","t":"MC","w":["A köztársasági elnök","A Kúria","A legfőbb ügyész"],"e":"Az Alaptörvény szerint az országgyűlési képviselők ellen – tettenérés esetét kivéve – csak az Országgyűlés előzetes hozzájárulásával indítható büntetőeljárás."},{"q":"Melyik a Magyary Program hatékonyság-fogalmának azon összetevője, ahol a feladatvégrehajtás követhető és számon kérhető?","a":"Felügyelhető","t":"MC","w":["Eredményes","Alkalmazkodó","Gazdaságos"],"e":"A 'felügyelhető' összetevő: a feladatvégrehajtás nyomon követhető, szükség esetén beavatkozható, és a felelős számon kérhető."},{"q":"A helyi önkormányzatok alkotmányos jogállásukra nézve az államigazgatás részei, nem önálló hatalmi tényezők.","a":"HAMIS","t":"IF","e":"Az önkormányzatok NEM részei az államigazgatásnak – önálló hatalmi tényezők, amelyek a helyi közügyekben a helyi közösség érdekében önállóan járnak el."},{"q":"Az államfői tisztség megszűnik, ha az elnök a feladatkörét 60 napon túl nem tudja ellátni.","a":"HAMIS","t":"IF","e":"NEM 60 nap, hanem 90 nap – ha a köztársasági elnök 90 napnál hosszabb ideig akadályoztatott, kerülhet sor a tisztség megszűnésének vizsgálatára."},{"q":"A közfeladatot ellátó szerv hány nap alatt köteles eleget tenni az adatigénynek?","a":"15 nap","t":"MC","w":["8 nap","30 nap","45 nap"],"e":"Az infotv. szerint a közfeladatot ellátó szerv az adatigénylést 15 napon belül köteles teljesíteni."},{"q":"Egészítse ki: A törvényhozó hatalmi ágat a(z)..., az igazságszolgáltató hatalmi ágat a(z)... képviseli.","a":"Országgyűlés – rendes bíróságok","t":"MC","w":["Kormány – Alkotmánybíróság","Köztársasági elnök – Kúria","Országgyűlés – Alkotmánybíróság"],"e":"A hatalmi ágak: törvényhozó – Országgyűlés; végrehajtó – Kormány; igazságszolgáltató – rendes bíróságok."},{"q":"Ki választja az Alkotmánybíróság tagjait?","a":"Az Országgyűlés","t":"MC","w":["A köztársasági elnök","A Kormány","A Kúria"],"e":"Az Alkotmánybíróság 15 tagját az Országgyűlés választja minősített (kétharmados) többséggel."},{"q":"Mikor határozatképes a képviselő-testület?","a":"Ha az ülésen a képviselők több mint fele jelen van","t":"MC","w":["Ha az ülésen a képviselők kétharmada jelen van","Ha legalább 3 képviselő jelen van","Ha az ülésen a képviselők egynegyede jelen van"],"e":"A képviselő-testület határozatképes, ha az ülésen a megválasztott tagok több mint fele jelen van."},{"q":"A kormánymegbízott felett a munkáltatói jogokat a miniszter gyakorolja.","a":"IGAZ","t":"IF","e":"A kinevezés és felmentés joga a miniszterelnöké, de az egyéb munkáltatói jogokat – a kivételektől eltekintve – a miniszter (Belügyminisztérium) gyakorolja."},{"q":"Mikor lépett hatályba az Alaptörvény?","a":"2012. január 1-jén","t":"MC","w":["2011. január 1-jén","2010. április 25-én","2011. április 25-én"],"e":"Magyarország Alaptörvénye 2012. január 1-jén lépett hatályba."},{"q":"A természetes személyre vonatkozó adatokból levont következtetés személyes adat.","a":"IGAZ","t":"IF","e":"Ha természetes személyről levont következtetés az adott személyre vonatkoztatható, az személyes adatnak minősül."},{"q":"Melyik nem autonóm központi államigazgatási szerv?","a":"A Nemzeti Adó- és Vámhivatal","t":"MC","w":["A Gazdasági Versenyhivatal","A Magyar Nemzeti Bank","A Nemzeti Média- és Hírközlési Hatóság"],"e":"A Nemzeti Adó- és Vámhivatal (NAV) NEM autonóm – kormányzati irányítás alatt álló, a Kormánynak alárendelt szerv."},{"q":"A jogalkalmazás során milyen ügyekben hoznak döntéseket a közhatalmi szervek?","a":"Egyedi ügyekben","t":"MC","w":["Általános ügyekben","Normatív ügyekben","Jogalkotási ügyekben"],"e":"A jogalkalmazás lényege az egyedi ügyek elbírálása – általános normaalkotást nem jogalkalmazásnak, hanem jogalkotásnak nevezzük."},{"q":"Az OGY a benyújtott törvényjavaslatokról plenáris ülésen dönt.","a":"IGAZ","t":"IF","e":"Az Országgyűlés törvényekről plenáris ülésen szavaz – ez a testületi döntéshozatal fóruma."},{"q":"Az EU jogán belül nincs jogforrási hierarchia.","a":"HAMIS","t":"IF","e":"NEM igaz – az EU jogán BELÜL IS van hierarchia: az elsődleges jog (alapszerződések) megelőzi a másodlagos jogot (rendeletek, irányelvek, határozatok)."},{"q":"Az iratokról csak elektronikus másolatot lehet kiadni.","a":"HAMIS","t":"IF","e":"NEM – az iratokról papíralapú és elektronikus másolat egyaránt kiadható, nincs kizárólagosság."},{"q":"Az ügyészek számára ki adhat utasítást?","a":"A legfőbb ügyész és a felettes ügyész","t":"MC","w":["A belügyminiszter és a legfőbb ügyész","Csak a legfőbb ügyész","A bíróság és a legfőbb ügyész"],"e":"Az ügyészi hierarchia szerint az ügyészeknek csak a legfőbb ügyész és közvetlen felettes ügyészük adhat utasítást."},{"q":"A köztársasági elnök az elfogadott törvényt alkotmányossági vizsgálatra megküldheti az Alkotmánybíróságnak.","a":"IGAZ","t":"IF","e":"Az Alaptörvény szerint a köztársasági elnök az elfogadott törvényt aláírás előtt az Alkotmánybíróságnak küldheti alkotmányossági vizsgálatra (előzetes normakontroll)."},{"q":"Jelölje meg az információs önrendelkezési jogról szóló törvényt!","a":"2011. évi CXII. törvény","t":"MC","w":["2011. évi CXCV. törvény","2004. évi CXL. törvény","2010. évi CLXXXIX. törvény"],"e":"Az információs önrendelkezési jogról és az információszabadságról szóló 2011. évi CXII. törvény (infotv.) szabályozza az adatvédelmet."},{"q":"Ki ellenőrzi az államháztartás forrásainak rendeltetésszerű használatát?","a":"Az Állami Számvevőszék","t":"MC","w":["A Pénzügyminisztérium","A Kormány","A Magyar Nemzeti Bank"],"e":"Az Állami Számvevőszék az Országgyűlés pénzügyi-gazdasági ellenőrző szerve, amely az államháztartás ellenőrzéséért felel."},{"q":"A költségvetési szervek önállóan működő és gazdálkodó szervekből és önállóan működő szervekből állnak.","a":"IGAZ","t":"IF","e":"Az államháztartásról szóló törvény szerint a költségvetési szervek e két típusba sorolhatók: önállóan működő és gazdálkodó, illetve önállóan működő szervek."},{"q":"Társadalombiztosítás = Nyugdíjbiztosítási Alap + Egészségbiztosítási Alap.","a":"IGAZ","t":"IF","e":"A társadalombiztosítás két nagy alapból áll: a Nyugdíjbiztosítási Alapból és az Egészségbiztosítási Alapból."},{"q":"A közigazgatás működése alapvetően jogalkalmazás.","a":"IGAZ","t":"IF","e":"A közigazgatás alapvető tevékenysége a jogalkalmazás: a jogszabályok végrehajtása egyedi ügyekben."},{"q":"Adósságszolgálat kinek a kiadása?","a":"A központi alrendszer kiadása","t":"MC","w":["Az önkormányzati alrendszer kiadása","A társadalombiztosítási alap kiadása","Az elkülönített állami pénzalap kiadása"],"e":"Az adósságszolgálat (kamatfizetés, törlesztés) a központi alrendszer kiadásai közé tartozik."},{"q":"Alpolgármestert kinek a javaslatára neveznek ki?","a":"A polgármester javaslatára","t":"MC","w":["A képviselő-testület javaslatára","A belügyminiszter javaslatára","A kormánymegbízott javaslatára"],"e":"Az alpolgármestert a polgármester javaslatára a képviselő-testület választja meg titkos szavazással."},{"q":"Mely jogforrás helyezkedik el a jogforrási hierarchia csúcsán?","a":"Az Alaptörvény","t":"MC","w":["A törvény","A kormányrendelet","A miniszteri rendelet"],"e":"A jogforrási hierarchia csúcsán az Alaptörvény áll – minden más jogszabálynak az Alaptörvénnyel összhangban kell lennie."},{"q":"A tartalékok a központi alrendszer kiadáscsoportjai közé tartoznak.","a":"IGAZ","t":"IF","e":"Az általános és céltartalékok a központi alrendszer kiadáscsoportjai közé tartoznak."},{"q":"Kormánytisztviselőknél mennyi lehet a rendkívüli munkavégzés éves szinten?","a":"200 óra","t":"MC","w":["100 óra","150 óra","300 óra"],"e":"A rendkívüli munkavégzés éves korlátja kormánytisztviselőknél 200 óra."},{"q":"A közigazgatási szervek jogalkalmazó tevékenysége az ügyfél kérelmére vagy hivatalból kerül sor.","a":"IGAZ","t":"IF","e":"A közigazgatási eljárás megindulhat az ügyfél kérelmére (kérelemre induló) vagy a hatóság saját kezdeményezésére (hivatalból induló)."},{"q":"A kormánybizottság helyi illetékességgel rendelkezik.","a":"HAMIS","t":"IF","e":"A kormánybizottság NEM helyi illetékességű szerv – az egész ország területére kiterjedő, több minisztérium feladatkörét érintő ügyeket koordinál."},{"q":"Főszabály szerint mennyi a heti munkaidő?","a":"40 óra","t":"MC","w":["36 óra","44 óra","48 óra"],"e":"A Kttv. szerint a főszabályos heti munkaidő 40 óra."},{"q":"Az önkormányzati jogokat az Alaptörvény sorolja fel.","a":"IGAZ","t":"IF","e":"Az Alaptörvény tartalmazza az önkormányzati jogokat – ez az alkotmányos szabályozás alapja."},{"q":"A helyi adók bevezetésére rendeleti úton kizárólag a települési önkormányzatok jogosultak.","a":"IGAZ","t":"IF","e":"Helyi adókat csak a települési önkormányzatok vezethetnek be rendelettel – a területi (megyei) önkormányzatok erre nem jogosultak."},{"q":"Az irányítás közigazgatási jogviszony, azon belül anyagi jogviszony.","a":"IGAZ","t":"IF","e":"Az irányítás valóban közigazgatási (közjogi) jogviszony és anyagi jogi természetű, mert anyagi jogi normák hozzák létre."},{"q":"A Tanács soros elnöke Magyarország először 2011 első félévében volt.","a":"IGAZ","t":"IF","e":"Magyarország 2011. január 1. – június 30. között töltötte be először az Európai Unió Tanácsának soros elnökségét."},{"q":"Minden jogharmonizációs célt szolgáló magyar jogszabályt jogharmonizációs záradékkal kell ellátni.","a":"IGAZ","t":"IF","e":"Az EU-csatlakozásból eredő kötelezettség: minden harmonizációs célú jogszabályban fel kell tüntetni az implementált uniós jogforrást."},{"q":"A nemzeti és etnikai hovatartozásra vonatkozó adat különleges adatnak minősül.","a":"IGAZ","t":"IF","e":"A faji eredetre, nemzeti és etnikai hovatartozásra vonatkozó adatok különleges adatok, amelyek kezelése szigorú feltételekhez kötött."},{"q":"Melyik törvény rendelkezik az államháztartásról?","a":"2011. évi CXCV. törvény","t":"MC","w":["2011. évi CXII. törvény","2010. évi CLXXXIX. törvény","2004. évi CXL. törvény"],"e":"Az államháztartásról a 2011. évi CXCV. törvény rendelkezik."},{"q":"Alapesetben mennyi a Titkos minősítési szintű adatok maximális érvényességi ideje?","a":"30 év","t":"MC","w":["10 év","20 év","50 év"],"e":"A Titkos! szintű minősítés alapesetben legfeljebb 30 évre szólhat."},{"q":"Mely köztisztviselők tartoznak az I. besorolási osztályba?","a":"Felsőfokú iskolai végzettségűek","t":"MC","w":["Középiskolai végzettségűek","Szakközépiskolai végzettségűek","Doktori fokozattal rendelkezők"],"e":"Az I. besorolási osztályba a felsőfokú (főiskolai vagy egyetemi) végzettséggel rendelkező köztisztviselők tartoznak."},{"q":"Egészítse ki: A Kormány testületi szerv, működésének főbb szabályait a(z) ... tartalmazza.","a":"Kormány ügyrendje","t":"MC","w":["Alaptörvény","Miniszterelnöki rendelet","Kormányrendelet"],"e":"A Kormány ülésrendjét, döntéshozatali mechanizmusát a Kormány saját ügyrendje szabályozza."},{"q":"Az SzMSz-t az alapító okirat alapján kell elkészíteni.","a":"IGAZ","t":"IF","e":"A Szervezeti és Működési Szabályzatot az alapító okirat előírásai alapján kell kidolgozni."},{"q":"A döntés közlésétől számított mennyi időn belül lehet hivatalból felülvizsgálati eljárást indítani?","a":"1 éven belül","t":"MC","w":["6 hónapon belül","2 éven belül","3 éven belül"],"e":"A Ket. szerint a döntés közlésétől számított 1 éven belül lehet a felügyeleti szerv által hivatalból felülvizsgálati eljárást indítani."},{"q":"A köztisztviselő a hozzátartozójával nem állhat irányítási, felügyeleti, ellenőrzési vagy elszámolási viszonyban.","a":"IGAZ","t":"IF","e":"Az összeférhetetlenségi szabályok értelmében a köztisztviselő és hozzátartozója nem kerülhet olyan viszonyba, ahol az egyik a másik felett irányítási, felügyeleti stb. jogkört gyakorol."},{"q":"A felsoroltak közül melyik jellemző leginkább az Új Weberizmusra?","a":"A közigazgatásnak elsősorban állampolgár-barátnak kell lennie","t":"MC","w":["A piac szabályozási megoldásait kell átvenni","Az állam méretét csökkenteni kell","A közfeladatokat ki kell szervezni"],"e":"Az Új Weberizmus az állampolgár-barát, eredményorientált, de a jogállami kereteket megtartó közigazgatásban hisz."},{"q":"Ki javasolja a miniszterelnököt?","a":"A köztársasági elnök","t":"MC","w":["Az Országgyűlés","A Kúria elnöke","A parlamenti többség"],"e":"A köztársasági elnök javasolja a miniszterelnök személyét, akit az Országgyűlés szavaz meg."},{"q":"A bíróság többnyire hivatalból járhat el.","a":"HAMIS","t":"IF","e":"A bíróság főszabályként kérelemre jár el – az eljárást az ügyfél, fél, felperes kezdeményezi, nem a bíróság indítja meg magától."},{"q":"Egészítse ki: Az önkormányzat szabályozási ... keretében rendeleteket és határozatokat hozhat.","a":"Autonómia","t":"MC","w":["Jogkör","Hatáskör","Illetékesség"],"e":"A helyi önkormányzatok szabályozási autonómiájuk keretében rendeleteket alkothatnak és határozatokat hozhatnak."},{"q":"Kinek a megbízatása nem szűnik meg a Kormány megbízatásának megszűnésével?","a":"A közigazgatási államtitkáré","t":"MC","w":["Az államtitkáré","A helyettes államtitkáré","A miniszteri biztosé"],"e":"A közigazgatási államtitkár határozatlan időre szól és nem szűnik meg a kormányváltással – ez biztosítja a szakmai folytonosságot."},{"q":"A nyilvántartásba vétel első lépése az ügyirat érkezésének regisztrálása érkeztető számmal.","a":"IGAZ","t":"IF","e":"Az iratkezelés első lépése az érkeztetés (érkeztető számmal), majd ezt követi az iktatás (iktatószámmal)."},{"q":"Milyen típusú szerv a Gazdasági Versenyhivatal?","a":"Autonóm","t":"MC","w":["Dekoncentrált","Önkormányzati","Minisztériumi háttérszerv"],"e":"A GVH autonóm közigazgatási szerv – sem a Kormánynak, sem a minisztereknek nincs felette irányítási joga."},{"q":"Ki fogadja el a helyi önkormányzat költségvetési rendeletét?","a":"A képviselő-testület","t":"MC","w":["A polgármester","A jegyző","A kormánymegbízott"],"e":"A helyi önkormányzat költségvetési rendeletét a képviselő-testület fogadja el."},{"q":"Kormányhivatalt ki vezeti?","a":"A főigazgató","t":"MC","w":["Az igazgató","A kormánymegbízott","A közigazgatási államtitkár"],"e":"A fővárosi és megyei kormányhivatalt a főigazgató vezeti."},{"q":"Az egy ügyirathoz tartozó iratokat milyen számmal kell ellátni?","a":"Az iktatási főszám alatt folyamatosan kiadott alszámokon","t":"MC","w":["Egyedi azonosító számmal","Érkeztető számmal","Sorszámmal"],"e":"Egy ügyirathoz tartozó iratok az iktatási főszám alszámait kapják – így tarthatók össze."},{"q":"Hogyan nevezik a Tanácsot informálisan?","a":"Miniszterek Tanácsa","t":"MC","w":["Állam- és kormányfők tanácsa","Európai Tanács","Tagállami képviselők testülete"],"e":"Az Európai Unió Tanácsát (ahol a tagállamok miniszterei ülnek) informálisan Miniszterek Tanácsának is nevezik."},{"q":"A köztársasági elnök dönt az állampolgárság megszerzésével és megszűnésével kapcsolatos ügyekben.","a":"IGAZ","t":"IF","e":"Az állampolgársági ügyekben a köztársasági elnök határozza meg az állampolgárság adományozását és elbocsátást."},{"q":"A jogvitát eldöntő jogalkalmazói tevékenység egy később létrejövő jogviszonyt kíván megítélni.","a":"HAMIS","t":"IF","e":"Épp fordítva: a jogvitát eldöntő jogalkalmazás egy már LÉTREJÖTT, korábbi jogviszonyt ítél meg – például egy szerződésből eredő vitát."},{"q":"A Kormány autonóm és végrehajtási típusú rendeleteket bocsát ki.","a":"IGAZ","t":"IF","e":"A Kormány autonóm (primer) rendeleteket alkot eredeti jogalkotói hatáskörben, és végrehajtási (szekunder) rendeleteket törvények végrehajtására."},{"q":"Milyen formában terjeszthető elő adatigénylés a közfeladatot ellátó szerveknél?","a":"Bármilyen formában","t":"MC","w":["Csak írásban","Csak elektronikusan","Csak személyesen"],"e":"Az infotv. szerint az adatigénylés bármilyen formában (szóban, írásban, elektronikusan) előterjeszthető."},{"q":"A köztisztviselőnek meg kell tagadnia azt az utasítást, amelynek teljesítésével bűncselekményt követne el.","a":"IGAZ","t":"IF","e":"A Kttv. kötelezi a köztisztviselőt az utasítás megtagadására, ha annak teljesítése bűncselekményt vagy szabálysértést valósítana meg."},{"q":"A közjogi szervezetszabályozó eszközök az állampolgárok számára jogokat és kötelezettségeket közvetlenül megállapíthatnak.","a":"HAMIS","t":"IF","e":"A közjogi szervezetszabályozó eszközök (normatív határozat, normatív utasítás) csak a szervezetrendszeren BELÜL kötelezők – az állampolgárok számára közvetlenül nem állapíthatnak meg jogokat és kötelezettségeket."},{"q":"Ki nyújthat be konstruktív bizalmatlansági indítványt?","a":"Az országgyűlési képviselők egyötöde","t":"MC","w":["Az országgyűlési képviselők egyharmada","Az összes ellenzéki képviselő","A miniszterelnök"],"e":"Konstruktív bizalmatlansági indítványt az országgyűlési képviselők legalább egyötöde nyújthat be."},{"q":"Ki nevezi ki az ügyészeket?","a":"A legfőbb ügyész","t":"MC","w":["A köztársasági elnök","Az Országgyűlés","Az igazságügyi miniszter"],"e":"Az ügyészeket a legfőbb ügyész nevezi ki – ő a kizárólagos munkáltató az ügyészi szervezetben."},{"q":"A 2011-es népszámláláskor a szomszédos 7 országban 2,2 millióan vallották magukat magyarnak.","a":"IGAZ","t":"IF","e":"A 2011-es népszámlálások adatai alapján a szomszédos 7 országban összesen kb. 2,2 millió fő vallotta magát magyar nemzetiségűnek."},{"q":"Az egyablakos ügyintézés azt jelenti, hogy egy adott ügy bárhonnan elintézhető.","a":"HAMIS","t":"IF","e":"NEM – az egyablakos ügyintézés azt jelenti, hogy EGY HELYEN (egyetlen ablaknál, pl. kormányablaknál) több különböző hatósági ügy is intézhető."},{"q":"Ki adta ki a Köztisztviselők Etikai Kódexét?","a":"Az Európa Tanács","t":"MC","w":["Az ENSZ","Az Európai Bizottság","A Magyar Kormány"],"e":"A Köztisztviselők Etikai Kódexét az Európa Tanács adta ki – ez a nemzetközi etikai alapdokumentum."},{"q":"A fővárosi és megyei kormányhivatalok integrált ügyfélszolgálatát minek nevezik?","a":"Kormányablak","t":"MC","w":["Közigazgatási ablak","Ügyfélkapu","Hatósági iroda"],"e":"Az integrált ügyfélszolgálatot kormányablaknak nevezik – itt egy helyen több hatósági ügy intézhető."},{"q":"A helyi önkormányzatok kötelező feladata a parkolás biztosítása.","a":"IGAZ","t":"IF","e":"A helyi közlekedés és parkolás biztosítása valóban a helyi önkormányzat kötelező feladata."},{"q":"Melyik választási rendszert alkalmazzák jelenleg Magyarországon?","a":"Vegyes választási rendszert","t":"MC","w":["Arányos választási rendszert","Többségi választási rendszert","Listás választási rendszert"],"e":"Magyarország vegyes választási rendszert alkalmaz: egyéni kerületekben egyfordulós többségi, listán arányos elemek kombinációja."},{"q":"Az alapeljárás a közigazgatási eljárás első szakasza, első fokú eljárásnak is hívjuk.","a":"IGAZ","t":"IF","e":"Az alapeljárás (első fokú eljárás) a közigazgatási eljárás megindulásától a döntés meghozataláig tartó első szakasz."},{"q":"Mi az államháztartás legnagyobb bevétele?","a":"Adó","t":"MC","w":["Illeték","EU-s támogatás","Hitelfelvétel"],"e":"Az adók (különösen az ÁFA és SZJA) adják az államháztartás bevételeinek döntő részét."},{"q":"A közigazgatási hatósági eljárás hivatalos nyelve főszabály szerint:","a":"Magyar","t":"MC","w":["Az ügyfél anyanyelve","Az EU egyik hivatalos nyelve","A hatóság döntése szerint"],"e":"A Ket. szerint a közigazgatási hatósági eljárás hivatalos nyelve a magyar – kivételek törvényben meghatározottak."},{"q":"Magyarországon alkotmányozó hatalommal az Országgyűlés van felruházva.","a":"IGAZ","t":"IF","e":"Az Alaptörvény szerint az Országgyűlés az összes képviselő kétharmadának szavazatával módosíthatja az Alaptörvényt – ez az alkotmányozó hatalom."},{"q":"Ki a kormányhivatalban a főigazgató helyettese?","a":"Az igazgató","t":"MC","w":["A főosztályvezető","A helyettes főigazgató","A közigazgatási államtitkár"],"e":"A fővárosi és megyei kormányhivatalban a főigazgató helyettese az igazgató."},{"q":"A költségvetési törvény ellenőrzése mivel történik?","a":"Zárszámadási törvénnyel","t":"MC","w":["Költségvetési rendelettel","Kormányrendelettel","Miniszteri határozattal"],"e":"A zárszámadási törvény ellenőrzi a költségvetési törvény végrehajtását – az Állami Számvevőszék vizsgálja és az OGY fogadja el."},{"q":"Mit kell tenni, ha a köztisztviselő hivatalára méltatlanná válik?","a":"Fel kell menteni","t":"MC","w":["Fegyelmi eljárást kell indítani","Fizetés nélküli szabadságra kell küldeni","Alacsonyabb besorolású munkakörbe kell helyezni"],"e":"Ha a köztisztviselő a köztisztviselői hivatás gyakorlásához méltatlanná válik, a munkáltatónak fel kell mentenie."},{"q":"Melyik nem tartozik a kötelezettségvállalás vertikális munkaszakaszaiba?","a":"Kiadmányozás","t":"MC","w":["Kötelezettségvállalás","Pénzügyi ellenjegyzés","Érvényesítés"],"e":"A kötelezettségvállalás vertikális munkaszakaszai: kötelezettségvállalás → pénzügyi ellenjegyzés → teljesítésigazolás → érvényesítés → utalványozás. A kiadmányozás NEM ide tartozik."},{"q":"Az iratok továbbítása történhet átadókönyvben.","a":"IGAZ","t":"IF","e":"Az átadókönyv az iratkezelés egyik dokumentációs eszköze, amellyel az iratok szerveken belüli és szervek közötti mozgása nyomon követhető."},{"q":"A Kormány üléseire általában hetenként egyszer kerül sor.","a":"IGAZ","t":"IF","e":"A Kormány általában hetente ülésezik – ez a testületi működés főszabálya."},{"q":"Az Alkotmánybíróság része a rendes bíróságok szervezetrendszerének.","a":"HAMIS","t":"IF","e":"NEM – az Alkotmánybíróság külön, önálló szerv, nem tartozik a rendes bíróságok (járásbíróságok, törvényszékek, ítélőtáblák, Kúria) rendszerébe."},{"q":"Mely országok csatlakoztak az európai integrációs szervezethez 1986-ban?","a":"Portugália és Spanyolország","t":"MC","w":["Görögország és Törökország","Ausztria és Svédország","Írország és Dánia"],"e":"1986-ban Spanyolország és Portugália csatlakozott az Európai Közösséghez."},{"q":"Egészítse ki: Az MNB elsődleges célja a ... elérése és fenntartása.","a":"Árstabilitás","t":"MC","w":["Gazdasági növekedés","Teljes foglalkoztatottság","Árfolyamstabilitás"],"e":"Az MNB elsődleges célja az árstabilitás (alacsony infláció) elérése és fenntartása – ez az Alaptörvényben és az MNB törvényben is rögzített."},{"q":"A költségvetési forrásokat használó beruházások üzleti titoknak minősülnek.","a":"HAMIS","t":"IF","e":"A közpénzből finanszírozott beruházások NEM minősülnek üzleti titoknak – a közpénzek felhasználása nyilvános, közérdekű adat."},{"q":"Egészítse ki: A közigazgatás döntései végső soron állami ... segítségével kikényszeríthetők.","a":"Kényszer (impérium)","t":"MC","w":["Bírság","Határozat","Utasítás"],"e":"A közigazgatás döntései mögött az állami kényszer (impérium) áll – ha az ügyfél nem teljesít, végrehajtási eljárás indítható."},{"q":"Mi jelent a GDP rövidítés magyarul?","a":"Bruttó hazai termék","t":"MC","w":["Bruttó nemzeti termék","Hazai össztermék","Nemzeti össztermék"],"e":"A GDP (Gross Domestic Product) magyarul Bruttó Hazai Terméket jelent – az egy évben belföldön megtermelt összes termék és szolgáltatás értéke."},{"q":"Az ügyészségi hierarchiában ki van az élen?","a":"A legfőbb ügyész","t":"MC","w":["A főügyész","Az igazságügyi miniszter","A Kúria elnöke"],"e":"Az ügyészségi szervezet élén a legfőbb ügyész áll, akit az Országgyűlés választ 9 évre."},{"q":"Hány évre választják az Alkotmánybíróság tagjait?","a":"12 évre","t":"MC","w":["6 évre","9 évre","15 évre"],"e":"Az AB tagjait az Országgyűlés 12 éves, nem megújítható mandátumra választja."},{"q":"EP-ben a képviselőválasztás milyen típusú?","a":"Arányos (listás)","t":"MC","w":["Többségi","Vegyes","Egyéni kerületes"],"e":"Az Európai Parlament tagjait arányos, listás választási rendszerben választják – ez egységes a tagállamokban."},{"q":"A Liszaboni Szerződés az Európai Uniót jogi személlyé tette.","a":"IGAZ","t":"IF","e":"A 2009-ben hatályba lépett Lisszaboni Szerződés az Unió pillérrendszerét megszüntette és az EU-t egységes jogi személlyé tette."},{"q":"A dekoncentrált államigazgatási szerveknek hatósági jogkörük van, tehát engedélyezhetnek, tilthatnak, bírságolhatnak.","a":"IGAZ","t":"IF","e":"A dekoncentrált szervek (pl. kormányhivatalok szakigazgatási szervei) valóban rendelkeznek hatósági jogkörrel: engedélyezhetnek, tilthatnak, bírságolhatnak."},{"q":"Mikor csatlakozott Magyarország az EU-hoz?","a":"2004. május 1-jén","t":"MC","w":["2002. január 1-jén","2007. január 1-jén","2004. január 1-jén"],"e":"Magyarország 2004. május 1-jén csatlakozott az Európai Unióhoz, a tizedik EU-bővítés keretében."},{"q":"Melyik jellemző nem illik a dekoncentrált szervekre?","a":"Főszabály szerint általános hatáskörrel rendelkeznek","t":"MC","w":["Különös hatáskörrel rendelkeznek","Hatósági jogkörük van","Egy központi szerv területi szervei"],"e":"A dekoncentrált szervek KÜLÖNÖS hatáskörrel rendelkeznek (szakigazgatás), nem általánossal – ez különbözteti meg őket a Kormánytól."},{"q":"Melyik nem a közigazgatási hatósági eljárás szakasza?","a":"Fellebbviteli eljárás","t":"MC","w":["Alapeljárás","Jogorvoslati szakasz","Végrehajtási szakasz"],"e":"A fellebbviteli eljárás NEM önálló eljárási szakasz – a jogorvoslati szakaszon belül a fellebbezési eljárás a helyes fogalom."},{"q":"Az alkotmánybírák lehetnek politikai párt tagjai, csak nem folytathatnak politikai tevékenységet.","a":"HAMIS","t":"IF","e":"NEM – az alkotmánybírák semmilyen párt tagjai sem lehetnek, és politikai tevékenységet sem folytathatnak."},{"q":"A katonák a Magyary Program személyzet fogalmának személyi hatálya alá tartoznak.","a":"IGAZ","t":"IF","e":"A Magyary Program széles körben értelmezi a személyzetet: a közszolgálatban dolgozók körébe beletartoznak a katonák is."},{"q":"Jogi normát kizárólag az Országgyűlés alkothat.","a":"HAMIS","t":"IF","e":"NEM – jogi normát más szervek is alkothatnak: a Kormány, miniszterek, az MNB elnöke, önkormányzatok, önálló szabályozó szervek."},{"q":"Hogyan nevezzük, amikor az ország hadiállapotban áll vagy idegen hatalom fegyveres támadása fenyeget?","a":"Rendkívüli állapot","t":"MC","w":["Szükségállapot","Vészhelyzet","Megelőző védelmi helyzet"],"e":"A rendkívüli állapotot (hadiállapot, fegyveres támadás veszélye) az Országgyűlés hirdeti ki."},{"q":"A minősítés a teljesítményértékelés eredményén alapul.","a":"IGAZ","t":"IF","e":"A teljesítményminősítés a teljesítményértékelések eredményein alapul – általában 2 egymást követő értékelés alapján keletkezik."},{"q":"A versenynek fontos szerepe van a közigazgatásban.","a":"HAMIS","t":"IF","e":"NEM – a verseny a piaci szektorra jellemző. A közigazgatásban a verseny helyett a törvényesség, hatékonyság és közszolgálat elvei érvényesülnek."},{"q":"Hány alelnöke van az Európai Parlamentnek?","a":"14","t":"MC","w":["7","10","21"],"e":"Az Európai Parlamentnek 14 alelnöke van, akiket a képviselők titkos szavazással, 2,5 éves mandátumra választanak."},{"q":"Melyik közigazgatási változástípus intézményesülési sémája: tervezés – előzetes értékelés – bevezetés?","a":"Reform","t":"MC","w":["Innováció","Dereguláció","Modernizáció"],"e":"A reform tervezett, tudatos változtatás, amelynek sémája: tervezés → előzetes értékelés → bevezetés → utólagos értékelés."},{"q":"Egészítse ki: Az Alkotmánybíróság a(z)... védelmének legfőbb szerve.","a":"Alaptörvény","t":"MC","w":["Alapjogok","Törvényesség","Közrend"],"e":"Az Alkotmánybíróság az Alaptörvény védelmének legfőbb szerve – feladata a jogszabályok alkotmányosságának vizsgálata."},{"q":"Az önkormányzatok lehetnek települési és területi önkormányzatok.","a":"IGAZ","t":"IF","e":"A Mötv. szerint az önkormányzatok két típusa: a települési önkormányzatok (község, város, főváros stb.) és a területi önkormányzatok (megye)."},{"q":"Melyik hatalmi ághoz tartozik a közigazgatási jogalkalmazás?","a":"A végrehajtó hatalomhoz","t":"MC","w":["Az igazságszolgáltatáshoz","A törvényhozó hatalomhoz","Az önkormányzati hatalomhoz"],"e":"A közigazgatás a végrehajtó hatalmi ághoz tartozik – a törvényhozó (OGY) és az igazságszolgáltatói (bíróságok) ághoz nem."},{"q":"Az Európai Parlament tagjait hány évre választják?","a":"5 évre","t":"MC","w":["4 évre","6 évre","7 évre"],"e":"Az EP tagjait 5 éves ciklusra választják – ez igazodik az Európai Bizottság megbízatási idejéhez is."},{"q":"A kormányrendeletet a miniszterelnök írja alá.","a":"IGAZ","t":"IF","e":"A kormányrendeletet a miniszterelnök írja alá és a Magyar Közlönyben hirdetik ki."},{"q":"Az Alkotmánybíróság általában nincs határidőhöz kötve.","a":"IGAZ","t":"IF","e":"Főszabályként az Alkotmánybíróság maga dönt eljárásának ütemezéséről, nincs általános törvényi határidő (kivételektől eltekintve)."},{"q":"A KET szerint az ügyfeleket megilleti a ... eljáráshoz való jog.","a":"Tisztességes","t":"MC","w":["Gyors","Ingyenes","Szóbeli"],"e":"A Ket. eljárási alapelveként rögzíti a tisztességes eljáráshoz való jogot – az ügyfeleket megilleti a jogszerű, pártatlan és méltányos elbírálás."},{"q":"Melyik szerződés szüntette meg az EU pillérrendszerét?","a":"A Lisszaboni Szerződés","t":"MC","w":["A Maastrichti Szerződés","Az Amszterdami Szerződés","A Nizzai Szerződés"],"e":"A Lisszaboni Szerződés (2009) szüntette meg a háromoszlopos EU-struktúrát és egységes jogi személlyé tette az EU-t."},{"q":"A bíró köteles az ítélkezése során a Bíróság elnökének utasításait betartani.","a":"HAMIS","t":"IF","e":"A bírák függetlenek és csak a törvénynek vannak alárendelve – a Bíróság elnöke nem utasíthatja őket ítélkezési tevékenységükben."},{"q":"A kötelező adatkezelést önkormányzati rendelet is lehetővé teheti.","a":"IGAZ","t":"IF","e":"Az önkormányzati rendelet is kötelező adatkezelési jogalapot teremthet, ha törvényi felhatalmazás alapján kerül kiadásra."},{"q":"Melyik az a jogforrás, amelynek kiadására 1989 óta nem került sor, de néhány száz még hatályban van?","a":"Törvényerejű rendelet","t":"MC","w":["Minisztertanácsi rendelet","Elnöki rendelet","Párthatározat"],"e":"A törvényerejű rendelet (tvr.) az Elnöki Tanács által kiadott jogforrás volt – 1989 óta nem adtak ki újat, de sok még hatályos."},{"q":"Az alapvető jogok biztosa a vizsgálata alá vont hatóságokra nézve kötelező határozatot hozhat.","a":"HAMIS","t":"IF","e":"NEM – az ombudsman vizsgálata eredményeként csak ajánlásokat tehet, kötelező határozatot nem hozhat. Nincs kötelező erejű döntési joga."},{"q":"A köztársasági elnök döntéseiért felelősséggel tartozik?","a":"Sem politikai, sem jogi felelősséggel nem tartozik","t":"MC","w":["Csak politikai felelősséggel tartozik","Csak jogi felelősséggel tartozik","Az Országgyűlésnek felel"],"e":"A köztársasági elnök döntéseiért sem politikai, sem jogi felelősséggel nem tartozik – ez az alkotmányos felelőtlenség elve."},{"q":"Mikor volt Magyarország az EU soros elnöke?","a":"2011 első félévében","t":"MC","w":["2007 második félévében","2009 első félévében","2013 első félévében"],"e":"Magyarország 2011 első félévében (január-június) volt az EU Tanácsának soros elnöke."},{"q":"Az eltérítés keretében legfeljebb mennyivel lehet emelni az alapilletményt?","a":"50%-kal","t":"MC","w":["20%-kal","30%-kal","100%-kal"],"e":"Felfelé az alapilletmény legfeljebb 50%-kal téríthető el."},{"q":"Melyik évben vált az EU jogi személlyé?","a":"2009-ben","t":"MC","w":["2004-ben","2007-ben","2012-ben"],"e":"Az EU a Lisszaboni Szerződés hatálybalépésével, 2009-ben vált egységes jogi személlyé."},{"q":"Ki nevezi ki a hivatásos bírákat?","a":"A köztársasági elnök","t":"MC","w":["Az Országgyűlés","A miniszterelnök","Az Országos Bírósági Hivatal elnöke"],"e":"A hivatásos bírákat a köztársasági elnök nevezi ki az Országos Bírósági Hivatal elnökének javaslatára."},{"q":"Az ügyfél köteles jóhiszeműen eljárni.","a":"IGAZ","t":"IF","e":"A jóhiszeműség elve szerint az ügyfél köteles jóhiszeműen eljárni – visszaélésszerű magatartás tilos."},{"q":"A minisztériumokat milyen jogszabály határozza meg?","a":"Magyarország minisztériumainak felsorolásáról szóló törvény","t":"MC","w":["Kormányrendelet","Az Alaptörvény","Miniszterelnöki rendelet"],"e":"Magyarország minisztériumait és azok feladatkörét az aktuális 'Magyarország minisztériumainak felsorolásáról szóló törvény' tartalmazza."},{"q":"Mi nem minősül különleges adatnak?","a":"Vagyoni helyzet","t":"MC","w":["Egészségügyi adat","Bűnügyi adat","Faji hovatartozásra vonatkozó adat"],"e":"A vagyoni helyzet NEM különleges adat. Különleges adatok pl.: egészségügyi, genetikai, biometriai, bűnügyi, politikai, vallási, szakszervezeti."},{"q":"Melyik nem az állam által átengedett központi adó?","a":"Általános forgalmi adó","t":"MC","w":["Személyi jövedelemadó","Termőföld bérbeadásából származó adó","Gépjárműadó"],"e":"Az ÁFA teljes bevétele a központi költségvetést illeti – nem kerül átengedésre az önkormányzatoknak. Az SZJA egy része viszont átengedett adó."},{"q":"Egészítse ki: Az első fokú hatóság, ha döntése jogszabályt sért, azt ...","a":"Módosítja vagy visszavonja","t":"MC","w":["Hatályon kívül helyezi","A bírósághoz továbbítja","Megsemmisíti"],"e":"Ha az elsőfokú hatóság fellebbezés vizsgálatakor megállapítja, hogy döntése jogszabálysértő, saját maga módosítja vagy visszavonja."},{"q":"Etikai vétséget elkövetőkkel szemben kiszabható büntetés?","a":"Figyelmeztetés és megrovás","t":"MC","w":["Pénzbírság és felfüggesztés","Illetménycsökkentés és megrovás","Lefokozás és figyelmeztetés"],"e":"A Magyar Kormánytisztviselői Kar etikai eljárásában kiszabható büntetések: figyelmeztetés és megrovás."},{"q":"A pótszabadság mértéke függ a kormánytisztviselő besorolási fokozatától.","a":"IGAZ","t":"IF","e":"A pótszabadság mértékét a besorolási fokozat (és más tényezők, pl. gyermekek száma) befolyásolja."},{"q":"A kóros szenvedélyre vonatkozó adat különleges adatnak minősül.","a":"IGAZ","t":"IF","e":"Az egészségi állapotra (beleértve a kóros szenvedélyt) vonatkozó adatok különleges adatnak minősülnek, amelyek kezelése fokozott védelmet igényel."},{"q":"Hány évre választják az Európai Parlament tisztségviselőit?","a":"2,5 évre","t":"MC","w":["1 évre","2 évre","5 évre"],"e":"Az EP elnökét és alelnökeit a ciklus felére, azaz 2 és fél évre választják."},{"q":"A bírósági jogalkalmazás a végrehajtó hatalmi ághoz tartozik.","a":"HAMIS","t":"IF","e":"A bírósági jogalkalmazás az igazságszolgáltatási hatalmi ághoz tartozik, nem a végrehajtó hatalomhoz. A végrehajtó hatalomhoz a közigazgatási jogalkalmazás tartozik."},{"q":"Ki bírálja el az újrafelvételi eljárást első fokon?","a":"Az eljáró hatóság","t":"MC","w":["A másodfokú hatóság","A bíróság","A felügyeleti szerv"],"e":"Az újrafelvételi eljárást az a hatóság bírálja el első fokon, amely az eredeti ügyet elbírálta."},{"q":"A helyi önkormányzatoknál dolgozó köztisztviselők mikor jogosultak illetménykiegészítésre?","a":"Ha a képviselő-testület rendeletben megállapít illetménykiegészítést","t":"MC","w":["Ha legalább 5 éve dolgoznak","Ha felsőfokú végzettségük van","Ha vezető beosztásban vannak"],"e":"Helyi önkormányzatnál csak akkor jár illetménykiegészítés, ha a képviselő-testület rendeletben ezt megállapítja."},{"q":"Ki a képviselő-testület elnöke?","a":"A polgármester","t":"MC","w":["A jegyző","Az alpolgármester","A képviselő-testület által választott elnök"],"e":"A képviselő-testület elnöke a polgármester – ő hívja össze és vezeti az üléseket."},{"q":"Az önkormányzat költségvetési koncepcióját a polgármester terjeszti a képviselő-testület elé.","a":"IGAZ","t":"IF","e":"A polgármester az önkormányzat végrehajtó szerveként terjeszti a képviselő-testület elé a költségvetési koncepciót."},{"q":"Hatósági döntés csak hivatalos iratként kézbesíthető.","a":"HAMIS","t":"IF","e":"NEM – kivételesen lehetséges szóbeli, telefax útján vagy elektronikusan is közölni bizonyos hatósági döntéseket."},{"q":"A közigazgatási jogalkalmazás során először milyen eljárás folytatódik le?","a":"Közigazgatási eljárás","t":"MC","w":["Bírósági eljárás","Fellebbviteli eljárás","Végrehajtási eljárás"],"e":"Először közigazgatási eljárás zajlik le – csak ha az ügyfél a közigazgatási döntést sérelmezi, következhet bírósági felülvizsgálat."},{"q":"Hányszor lehet újraválasztani a köztársasági elnököt?","a":"Egyszer","t":"MC","w":["Kétszer","Háromszor","Nem lehet újraválasztani"],"e":"A köztársasági elnök legfeljebb egyszer választható újra – összesen tehát legfeljebb kétszer töltheti be a tisztséget."},{"q":"A munkajog alapjogszabálya a Munka Törvénykönyve.","a":"IGAZ","t":"IF","e":"Igen, a Munka Törvénykönyve (Mt.) a munkajogi jogviszonyok alapjogszabálya."},{"q":"Melyik tartozik a II. besorolási osztályba?","a":"Gyakornok, előadó, főelőadó, főmunkatárs","t":"MC","w":["Tanácsos, főtanácsos, vezető-tanácsos","Osztályvezető, főosztályvezető","Szakértő, főszakértő, vezető szakértő"],"e":"A II. besorolási osztályba a középiskolai végzettségű köztisztviselők tartoznak: gyakornok, előadó, főelőadó, főmunkatárs fokozatokban."},{"q":"A hatóságok jogalkalmazó tevékenységük mellett egyéb közhatalmi funkciókat is ellátnak.","a":"IGAZ","t":"IF","e":"A hatóságok nemcsak jogalkalmazást végeznek, hanem egyéb közhatalmi feladatokat is ellátnak, pl. jogalkotásban való közreműködés, felügyelet."},{"q":"A fellebbezésben új tények és bizonyítékok is felhozhatók.","a":"IGAZ","t":"IF","e":"A Ket. szerint a fellebbezési eljárásban az ügyfél új tényeket és bizonyítékokat is felhozhat, amelyeket az első fokú eljárásban nem ismert."},{"q":"Melyik közigazgatás-fejlesztési irányzat érvelt az eredményalapú szemlélet elterjesztése mellett?","a":"Új Weberizmus","t":"MC","w":["New Public Management","Public Choice","New Public Administration"],"e":"Az Új Weberizmus az eredményességet a jogállami keretek megtartásával kívánja ötvözni – ez az eredményalapú szemlélet."},{"q":"Az etika erkölcsi parancsok kódexe.","a":"IGAZ","t":"IF","e":"Az etika valóban az erkölcsi elvek, magatartási normák rendszerbe foglalása – erkölcsi parancsok kódexeként is értelmezhető."},{"q":"Kinek a hatáskörébe tartozik a közkegyelem gyakorlása?","a":"Az Országgyűlés hatáskörébe","t":"MC","w":["A köztársasági elnök hatáskörébe","A Kormány hatáskörébe","A Kúria hatáskörébe"],"e":"A közkegyelmet (amnesztia) az Országgyűlés gyakorolja törvénnyel – az egyéni kegyelmezési jog a köztársasági elnöké."},{"q":"Miniszteri rendeletet a hatáskörrel rendelkező miniszter írja alá.","a":"IGAZ","t":"IF","e":"A miniszteri rendeletet az adott tárgykörben hatáskörrel rendelkező miniszter írja alá és a Magyar Közlönyben hirdetik ki."},{"q":"Hogyan érvényesítheti a munkáltató a Kttv.-ből származó igényét?","a":"Csak bírósági úton","t":"MC","w":["Közigazgatási úton is","Hatósági határozattal","Végrehajtási eljárással"],"e":"A Kttv. szerint a munkáltatónak a köztisztviselővel szembeni igényét kizárólag bíróság előtt lehet érvényesíteni."},{"q":"A birák függetlenek, és csak a törvénynek vannak alárendelve, ítélkezési tevékenységükkel összefüggésben nem befolyásolhatók.","a":"IGAZ","t":"IF","e":"Az Alaptörvény rögzíti a bírói függetlenség elvét: a bírák csak a törvénynek vannak alárendelve, utasítani nem lehet őket."},{"q":"Mikor született a Schuman-nyilatkozat?","a":"1950. május 9-én","t":"MC","w":["1951. április 18-án","1957. március 25-én","1952. január 1-jén"],"e":"Robert Schuman francia külügyminiszter 1950. május 9-én tette közzé az európai integráció alapjait lefektető nyilatkozatát."},{"q":"Hányadik életév betöltésekor szűnik meg a közszolgálati jogviszony?","a":"70. életévkor","t":"MC","w":["62. életévkor","65. életévkor","72. életévkor"],"e":"A Kttv. szerint a 70. életév betöltésekor a közszolgálati jogviszony automatikusan megszűnik."},{"q":"Az alapilletmény eltérítésére polgármesteri hivatalban ki állapíthat meg személyi illetményt?","a":"A jegyző","t":"MC","w":["A polgármester","A képviselő-testület","Az alpolgármester"],"e":"A polgármesteri hivatalban a kimagasló teljesítményt nyújtó köztisztviselők számára a JEGYZŐ állapíthat meg személyi illetményt."},{"q":"A legtöbb közigazgatási ügy hivatalból indul.","a":"HAMIS","t":"IF","e":"NEM – a közigazgatási ügyek többsége kérelemre indul, az ügyfelek kérik az eljárás megindítását. Hivatalból csak kivételesen indul eljárás."},{"q":"A dokumentum továbbítása történhet az átadókönyv segítségével.","a":"IGAZ","t":"IF","e":"Az átadókönyv az iratkezelés egyik eszköze, amellyel az iratok belső továbbítása nyomon követhető és dokumentálható."},{"q":"A Kormány mely programja tűzte ki célul a közigazgatás hatékonyabbá tételét?","a":"A Magyary Program","t":"MC","w":["Az Ereky Program","A Moór Program","A Jó Állam Program"],"e":"A Magyary Program (2011) a közigazgatás megújítását célzó stratégiai program, amelyet Magyary Zoltán munkásságára alapozva dolgoztak ki."},{"q":"Lisszaboni Szerződés aláírásának éve?","a":"2007","t":"MC","w":["2004","2009","2012"],"e":"A Lisszaboni Szerződést 2007. december 13-án írták alá, és 2009. december 1-jén lépett hatályba."},{"q":"Mi a polgármesteri hivatal?","a":"A képviselő-testület hivatala","t":"MC","w":["A polgármester személyi titkársága","A közigazgatási hivatal helyi szerve","Az önkormányzat ügynöksége"],"e":"A polgármesteri hivatal a képviselő-testület munkaszervező és végrehajtó hivatala – nem a polgármester személyi apparátusa."}];
-const L=['A','B','C','D'];
-let qs=[],cur=0,ok=0,ans=false;
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
-function startQuiz(){
-  const cnt=parseInt(document.getElementById('q-count').value);
-  const typ=document.getElementById('q-type').value;
-  let pool=typ==='IF'?ALL_QS.filter(q=>q.t==='IF'):typ==='MC'?ALL_QS.filter(q=>q.t==='MC'):[...ALL_QS];
-  shuffle(pool);qs=pool.slice(0,Math.min(cnt,pool.length));cur=0;ok=0;
-  showScreen('quiz-screen');render();
-}
-function render(){
-  ans=false;const q=qs[cur],tot=qs.length;
-  document.getElementById('q-num').textContent=(cur+1)+'. / '+tot;
-  document.getElementById('q-live').textContent='✓ '+ok;
-  document.getElementById('qprog-fill').style.width=((cur/tot)*100)+'%';
-  document.getElementById('q-badge').textContent=q.t==='IF'?'Igaz / Hamis':'Feleletválasztós';
-  document.getElementById('q-text').textContent=q.q;
-  document.getElementById('fb').style.display='none';document.getElementById('fb').className='fb';
-  document.getElementById('next-btn').style.display='none';document.getElementById('opts').innerHTML='';
-  const opts=q.t==='IF'?['IGAZ','HAMIS']:[q.a,...(q.w||[])];
-  if(q.t!=='IF')shuffle(opts);
-  opts.forEach((v,i)=>{
-    const b=document.createElement('button');b.className='opt';
-    b.innerHTML='<span class="opt-l">'+L[i]+'</span><span>'+v+'</span>';
-    b.dataset.v=v;b.onclick=()=>check(b,q);
-    document.getElementById('opts').appendChild(b);
-  });
-}
-function check(clicked,q){
-  if(ans)return;ans=true;
-  const sel=clicked.dataset.v;
-  const c=q.t==='IF'?sel.toUpperCase()===q.a.toUpperCase():sel.trim()===q.a.trim();
-  if(c)ok++;
-  document.querySelectorAll('.opt').forEach(b=>b.disabled=true);
-  if(c){clicked.classList.add('correct')}
-  else{clicked.classList.add('wrong');document.querySelectorAll('.opt').forEach(b=>{const m=q.t==='IF'?b.dataset.v.toUpperCase()===q.a.toUpperCase():b.dataset.v.trim()===q.a.trim();if(m)b.classList.add('reveal');})}
-  const fb=document.getElementById('fb');fb.style.display='block';
-  if(c){
-    fb.className='fb ok';
-    fb.innerHTML='<div class="fb-ans">✅ Helyes!</div>'+(q.e?'<div class="fb-exp">💡 '+q.e+'</div>':'');
-  } else {
-    fb.className='fb err';
-    fb.innerHTML='<div class="fb-ans">❌ Helytelen. A helyes válasz: <strong>'+q.a+'</strong></div>'+(q.e?'<div class="fb-exp">💡 '+q.e+'</div>':'');
-  }
-  setTimeout(()=>document.getElementById('next-btn').style.display='block',300);
-}
-function nextQ(){cur++;if(cur>=qs.length)showScore();else render();}
-function showScore(){
-  showScreen('score-screen');
-  const pct=Math.round((ok/qs.length)*100);
-  const i=pct<40?0:pct<55?1:pct<70?2:pct<85?3:4;
-  const D=[{e:'😢',t:'Sajnos nem sikerült',s:'Ne adja fel!',c:'#c0392b',g:'Elégtelen (1)'},{e:'😕',t:'Még gyakorolni kell',s:'Egy kis ismétlés segít.',c:'#e67e22',g:'Elégséges (2)'},{e:'🙂',t:'Jó kezdet!',s:'Haladás érezhető!',c:'#2980b9',g:'Közepes (3)'},{e:'😊',t:'Szép eredmény!',s:'Nagyon jól teljesített!',c:'#27ae60',g:'Jó (4)'},{e:'🎉',t:'Kitűnő!',s:'Gratulálunk!',c:'#1a2744',g:'Jeles (5)'}];
-  const d=D[i];
-  document.getElementById('sc-e').textContent=d.e;document.getElementById('sc-t').textContent=d.t;
-  document.getElementById('sc-s').textContent=d.s;document.getElementById('sc-n').textContent=ok;
-  document.getElementById('sc-d').textContent='/ '+qs.length+' helyes ('+pct+'%)';
-  const f=document.getElementById('sc-bf');f.style.background=d.c;setTimeout(()=>f.style.width=pct+'%',60);
-  const g=document.getElementById('sc-g');g.textContent=d.g;g.style.cssText='background:'+d.c+'22;color:'+d.c+';border:2px solid '+d.c+'44';
-}
-function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}}
-</script>
-</body>
-</html>
+// =============================================================
+//  KÉRDÉSBANK
+// =============================================================
+const MODULOK = {
+  1: "Alkotmányos és jogi alapismeretek",
+  2: "Közigazgatási alapismeretek",
+  3: "Európai Uniós alapismeretek",
+  4: "Gazdálkodási és pénzügyi alapismeretek",
+  5: "Adatvédelem és Információbiztonság",
+  6: "Szervezetek működése",
+  7: "Nemzetpolitika"
+};
+
+// Kérdés típusok: IF = igaz/hamis, MC = multiple choice
+const KERDESEK = [
+
+// ── 1. MODUL ─────────────────────────────────────────────────
+{m:1,t:"IF",k:"A bírói és a közigazgatási jogalkalmazás azonos fogalmak.",j:"HAMIS",m2:"A bírói jogalkalmazás az igazságszolgáltatáshoz, míg a közigazgatási a végrehajtó hatalomhoz tartozik."},
+{m:1,t:"IF",k:"A bíróság többnyire hivatalból járhat el.",j:"HAMIS",m2:"A bíróság főszabályként kérelemre, nem hivatalból jár el."},
+{m:1,t:"IF",k:"A bírósági felülvizsgálat feltétele, hogy az ügyfél a jogerős határozatot jogsértőnek tartja.",j:"IGAZ"},
+{m:1,t:"IF",k:"A bírósági jogalkalmazás a végrehajtó hatalmi ághoz tartozik.",j:"HAMIS",m2:"A bírói jogalkalmazás az igazságszolgáltatási hatalmi ághoz tartozik."},
+{m:1,t:"IF",k:"A jogalkalmazás során az egyedi ügyekben hoznak döntéseket a közhatalmi szervek.",j:"IGAZ"},
+{m:1,t:"IF",k:"A jogi személyeknek vannak személyes adataik.",j:"HAMIS",m2:"Személyes adat kizárólag természetes személyhez kapcsolható."},
+{m:1,t:"IF",k:"A jogvitát eldöntő jogalkalmazói tevékenység egy korábban létrejött jogviszonyt ítél meg.",j:"IGAZ"},
+{m:1,t:"IF",k:"Jogi normát kizárólag az Országgyűlés alkothat.",j:"HAMIS",m2:"Más szervek (pl. Kormány, miniszterek, önkormányzatok) is alkothatnak jogi normákat."},
+{m:1,t:"IF",k:"Az alkotmánybírák lehetnek politikai párt tagjai, csak nem folytathatnak politikai tevékenységet.",j:"HAMIS",m2:"Az alkotmánybírák semmilyen párttagsággal sem rendelkezhetnek."},
+{m:1,t:"IF",k:"Az Alkotmánybíróság általában nincs határidőhöz kötve.",j:"IGAZ"},
+{m:1,t:"IF",k:"Az Alkotmánybíróság része a rendes bíróságok szervezetrendszerének.",j:"HAMIS",m2:"Az Alkotmánybíróság különálló, az alkotmányosság védelmét ellátó szerv."},
+{m:1,t:"IF",k:"Az alapvető jogok biztosa évente beszámol az Országgyűlésnek tevékenységéről.",j:"IGAZ"},
+{m:1,t:"IF",k:"A köztársasági elnök személye sérthetetlen, és döntéseiért sem politikai, sem jogi felelősséggel nem tartozik.",j:"IGAZ"},
+{m:1,t:"MC",k:"Hány évre választják a köztársasági elnököt?",v:["3 évre","4 évre","5 évre","6 évre"],j:2,m2:"A köztársasági elnököt 5 évre választják, és legfeljebb egyszer lehet újraválasztani."},
+{m:1,t:"MC",k:"Hányszor lehet újraválasztani a köztársasági elnököt?",v:["Nem lehet","Egyszer","Kétszer","Korlátlan alkalommal"],j:1},
+{m:1,t:"MC",k:"Hány tagja van az Alkotmánybíróságnak?",v:["9","11","15","21"],j:2},
+{m:1,t:"MC",k:"Hány évre választják az Alkotmánybíróság tagjait?",v:["6 évre","9 évre","12 évre","15 évre"],j:2},
+{m:1,t:"MC",k:"Ki választja meg az Alkotmánybíróság tagjait?",v:["A Kormány","A Köztársasági Elnök","Az Országgyűlés","A Kúria"],j:2},
+{m:1,t:"MC",k:"Melyik a jogforrási hierarchia csúcsa Magyarországon?",v:["A Kormányrendelet","A Törvény","Az Alaptörvény","A Miniszteri rendelet"],j:2},
+{m:1,t:"MC",k:"Kinek van kötelessége jelezni a képviselő-testületnek, ha döntésüknél jogszabálysértést észlel?",v:["A polgármesternek","A jegyzőnek","Az alpolgármesternek","Az ombudsmannak"],j:1,m2:"A jegyző az önkormányzatnál a törvényesség őre."},
+{m:1,t:"MC",k:"Kinek a hatáskörébe tartozik a közkegyelem gyakorlása?",v:["A Kormánynak","A Köztársasági Elnöknek","Az Országgyűlésnek","Az Alkotmánybíróságnak"],j:2},
+{m:1,t:"IF",k:"A Liszaboni Szerződés az Európai Uniót jogi személlyé tette.",j:"IGAZ"},
+{m:1,t:"IF",k:"Az országgyűlési képviselőket mentelmi jog illeti meg, amelynek két eleme a felelőtlenség és a sérthetetlenség.",j:"IGAZ"},
+
+// ── 2. MODUL ─────────────────────────────────────────────────
+{m:2,t:"IF",k:"A közigazgatás működése alapvetően jogalkalmazás.",j:"IGAZ"},
+{m:2,t:"IF",k:"A közigazgatási és az igazságszolgáltatási jogalkalmazás azonos tevékenység.",j:"HAMIS"},
+{m:2,t:"IF",k:"A közigazgatási hatósági jogalkalmazói tevékenység a bírói jogalkalmazás egyik speciális formája.",j:"HAMIS",m2:"A kettő különálló tevékenység, a közigazgatási a végrehajtó hatalomhoz tartozik."},
+{m:2,t:"IF",k:"A közigazgatási változások két alapvető típusa a reform és az innováció.",j:"IGAZ"},
+{m:2,t:"IF",k:"A közigazgatási szervek jogalkalmazó tevékenysége az ügyfél kérelmére vagy hivatalból kerül sor.",j:"IGAZ"},
+{m:2,t:"IF",k:"A legtöbb közigazgatási ügy hivatalból indul.",j:"HAMIS",m2:"A legtöbb közigazgatási ügy kérelemre indul."},
+{m:2,t:"IF",k:"A reform felülről lefelé irányuló folyamat.",j:"IGAZ"},
+{m:2,t:"IF",k:"Az innováció alulról fölfelé irányuló, konkrét kérdést befolyásoló folyamat.",j:"IGAZ"},
+{m:2,t:"IF",k:"A Magyary Program egyik stratégiai célkitűzése a belső eljárások racionalizálása.",j:"IGAZ"},
+{m:2,t:"IF",k:"A fellebbezésben új tények és bizonyítékok is felhozhatók.",j:"IGAZ"},
+{m:2,t:"IF",k:"A vizsgálat során a másodfokú hatóság kötve van a fellebbezésben foglaltakhoz.",j:"HAMIS",m2:"A másodfokú hatóság a fellebbezési kérelem korlátain túl is vizsgálódhat."},
+{m:2,t:"IF",k:"A döntés közlésétől számított 1 éven belül lehet hivatalból felülvizsgálati eljárást indítani.",j:"IGAZ"},
+{m:2,t:"IF",k:"A hatóság az ügy érdemében végzést bocsát ki.",j:"HAMIS",m2:"Az ügy érdemében határozatot hoz a hatóság, végzést csak eljárási kérdésekben."},
+{m:2,t:"IF",k:"A hatóság az illetékességét az eljárás minden szakaszában vizsgálni köteles.",j:"IGAZ"},
+{m:2,t:"IF",k:"A közigazgatási hatósági eljárás hivatalos nyelve főszabály szerint a magyar.",j:"IGAZ"},
+{m:2,t:"IF",k:"A fővárosi és megyei kormányhivatalok integrált ügyfélszolgálatot működtetnek, amelyet kormányablaknak nevezünk.",j:"IGAZ"},
+{m:2,t:"IF",k:"A hatóságok jogalkalmazó tevékenységük mellett egyéb közhatalmi funkciókat is ellátnak.",j:"IGAZ"},
+{m:2,t:"IF",k:"A KET. eljárási alapelvként rögzíti, hogy az ügyfeleket megilleti a tisztességes eljáráshoz való jog.",j:"IGAZ"},
+{m:2,t:"IF",k:"A kérelmet mindig tartalma alapján kell megítélni, még akkor is, ha az ügyfél más megnevezést használt.",j:"IGAZ"},
+{m:2,t:"IF",k:"Az ügyfél a közigazgatási eljárásban csak személyesen járhat el.",j:"HAMIS",m2:"Az ügyfél képviselettel (meghatalmazott, törvényes képviselő, ügygondnok) is eljárhat."},
+{m:2,t:"IF",k:"Az ügyfél köteles jóhiszeműen eljárni.",j:"IGAZ"},
+{m:2,t:"IF",k:"Az alapeljárás a közigazgatási eljárás első szakasza, ezért első fokú eljárásnak is hívjuk.",j:"IGAZ"},
+{m:2,t:"MC",k:"Mennyi az általános eljárási határidő a közigazgatási hatósági eljárásban?",v:["8 nap","15 nap","30 nap","60 nap"],j:2},
+{m:2,t:"MC",k:"Hova kell benyújtani a fellebbezési kérelmet?",v:["A másodfokú hatósághoz","Az elsőfokon eljárt hatósághoz","A bírósághoz","A minisztériumhoz"],j:1},
+{m:2,t:"MC",k:"Mennyi időn belül lehet fellebbezést benyújtani (főszabály szerint)?",v:["8 napon belül","15 napon belül","30 napon belül","60 napon belül"],j:1},
+{m:2,t:"MC",k:"Melyik nem a közigazgatási hatósági tevékenység egyik fajtája?",v:["Hatósági ellenőrzés","Hatósági nyilvántartás","Engedélyezési tevékenység","Végrehajtási tevékenység"],j:3,m2:"A végrehajtási tevékenység nem hatósági tevékenységfajta."},
+{m:2,t:"MC",k:"A fellebbezési eljárás kérelemre vagy hivatalból indulhat?",v:["Csak kérelemre","Csak hivatalból","Kérelemre és hivatalból egyaránt","Ez törvény szerint nem meghatározott"],j:0},
+{m:2,t:"MC",k:"Melyik a közigazgatási változástípus, amelynek intézményesülési sémája: tervezés – előzetes értékelés – bevezetés?",v:["Innováció","Reform","Dereguláció","Modernizáció"],j:1},
+{m:2,t:"MC",k:"Melyik közigazgatás-fejlesztési irányzat érvelt az eredményalapú szemlélet elterjesztése mellett?",v:["New Public Administration","Public Choice","Új Weberizmus","Jó kormányzás"],j:2},
+{m:2,t:"MC",k:"Mi a neve a Magyary Program azon tervének, amely a legmegfelelőbb elhelyezés és felszerelés biztosítását tűzi ki célul?",v:["Magyary terv","Ereky terv","Moór terv","Széchenyi terv"],j:1},
+{m:2,t:"MC",k:"A Magyary Program melyik hatékonyság-összetevőjére jellemző, hogy a feladatvégrehajtás követhető, szükség esetén befolyásolható és számon kérhető?",v:["Eredményes","Alkalmazkodó","Felügyelhető","Takarékos"],j:2},
+{m:2,t:"IF",k:"A Kormány üléseire általában hetenként egyszer kerül sor.",j:"IGAZ"},
+{m:2,t:"IF",k:"A kormánybizottság helyi illetékességgel rendelkezik.",j:"HAMIS",m2:"A kormánybizottság országos hatáskörű, nem helyi illetékességű."},
+{m:2,t:"IF",k:"A kormányrendeletet a miniszterelnök írja alá.",j:"IGAZ"},
+{m:2,t:"IF",k:"A kormánytagok rendeletei csak végrehajtási típusúak lehetnek.",j:"IGAZ"},
+{m:2,t:"MC",k:"A kormánytisztviselőt le kell menteni a munkavégzési kötelezettség alól a felmentési idő legalább mekkora hányadá
