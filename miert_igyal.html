@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ma miért igyál? — Magyar Receptek</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&family=Crimson+Pro:wght@300;400;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --paprika:#C1351D; --paprika-dark:#8B1A0E; --paprika-glow:rgba(193,53,29,.12);
+    --cream:#FDF6EC; --warm-white:#FFFCF5; --wheat:#E8D5B7;
+    --dark:#2A1810; --dark-soft:#4A3528; --gold:#D4A843; --gold-light:rgba(212,168,67,.14);
+    --border:#E0D0BB;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{min-height:100%}
+  body{
+    font-family:'Source Serif 4',Georgia,serif; color:var(--dark);
+    background:
+      radial-gradient(ellipse at 15% 12%, var(--paprika-glow) 0%, transparent 45%),
+      radial-gradient(ellipse at 85% 88%, var(--gold-light) 0%, transparent 45%),
+      var(--cream);
+    min-height:100dvh; display:flex; flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.10;
+    background-image:
+      repeating-linear-gradient(0deg,transparent,transparent 49px,var(--border) 49px,var(--border) 50px),
+      repeating-linear-gradient(90deg,transparent,transparent 49px,var(--border) 49px,var(--border) 50px);
+  }
+  .topbar,main,footer{position:relative;z-index:1}
+
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;gap:1rem;
+    padding:.7rem 1.2rem;border-bottom:1px solid var(--border);
+    background:rgba(253,246,236,.9);backdrop-filter:blur(10px);position:sticky;top:0;
+  }
+  .brand{font-family:'Playfair Display',serif;font-weight:700;font-size:1.05rem;color:var(--dark)}
+  .brand em{color:var(--paprika);font-style:italic}
+  .navlink{
+    font-family:'Crimson Pro',serif;font-size:.82rem;font-weight:600;letter-spacing:.05em;
+    color:var(--dark-soft);text-decoration:none;border:1px solid var(--border);
+    border-radius:100px;padding:.35rem .9rem;background:var(--warm-white);
+    transition:all .2s;white-space:nowrap;
+  }
+  .navlink:hover{border-color:var(--paprika);color:var(--paprika)}
+
+  main{
+    flex:1;display:flex;flex-direction:column;align-items:center;gap:1.4rem;
+    padding:1.8rem 1.4rem 2.4rem;text-align:center;max-width:640px;margin:0 auto;width:100%;
+  }
+  .badge{
+    display:inline-flex;align-items:center;gap:.4rem;background:var(--paprika);color:#fff;
+    font-family:'Crimson Pro',serif;font-size:.72rem;font-weight:600;letter-spacing:.22em;
+    text-transform:uppercase;padding:.4rem 1.1rem;border-radius:100px;
+  }
+
+  .datenav{display:flex;align-items:center;gap:.4rem}
+  .arrow{
+    width:38px;height:38px;flex:0 0 auto;border:1px solid var(--border);
+    background:var(--warm-white);color:var(--dark);border-radius:50%;
+    font-size:1.1rem;line-height:1;cursor:pointer;display:flex;align-items:center;
+    justify-content:center;transition:all .18s;
+  }
+  .arrow:hover{border-color:var(--paprika);color:var(--paprika)}
+  .date-label{position:relative}
+  .date-label .txt{
+    font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--dark);
+    padding:2px 12px;min-width:150px;cursor:pointer;border-bottom:1px solid transparent;
+    transition:border-color .18s;display:inline-block;
+  }
+  .date-label .txt:hover{border-bottom-color:var(--paprika)}
+  .date-label input[type=date]{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+  .today-link{background:none;border:none;color:var(--dark-soft);font-family:'Crimson Pro',serif;font-size:.8rem;cursor:pointer;text-decoration:underline}
+  .today-link:hover{color:var(--paprika)}
+  .today-link[hidden]{display:none}
+
+  #stage{width:100%;display:flex;flex-direction:column;justify-content:center;min-height:38dvh}
+  .fact{animation:rise .5s ease both}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.fact{animation:none}}
+  .lead{font-family:'Crimson Pro',serif;font-style:italic;font-size:clamp(1rem,4vw,1.3rem);color:var(--paprika);margin-bottom:.7rem}
+  .body{
+    font-family:'Playfair Display',serif;font-weight:700;
+    font-size:clamp(1.7rem,6.6vw,2.7rem);line-height:1.16;color:var(--dark);
+    letter-spacing:-.01em;text-wrap:balance;
+  }
+  .cheers{font-family:'Crimson Pro',serif;font-style:italic;font-size:clamp(1rem,3.7vw,1.25rem);color:var(--dark-soft);margin-top:1rem;text-wrap:balance}
+  .chip{
+    display:inline-block;margin-top:1.2rem;font-family:'Crimson Pro',serif;font-size:.7rem;
+    font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+    background:var(--gold-light);color:#a9822f;border-radius:100px;padding:.28rem .9rem;
+  }
+  .fact a.src{display:block;margin-top:1rem;color:var(--dark-soft);font-family:'Crimson Pro',serif;font-size:.8rem;text-decoration:underline}
+  .fact a.src:hover{color:var(--paprika)}
+  .state{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--dark-soft)}
+  .state small{display:block;font-family:'Crimson Pro',serif;font-size:.85rem;margin-top:.6rem}
+  .netnote{margin-top:1.2rem;font-family:'Crimson Pro',serif;font-size:.82rem;color:var(--dark-soft)}
+  .linkbtn{background:none;border:none;padding:0;color:var(--paprika);font-size:.82rem;cursor:pointer;text-decoration:underline;font-family:inherit}
+
+  .cta{
+    font-family:'Crimson Pro',serif;font-weight:600;font-size:1.05rem;letter-spacing:.02em;
+    background:var(--paprika);color:#fff;border:none;border-radius:100px;padding:.85rem 2.2rem;
+    cursor:pointer;transition:background .18s,transform .1s;box-shadow:0 6px 22px rgba(193,53,29,.22);
+  }
+  .cta:hover{background:var(--paprika-dark)}
+  .cta:active{transform:translateY(1px)}
+  .cta:disabled{opacity:.5;cursor:default}
+
+  footer{text-align:center;padding:2.2rem 1.4rem;background:var(--dark);color:var(--wheat);font-family:'Crimson Pro',serif}
+  .footer-brand{font-family:'Playfair Display',serif;font-weight:700;font-size:1.2rem;margin-bottom:.4rem}
+  footer p{font-size:.82rem;opacity:.75;max-width:520px;margin:0 auto;line-height:1.55}
+  footer a{color:var(--wheat)}
+  footer a:hover{color:#fff}
+
+  :focus-visible{outline:2px solid var(--paprika);outline-offset:2px}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 18px;border-radius:100px;font-size:.9rem;opacity:0;pointer-events:none;transition:.2s;z-index:2}
+  .toast.show{opacity:1}
+  .toast[hidden]{display:none}
+</style>
+</head>
+<body>
+  <nav class="topbar">
+    <div class="brand">Ma miért <em>igyál?</em> 🍒</div>
+    <a class="navlink" href="index.html">← Receptek</a>
+  </nav>
+
+  <main>
+    <div class="badge">🍒 Ezen a napon</div>
+
+    <div class="datenav">
+      <button class="arrow" id="prev" aria-label="Előző nap">‹</button>
+      <label class="date-label">
+        <span class="txt" id="dateText">…</span>
+        <input type="date" id="datePicker" aria-label="Válassz dátumot" />
+      </label>
+      <button class="arrow" id="next" aria-label="Következő nap">›</button>
+    </div>
+    <button class="today-link" id="todayBtn" hidden>ugrás a mai napra</button>
+
+    <div id="stage" aria-live="polite">
+      <div class="state">Lapozok a történelemben…</div>
+    </div>
+
+    <button class="cta" id="reroll">másik indok</button>
+  </main>
+
+  <footer>
+    <div class="footer-brand">Magyar Receptek</div>
+    <p>Az évfordulós tények a <a id="wikiLink" href="https://hu.wikipedia.org" target="_blank" rel="noopener">magyar Wikipédiáról</a> valók (CC BY-SA). Koccints rá egyet — sörre, borra vagy akár limonádéra. A lényeg a „miért”. 🍒</p>
+  </footer>
+
+  <div class="toast" id="toast" hidden></div>
+
+<script>
+const HU_MONTHS = ["Január","Február","Március","Április","Május","Június","Július","Augusztus","Szeptember","Október","November","December"];
+const KINDS = {
+  esemeny:  {label:"esemény",   verb:"történt"},
+  szuletes: {label:"születés",  verb:"született"},
+  halalozas:{label:"halálozás", verb:"hunyt el"}
+};
+
+/* koccintós indokok a történelmi tényekhez */
+const DRINK={
+  esemeny:[
+    "Ilyen nap után igenis jár egy korty. Egészségedre! 🍻",
+    "{N} év távlatából ezt már illik megünnepelni.",
+    "Történelmi pillanat. Történelmi korty. Logikus.",
+    "Ha ez megtörtént, te is megérdemelsz egy pohárral.",
+    "Erre a hírre koccintani kell. Így szokás."
+  ],
+  szuletes:[
+    "Ma van a szülinapja (nagyjából). Idd meg az egészségére! 🥂",
+    "Világra jött egy híresség — ez épp elég ok egy pohárra.",
+    "{N} gyertya sok lenne a tortán. Egy pohár épp elég.",
+    "Egy legenda született ma. Emelj rá poharat!"
+  ],
+  halalozas:[
+    "Emeljünk poharat az emlékére. 🕯️🍷",
+    "Az élet rövid — {N} éve is kiderült. Igyál a mának.",
+    "Rá is, magadra is: egészségedre.",
+    "Egy korty a tiszteletére. Ennyivel tartozunk."
+  ],
+  general:[
+    "Bármi is ez, koccintani sosem árt. 🍻",
+    "Ez így önmagában elég indok, nem?",
+    "Erre igyál. A többit majd kitaláljuk.",
+    "A múlt megtörtént, a pohár tele. Egészségedre!"
+  ]
+};
+
+/* tisztán vicces napi ürügyek */
+const FUNNY=[
+  "Ma olyan nap van, aminek a nevében nincs benne, hogy „ne igyál”.",
+  "A hűtőben lévő sör magányos. Ez már-már etikai kérdés. 🍺",
+  "Valahol a Földön épp koccintanak. Ne lógj ki a sorból.",
+  "A dínók kihaltak, te viszont nem. 1:0 ide. Erre iszunk.",
+  "Forog a Föld 1670 km/h-val. Kicsit szédülsz? Az még nem a sör.",
+  "Megértetted ezt a mondatot? Akkor élsz. Egészségedre!",
+  "Holnap valamikor úgyis hétfő lesz. Előzd meg egy pohárral.",
+  "A víz is folyadék. Csak mondom. 💧",
+  "Ma nem kellett tűzoltót hívnod. Ünnepeld meg.",
+  "A tudomány szerint* a péntek folyékony. (*nem tudomány)",
+  "Idáig sikeresen túlélted a mai napot. Ez bőven megér egy koccintást.",
+  "A pohár félig tele. Optimista vagy — jutalmazd meg magad.",
+  "Épp most nem téged támadott meg egy medve. Erre inni kell.",
+  "A naptár szerint ma van ma. Ritka alkalom. Használd ki.",
+  "Ötmilliárd év múlva a Nap úgyis felrobban. Addig is: egészségedre."
+];
+
+function drinkReason(kind, ya){
+  const base=(DRINK[kind]||[]).concat(DRINK.general);
+  const t=base[Math.floor(Math.random()*base.length)];
+  return t.replace(/\{N\}/g, (ya!=null && ya>0) ? ya : "sok");
+}
+
+/* ---------- válogatott gyöngyszemek: valódi, röhejes évfordulók ----------
+   kulcs: "HH-NN"  (hónap-nap, két számjegy)                              */
+const GEMS = {
+  "01-01":[{year:1962,text:"A Decca lemezcég visszautasította a Beatlest ezzel az indokkal: „a gitáros zenekaroknak lőttek”.",drink:"A történelem legrosszabb döntéseire is illik inni. Egészségedre!"}],
+  "01-15":[{year:1919,text:"Bostonban szétrobbant egy óriási tartály, és kb. 2 millió liter ragadós melasz zúdult végig a városon 50 km/h-val.",drink:"Ha a melasz ilyen veszélyes, a sör kifejezetten biztonságos. Koccints rá!"}],
+  "01-17":[{year:1920,text:"Ezen a napon lépett életbe az amerikai szesztilalom. Több mint 13 évig hivatalosan tilos volt inni.",drink:"A tiltakozás jegyében: emeld a poharad. Ők nem tehették."}],
+  "01-30":[{year:1962,text:"Egy tanzániai iskolában kitört a nevetőjárvány — a röhögés hónapokig terjedt, iskolákat kellett bezárni miatta.",drink:"A nevetés ma ragályos. Segíts terjeszteni — egy pohárral könnyebb."}],
+  "01-31":[{year:1961,text:"Az USA egy Ham nevű csimpánzt lőtt fel az űrbe, aki épségben vissza is tért.",drink:"Egy majom ma az űrben járt. A minimum egy koccintás a tiszteletére."}],
+  "02-25":[{year:1942,text:"Los Angeles fölött a hadsereg órákig lőtte az eget egy „ellenséges gép” miatt, ami sosem létezett (alighanem egy meteorológiai léggömb volt).",drink:"Ma a sereg a semmivel háborúzott. Te legalább valódi sörrel."}],
+  "03-03":[{year:1876,text:"Kentucky egén a semmiből húsdarabok kezdtek hullani egy farmra — a mai napig vitatott, mi volt.",drink:"Ma húst esett az ég. Ha ez nem ok egy sörre, semmi sem az."}],
+  "03-10":[{year:1876,text:"Elhangzott az első telefonhívás. A történelmi első mondat egy „gyere ide” volt a szomszéd szobába.",drink:"Hívd fel a haverod — de nem a szomszéd szobából. Egy sörre."}],
+  "04-01":[{year:1957,text:"A BBC komoly hírműsorban tálalta, hogy Svájcban spagetti terem a fákon — és nézők ezrei hitték el.",drink:"A hiszékenységre is inni kell. Csak óvatosan, mit hiszel el a harmadik után."}],
+  "04-18":[{year:1930,text:"A BBC rádió bemondta, hogy „ma nincs hír”, majd 15 percig zenét játszott helyette.",drink:"Bárcsak minden nap ilyen lenne. Erre a nyugalomra: 🍻"}],
+  "04-23":[{year:1516,text:"Bajorországban törvénybe iktatták, mi mehet a sörbe (víz, komló, árpa) — ez a világ egyik legrégebbi élelmiszertörvénye.",drink:"Több mint 500 éve véd a rossz sörtől egy törvény. Tiszteld meg egy jóval."}],
+  "05-08":[{year:1886,text:"Először árulták a Coca-Colát — eredetileg gyógyszernek szánták fejfájásra és fáradtságra.",drink:"Régen a kóla volt az orvosság. A sör is az — bizonyos szempontból. Egészségedre!"}],
+  "05-23":[{year:1618,text:"A prágai defenesztrációnál feldühödött csehek kihajítottak két hivatalnokot az ablakon — egy trágyadombra estek, és túlélték.",drink:"Ma valakit kidobtak az ablakon, és a szar mentette meg. Igyál a szerencsére!"}],
+  "06-04":[{year:1923,text:"Frank Hayes lett az egyetlen zsoké, aki holtan nyert lóversenyt: verseny közben meghalt, de a ló elsőként futott be.",drink:"Ma valaki holtan is győzött. Neked élve is menni fog egy koccintás."}],
+  "06-15":[{year:1859,text:"Egy brit disznó megevett pár amerikai krumplit egy vitatott szigeten — a „disznóháborúból” majdnem valódi háború lett két nagyhatalom közt.",drink:"Ma egy disznó majdnem világháborút robbantott. Te csak egy sört robbants be."}],
+  "06-18":[{year:1875,text:"Dublinban kigyulladt egy whiskyraktár, és égő whisky folyt az utcákon. A 13 halott nem a tűztől halt meg — hanem mert felitták az utcáról.",drink:"Ma whisky folyt az utcán. A tanulság: pohárból biztonságosabb. Egészségedre!"}],
+  "07-09":[{year:1850,text:"Zachary Taylor amerikai elnök állítólag túl sok cseresznyétől és tejtől halt meg egy július 4-i ünnepségen.",drink:"Ma egy elnököt a cseresznye vitt el. A sör statisztikailag biztonságosabb desszert."}],
+  "07-14":[{year:1518,text:"Strasbourgban kitört a táncjárvány: emberek napokig, megállás nélkül táncoltak az utcán, néhányan a kimerültségbe.",drink:"Ma halálra táncolták magukat. Te csak addig ropd, míg jólesik — egy sörrel."}],
+  "08-15":[{year:1977,text:"Egy rádióteleszkóp 72 másodpercig fogott egy erős, ismeretlen jelet az űrből — a „Wow!-jelet” a mai napig nem fejtették meg.",drink:"Ma talán egy földönkívüli írt nekünk. Illik válaszolni egy koccintással."}],
+  "08-25":[{year:1835,text:"A New York Sun azt írta, hogy teleszkóppal denevérembereket és egyszarvúakat láttak a Holdon. Sokan komolyan elhitték.",drink:"Ma denevéremberek éltek a Holdon (állítólag). Erre inni kell, mielőtt kijózanodsz."}],
+  "08-27":[{year:1896,text:"Lezajlott a történelem legrövidebb háborúja: Nagy-Britannia és Zanzibár között kb. 38 perc alatt eldőlt minden.",drink:"Ma egy háború rövidebb volt, mint egy sör elfogyasztása. Verhetetlen tempó."}],
+  "08-30":[{year:1904,text:"A Saint Louis-i olimpiai maratonon a „győztest” egy darabon kocsival vitték, egy másik futót pedig sztrichninnel és konyakkal doppingoltak végig.",drink:"Ma az olimpián konyak volt a doppingszer. A mai szabályok lazábbak — igyál nyugodtan."}],
+  "08-31":[{year:1897,text:"Edison szabadalmaztatta a mozigépet — a korai változatban egy kukucskálón át, egyszerre EGYETLEN ember nézhette a filmet.",drink:"130+ éve a mozi egy lyuk volt a dobozon. Ma már sör is jár hozzá. Ünnepeld!"},{year:2006,text:"Megkerült Munch két ellopott festménye, köztük a világhírű „Sikoly” — két év után, meglepően jó állapotban.",drink:"Ma a Sikoly hazatalált. Ez épp elég ok egy megkönnyebbült pohárra."}],
+  "09-01":[{year:1985,text:"Robert Ballard expedíciója megtalálta a Titanic roncsát a tengerfenéken — 73 évvel az elsüllyedése után, 3800 méter mélyen.",drink:"Ma megkerült a Titanic. A te hajód, a sör, sokkal biztonságosabb — süllyeszd el nyugodtan."},{year:1859,text:"A Carrington-esemény: óriási napkitörés érte a Földet, világszerte sarki fény ragyogott, a távírógépek pedig szikráztak és áram nélkül is működtek.",drink:"Ma a Nap megőrült és szikráztak a gépek. Erre inni kell, amíg a wifi még megy."},{year:1878,text:"Emma Nutt lett a világ első női telefonközpontosa Bostonban — állítólag több száz számot tudott fejből.",drink:"Ma kapcsolták az első telefonos hölgyet. Hívd fel a haverod egy sörre — élőszóban."}],
+  "09-03":[{year:1967,text:"Dagen H: Svédország egyetlen reggel, egyszerre állt át a bal oldali közlekedésről a jobb oldalira. Az egész ország.",drink:"Ma egy ország váltott oldalt. Te csak válts át a következő pohárra."}],
+  "09-05":[{year:1698,text:"Nagy Péter orosz cár adót vetett ki a szakállra — aki bozontos akart maradni, fizetett érte.",drink:"Örülj, hogy ma csak a sörödért kell fizetni, nem az arcszőrzetedért. Egészségedre!"}],
+  "09-13":[{year:1922,text:"New Yorkban kitört a szalmakalap-lázadás: napokig verekedtek az utcán azon, illik-e szeptember után még szalmakalapot hordani.",drink:"Ma kalap miatt verekedtek napokig. Neked sokkal értelmesebb okod van egy sörre."}],
+  "09-17":[{year:1859,text:"Egy csődbe ment San Franciscó-i üzletember kikiáltotta magát „az Egyesült Államok császárának”, és a város évekig komolyan játszotta a szerepet.",drink:"Ma valaki császárrá tette magát. Ma este te vagy a saját kocsmád császára. Koccints!"}],
+  "09-19":[{year:1982,text:"Egy kutató elsőként javasolta a :-) használatát az interneten, hogy jelezzék, mi a vicc. Megszületett a hangulatjel.",drink:"Az emberiség sosem volt már ugyanaz. Egy mosolyra: 🙂🍻"}],
+  "09-27":[{year:1986,text:"Cleveland egyszerre engedett fel 1,5 millió léggömböt egy rekordért — totál káosz, lezárt reptér és balesetek lettek belőle.",drink:"Ma 1,5 millió lufi ment félre. A te terved egyszerűbb: egy sör. Az működni fog."}],
+  "10-08":[{year:1784,text:"A „fazékháborúban” egy holland–német tengeri összecsapás egyetlen lövéssel véget ért — és az a lövés csak egy leveses fazekat talált el.",drink:"Ma egy háború egyetlen áldozata egy fazék leves volt. Erre iszunk — a fazékra!"},{year:1871,text:"Kitört a chicagói nagy tűzvész — a legenda szerint egy tehén rúgta fel a lámpást, amitől leégett a fél város.",drink:"Ne légy tehén: csak egy sört gyújts be ma este, ne egy várost."}],
+  "10-17":[{year:1814,text:"Londonban szétrobbant egy hatalmas sörtartály, és több mint egymillió liter sör árasztotta el a városnegyedet.",drink:"Ma egy egész negyedet sör öntött el. A történelem üzen valamit — hallgass rá."}],
+  "10-18":[{year:1963,text:"Franciaország fellőtt egy Félicette nevű macskát az űrbe — ő az első (és lényegében egyetlen) macska, aki járt odafent, és épségben visszatért.",drink:"Ma egy macska járt az űrben. Ha ő megtette, te megérdemelsz egy pohárral!"}],
+  "11-02":[{year:1932,text:"Ausztrália hadserege géppuskával vonult a termést pusztító emuk ellen — és a madarak nyerték az „emu-háborút”.",drink:"Ma egy hadsereg kikapott a madaraktól. Ünnepeld a csőrös győzteseket egy sörrel."}],
+  "11-15":[{year:1325,text:"Két olasz város azért ment egymásnak háborúba, mert az egyik ellopott egy fa vödröt a másik kútjáról.",drink:"Ma egy vödörért öltek. Neked egy pohár is elég ürügynek — sokkal civilizáltabb."}],
+  "11-24":[{year:1971,text:"D. B. Cooper eltérített egy repülőt, felvette a váltságdíjat, ejtőernyővel kiugrott a semmibe — és soha többé nem látták.",drink:"Ma valaki eltűnt egy zsák pénzzel a felhők közt. Te maradj — a sör itt van."}],
+  "12-05":[{year:1933,text:"Ezen a napon ért véget az amerikai szesztilalom. 13 év után újra legális lett inni.",drink:"Ezt kötelező megünnepelni. Szó szerint erre találták ki a napot. Egészségedre!"}],
+  "12-16":[{year:1773,text:"A bostoni teadélutánon a helyiek adó helyett az egész teaszállítmányt a tengerbe borították.",drink:"Ők kiöntötték a teát a tengerbe. Te maradj a sörnél — azt kár lenne pazarolni."}]
+};
+
+function gemItems(){
+  const key=`${String(selected.getMonth()+1).padStart(2,"0")}-${String(selected.getDate()).padStart(2,"0")}`;
+  return (GEMS[key]||[]).map(g=>({gem:true, year:g.year, text:g.text, drink:g.drink}));
+}
+
+/* fura-detektor: a Wikipédia-eseményeket a vicces/meglepő felé húzza */
+const POS=["első","feltalál","szabadal","rekord","leghosszabb","legrövidebb","legnagyobb","legkisebb","legidősebb","állat","kutya","macska"," ló ","medve","majom","emu","disznó","tehén","madár","űr","hold","bolygó","üstökös","meteor","lufi","léggömb","verseny","bajnok","olimp","tánc","sör","bor ","whisky","csokolád","fagyi","szök","rabl","kaszinó","lottó","ufo","szörny","kísértet","bohóc","cirkusz","kalóz","átver","furcsa","meglep","hoax"];
+const NEG=["csata","hábor","ütközet","hadsereg","offenzív","megszáll","meggyilkol","gyilkos","halál","meghal","elhun","merényl","választ","szavaz","szerződ","egyezmén","alkotmán","törvén","kormán","miniszter","elnök","párt","béke","felkel","népirt","áldozat","bomba","földreng","kivégz","zászló"];
+function scoreEvent(t){
+  const s=" "+t.toLowerCase()+" ";
+  let sc=0;
+  for(const w of POS) if(s.includes(w)) sc+=2;
+  for(const w of NEG) if(s.includes(w)) sc-=3;
+  return sc;
+}
+function weirdEvents(){
+  if(!current) return [];
+  return current.esemeny
+    .map(e=>({e,s:scoreEvent(e.text)}))
+    .filter(x=>x.s>=1)
+    .sort((a,b)=>b.s-a.s)
+    .slice(0,8)
+    .map(x=>x.e);
+}
+
+let selected = new Date();
+let cache = {};          // "MM-DD" -> {esemeny:[],szuletes:[],halalozas:[]}
+let current = null;      // parsed data for selected day
+let filter = "vicces";
+let lastKey = null;      // to avoid repeating the same fact on reroll
+let netFailed = false;   // true if the day couldn't be fetched (offline / blocked webview)
+
+const $ = id => document.getElementById(id);
+const stage = $("stage");
+
+/* ---------- date helpers ---------- */
+function pageTitle(d){ return `${HU_MONTHS[d.getMonth()]} ${d.getDate()}.`; }
+function fmtLabel(d){ return `${HU_MONTHS[d.getMonth()].toLowerCase()} ${d.getDate()}.`; }
+function ymd(d){
+  const m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+function isToday(d){
+  const t=new Date();
+  return d.getDate()===t.getDate() && d.getMonth()===t.getMonth();
+}
+function refYear(d){
+  // "Ma X éve": use the most recent occurrence of this calendar day
+  const now=new Date();
+  const anchor=new Date(now.getFullYear(), d.getMonth(), d.getDate());
+  return anchor>now ? now.getFullYear()-1 : now.getFullYear();
+}
+
+/* ---------- wikitext parsing ---------- */
+function cleanWikitext(s){
+  s = s.replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi,"")
+       .replace(/<ref[^>]*\/>/gi,"")
+       .replace(/<!--[\s\S]*?-->/g,"")
+       .replace(/\{\{[^{}]*\}\}/g,"").replace(/\{\{[^{}]*\}\}/g,"") // templates (2 passes)
+       .replace(/\[\[(?:[^\]|]*\|)?([^\]]+)\]\]/g,"$1")             // [[t|label]] -> label
+       .replace(/\[https?:\/\/[^\s\]]+\s+([^\]]+)\]/g,"$1")         // [url label] -> label
+       .replace(/'''?/g,"")
+       .replace(/&nbsp;/g," ")
+       .replace(/<[^>]+>/g,"")
+       .replace(/\s+/g," ")
+       .trim();
+  return s;
+}
+
+function parseItem(content, kind){
+  const c = cleanWikitext(content);
+  if(!c) return null;
+  // "YYYY – leírás"  (also "i. e. YYYY – ...")
+  let m = c.match(/^(i\.\s*e\.\s*)?(\d{1,4})\.?\s*[–—-]\s*(.+)$/);
+  let bc, year, text;
+  if(m){ bc=!!m[1]; year=parseInt(m[2],10); text=m[3].trim(); }
+  else{
+    const y = c.match(/^(i\.\s*e\.\s*)?(\d{1,4})\b(.*)$/);
+    if(!y) return null;
+    bc=!!y[1]; year=parseInt(y[2],10);
+    text=y[3].replace(/^[\s.:–—-]+/,"").trim();
+  }
+  if(!text || text.length<3) return null;
+  return {bc,year,text,kind};
+}
+
+function parseWikitext(wt){
+  const buckets={esemeny:[],szuletes:[],halalozas:[]};
+  const sec={"Események":"esemeny","Születések":"szuletes","Halálozások":"halalozas"};
+  let cur=null;
+  for(const raw of wt.split("\n")){
+    const line=raw.trim();
+    const h=line.match(/^==\s*([^=].*?)\s*==$/);
+    if(h){ cur=sec[h[1].trim()]||null; continue; }
+    if(!cur) continue;
+    if(line[0]!=="*" || line[1]==="*") continue;   // only single-level bullets
+    const item=parseItem(line.replace(/^\*+\s*/,""), cur);
+    if(item) buckets[cur].push(item);
+  }
+  return buckets;
+}
+
+/* ---------- fetch ---------- */
+async function loadDay(d){
+  const key=`${d.getMonth()}-${d.getDate()}`;
+  if(cache[key]) return cache[key];
+  const title=pageTitle(d);
+  const api=`https://hu.wikipedia.org/w/api.php?action=parse&page=${encodeURIComponent(title)}`
+          + `&prop=wikitext&format=json&formatversion=2&origin=*`;
+  // 1) közvetlen  2) allorigins proxy  3) corsproxy — ha az egyik réteget blokkolja a böngésző
+  const attempts=[
+    api,
+    "https://api.allorigins.win/raw?url="+encodeURIComponent(api),
+    "https://corsproxy.io/?url="+encodeURIComponent(api)
+  ];
+  let lastErr;
+  for(const u of attempts){
+    try{
+      const res=await fetch(u);
+      if(!res.ok) throw new Error("http "+res.status);
+      const j=await res.json();
+      const wt=j && j.parse && j.parse.wikitext;
+      if(!wt) throw new Error("empty");
+      const data=parseWikitext(wt);
+      cache[key]=data;
+      return data;
+    }catch(e){ lastErr=e; }
+  }
+  throw lastErr || new Error("fail");
+}
+
+/* ---------- pool + pick ---------- */
+function funnyItems(){ return FUNNY.map(text=>({funny:true,text})); }
+function poolFor(f){
+  if(f==="urugy") return funnyItems();
+  if(f==="minden"){
+    if(!current) return netFailed ? funnyItems() : [];
+    return [...current.esemeny, ...current.szuletes, ...current.halalozas];
+  }
+  // vicces (alap): valódi, vicces évfordulók — gyöngyszemek + fura wiki-események
+  const gems=gemItems();
+  const weird=weirdEvents();
+  let p = gems.length ? gems.concat(gems, gems, weird) : weird.slice();
+  if(!p.length && current && current.esemeny.length) p = current.esemeny.slice(); // inkább valódi, mint kitalált
+  if(!p.length) p = funnyItems();       // végső eset: nincs net és nincs gyöngyszem
+  return p;
+}
+function pickRandom(){
+  const pool=poolFor(filter);
+  if(!pool.length) return null;
+  if(pool.length===1) return pool[0];
+  let item, key, guard=0;
+  do{
+    item=pool[Math.floor(Math.random()*pool.length)];
+    key=(item.gem?"g":item.funny?"f":"w")+(item.year||"")+item.text;
+    guard++;
+  }while(key===lastKey && guard<16);
+  lastKey=key;
+  return item;
+}
+
+/* ---------- render ---------- */
+let currentText="";
+function renderFact(item){
+  if(!item){
+    stage.innerHTML=`<div class="state">Erre a napra nem találtam feldolgozható tényt.<small>Próbálj másik dátumot vagy kategóriát.</small></div>`;
+    currentText="";
+    return;
+  }
+
+  // vicces mód: önálló ürügy, nem kell hozzá történelem
+  if(item.funny){
+    currentText=`Ma miért igyál? ${item.text}`;
+    const note = (netFailed && filter==="minden")
+      ? `<div class="netnote">A történelmi tényekhez internet kell — addig itt egy offline indok. <button class="linkbtn" id="retry2">Próbáld újra</button></div>`
+      : "";
+    stage.innerHTML=`
+      <div class="fact">
+        <div class="lead">Ma miért igyál?</div>
+        <div class="body">${escapeHtml(item.text)}</div>
+        <div><span class="chip">vicces indok</span></div>
+        ${note}
+      </div>`;
+    const r=$("retry2"); if(r) r.onclick=refresh;
+    return;
+  }
+
+  // válogatott gyöngyszem: valódi, vicces évforduló saját koccintós indokkal
+  if(item.gem){
+    const ya=refYear(selected)-item.year;
+    const lead = ya>0 ? `Ma ${ya} éve (${item.year})` : `${item.year}`;
+    currentText=`${lead}: ${item.text}\n→ ${item.drink}`;
+    stage.innerHTML=`
+      <div class="fact">
+        <div class="lead">${lead}</div>
+        <div class="body">${escapeHtml(item.text)}</div>
+        <div class="cheers">${escapeHtml(item.drink)}</div>
+        <div><span class="chip">igaz sztori 🍒</span></div>
+      </div>`;
+    return;
+  }
+
+  const k=KINDS[item.kind];
+  let lead, ya=null;
+  if(item.bc){
+    lead = `I. e. ${item.year}` + (item.kind==="esemeny" ? "" : ` — ${k.verb}`);
+  }else{
+    ya=refYear(selected)-item.year;
+    const stem = ya>0 ? `Ma ${ya} éve (${item.year})` : `${item.year}`;
+    lead = item.kind==="esemeny" ? stem : `${stem} — ${k.verb}`;
+  }
+  const cheers=drinkReason(item.kind, ya);
+  currentText=`${lead}: ${item.text}\n→ ${cheers}`;
+  stage.innerHTML=`
+    <div class="fact">
+      <div class="lead">${lead}</div>
+      <div class="body">${escapeHtml(item.text)}</div>
+      <div class="cheers">${escapeHtml(cheers)}</div>
+      <div><span class="chip">${k.label}</span></div>
+      <a class="src" href="https://hu.wikipedia.org/wiki/${encodeURIComponent(pageTitle(selected))}" target="_blank" rel="noopener">forrás a Wikipédián</a>
+    </div>`;
+}
+function escapeHtml(s){return s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+
+/* ---------- flow ---------- */
+async function refresh(){
+  stage.innerHTML=`<div class="state">Lapozok a történelemben…</div>`;
+  $("dateText").textContent=fmtLabel(selected);
+  $("datePicker").value=ymd(selected);
+  $("todayBtn").hidden=isToday(selected);
+  $("wikiLink").href=`https://hu.wikipedia.org/wiki/${encodeURIComponent(pageTitle(selected))}`;
+  if(filter==="urugy"){ lastKey=null; renderFact(pickRandom()); return; }
+
+  // ha van válogatott gyöngyszem a napra, mutasd AZONNAL — net nélkül is
+  if(filter==="vicces" && gemItems().length){
+    current=null; netFailed=false; lastKey=null;
+    renderFact(pickRandom());
+    $("reroll").disabled=false;
+    loadDay(selected).then(d=>{current=d;}).catch(()=>{}); // háttérben a wiki a több variációért
+    return;
+  }
+
+  $("reroll").disabled=true;
+  try{
+    current=await loadDay(selected);
+    netFailed=false; lastKey=null;
+    renderFact(pickRandom());
+  }catch(err){
+    current=null; netFailed=true; lastKey=null;
+    renderFact(pickRandom());  // valódi esemény, vagy végső esetben offline indok
+  }finally{
+    $("reroll").disabled=false;
+  }
+}
+function shiftDay(n){
+  selected=new Date(selected.getFullYear(), selected.getMonth(), selected.getDate()+n);
+  refresh();
+}
+
+/* ---------- events ---------- */
+$("prev").onclick=()=>shiftDay(-1);
+$("next").onclick=()=>shiftDay(1);
+$("todayBtn").onclick=()=>{selected=new Date();refresh();};
+$("datePicker").onchange=e=>{
+  const v=e.target.value; if(!v) return;
+  const [y,m,d]=v.split("-").map(Number);
+  selected=new Date(y,m-1,d); refresh();
+};
+$("reroll").onclick=()=>{ renderFact(pickRandom()); };
+document.querySelectorAll(".filters button").forEach(b=>{
+  b.onclick=()=>{
+    filter=b.dataset.f;
+    document.querySelectorAll(".filters button").forEach(x=>x.setAttribute("aria-pressed", x===b));
+    lastKey=null;
+    if(current) renderFact(pickRandom());
+  };
+});
+let toastT;
+function showToast(msg){
+  const t=$("toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),1600);
+}
+
+refresh();
+</script>
+</body>
+</html>
