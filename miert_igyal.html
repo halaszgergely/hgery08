@@ -34,12 +34,13 @@
   .topbar,main,footer{position:relative;z-index:1}
 
   .topbar{
-    display:flex;align-items:center;justify-content:space-between;gap:1rem;
+    display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;row-gap:.5rem;
     padding:.7rem 1.2rem;border-bottom:1px solid var(--border);
     background:rgba(253,246,236,.9);backdrop-filter:blur(10px);position:sticky;top:0;
   }
   .brand{font-family:'Playfair Display',serif;font-weight:700;font-size:1.05rem;color:var(--dark)}
   .brand em{color:var(--paprika);font-style:italic}
+  .topbar-right{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
   .navlink{
     font-family:'Crimson Pro',serif;font-size:.82rem;font-weight:600;letter-spacing:.05em;
     color:var(--dark-soft);text-decoration:none;border:1px solid var(--border);
@@ -47,6 +48,16 @@
     transition:all .2s;white-space:nowrap;
   }
   .navlink:hover{border-color:var(--paprika);color:var(--paprika)}
+
+  .langsel{display:inline-flex;border:1px solid var(--border);border-radius:100px;overflow:hidden;background:var(--warm-white)}
+  .langbtn{
+    font-family:'Crimson Pro',serif;font-size:.78rem;font-weight:600;letter-spacing:.04em;
+    color:var(--dark-soft);background:transparent;border:none;border-right:1px solid var(--border);
+    padding:.35rem .7rem;cursor:pointer;transition:all .18s;
+  }
+  .langbtn:last-child{border-right:none}
+  .langbtn:hover{color:var(--paprika)}
+  .langbtn[aria-pressed="true"]{background:var(--paprika);color:#fff}
 
   main{
     flex:1;display:flex;flex-direction:column;align-items:center;gap:1.4rem;
@@ -124,12 +135,19 @@
 </head>
 <body>
   <nav class="topbar">
-    <div class="brand">Ma miért <em>igyál?</em> 🍒</div>
-    <a class="navlink" href="index.html">← Receptek</a>
+    <div class="brand" id="brand">Ma miért <em>igyál?</em> 🍒</div>
+    <div class="topbar-right">
+      <div class="langsel" id="langsel" role="group" aria-label="Nyelv">
+        <button class="langbtn" data-lang="hu" aria-pressed="true">HU</button>
+        <button class="langbtn" data-lang="en" aria-pressed="false">EN</button>
+        <button class="langbtn" data-lang="pl" aria-pressed="false">PL</button>
+      </div>
+      <a class="navlink" id="navRecipes" href="index.html">← Receptek</a>
+    </div>
   </nav>
 
   <main>
-    <div class="badge">🍒 Ezen a napon</div>
+    <div class="badge" id="badge">🍒 Ezen a napon</div>
 
     <div class="datenav">
       <button class="arrow" id="prev" aria-label="Előző nap">‹</button>
@@ -149,130 +167,523 @@
   </main>
 
   <footer>
-    <div class="footer-brand">Magyar Receptek</div>
-    <p>Az évfordulós tények a <a id="wikiLink" href="https://hu.wikipedia.org" target="_blank" rel="noopener">magyar Wikipédiáról</a> valók (CC BY-SA). Koccints rá egyet — sörre, borra vagy akár limonádéra. A lényeg a „miért”. 🍒</p>
+    <div class="footer-brand" id="footerBrand">Magyar Receptek</div>
+    <p id="footerText">Az évfordulós tények a <a id="wikiLink" href="https://hu.wikipedia.org" target="_blank" rel="noopener">magyar Wikipédiáról</a> valók (CC BY-SA). Koccints rá egyet — sörre, borra vagy akár limonádéra. A lényeg a „miért”. 🍒</p>
   </footer>
 
   <div class="toast" id="toast" hidden></div>
 
 <script>
+/* ============================================================
+   Hónapnevek
+   ============================================================ */
 const HU_MONTHS = ["Január","Február","Március","Április","Május","Június","Július","Augusztus","Szeptember","Október","November","December"];
-const KINDS = {
-  esemeny:  {label:"esemény",   verb:"történt"},
-  szuletes: {label:"születés",  verb:"született"},
-  halalozas:{label:"halálozás", verb:"hunyt el"}
+const EN_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const PL_GEN    = ["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"];
+
+/* ============================================================
+   Nyelvi csomagok
+   ============================================================ */
+const I18N = {
+
+  /* ------------------------------ MAGYAR ------------------------------ */
+  hu:{
+    ui:{
+      htmlLang:"hu",
+      docTitle:"Ma miért igyál? — Magyar Receptek",
+      brand:'Ma miért <em>igyál?</em> 🍒',
+      navRecipes:"← Receptek",
+      badge:"🍒 Ezen a napon",
+      prevAria:"Előző nap",
+      nextAria:"Következő nap",
+      pickAria:"Válassz dátumot",
+      today:"ugrás a mai napra",
+      loading:"Lapozok a történelemben…",
+      reroll:"másik indok",
+      footerBrand:"Magyar Receptek",
+      footerHtml:'Az évfordulós tények a <a id="wikiLink" href="https://hu.wikipedia.org" target="_blank" rel="noopener">magyar Wikipédiáról</a> valók (CC BY-SA). Koccints rá egyet — sörre, borra vagy akár limonádéra. A lényeg a „miért”. 🍒',
+      noFactTitle:"Erre a napra nem találtam feldolgozható tényt.",
+      noFactSmall:"Próbálj másik dátumot.",
+      netnote:"A történelmi tényekhez internet kell — addig itt egy offline indok.",
+      retry:"Próbáld újra",
+      leadFunny:"Ma miért igyál?",
+      chipFunny:"vicces indok",
+      chipGem:"igaz sztori 🍒",
+      srcLabel:"forrás a Wikipédián",
+      langAria:"Nyelv"
+    },
+    wiki:{
+      domain:"hu.wikipedia.org",
+      pageTitle:d=>`${HU_MONTHS[d.getMonth()]} ${d.getDate()}.`,
+      sectionOf:h=>({ "Események":"esemeny","Születések":"szuletes","Halálozások":"halalozas" })[h]||null
+    },
+    dateLabel:d=>`${HU_MONTHS[d.getMonth()].toLowerCase()} ${d.getDate()}.`,
+    ago:(ya,year)=>`Ma ${ya} éve (${year})`,
+    bc:year=>`I. e. ${year}`,
+    kinds:{
+      esemeny:  {label:"esemény",   verb:"történt"},
+      szuletes: {label:"születés",  verb:"született"},
+      halalozas:{label:"halálozás", verb:"hunyt el"}
+    },
+    drink:{
+      esemeny:[
+        "Ilyen nap után igenis jár egy korty. Egészségedre! 🍻",
+        "{N} év távlatából ezt már illik megünnepelni.",
+        "Történelmi pillanat. Történelmi korty. Logikus.",
+        "Ha ez megtörtént, te is megérdemelsz egy pohárral.",
+        "Erre a hírre koccintani kell. Így szokás."
+      ],
+      szuletes:[
+        "Ma van a szülinapja (nagyjából). Idd meg az egészségére! 🥂",
+        "Világra jött egy híresség — ez épp elég ok egy pohárra.",
+        "{N} gyertya sok lenne a tortán. Egy pohár épp elég.",
+        "Egy legenda született ma. Emelj rá poharat!"
+      ],
+      halalozas:[
+        "Emeljünk poharat az emlékére. 🕯️🍷",
+        "Az élet rövid — {N} éve is kiderült. Igyál a mának.",
+        "Rá is, magadra is: egészségedre.",
+        "Egy korty a tiszteletére. Ennyivel tartozunk."
+      ],
+      general:[
+        "Bármi is ez, koccintani sosem árt. 🍻",
+        "Ez így önmagában elég indok, nem?",
+        "Erre igyál. A többit majd kitaláljuk.",
+        "A múlt megtörtént, a pohár tele. Egészségedre!"
+      ]
+    },
+    funny:[
+      "Ma olyan nap van, aminek a nevében nincs benne, hogy „ne igyál”.",
+      "A hűtőben lévő sör magányos. Ez már-már etikai kérdés. 🍺",
+      "Valahol a Földön épp koccintanak. Ne lógj ki a sorból.",
+      "A dínók kihaltak, te viszont nem. 1:0 ide. Erre iszunk.",
+      "Forog a Föld 1670 km/h-val. Kicsit szédülsz? Az még nem a sör.",
+      "Megértetted ezt a mondatot? Akkor élsz. Egészségedre!",
+      "Holnap valamikor úgyis hétfő lesz. Előzd meg egy pohárral.",
+      "A víz is folyadék. Csak mondom. 💧",
+      "Ma nem kellett tűzoltót hívnod. Ünnepeld meg.",
+      "A tudomány szerint* a péntek folyékony. (*nem tudomány)",
+      "Idáig sikeresen túlélted a mai napot. Ez bőven megér egy koccintást.",
+      "A pohár félig tele. Optimista vagy — jutalmazd meg magad.",
+      "Épp most nem téged támadott meg egy medve. Erre inni kell.",
+      "A naptár szerint ma van ma. Ritka alkalom. Használd ki.",
+      "Ötmilliárd év múlva a Nap úgyis felrobban. Addig is: egészségedre."
+    ],
+    pos:["első","feltalál","szabadal","rekord","leghosszabb","legrövidebb","legnagyobb","legkisebb","legidősebb","állat","kutya","macska"," ló ","medve","majom","emu","disznó","tehén","madár","űr","hold","bolygó","üstökös","meteor","lufi","léggömb","verseny","bajnok","olimp","tánc","sör","bor ","whisky","csokolád","fagyi","szök","rabl","kaszinó","lottó","ufo","szörny","kísértet","bohóc","cirkusz","kalóz","átver","furcsa","meglep","hoax"],
+    neg:["csata","hábor","ütközet","hadsereg","offenzív","megszáll","meggyilkol","gyilkos","halál","meghal","elhun","merényl","választ","szavaz","szerződ","egyezmén","alkotmán","törvén","kormán","miniszter","elnök","párt","béke","felkel","népirt","áldozat","bomba","földreng","kivégz","zászló"]
+  },
+
+  /* ------------------------------ ANGOL ------------------------------ */
+  en:{
+    ui:{
+      htmlLang:"en",
+      docTitle:"Why drink today? — Magyar Receptek",
+      brand:'Why drink <em>today?</em> 🍒',
+      navRecipes:"← Recipes",
+      badge:"🍒 On this day",
+      prevAria:"Previous day",
+      nextAria:"Next day",
+      pickAria:"Choose a date",
+      today:"jump to today",
+      loading:"Flipping through history…",
+      reroll:"another reason",
+      footerBrand:"Magyar Receptek",
+      footerHtml:'The anniversary facts come from <a id="wikiLink" href="https://en.wikipedia.org" target="_blank" rel="noopener">English Wikipedia</a> (CC BY-SA). Raise a glass — beer, wine or even lemonade. What matters is the “why.” 🍒',
+      noFactTitle:"Couldn’t find a usable fact for this day.",
+      noFactSmall:"Try another date.",
+      netnote:"Historical facts need the internet — here’s an offline reason in the meantime.",
+      retry:"Try again",
+      leadFunny:"Why drink today?",
+      chipFunny:"just because",
+      chipGem:"true story 🍒",
+      srcLabel:"source on Wikipedia",
+      langAria:"Language"
+    },
+    wiki:{
+      domain:"en.wikipedia.org",
+      pageTitle:d=>`${EN_MONTHS[d.getMonth()]} ${d.getDate()}`,
+      sectionOf:h=>({ "Events":"esemeny","Births":"szuletes","Deaths":"halalozas" })[h]||null
+    },
+    dateLabel:d=>`${EN_MONTHS[d.getMonth()]} ${d.getDate()}`,
+    ago:(ya,year)=>`${ya} years ago today (${year})`,
+    bc:year=>`${year} BC`,
+    kinds:{
+      esemeny:  {label:"event", verb:"happened"},
+      szuletes: {label:"birth", verb:"was born"},
+      halalozas:{label:"death", verb:"died"}
+    },
+    drink:{
+      esemeny:[
+        "After a day like this, you’ve earned a sip. Cheers! 🍻",
+        "{N} years on, this deserves a toast.",
+        "Historic moment. Historic sip. Only logical.",
+        "If this happened, you deserve a glass too.",
+        "News like this calls for a clink. It’s tradition."
+      ],
+      szuletes:[
+        "It’s their birthday (more or less). Drink to their health! 🥂",
+        "A celebrity was born — reason enough for a glass.",
+        "{N} candles would be a lot for one cake. A glass will do.",
+        "A legend was born today. Raise a glass!"
+      ],
+      halalozas:[
+        "Let’s raise a glass to their memory. 🕯️🍷",
+        "Life is short — proven {N} years ago too. Drink to today.",
+        "To them, and to you: cheers.",
+        "A sip in their honor. We owe them that much."
+      ],
+      general:[
+        "Whatever this is, a toast never hurts. 🍻",
+        "That’s reason enough on its own, no?",
+        "Drink to this. We’ll figure out the rest later.",
+        "The past happened, the glass is full. Cheers!"
+      ]
+    },
+    funny:[
+      "Today is a day whose name doesn’t literally say “don’t drink.”",
+      "The beer in your fridge is lonely. It’s practically an ethical issue. 🍺",
+      "Somewhere on Earth people are clinking glasses. Don’t be the odd one out.",
+      "The dinosaurs went extinct, you didn’t. 1–0 for you. Let’s drink to that.",
+      "Earth spins at 1,670 km/h. Feeling dizzy? That’s not the beer yet.",
+      "Did you understand this sentence? Then you’re alive. Cheers!",
+      "At some point tomorrow it’ll be Monday anyway. Get ahead of it with a glass.",
+      "Water is also a liquid. Just saying. 💧",
+      "You didn’t have to call the fire brigade today. Celebrate that.",
+      "According to science* Friday is liquid. (*not science)",
+      "You’ve successfully survived today so far. That’s easily worth a toast.",
+      "The glass is half full. You’re an optimist — reward yourself.",
+      "A bear did not attack you just now. That calls for a drink.",
+      "According to the calendar, today is today. Rare occasion. Seize it.",
+      "In five billion years the Sun will explode anyway. Until then: cheers."
+    ],
+    pos:["first","invent","patent","record","longest","shortest","largest","smallest","oldest","animal","dog","cat","horse","bear","monkey","ape","emu","pig","cow","bird","space","moon","planet","comet","meteor","balloon","race","champion","olympi","dance","beer","wine","whisky","whiskey","chocolate","ice cream","escape","robber","casino","lottery","ufo","monster","ghost","clown","circus","pirate","hoax","prank","weird","strange","surprising"],
+    neg:["battle","war","clash","army","offensive","occup","murder","killed","death","died","assassin","election","vote","treaty","agreement","constitution","law","government","minister","president","party","peace","uprising","genocide","victim","bomb","earthquake","execut","flag"]
+  },
+
+  /* ------------------------------ LENGYEL ------------------------------ */
+  pl:{
+    ui:{
+      htmlLang:"pl",
+      docTitle:"Dlaczego dziś się napić? — Magyar Receptek",
+      brand:'Dlaczego dziś <em>się napić?</em> 🍒',
+      navRecipes:"← Przepisy",
+      badge:"🍒 Tego dnia",
+      prevAria:"Poprzedni dzień",
+      nextAria:"Następny dzień",
+      pickAria:"Wybierz datę",
+      today:"przejdź do dziś",
+      loading:"Kartkuję historię…",
+      reroll:"inny powód",
+      footerBrand:"Magyar Receptek",
+      footerHtml:'Ciekawostki rocznicowe pochodzą z <a id="wikiLink" href="https://pl.wikipedia.org" target="_blank" rel="noopener">polskiej Wikipedii</a> (CC BY-SA). Wznieś toast — piwem, winem albo choćby lemoniadą. Liczy się „dlaczego”. 🍒',
+      noFactTitle:"Nie znalazłem sensownej ciekawostki na ten dzień.",
+      noFactSmall:"Spróbuj innej daty.",
+      netnote:"Do faktów historycznych potrzebny jest internet — na razie masz tu powód offline.",
+      retry:"Spróbuj ponownie",
+      leadFunny:"Dlaczego dziś się napić?",
+      chipFunny:"ot tak",
+      chipGem:"prawdziwa historia 🍒",
+      srcLabel:"źródło na Wikipedii",
+      langAria:"Język"
+    },
+    wiki:{
+      domain:"pl.wikipedia.org",
+      pageTitle:d=>`${d.getDate()} ${PL_GEN[d.getMonth()]}`,
+      sectionOf:h=>{
+        if(/Wydarzenia/i.test(h)) return "esemeny";
+        if(/Urodz/i.test(h))      return "szuletes";
+        if(/Zmarli|Zgony/i.test(h)) return "halalozas";
+        return null;
+      }
+    },
+    dateLabel:d=>`${d.getDate()} ${PL_GEN[d.getMonth()]}`,
+    ago:(ya,year)=>`${ya} lat temu (${year})`,
+    bc:year=>`${year} p.n.e.`,
+    kinds:{
+      esemeny:  {label:"wydarzenie", verb:"wydarzyło się"},
+      szuletes: {label:"narodziny",  verb:"urodził się"},
+      halalozas:{label:"śmierć",     verb:"zmarł"}
+    },
+    drink:{
+      esemeny:[
+        "Po takim dniu należy ci się łyk. Na zdrowie! 🍻",
+        "Po {N} latach wypada to uczcić.",
+        "Historyczna chwila. Historyczny łyk. Logiczne.",
+        "Skoro to się wydarzyło, tobie też należy się kieliszek.",
+        "Na taką wiadomość trzeba się stuknąć. Tak każe tradycja."
+      ],
+      szuletes:[
+        "Dziś (mniej więcej) ma urodziny. Wypij za jego zdrowie! 🥂",
+        "Na świat przyszła sława — to wystarczający powód na kieliszek.",
+        "{N} świeczek to dużo na torcie. Kieliszek w zupełności wystarczy.",
+        "Dziś narodziła się legenda. Wznieś toast!"
+      ],
+      halalozas:[
+        "Wznieśmy kieliszek ku jego pamięci. 🕯️🍷",
+        "Życie jest krótkie — {N} lat temu też się to okazało. Pij za dziś.",
+        "Za niego i za siebie: na zdrowie.",
+        "Łyk na jego cześć. Tyle jesteśmy mu winni."
+      ],
+      general:[
+        "Cokolwiek to jest, toast nigdy nie zaszkodzi. 🍻",
+        "To samo w sobie wystarczający powód, nie?",
+        "Wypij za to. Resztę wymyślimy później.",
+        "Przeszłość się wydarzyła, kieliszek pełny. Na zdrowie!"
+      ]
+    },
+    funny:[
+      "Dziś jest dzień, w którego nazwie nie ma napisu „nie pij”.",
+      "Piwo w lodówce jest samotne. To niemal kwestia etyczna. 🍺",
+      "Gdzieś na Ziemi właśnie się stukają. Nie odstawaj od reszty.",
+      "Dinozaury wymarły, a ty nie. 1:0 dla ciebie. Za to pijemy.",
+      "Ziemia kręci się z prędkością 1670 km/h. Kręci ci się w głowie? To jeszcze nie piwo.",
+      "Zrozumiałeś to zdanie? Czyli żyjesz. Na zdrowie!",
+      "Jutro i tak w pewnym momencie będzie poniedziałek. Uprzedź go kieliszkiem.",
+      "Woda też jest płynem. Tak tylko mówię. 💧",
+      "Dziś nie musiałeś dzwonić po straż pożarną. Uczcij to.",
+      "Według nauki* piątek jest płynny. (*to nie nauka)",
+      "Jak dotąd udało ci się przeżyć dzisiejszy dzień. To spokojnie warte toastu.",
+      "Szklanka jest do połowy pełna. Jesteś optymistą — nagrodź się.",
+      "Przed chwilą nie zaatakował cię niedźwiedź. Za to trzeba wypić.",
+      "Według kalendarza dziś jest dziś. Rzadka okazja. Wykorzystaj ją.",
+      "Za pięć miliardów lat Słońce i tak wybuchnie. A do tego czasu: na zdrowie."
+    ],
+    pos:["pierwsz","wynalaz","patent","rekord","najdłuższ","najkrótsz","największ","najmniejsz","najstarsz","zwierz","pies","kot","koń","niedźwiedź","małpa","emu","świni","krowa","ptak","kosmos","księżyc","planeta","kometa","meteor","balon","wyścig","mistrz","olimp","taniec","tańc","piwo","wino","whisky","czekolad","lody","ucieczk","rabuś","kasyno","loteri","ufo","potwór","duch","klaun","cyrk","pirat","oszust","dziwn","zaskak"],
+    neg:["bitwa","wojn","starcie","armia","ofensyw","okupac","morderstw","zabił","zabity","śmier","zmarł","zamach","wybor","głosow","traktat","porozumien","konstytuc","ustaw","rząd","minist","prezydent","parti","pokój","powstan","ludobój","ofiar","bomba","trzęsien","egzekuc","flaga"]
+  }
 };
 
-/* koccintós indokok a történelmi tényekhez */
-const DRINK={
-  esemeny:[
-    "Ilyen nap után igenis jár egy korty. Egészségedre! 🍻",
-    "{N} év távlatából ezt már illik megünnepelni.",
-    "Történelmi pillanat. Történelmi korty. Logikus.",
-    "Ha ez megtörtént, te is megérdemelsz egy pohárral.",
-    "Erre a hírre koccintani kell. Így szokás."
-  ],
-  szuletes:[
-    "Ma van a szülinapja (nagyjából). Idd meg az egészségére! 🥂",
-    "Világra jött egy híresség — ez épp elég ok egy pohárra.",
-    "{N} gyertya sok lenne a tortán. Egy pohár épp elég.",
-    "Egy legenda született ma. Emelj rá poharat!"
-  ],
-  halalozas:[
-    "Emeljünk poharat az emlékére. 🕯️🍷",
-    "Az élet rövid — {N} éve is kiderült. Igyál a mának.",
-    "Rá is, magadra is: egészségedre.",
-    "Egy korty a tiszteletére. Ennyivel tartozunk."
-  ],
-  general:[
-    "Bármi is ez, koccintani sosem árt. 🍻",
-    "Ez így önmagában elég indok, nem?",
-    "Erre igyál. A többit majd kitaláljuk.",
-    "A múlt megtörtént, a pohár tele. Egészségedre!"
-  ]
+/* ============================================================
+   Válogatott gyöngyszemek — közös évszám, nyelvenkénti szöveg
+   kulcs: "HH-NN"
+   ============================================================ */
+const GEMS = {
+  "01-01":[{year:1962,
+    hu:{text:"A Decca lemezcég visszautasította a Beatlest ezzel az indokkal: „a gitáros zenekaroknak lőttek”.",drink:"A történelem legrosszabb döntéseire is illik inni. Egészségedre!"},
+    en:{text:"The Decca record label rejected the Beatles, reasoning that “guitar groups are on the way out.”",drink:"Even history’s worst decisions deserve a toast. Cheers!"},
+    pl:{text:"Wytwórnia Decca odrzuciła Beatlesów, tłumacząc, że „gitarowe zespoły to już przeszłość”.",drink:"Za najgorsze decyzje w historii też wypada wypić. Na zdrowie!"}}],
+  "01-15":[{year:1919,
+    hu:{text:"Bostonban szétrobbant egy óriási tartály, és kb. 2 millió liter ragadós melasz zúdult végig a városon 50 km/h-val.",drink:"Ha a melasz ilyen veszélyes, a sör kifejezetten biztonságos. Koccints rá!"},
+    en:{text:"A giant tank burst in Boston and about 2 million liters of sticky molasses swept through the streets at 50 km/h.",drink:"If molasses is this dangerous, beer is downright safe. Drink to that!"},
+    pl:{text:"W Bostonie pękł ogromny zbiornik i około 2 miliony litrów lepkiej melasy runęło ulicami z prędkością 50 km/h.",drink:"Skoro melasa jest tak groźna, piwo jest zdecydowanie bezpieczne. Za to wypij!"}}],
+  "01-17":[{year:1920,
+    hu:{text:"Ezen a napon lépett életbe az amerikai szesztilalom. Több mint 13 évig hivatalosan tilos volt inni.",drink:"A tiltakozás jegyében: emeld a poharad. Ők nem tehették."},
+    en:{text:"On this day American Prohibition came into force. For over 13 years drinking was officially banned.",drink:"In protest: raise your glass. They couldn’t."},
+    pl:{text:"Tego dnia weszła w życie amerykańska prohibicja. Przez ponad 13 lat picie było oficjalnie zakazane.",drink:"W ramach protestu: podnieś kieliszek. Oni nie mogli."}}],
+  "01-30":[{year:1962,
+    hu:{text:"Egy tanzániai iskolában kitört a nevetőjárvány — a röhögés hónapokig terjedt, iskolákat kellett bezárni miatta.",drink:"A nevetés ma ragályos. Segíts terjeszteni — egy pohárral könnyebb."},
+    en:{text:"A laughter epidemic broke out in a Tanzanian school — the giggling spread for months and schools had to close.",drink:"Laughter is contagious today. Help it spread — it’s easier with a glass."},
+    pl:{text:"W tanzańskiej szkole wybuchła epidemia śmiechu — chichot rozprzestrzeniał się miesiącami i trzeba było zamykać szkoły.",drink:"Śmiech jest dziś zaraźliwy. Pomóż go szerzyć — z kieliszkiem łatwiej."}}],
+  "01-31":[{year:1961,
+    hu:{text:"Az USA egy Ham nevű csimpánzt lőtt fel az űrbe, aki épségben vissza is tért.",drink:"Egy majom ma az űrben járt. A minimum egy koccintás a tiszteletére."},
+    en:{text:"The US launched a chimpanzee named Ham into space, and he returned safely.",drink:"A monkey went to space today. The least you can do is toast to him."},
+    pl:{text:"USA wysłały w kosmos szympansa o imieniu Ham, który wrócił cało.",drink:"Dziś małpa była w kosmosie. Minimum to toast na jej cześć."}}],
+  "02-25":[{year:1942,
+    hu:{text:"Los Angeles fölött a hadsereg órákig lőtte az eget egy „ellenséges gép” miatt, ami sosem létezett (alighanem egy meteorológiai léggömb volt).",drink:"Ma a sereg a semmivel háborúzott. Te legalább valódi sörrel."},
+    en:{text:"Over Los Angeles the army shelled the sky for hours because of an “enemy aircraft” that never existed (likely a weather balloon).",drink:"Today the army went to war with nothing. At least you’ve got real beer."},
+    pl:{text:"Nad Los Angeles wojsko godzinami ostrzeliwało niebo z powodu „wrogiego samolotu”, który nigdy nie istniał (prawdopodobnie balon meteorologiczny).",drink:"Dziś wojsko wojowało z niczym. Ty przynajmniej masz prawdziwe piwo."}}],
+  "03-03":[{year:1876,
+    hu:{text:"Kentucky egén a semmiből húsdarabok kezdtek hullani egy farmra — a mai napig vitatott, mi volt.",drink:"Ma húst esett az ég. Ha ez nem ok egy sörre, semmi sem az."},
+    en:{text:"Chunks of meat began falling from the sky onto a Kentucky farm out of nowhere — to this day no one is sure what it was.",drink:"Meat rained from the sky today. If that’s not a reason for a beer, nothing is."},
+    pl:{text:"Na farmę w Kentucky zaczęły znikąd spadać z nieba kawałki mięsa — do dziś nie wiadomo, co to było.",drink:"Dziś z nieba padało mięso. Jeśli to nie powód na piwo, to nic nim nie jest."}}],
+  "03-10":[{year:1876,
+    hu:{text:"Elhangzott az első telefonhívás. A történelmi első mondat egy „gyere ide” volt a szomszéd szobába.",drink:"Hívd fel a haverod — de nem a szomszéd szobából. Egy sörre."},
+    en:{text:"The first telephone call was made. The historic first sentence was a “come here” to the next room.",drink:"Call your buddy — but not from the next room. For a beer."},
+    pl:{text:"Wykonano pierwszą rozmowę telefoniczną. Historycznym pierwszym zdaniem było „chodź tu” do sąsiedniego pokoju.",drink:"Zadzwoń do kumpla — ale nie z sąsiedniego pokoju. Na piwo."}}],
+  "04-01":[{year:1957,
+    hu:{text:"A BBC komoly hírműsorban tálalta, hogy Svájcban spagetti terem a fákon — és nézők ezrei hitték el.",drink:"A hiszékenységre is inni kell. Csak óvatosan, mit hiszel el a harmadik után."},
+    en:{text:"The BBC reported on a serious news program that spaghetti grows on trees in Switzerland — and thousands of viewers believed it.",drink:"Gullibility deserves a drink too. Just be careful what you believe after the third one."},
+    pl:{text:"BBC w poważnym programie informacyjnym podało, że w Szwajcarii spaghetti rośnie na drzewach — i uwierzyły w to tysiące widzów.",drink:"Za łatwowierność też trzeba wypić. Tylko uważaj, w co wierzysz po trzecim."}}],
+  "04-18":[{year:1930,
+    hu:{text:"A BBC rádió bemondta, hogy „ma nincs hír”, majd 15 percig zenét játszott helyette.",drink:"Bárcsak minden nap ilyen lenne. Erre a nyugalomra: 🍻"},
+    en:{text:"BBC radio announced that “there is no news today” and played music for 15 minutes instead.",drink:"If only every day were like this. To that peace and quiet: 🍻"},
+    pl:{text:"Radio BBC ogłosiło, że „dziś nie ma żadnych wiadomości”, i zamiast nich puściło 15 minut muzyki.",drink:"Gdyby tylko każdy dzień taki był. Za ten spokój: 🍻"}}],
+  "04-23":[{year:1516,
+    hu:{text:"Bajorországban törvénybe iktatták, mi mehet a sörbe (víz, komló, árpa) — ez a világ egyik legrégebbi élelmiszertörvénye.",drink:"Több mint 500 éve véd a rossz sörtől egy törvény. Tiszteld meg egy jóval."},
+    en:{text:"Bavaria wrote into law what could go into beer (water, hops, barley) — one of the world’s oldest food laws.",drink:"A law has protected you from bad beer for over 500 years. Honor it with a good one."},
+    pl:{text:"Bawaria wpisała do prawa, co może trafić do piwa (woda, chmiel, jęczmień) — to jedno z najstarszych praw żywnościowych świata.",drink:"Od ponad 500 lat prawo chroni cię przed złym piwem. Uczcij je dobrym."}}],
+  "05-08":[{year:1886,
+    hu:{text:"Először árulták a Coca-Colát — eredetileg gyógyszernek szánták fejfájásra és fáradtságra.",drink:"Régen a kóla volt az orvosság. A sör is az — bizonyos szempontból. Egészségedre!"},
+    en:{text:"Coca-Cola was sold for the first time — originally intended as a medicine for headaches and fatigue.",drink:"Cola used to be medicine. So is beer — in a sense. Cheers!"},
+    pl:{text:"Po raz pierwszy sprzedano Coca-Colę — pierwotnie jako lek na ból głowy i zmęczenie.",drink:"Dawniej cola była lekarstwem. Piwo też — w pewnym sensie. Na zdrowie!"}}],
+  "05-23":[{year:1618,
+    hu:{text:"A prágai defenesztrációnál feldühödött csehek kihajítottak két hivatalnokot az ablakon — egy trágyadombra estek, és túlélték.",drink:"Ma valakit kidobtak az ablakon, és a szar mentette meg. Igyál a szerencsére!"},
+    en:{text:"At the Defenestration of Prague, furious Czechs threw two officials out a window — they landed on a dung heap and survived.",drink:"Someone got thrown out a window today and the dung saved them. Drink to luck!"},
+    pl:{text:"Podczas defenestracji praskiej rozwścieczeni Czesi wyrzucili dwóch urzędników przez okno — spadli na gnojówkę i przeżyli.",drink:"Dziś kogoś wyrzucono przez okno, a gnój go uratował. Wypij za szczęście!"}}],
+  "06-04":[{year:1923,
+    hu:{text:"Frank Hayes lett az egyetlen zsoké, aki holtan nyert lóversenyt: verseny közben meghalt, de a ló elsőként futott be.",drink:"Ma valaki holtan is győzött. Neked élve is menni fog egy koccintás."},
+    en:{text:"Frank Hayes became the only jockey to win a race while dead: he died mid-race, but the horse finished first.",drink:"Someone won today even while dead. You can manage a toast while alive."},
+    pl:{text:"Frank Hayes został jedynym dżokejem, który wygrał wyścig, będąc martwym: zmarł w trakcie, ale koń dobiegł pierwszy.",drink:"Dziś ktoś wygrał nawet martwy. Ty na żywo dasz radę wznieść toast."}}],
+  "06-15":[{year:1859,
+    hu:{text:"Egy brit disznó megevett pár amerikai krumplit egy vitatott szigeten — a „disznóháborúból” majdnem valódi háború lett két nagyhatalom közt.",drink:"Ma egy disznó majdnem világháborút robbantott. Te csak egy sört robbants be."},
+    en:{text:"A British pig ate some American potatoes on a disputed island — the “Pig War” nearly became a real war between two great powers.",drink:"A pig almost started a world war today. You just start a beer."},
+    pl:{text:"Brytyjska świnia zjadła kilka amerykańskich ziemniaków na spornej wyspie — „wojna o świnię” omal nie stała się prawdziwą wojną dwóch mocarstw.",drink:"Dziś świnia omal nie wywołała wojny światowej. Ty tylko odpal piwo."}}],
+  "06-18":[{year:1875,
+    hu:{text:"Dublinban kigyulladt egy whiskyraktár, és égő whisky folyt az utcákon. A 13 halott nem a tűztől halt meg — hanem mert felitták az utcáról.",drink:"Ma whisky folyt az utcán. A tanulság: pohárból biztonságosabb. Egészségedre!"},
+    en:{text:"A whiskey warehouse caught fire in Dublin and burning whiskey ran through the streets. The 13 dead didn’t die from the fire — but from drinking it off the street.",drink:"Whiskey ran through the streets today. The moral: from a glass it’s safer. Cheers!"},
+    pl:{text:"W Dublinie zapalił się magazyn whisky i płonąca whisky płynęła ulicami. 13 ofiar nie zginęło od ognia — lecz dlatego, że zbierali ją z ulicy i pili.",drink:"Dziś whisky płynęła ulicami. Morał: z kieliszka jest bezpieczniej. Na zdrowie!"}}],
+  "07-09":[{year:1850,
+    hu:{text:"Zachary Taylor amerikai elnök állítólag túl sok cseresznyétől és tejtől halt meg egy július 4-i ünnepségen.",drink:"Ma egy elnököt a cseresznye vitt el. A sör statisztikailag biztonságosabb desszert."},
+    en:{text:"US President Zachary Taylor reportedly died from too many cherries and milk at a Fourth of July celebration.",drink:"A president was done in by cherries today. Beer is statistically the safer dessert."},
+    pl:{text:"Prezydent USA Zachary Taylor podobno zmarł od nadmiaru wiśni i mleka na obchodach 4 lipca.",drink:"Dziś prezydenta wykończyły wiśnie. Piwo to statystycznie bezpieczniejszy deser."}}],
+  "07-14":[{year:1518,
+    hu:{text:"Strasbourgban kitört a táncjárvány: emberek napokig, megállás nélkül táncoltak az utcán, néhányan a kimerültségbe.",drink:"Ma halálra táncolták magukat. Te csak addig ropd, míg jólesik — egy sörrel."},
+    en:{text:"The dancing plague broke out in Strasbourg: people danced in the streets for days without stopping, some to the point of exhaustion.",drink:"People danced themselves to death today. You just dance while it feels good — with a beer."},
+    pl:{text:"W Strasburgu wybuchła epidemia tańca: ludzie tańczyli na ulicach całymi dniami bez przerwy, niektórzy do wyczerpania.",drink:"Dziś zatańczyli się na śmierć. Ty tańcz tylko póki miło — z piwem."}}],
+  "08-15":[{year:1977,
+    hu:{text:"Egy rádióteleszkóp 72 másodpercig fogott egy erős, ismeretlen jelet az űrből — a „Wow!-jelet” a mai napig nem fejtették meg.",drink:"Ma talán egy földönkívüli írt nekünk. Illik válaszolni egy koccintással."},
+    en:{text:"A radio telescope picked up a strong, unknown signal from space for 72 seconds — the “Wow! signal” has never been decoded.",drink:"Maybe an alien wrote to us today. It’s only polite to reply with a toast."},
+    pl:{text:"Radioteleskop przez 72 sekundy odebrał silny, nieznany sygnał z kosmosu — „sygnału Wow!” do dziś nie rozszyfrowano.",drink:"Może dziś napisał do nas kosmita. Wypada odpowiedzieć toastem."}}],
+  "08-25":[{year:1835,
+    hu:{text:"A New York Sun azt írta, hogy teleszkóppal denevérembereket és egyszarvúakat láttak a Holdon. Sokan komolyan elhitték.",drink:"Ma denevéremberek éltek a Holdon (állítólag). Erre inni kell, mielőtt kijózanodsz."},
+    en:{text:"The New York Sun wrote that bat-people and unicorns had been spotted on the Moon through a telescope. Many took it seriously.",drink:"Bat-people lived on the Moon today (allegedly). Drink to it before you sober up."},
+    pl:{text:"New York Sun napisał, że przez teleskop dostrzeżono na Księżycu ludzi-nietoperze i jednorożce. Wielu wzięło to na poważnie.",drink:"Dziś na Księżycu żyli ludzie-nietoperze (podobno). Wypij za to, zanim wytrzeźwiejesz."}}],
+  "08-27":[{year:1896,
+    hu:{text:"Lezajlott a történelem legrövidebb háborúja: Nagy-Britannia és Zanzibár között kb. 38 perc alatt eldőlt minden.",drink:"Ma egy háború rövidebb volt, mint egy sör elfogyasztása. Verhetetlen tempó."},
+    en:{text:"The shortest war in history took place: everything was decided between Britain and Zanzibar in about 38 minutes.",drink:"A war today was shorter than finishing a beer. Unbeatable pace."},
+    pl:{text:"Odbyła się najkrótsza wojna w historii: między Wielką Brytanią a Zanzibarem wszystko rozstrzygnęło się w około 38 minut.",drink:"Dziś wojna była krótsza niż wypicie piwa. Nie do pobicia tempo."}}],
+  "08-30":[{year:1904,
+    hu:{text:"A Saint Louis-i olimpiai maratonon a „győztest” egy darabon kocsival vitték, egy másik futót pedig sztrichninnel és konyakkal doppingoltak végig.",drink:"Ma az olimpián konyak volt a doppingszer. A mai szabályok lazábbak — igyál nyugodtan."},
+    en:{text:"At the St. Louis Olympic marathon, the “winner” was driven part of the way by car, and another runner was dosed with strychnine and brandy the whole race.",drink:"Brandy was the doping agent at the Olympics today. Today’s rules are looser — drink up."},
+    pl:{text:"Na olimpijskim maratonie w Saint Louis „zwycięzcę” część trasy podwieziono samochodem, a innego biegacza przez cały bieg dopingowano strychniną i koniakiem.",drink:"Dziś na olimpiadzie środkiem dopingującym był koniak. Dziś przepisy są luźniejsze — pij spokojnie."}}],
+  "08-31":[{year:1897,
+    hu:{text:"Edison szabadalmaztatta a mozigépet — a korai változatban egy kukucskálón át, egyszerre EGYETLEN ember nézhette a filmet.",drink:"130+ éve a mozi egy lyuk volt a dobozon. Ma már sör is jár hozzá. Ünnepeld!"},
+    en:{text:"Edison patented the movie machine — in the early version, a single person at a time watched the film through a peephole.",drink:"130+ years ago the cinema was a hole in a box. Now beer comes with it. Celebrate!"},
+    pl:{text:"Edison opatentował maszynę do filmów — we wczesnej wersji film oglądała przez wizjer tylko JEDNA osoba naraz.",drink:"Ponad 130 lat temu kino było dziurką w pudełku. Dziś dochodzi do tego piwo. Świętuj!"}},
+  {year:2006,
+    hu:{text:"Megkerült Munch két ellopott festménye, köztük a világhírű „Sikoly” — két év után, meglepően jó állapotban.",drink:"Ma a Sikoly hazatalált. Ez épp elég ok egy megkönnyebbült pohárra."},
+    en:{text:"Two stolen Munch paintings, including the world-famous “The Scream,” were recovered after two years, in surprisingly good condition.",drink:"The Scream came home today. That’s plenty of reason for a relieved glass."},
+    pl:{text:"Odnaleziono dwa skradzione obrazy Muncha, w tym słynny „Krzyk” — po dwóch latach, w zaskakująco dobrym stanie.",drink:"Dziś „Krzyk” wrócił do domu. To wystarczający powód na kieliszek z ulgą."}}],
+  "09-01":[{year:1985,
+    hu:{text:"Robert Ballard expedíciója megtalálta a Titanic roncsát a tengerfenéken — 73 évvel az elsüllyedése után, 3800 méter mélyen.",drink:"Ma megkerült a Titanic. A te hajód, a sör, sokkal biztonságosabb — süllyeszd el nyugodtan."},
+    en:{text:"Robert Ballard’s expedition found the wreck of the Titanic on the sea floor — 73 years after it sank, 3,800 meters deep.",drink:"The Titanic turned up today. Your ship, the beer, is far safer — sink it freely."},
+    pl:{text:"Ekspedycja Roberta Ballarda odnalazła wrak Titanica na dnie morza — 73 lata po zatonięciu, na głębokości 3800 metrów.",drink:"Dziś odnalazł się Titanic. Twój statek, czyli piwo, jest znacznie bezpieczniejszy — topij go śmiało."}},
+  {year:1859,
+    hu:{text:"A Carrington-esemény: óriási napkitörés érte a Földet, világszerte sarki fény ragyogott, a távírógépek pedig szikráztak és áram nélkül is működtek.",drink:"Ma a Nap megőrült és szikráztak a gépek. Erre inni kell, amíg a wifi még megy."},
+    en:{text:"The Carrington Event: a massive solar flare hit Earth, auroras glowed worldwide, and telegraphs sparked and ran even without power.",drink:"The Sun went crazy today and machines sparked. Drink to it while the wifi still works."},
+    pl:{text:"Zdarzenie Carringtona: potężny rozbłysk słoneczny uderzył w Ziemię, na całym świecie świeciły zorze, a telegrafy iskrzyły i działały nawet bez zasilania.",drink:"Dziś Słońce oszalało i maszyny iskrzyły. Wypij za to, póki wifi jeszcze działa."}},
+  {year:1878,
+    hu:{text:"Emma Nutt lett a világ első női telefonközpontosa Bostonban — állítólag több száz számot tudott fejből.",drink:"Ma kapcsolták az első telefonos hölgyet. Hívd fel a haverod egy sörre — élőszóban."},
+    en:{text:"Emma Nutt became the world’s first female telephone operator in Boston — she reportedly knew hundreds of numbers by heart.",drink:"The first telephone lady was connected today. Call your buddy for a beer — in person."},
+    pl:{text:"Emma Nutt została pierwszą na świecie telefonistką w Bostonie — podobno znała na pamięć setki numerów.",drink:"Dziś połączono pierwszą panią przy telefonie. Zadzwoń do kumpla na piwo — na żywo."}}],
+  "09-03":[{year:1967,
+    hu:{text:"Dagen H: Svédország egyetlen reggel, egyszerre állt át a bal oldali közlekedésről a jobb oldalira. Az egész ország.",drink:"Ma egy ország váltott oldalt. Te csak válts át a következő pohárra."},
+    en:{text:"Dagen H: Sweden switched from driving on the left to driving on the right one single morning, all at once. The whole country.",drink:"A country switched sides today. You just switch to the next glass."},
+    pl:{text:"Dagen H: Szwecja jednego poranka, naraz, przeszła z ruchu lewostronnego na prawostronny. Cały kraj.",drink:"Dziś kraj zmienił stronę. Ty tylko przejdź do następnego kieliszka."}}],
+  "09-05":[{year:1698,
+    hu:{text:"Nagy Péter orosz cár adót vetett ki a szakállra — aki bozontos akart maradni, fizetett érte.",drink:"Örülj, hogy ma csak a sörödért kell fizetni, nem az arcszőrzetedért. Egészségedre!"},
+    en:{text:"Tsar Peter the Great of Russia imposed a tax on beards — anyone who wanted to stay bushy paid for it.",drink:"Be glad that today you only pay for your beer, not your facial hair. Cheers!"},
+    pl:{text:"Car Rosji Piotr Wielki nałożył podatek od brody — kto chciał pozostać zarośnięty, płacił za to.",drink:"Ciesz się, że dziś płacisz tylko za piwo, a nie za zarost. Na zdrowie!"}}],
+  "09-13":[{year:1922,
+    hu:{text:"New Yorkban kitört a szalmakalap-lázadás: napokig verekedtek az utcán azon, illik-e szeptember után még szalmakalapot hordani.",drink:"Ma kalap miatt verekedtek napokig. Neked sokkal értelmesebb okod van egy sörre."},
+    en:{text:"The Straw Hat Riot broke out in New York: people brawled in the streets for days over whether it was still acceptable to wear a straw hat after September.",drink:"People fought for days over a hat today. You’ve got a far better reason for a beer."},
+    pl:{text:"W Nowym Jorku wybuchły „zamieszki słomkowych kapeluszy”: ludzie bili się na ulicach całymi dniami o to, czy po wrześniu wypada jeszcze nosić słomkowy kapelusz.",drink:"Dziś bili się przez kapelusz całymi dniami. Ty masz o wiele sensowniejszy powód na piwo."}}],
+  "09-17":[{year:1859,
+    hu:{text:"Egy csődbe ment San Franciscó-i üzletember kikiáltotta magát „az Egyesült Államok császárának”, és a város évekig komolyan játszotta a szerepet.",drink:"Ma valaki császárrá tette magát. Ma este te vagy a saját kocsmád császára. Koccints!"},
+    en:{text:"A bankrupt San Francisco businessman declared himself “Emperor of the United States,” and the city seriously played along for years.",drink:"Someone made themselves emperor today. Tonight you’re the emperor of your own pub. Cheers!"},
+    pl:{text:"Zbankrutowany biznesmen z San Francisco ogłosił się „cesarzem Stanów Zjednoczonych”, a miasto przez lata na poważnie odgrywało tę rolę.",drink:"Dziś ktoś ogłosił się cesarzem. Dziś wieczorem ty jesteś cesarzem własnej knajpy. Stuknij się!"}}],
+  "09-19":[{year:1982,
+    hu:{text:"Egy kutató elsőként javasolta a :-) használatát az interneten, hogy jelezzék, mi a vicc. Megszületett a hangulatjel.",drink:"Az emberiség sosem volt már ugyanaz. Egy mosolyra: 🙂🍻"},
+    en:{text:"A researcher first proposed using :-) online to mark a joke. The emoticon was born.",drink:"Humanity was never the same again. To a smile: 🙂🍻"},
+    pl:{text:"Pewien badacz jako pierwszy zaproponował używanie :-) w sieci, by oznaczać żart. Tak narodził się emotikon.",drink:"Ludzkość już nigdy nie była taka sama. Za uśmiech: 🙂🍻"}}],
+  "09-27":[{year:1986,
+    hu:{text:"Cleveland egyszerre engedett fel 1,5 millió léggömböt egy rekordért — totál káosz, lezárt reptér és balesetek lettek belőle.",drink:"Ma 1,5 millió lufi ment félre. A te terved egyszerűbb: egy sör. Az működni fog."},
+    en:{text:"Cleveland released 1.5 million balloons at once for a record — it turned into total chaos, a shut-down airport and accidents.",drink:"1.5 million balloons went wrong today. Your plan is simpler: one beer. That’ll work."},
+    pl:{text:"Cleveland wypuściło naraz 1,5 miliona balonów dla rekordu — skończyło się totalnym chaosem, zamkniętym lotniskiem i wypadkami.",drink:"Dziś 1,5 miliona balonów poszło nie tak. Twój plan jest prostszy: jedno piwo. To zadziała."}}],
+  "10-08":[{year:1784,
+    hu:{text:"A „fazékháborúban” egy holland–német tengeri összecsapás egyetlen lövéssel véget ért — és az a lövés csak egy leveses fazekat talált el.",drink:"Ma egy háború egyetlen áldozata egy fazék leves volt. Erre iszunk — a fazékra!"},
+    en:{text:"In the “Kettle War,” a Dutch–German naval clash ended with a single shot — and that shot only hit a soup kettle.",drink:"A war’s only casualty today was a kettle of soup. We drink to that — to the kettle!"},
+    pl:{text:"W „wojnie o kocioł” holendersko-niemieckie starcie morskie zakończyło się jednym strzałem — i ten strzał trafił tylko w kocioł zupy.",drink:"Dziś jedyną ofiarą wojny był kocioł zupy. Za to pijemy — za kocioł!"}},
+  {year:1871,
+    hu:{text:"Kitört a chicagói nagy tűzvész — a legenda szerint egy tehén rúgta fel a lámpást, amitől leégett a fél város.",drink:"Ne légy tehén: csak egy sört gyújts be ma este, ne egy várost."},
+    en:{text:"The Great Chicago Fire broke out — legend says a cow kicked over a lantern and burned down half the city.",drink:"Don’t be a cow: only light up one beer tonight, not a whole city."},
+    pl:{text:"Wybuchł wielki pożar Chicago — według legendy krowa kopnęła lampę i spłonęła połowa miasta.",drink:"Nie bądź krową: dziś wieczorem odpal tylko jedno piwo, a nie całe miasto."}}],
+  "10-17":[{year:1814,
+    hu:{text:"Londonban szétrobbant egy hatalmas sörtartály, és több mint egymillió liter sör árasztotta el a városnegyedet.",drink:"Ma egy egész negyedet sör öntött el. A történelem üzen valamit — hallgass rá."},
+    en:{text:"A huge beer vat burst in London and over a million liters of beer flooded the neighborhood.",drink:"A whole neighborhood was flooded with beer today. History is telling you something — listen."},
+    pl:{text:"W Londynie pękła ogromna kadź z piwem i ponad milion litrów piwa zalało dzielnicę.",drink:"Dziś całą dzielnicę zalało piwo. Historia coś ci mówi — posłuchaj jej."}}],
+  "10-18":[{year:1963,
+    hu:{text:"Franciaország fellőtt egy Félicette nevű macskát az űrbe — ő az első (és lényegében egyetlen) macska, aki járt odafent, és épségben visszatért.",drink:"Ma egy macska járt az űrben. Ha ő megtette, te megérdemelsz egy pohárral!"},
+    en:{text:"France launched a cat named Félicette into space — she’s the first (and essentially only) cat to have been up there and return safely.",drink:"A cat went to space today. If she could do it, you deserve a glass!"},
+    pl:{text:"Francja wysłała w kosmos kotkę o imieniu Félicette — jest pierwszym (i w zasadzie jedynym) kotem, który tam był i wrócił cało.",drink:"Dziś kot był w kosmosie. Skoro ona dała radę, tobie należy się kieliszek!"}}],
+  "11-02":[{year:1932,
+    hu:{text:"Ausztrália hadserege géppuskával vonult a termést pusztító emuk ellen — és a madarak nyerték az „emu-háborút”.",drink:"Ma egy hadsereg kikapott a madaraktól. Ünnepeld a csőrös győzteseket egy sörrel."},
+    en:{text:"The Australian army marched on crop-destroying emus with machine guns — and the birds won the “Emu War.”",drink:"An army lost to birds today. Celebrate the beaked victors with a beer."},
+    pl:{text:"Australijska armia ruszyła z karabinami maszynowymi na niszczące plony emu — i ptaki wygrały „wojnę z emu”.",drink:"Dziś armia przegrała z ptakami. Uczcij dziobatych zwycięzców piwem."}}],
+  "11-15":[{year:1325,
+    hu:{text:"Két olasz város azért ment egymásnak háborúba, mert az egyik ellopott egy fa vödröt a másik kútjáról.",drink:"Ma egy vödörért öltek. Neked egy pohár is elég ürügynek — sokkal civilizáltabb."},
+    en:{text:"Two Italian cities went to war because one stole a wooden bucket from the other’s well.",drink:"People killed over a bucket today. A glass is plenty of excuse for you — far more civilized."},
+    pl:{text:"Dwa włoskie miasta poszły ze sobą na wojnę, bo jedno ukradło drugiemu drewniane wiadro ze studni.",drink:"Dziś zabijano o wiadro. Tobie wystarczy kieliszek jako pretekst — o wiele bardziej cywilizowanie."}}],
+  "11-24":[{year:1971,
+    hu:{text:"D. B. Cooper eltérített egy repülőt, felvette a váltságdíjat, ejtőernyővel kiugrott a semmibe — és soha többé nem látták.",drink:"Ma valaki eltűnt egy zsák pénzzel a felhők közt. Te maradj — a sör itt van."},
+    en:{text:"D. B. Cooper hijacked a plane, collected the ransom, parachuted into the void — and was never seen again.",drink:"Someone vanished into the clouds with a bag of cash today. You stay — the beer is right here."},
+    pl:{text:"D. B. Cooper porwał samolot, odebrał okup, wyskoczył ze spadochronem w nicość — i nigdy więcej go nie widziano.",drink:"Dziś ktoś zniknął w chmurach z workiem pieniędzy. Ty zostań — piwo jest tutaj."}}],
+  "12-05":[{year:1933,
+    hu:{text:"Ezen a napon ért véget az amerikai szesztilalom. 13 év után újra legális lett inni.",drink:"Ezt kötelező megünnepelni. Szó szerint erre találták ki a napot. Egészségedre!"},
+    en:{text:"On this day American Prohibition ended. After 13 years, drinking became legal again.",drink:"This one’s mandatory to celebrate. This day was literally made for it. Cheers!"},
+    pl:{text:"Tego dnia zakończyła się amerykańska prohibicja. Po 13 latach picie znów stało się legalne.",drink:"To obowiązkowo trzeba uczcić. Ten dzień dosłownie do tego stworzono. Na zdrowie!"}}],
+  "12-16":[{year:1773,
+    hu:{text:"A bostoni teadélutánon a helyiek adó helyett az egész teaszállítmányt a tengerbe borították.",drink:"Ők kiöntötték a teát a tengerbe. Te maradj a sörnél — azt kár lenne pazarolni."},
+    en:{text:"At the Boston Tea Party, locals dumped an entire shipment of tea into the sea instead of paying tax on it.",drink:"They dumped the tea into the sea. You stick to beer — it’d be a shame to waste it."},
+    pl:{text:"Podczas „herbatki bostońskiej” mieszkańcy zamiast płacić podatek wyrzucili do morza cały transport herbaty.",drink:"Oni wylali herbatę do morza. Ty trzymaj się piwa — szkoda byłoby je zmarnować."}}]
 };
 
-/* tisztán vicces napi ürügyek */
-const FUNNY=[
-  "Ma olyan nap van, aminek a nevében nincs benne, hogy „ne igyál”.",
-  "A hűtőben lévő sör magányos. Ez már-már etikai kérdés. 🍺",
-  "Valahol a Földön épp koccintanak. Ne lógj ki a sorból.",
-  "A dínók kihaltak, te viszont nem. 1:0 ide. Erre iszunk.",
-  "Forog a Föld 1670 km/h-val. Kicsit szédülsz? Az még nem a sör.",
-  "Megértetted ezt a mondatot? Akkor élsz. Egészségedre!",
-  "Holnap valamikor úgyis hétfő lesz. Előzd meg egy pohárral.",
-  "A víz is folyadék. Csak mondom. 💧",
-  "Ma nem kellett tűzoltót hívnod. Ünnepeld meg.",
-  "A tudomány szerint* a péntek folyékony. (*nem tudomány)",
-  "Idáig sikeresen túlélted a mai napot. Ez bőven megér egy koccintást.",
-  "A pohár félig tele. Optimista vagy — jutalmazd meg magad.",
-  "Épp most nem téged támadott meg egy medve. Erre inni kell.",
-  "A naptár szerint ma van ma. Ritka alkalom. Használd ki.",
-  "Ötmilliárd év múlva a Nap úgyis felrobban. Addig is: egészségedre."
-];
+/* ============================================================
+   Állapot
+   ============================================================ */
+let LANG = "hu";
+let T = I18N.hu;
+let selected = new Date();
+let cache = {};          // "LANG-M-D" -> {esemeny:[],szuletes:[],halalozas:[]}
+let current = null;      // az aktuális naphoz feldolgozott adat
+let filter = "vicces";
+let lastKey = null;      // hogy reroll-nál ne ismétlődjön ugyanaz
+let netFailed = false;   // igaz, ha a nap nem tölthető (offline / blokkolt)
 
-function drinkReason(kind, ya){
-  const base=(DRINK[kind]||[]).concat(DRINK.general);
-  const t=base[Math.floor(Math.random()*base.length)];
-  return t.replace(/\{N\}/g, (ya!=null && ya>0) ? ya : "sok");
+const $ = id => document.getElementById(id);
+const stage = $("stage");
+
+/* ---------- dátum-segédek ---------- */
+function wikiPageTitle(d){ return T.wiki.pageTitle(d); }
+function dateLabel(d){ return T.dateLabel(d); }
+function ymd(d){
+  const m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+function isToday(d){
+  const t=new Date();
+  return d.getDate()===t.getDate() && d.getMonth()===t.getMonth();
+}
+function refYear(d){
+  const now=new Date();
+  const anchor=new Date(now.getFullYear(), d.getMonth(), d.getDate());
+  return anchor>now ? now.getFullYear()-1 : now.getFullYear();
 }
 
-/* ---------- válogatott gyöngyszemek: valódi, röhejes évfordulók ----------
-   kulcs: "HH-NN"  (hónap-nap, két számjegy)                              */
-const GEMS = {
-  "01-01":[{year:1962,text:"A Decca lemezcég visszautasította a Beatlest ezzel az indokkal: „a gitáros zenekaroknak lőttek”.",drink:"A történelem legrosszabb döntéseire is illik inni. Egészségedre!"}],
-  "01-15":[{year:1919,text:"Bostonban szétrobbant egy óriási tartály, és kb. 2 millió liter ragadós melasz zúdult végig a városon 50 km/h-val.",drink:"Ha a melasz ilyen veszélyes, a sör kifejezetten biztonságos. Koccints rá!"}],
-  "01-17":[{year:1920,text:"Ezen a napon lépett életbe az amerikai szesztilalom. Több mint 13 évig hivatalosan tilos volt inni.",drink:"A tiltakozás jegyében: emeld a poharad. Ők nem tehették."}],
-  "01-30":[{year:1962,text:"Egy tanzániai iskolában kitört a nevetőjárvány — a röhögés hónapokig terjedt, iskolákat kellett bezárni miatta.",drink:"A nevetés ma ragályos. Segíts terjeszteni — egy pohárral könnyebb."}],
-  "01-31":[{year:1961,text:"Az USA egy Ham nevű csimpánzt lőtt fel az űrbe, aki épségben vissza is tért.",drink:"Egy majom ma az űrben járt. A minimum egy koccintás a tiszteletére."}],
-  "02-25":[{year:1942,text:"Los Angeles fölött a hadsereg órákig lőtte az eget egy „ellenséges gép” miatt, ami sosem létezett (alighanem egy meteorológiai léggömb volt).",drink:"Ma a sereg a semmivel háborúzott. Te legalább valódi sörrel."}],
-  "03-03":[{year:1876,text:"Kentucky egén a semmiből húsdarabok kezdtek hullani egy farmra — a mai napig vitatott, mi volt.",drink:"Ma húst esett az ég. Ha ez nem ok egy sörre, semmi sem az."}],
-  "03-10":[{year:1876,text:"Elhangzott az első telefonhívás. A történelmi első mondat egy „gyere ide” volt a szomszéd szobába.",drink:"Hívd fel a haverod — de nem a szomszéd szobából. Egy sörre."}],
-  "04-01":[{year:1957,text:"A BBC komoly hírműsorban tálalta, hogy Svájcban spagetti terem a fákon — és nézők ezrei hitték el.",drink:"A hiszékenységre is inni kell. Csak óvatosan, mit hiszel el a harmadik után."}],
-  "04-18":[{year:1930,text:"A BBC rádió bemondta, hogy „ma nincs hír”, majd 15 percig zenét játszott helyette.",drink:"Bárcsak minden nap ilyen lenne. Erre a nyugalomra: 🍻"}],
-  "04-23":[{year:1516,text:"Bajorországban törvénybe iktatták, mi mehet a sörbe (víz, komló, árpa) — ez a világ egyik legrégebbi élelmiszertörvénye.",drink:"Több mint 500 éve véd a rossz sörtől egy törvény. Tiszteld meg egy jóval."}],
-  "05-08":[{year:1886,text:"Először árulták a Coca-Colát — eredetileg gyógyszernek szánták fejfájásra és fáradtságra.",drink:"Régen a kóla volt az orvosság. A sör is az — bizonyos szempontból. Egészségedre!"}],
-  "05-23":[{year:1618,text:"A prágai defenesztrációnál feldühödött csehek kihajítottak két hivatalnokot az ablakon — egy trágyadombra estek, és túlélték.",drink:"Ma valakit kidobtak az ablakon, és a szar mentette meg. Igyál a szerencsére!"}],
-  "06-04":[{year:1923,text:"Frank Hayes lett az egyetlen zsoké, aki holtan nyert lóversenyt: verseny közben meghalt, de a ló elsőként futott be.",drink:"Ma valaki holtan is győzött. Neked élve is menni fog egy koccintás."}],
-  "06-15":[{year:1859,text:"Egy brit disznó megevett pár amerikai krumplit egy vitatott szigeten — a „disznóháborúból” majdnem valódi háború lett két nagyhatalom közt.",drink:"Ma egy disznó majdnem világháborút robbantott. Te csak egy sört robbants be."}],
-  "06-18":[{year:1875,text:"Dublinban kigyulladt egy whiskyraktár, és égő whisky folyt az utcákon. A 13 halott nem a tűztől halt meg — hanem mert felitták az utcáról.",drink:"Ma whisky folyt az utcán. A tanulság: pohárból biztonságosabb. Egészségedre!"}],
-  "07-09":[{year:1850,text:"Zachary Taylor amerikai elnök állítólag túl sok cseresznyétől és tejtől halt meg egy július 4-i ünnepségen.",drink:"Ma egy elnököt a cseresznye vitt el. A sör statisztikailag biztonságosabb desszert."}],
-  "07-14":[{year:1518,text:"Strasbourgban kitört a táncjárvány: emberek napokig, megállás nélkül táncoltak az utcán, néhányan a kimerültségbe.",drink:"Ma halálra táncolták magukat. Te csak addig ropd, míg jólesik — egy sörrel."}],
-  "08-15":[{year:1977,text:"Egy rádióteleszkóp 72 másodpercig fogott egy erős, ismeretlen jelet az űrből — a „Wow!-jelet” a mai napig nem fejtették meg.",drink:"Ma talán egy földönkívüli írt nekünk. Illik válaszolni egy koccintással."}],
-  "08-25":[{year:1835,text:"A New York Sun azt írta, hogy teleszkóppal denevérembereket és egyszarvúakat láttak a Holdon. Sokan komolyan elhitték.",drink:"Ma denevéremberek éltek a Holdon (állítólag). Erre inni kell, mielőtt kijózanodsz."}],
-  "08-27":[{year:1896,text:"Lezajlott a történelem legrövidebb háborúja: Nagy-Britannia és Zanzibár között kb. 38 perc alatt eldőlt minden.",drink:"Ma egy háború rövidebb volt, mint egy sör elfogyasztása. Verhetetlen tempó."}],
-  "08-30":[{year:1904,text:"A Saint Louis-i olimpiai maratonon a „győztest” egy darabon kocsival vitték, egy másik futót pedig sztrichninnel és konyakkal doppingoltak végig.",drink:"Ma az olimpián konyak volt a doppingszer. A mai szabályok lazábbak — igyál nyugodtan."}],
-  "08-31":[{year:1897,text:"Edison szabadalmaztatta a mozigépet — a korai változatban egy kukucskálón át, egyszerre EGYETLEN ember nézhette a filmet.",drink:"130+ éve a mozi egy lyuk volt a dobozon. Ma már sör is jár hozzá. Ünnepeld!"},{year:2006,text:"Megkerült Munch két ellopott festménye, köztük a világhírű „Sikoly” — két év után, meglepően jó állapotban.",drink:"Ma a Sikoly hazatalált. Ez épp elég ok egy megkönnyebbült pohárra."}],
-  "09-01":[{year:1985,text:"Robert Ballard expedíciója megtalálta a Titanic roncsát a tengerfenéken — 73 évvel az elsüllyedése után, 3800 méter mélyen.",drink:"Ma megkerült a Titanic. A te hajód, a sör, sokkal biztonságosabb — süllyeszd el nyugodtan."},{year:1859,text:"A Carrington-esemény: óriási napkitörés érte a Földet, világszerte sarki fény ragyogott, a távírógépek pedig szikráztak és áram nélkül is működtek.",drink:"Ma a Nap megőrült és szikráztak a gépek. Erre inni kell, amíg a wifi még megy."},{year:1878,text:"Emma Nutt lett a világ első női telefonközpontosa Bostonban — állítólag több száz számot tudott fejből.",drink:"Ma kapcsolták az első telefonos hölgyet. Hívd fel a haverod egy sörre — élőszóban."}],
-  "09-03":[{year:1967,text:"Dagen H: Svédország egyetlen reggel, egyszerre állt át a bal oldali közlekedésről a jobb oldalira. Az egész ország.",drink:"Ma egy ország váltott oldalt. Te csak válts át a következő pohárra."}],
-  "09-05":[{year:1698,text:"Nagy Péter orosz cár adót vetett ki a szakállra — aki bozontos akart maradni, fizetett érte.",drink:"Örülj, hogy ma csak a sörödért kell fizetni, nem az arcszőrzetedért. Egészségedre!"}],
-  "09-13":[{year:1922,text:"New Yorkban kitört a szalmakalap-lázadás: napokig verekedtek az utcán azon, illik-e szeptember után még szalmakalapot hordani.",drink:"Ma kalap miatt verekedtek napokig. Neked sokkal értelmesebb okod van egy sörre."}],
-  "09-17":[{year:1859,text:"Egy csődbe ment San Franciscó-i üzletember kikiáltotta magát „az Egyesült Államok császárának”, és a város évekig komolyan játszotta a szerepet.",drink:"Ma valaki császárrá tette magát. Ma este te vagy a saját kocsmád császára. Koccints!"}],
-  "09-19":[{year:1982,text:"Egy kutató elsőként javasolta a :-) használatát az interneten, hogy jelezzék, mi a vicc. Megszületett a hangulatjel.",drink:"Az emberiség sosem volt már ugyanaz. Egy mosolyra: 🙂🍻"}],
-  "09-27":[{year:1986,text:"Cleveland egyszerre engedett fel 1,5 millió léggömböt egy rekordért — totál káosz, lezárt reptér és balesetek lettek belőle.",drink:"Ma 1,5 millió lufi ment félre. A te terved egyszerűbb: egy sör. Az működni fog."}],
-  "10-08":[{year:1784,text:"A „fazékháborúban” egy holland–német tengeri összecsapás egyetlen lövéssel véget ért — és az a lövés csak egy leveses fazekat talált el.",drink:"Ma egy háború egyetlen áldozata egy fazék leves volt. Erre iszunk — a fazékra!"},{year:1871,text:"Kitört a chicagói nagy tűzvész — a legenda szerint egy tehén rúgta fel a lámpást, amitől leégett a fél város.",drink:"Ne légy tehén: csak egy sört gyújts be ma este, ne egy várost."}],
-  "10-17":[{year:1814,text:"Londonban szétrobbant egy hatalmas sörtartály, és több mint egymillió liter sör árasztotta el a városnegyedet.",drink:"Ma egy egész negyedet sör öntött el. A történelem üzen valamit — hallgass rá."}],
-  "10-18":[{year:1963,text:"Franciaország fellőtt egy Félicette nevű macskát az űrbe — ő az első (és lényegében egyetlen) macska, aki járt odafent, és épségben visszatért.",drink:"Ma egy macska járt az űrben. Ha ő megtette, te megérdemelsz egy pohárral!"}],
-  "11-02":[{year:1932,text:"Ausztrália hadserege géppuskával vonult a termést pusztító emuk ellen — és a madarak nyerték az „emu-háborút”.",drink:"Ma egy hadsereg kikapott a madaraktól. Ünnepeld a csőrös győzteseket egy sörrel."}],
-  "11-15":[{year:1325,text:"Két olasz város azért ment egymásnak háborúba, mert az egyik ellopott egy fa vödröt a másik kútjáról.",drink:"Ma egy vödörért öltek. Neked egy pohár is elég ürügynek — sokkal civilizáltabb."}],
-  "11-24":[{year:1971,text:"D. B. Cooper eltérített egy repülőt, felvette a váltságdíjat, ejtőernyővel kiugrott a semmibe — és soha többé nem látták.",drink:"Ma valaki eltűnt egy zsák pénzzel a felhők közt. Te maradj — a sör itt van."}],
-  "12-05":[{year:1933,text:"Ezen a napon ért véget az amerikai szesztilalom. 13 év után újra legális lett inni.",drink:"Ezt kötelező megünnepelni. Szó szerint erre találták ki a napot. Egészségedre!"}],
-  "12-16":[{year:1773,text:"A bostoni teadélutánon a helyiek adó helyett az egész teaszállítmányt a tengerbe borították.",drink:"Ők kiöntötték a teát a tengerbe. Te maradj a sörnél — azt kár lenne pazarolni."}]
-};
-
+/* ---------- gyöngyszemek az aktuális nyelven ---------- */
 function gemItems(){
   const key=`${String(selected.getMonth()+1).padStart(2,"0")}-${String(selected.getDate()).padStart(2,"0")}`;
-  return (GEMS[key]||[]).map(g=>({gem:true, year:g.year, text:g.text, drink:g.drink}));
+  return (GEMS[key]||[]).map(g=>{
+    const t=g[LANG]||g.hu;
+    return {gem:true, year:g.year, text:t.text, drink:t.drink};
+  });
 }
 
-/* fura-detektor: a Wikipédia-eseményeket a vicces/meglepő felé húzza */
-const POS=["első","feltalál","szabadal","rekord","leghosszabb","legrövidebb","legnagyobb","legkisebb","legidősebb","állat","kutya","macska"," ló ","medve","majom","emu","disznó","tehén","madár","űr","hold","bolygó","üstökös","meteor","lufi","léggömb","verseny","bajnok","olimp","tánc","sör","bor ","whisky","csokolád","fagyi","szök","rabl","kaszinó","lottó","ufo","szörny","kísértet","bohóc","cirkusz","kalóz","átver","furcsa","meglep","hoax"];
-const NEG=["csata","hábor","ütközet","hadsereg","offenzív","megszáll","meggyilkol","gyilkos","halál","meghal","elhun","merényl","választ","szavaz","szerződ","egyezmén","alkotmán","törvén","kormán","miniszter","elnök","párt","béke","felkel","népirt","áldozat","bomba","földreng","kivégz","zászló"];
+/* ---------- koccintós indok generálás ---------- */
+function drinkReason(kind, ya){
+  const d=T.drink;
+  const base=(d[kind]||[]).concat(d.general);
+  const t=base[Math.floor(Math.random()*base.length)];
+  const many = LANG==="hu" ? "sok" : (LANG==="pl" ? "wiele" : "many");
+  return t.replace(/\{N\}/g, (ya!=null && ya>0) ? ya : many);
+}
+
+/* ---------- fura-detektor: a vicces/meglepő felé húz ---------- */
 function scoreEvent(t){
   const s=" "+t.toLowerCase()+" ";
   let sc=0;
-  for(const w of POS) if(s.includes(w)) sc+=2;
-  for(const w of NEG) if(s.includes(w)) sc-=3;
+  for(const w of T.pos) if(s.includes(w)) sc+=2;
+  for(const w of T.neg) if(s.includes(w)) sc-=3;
   return sc;
 }
 function weirdEvents(){
@@ -285,42 +696,14 @@ function weirdEvents(){
     .map(x=>x.e);
 }
 
-let selected = new Date();
-let cache = {};          // "MM-DD" -> {esemeny:[],szuletes:[],halalozas:[]}
-let current = null;      // parsed data for selected day
-let filter = "vicces";
-let lastKey = null;      // to avoid repeating the same fact on reroll
-let netFailed = false;   // true if the day couldn't be fetched (offline / blocked webview)
-
-const $ = id => document.getElementById(id);
-const stage = $("stage");
-
-/* ---------- date helpers ---------- */
-function pageTitle(d){ return `${HU_MONTHS[d.getMonth()]} ${d.getDate()}.`; }
-function fmtLabel(d){ return `${HU_MONTHS[d.getMonth()].toLowerCase()} ${d.getDate()}.`; }
-function ymd(d){
-  const m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0");
-  return `${d.getFullYear()}-${m}-${day}`;
-}
-function isToday(d){
-  const t=new Date();
-  return d.getDate()===t.getDate() && d.getMonth()===t.getMonth();
-}
-function refYear(d){
-  // "Ma X éve": use the most recent occurrence of this calendar day
-  const now=new Date();
-  const anchor=new Date(now.getFullYear(), d.getMonth(), d.getDate());
-  return anchor>now ? now.getFullYear()-1 : now.getFullYear();
-}
-
-/* ---------- wikitext parsing ---------- */
+/* ---------- wikitext feldolgozás ---------- */
 function cleanWikitext(s){
   s = s.replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi,"")
        .replace(/<ref[^>]*\/>/gi,"")
        .replace(/<!--[\s\S]*?-->/g,"")
-       .replace(/\{\{[^{}]*\}\}/g,"").replace(/\{\{[^{}]*\}\}/g,"") // templates (2 passes)
-       .replace(/\[\[(?:[^\]|]*\|)?([^\]]+)\]\]/g,"$1")             // [[t|label]] -> label
-       .replace(/\[https?:\/\/[^\s\]]+\s+([^\]]+)\]/g,"$1")         // [url label] -> label
+       .replace(/\{\{[^{}]*\}\}/g,"").replace(/\{\{[^{}]*\}\}/g,"")
+       .replace(/\[\[(?:[^\]|]*\|)?([^\]]+)\]\]/g,"$1")
+       .replace(/\[https?:\/\/[^\s\]]+\s+([^\]]+)\]/g,"$1")
        .replace(/'''?/g,"")
        .replace(/&nbsp;/g," ")
        .replace(/<[^>]+>/g,"")
@@ -332,7 +715,6 @@ function cleanWikitext(s){
 function parseItem(content, kind){
   const c = cleanWikitext(content);
   if(!c) return null;
-  // "YYYY – leírás"  (also "i. e. YYYY – ...")
   let m = c.match(/^(i\.\s*e\.\s*)?(\d{1,4})\.?\s*[–—-]\s*(.+)$/);
   let bc, year, text;
   if(m){ bc=!!m[1]; year=parseInt(m[2],10); text=m[3].trim(); }
@@ -348,28 +730,26 @@ function parseItem(content, kind){
 
 function parseWikitext(wt){
   const buckets={esemeny:[],szuletes:[],halalozas:[]};
-  const sec={"Események":"esemeny","Születések":"szuletes","Halálozások":"halalozas"};
   let cur=null;
   for(const raw of wt.split("\n")){
     const line=raw.trim();
     const h=line.match(/^==\s*([^=].*?)\s*==$/);
-    if(h){ cur=sec[h[1].trim()]||null; continue; }
+    if(h){ cur=T.wiki.sectionOf(h[1].trim()); continue; }
     if(!cur) continue;
-    if(line[0]!=="*" || line[1]==="*") continue;   // only single-level bullets
+    if(line[0]!=="*" || line[1]==="*") continue;   // csak egyszintű felsorolás
     const item=parseItem(line.replace(/^\*+\s*/,""), cur);
     if(item) buckets[cur].push(item);
   }
   return buckets;
 }
 
-/* ---------- fetch ---------- */
+/* ---------- lekérés ---------- */
 async function loadDay(d){
-  const key=`${d.getMonth()}-${d.getDate()}`;
+  const key=`${LANG}-${d.getMonth()}-${d.getDate()}`;
   if(cache[key]) return cache[key];
-  const title=pageTitle(d);
-  const api=`https://hu.wikipedia.org/w/api.php?action=parse&page=${encodeURIComponent(title)}`
+  const title=wikiPageTitle(d);
+  const api=`https://${T.wiki.domain}/w/api.php?action=parse&page=${encodeURIComponent(title)}`
           + `&prop=wikitext&format=json&formatversion=2&origin=*`;
-  // 1) közvetlen  2) allorigins proxy  3) corsproxy — ha az egyik réteget blokkolja a böngésző
   const attempts=[
     api,
     "https://api.allorigins.win/raw?url="+encodeURIComponent(api),
@@ -391,20 +771,19 @@ async function loadDay(d){
   throw lastErr || new Error("fail");
 }
 
-/* ---------- pool + pick ---------- */
-function funnyItems(){ return FUNNY.map(text=>({funny:true,text})); }
+/* ---------- pool + választás ---------- */
+function funnyItems(){ return T.funny.map(text=>({funny:true,text})); }
 function poolFor(f){
   if(f==="urugy") return funnyItems();
   if(f==="minden"){
     if(!current) return netFailed ? funnyItems() : [];
     return [...current.esemeny, ...current.szuletes, ...current.halalozas];
   }
-  // vicces (alap): valódi, vicces évfordulók — gyöngyszemek + fura wiki-események
   const gems=gemItems();
   const weird=weirdEvents();
   let p = gems.length ? gems.concat(gems, gems, weird) : weird.slice();
-  if(!p.length && current && current.esemeny.length) p = current.esemeny.slice(); // inkább valódi, mint kitalált
-  if(!p.length) p = funnyItems();       // végső eset: nincs net és nincs gyöngyszem
+  if(!p.length && current && current.esemeny.length) p = current.esemeny.slice();
+  if(!p.length) p = funnyItems();
   return p;
 }
 function pickRandom(){
@@ -421,54 +800,53 @@ function pickRandom(){
   return item;
 }
 
-/* ---------- render ---------- */
+/* ---------- megjelenítés ---------- */
 let currentText="";
 function renderFact(item){
+  const u=T.ui;
   if(!item){
-    stage.innerHTML=`<div class="state">Erre a napra nem találtam feldolgozható tényt.<small>Próbálj másik dátumot vagy kategóriát.</small></div>`;
+    stage.innerHTML=`<div class="state">${u.noFactTitle}<small>${u.noFactSmall}</small></div>`;
     currentText="";
     return;
   }
 
-  // vicces mód: önálló ürügy, nem kell hozzá történelem
   if(item.funny){
-    currentText=`Ma miért igyál? ${item.text}`;
+    currentText=`${u.leadFunny} ${item.text}`;
     const note = (netFailed && filter==="minden")
-      ? `<div class="netnote">A történelmi tényekhez internet kell — addig itt egy offline indok. <button class="linkbtn" id="retry2">Próbáld újra</button></div>`
+      ? `<div class="netnote">${u.netnote} <button class="linkbtn" id="retry2">${u.retry}</button></div>`
       : "";
     stage.innerHTML=`
       <div class="fact">
-        <div class="lead">Ma miért igyál?</div>
+        <div class="lead">${u.leadFunny}</div>
         <div class="body">${escapeHtml(item.text)}</div>
-        <div><span class="chip">vicces indok</span></div>
+        <div><span class="chip">${u.chipFunny}</span></div>
         ${note}
       </div>`;
     const r=$("retry2"); if(r) r.onclick=refresh;
     return;
   }
 
-  // válogatott gyöngyszem: valódi, vicces évforduló saját koccintós indokkal
   if(item.gem){
     const ya=refYear(selected)-item.year;
-    const lead = ya>0 ? `Ma ${ya} éve (${item.year})` : `${item.year}`;
+    const lead = ya>0 ? T.ago(ya,item.year) : `${item.year}`;
     currentText=`${lead}: ${item.text}\n→ ${item.drink}`;
     stage.innerHTML=`
       <div class="fact">
         <div class="lead">${lead}</div>
         <div class="body">${escapeHtml(item.text)}</div>
         <div class="cheers">${escapeHtml(item.drink)}</div>
-        <div><span class="chip">igaz sztori 🍒</span></div>
+        <div><span class="chip">${u.chipGem}</span></div>
       </div>`;
     return;
   }
 
-  const k=KINDS[item.kind];
+  const k=T.kinds[item.kind];
   let lead, ya=null;
   if(item.bc){
-    lead = `I. e. ${item.year}` + (item.kind==="esemeny" ? "" : ` — ${k.verb}`);
+    lead = T.bc(item.year) + (item.kind==="esemeny" ? "" : ` — ${k.verb}`);
   }else{
     ya=refYear(selected)-item.year;
-    const stem = ya>0 ? `Ma ${ya} éve (${item.year})` : `${item.year}`;
+    const stem = ya>0 ? T.ago(ya,item.year) : `${item.year}`;
     lead = item.kind==="esemeny" ? stem : `${stem} — ${k.verb}`;
   }
   const cheers=drinkReason(item.kind, ya);
@@ -479,26 +857,24 @@ function renderFact(item){
       <div class="body">${escapeHtml(item.text)}</div>
       <div class="cheers">${escapeHtml(cheers)}</div>
       <div><span class="chip">${k.label}</span></div>
-      <a class="src" href="https://hu.wikipedia.org/wiki/${encodeURIComponent(pageTitle(selected))}" target="_blank" rel="noopener">forrás a Wikipédián</a>
+      <a class="src" href="https://${T.wiki.domain}/wiki/${encodeURIComponent(wikiPageTitle(selected))}" target="_blank" rel="noopener">${u.srcLabel}</a>
     </div>`;
 }
 function escapeHtml(s){return s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
 
-/* ---------- flow ---------- */
+/* ---------- folyamat ---------- */
 async function refresh(){
-  stage.innerHTML=`<div class="state">Lapozok a történelemben…</div>`;
-  $("dateText").textContent=fmtLabel(selected);
+  stage.innerHTML=`<div class="state">${T.ui.loading}</div>`;
+  $("dateText").textContent=dateLabel(selected);
   $("datePicker").value=ymd(selected);
   $("todayBtn").hidden=isToday(selected);
-  $("wikiLink").href=`https://hu.wikipedia.org/wiki/${encodeURIComponent(pageTitle(selected))}`;
   if(filter==="urugy"){ lastKey=null; renderFact(pickRandom()); return; }
 
-  // ha van válogatott gyöngyszem a napra, mutasd AZONNAL — net nélkül is
   if(filter==="vicces" && gemItems().length){
     current=null; netFailed=false; lastKey=null;
     renderFact(pickRandom());
     $("reroll").disabled=false;
-    loadDay(selected).then(d=>{current=d;}).catch(()=>{}); // háttérben a wiki a több variációért
+    loadDay(selected).then(d=>{current=d;}).catch(()=>{});
     return;
   }
 
@@ -509,7 +885,7 @@ async function refresh(){
     renderFact(pickRandom());
   }catch(err){
     current=null; netFailed=true; lastKey=null;
-    renderFact(pickRandom());  // valódi esemény, vagy végső esetben offline indok
+    renderFact(pickRandom());
   }finally{
     $("reroll").disabled=false;
   }
@@ -519,7 +895,41 @@ function shiftDay(n){
   refresh();
 }
 
-/* ---------- events ---------- */
+/* ---------- nyelvváltás ---------- */
+function detectLang(){
+  try{ const s=localStorage.getItem("mmi_lang"); if(s && I18N[s]) return s; }catch(e){}
+  const n=(navigator.language||"").slice(0,2).toLowerCase();
+  if(n==="en") return "en";
+  if(n==="pl") return "pl";
+  return "hu";
+}
+function setLang(code){
+  if(!I18N[code]) code="hu";
+  LANG=code; T=I18N[code];
+  try{ localStorage.setItem("mmi_lang", code); }catch(e){}
+  const u=T.ui;
+  document.documentElement.lang=u.htmlLang;
+  document.title=u.docTitle;
+  $("brand").innerHTML=u.brand;
+  $("navRecipes").textContent=u.navRecipes;
+  $("badge").textContent=u.badge;
+  $("prev").setAttribute("aria-label",u.prevAria);
+  $("next").setAttribute("aria-label",u.nextAria);
+  $("datePicker").setAttribute("aria-label",u.pickAria);
+  $("todayBtn").textContent=u.today;
+  $("reroll").textContent=u.reroll;
+  $("footerBrand").textContent=u.footerBrand;
+  $("footerText").innerHTML=u.footerHtml;
+  const wl=$("wikiLink"); if(wl) wl.href=`https://${T.wiki.domain}/`;
+  $("langsel").setAttribute("aria-label",u.langAria);
+  document.querySelectorAll(".langbtn").forEach(b=>{
+    b.setAttribute("aria-pressed", b.dataset.lang===code ? "true" : "false");
+  });
+  lastKey=null;
+  refresh();
+}
+
+/* ---------- események ---------- */
 $("prev").onclick=()=>shiftDay(-1);
 $("next").onclick=()=>shiftDay(1);
 $("todayBtn").onclick=()=>{selected=new Date();refresh();};
@@ -529,21 +939,11 @@ $("datePicker").onchange=e=>{
   selected=new Date(y,m-1,d); refresh();
 };
 $("reroll").onclick=()=>{ renderFact(pickRandom()); };
-document.querySelectorAll(".filters button").forEach(b=>{
-  b.onclick=()=>{
-    filter=b.dataset.f;
-    document.querySelectorAll(".filters button").forEach(x=>x.setAttribute("aria-pressed", x===b));
-    lastKey=null;
-    if(current) renderFact(pickRandom());
-  };
+document.querySelectorAll(".langbtn").forEach(b=>{
+  b.onclick=()=>setLang(b.dataset.lang);
 });
-let toastT;
-function showToast(msg){
-  const t=$("toast"); t.textContent=msg; t.classList.add("show");
-  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),1600);
-}
 
-refresh();
+setLang(detectLang());
 </script>
 </body>
 </html>
