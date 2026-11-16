@@ -4,53 +4,77 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="robots" content="noindex">
-<title>HGWS Közösség</title>
-<meta name="theme-color" content="#04070e">
+<title>HGWS</title>
+<meta name="theme-color" content="#05070c">
 <link rel="icon" type="image/png" href="img/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600&family=Oswald:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600;700&family=Oswald:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/browse.css">
 </head>
 <body>
 <div id="boot"><img src="img/logo.webp" alt="HGWS"></div>
 
-<div id="app" hidden>
-  <nav class="rail" aria-label="Fő navigáció">
-    <a class="ri srv" id="rSrv" href="#/" title="HGWS Studios"><img src="img/logo.webp" alt="HGWS"></a>
-    <a class="ri" id="rDm" href="#/dm" title="Privát üzenetek">💬<span class="bdg" id="dmBadge" hidden></span></a>
-    <div class="rsep"></div>
-    <a class="ri" id="rFilm" href="#/filmek" title="Filmtár">🎬</a>
-    <div class="sp"></div>
-    <a class="ri" href="./" title="Vissza a főoldalra">🏠</a>
-  </nav>
-
-  <aside class="side">
-    <div class="shead" id="sHead"></div>
-    <div class="sbody scroll" id="sBody"></div>
-    <div class="mebar">
-      <button class="who" id="meBtn" title="Profil és beállítások"></button>
-      <button class="ibtn" id="setBtn" title="Beállítások">⚙️</button>
+<div id="shell" hidden>
+  <!-- felső navigáció -->
+  <header class="topnav" id="topnav">
+    <a class="tlogo" href="#/" aria-label="HGWS kezdőlap"><img src="img/logo.webp" alt=""><span>HGWS</span></a>
+    <nav class="tlinks">
+      <a href="#/" data-nav="home">Kezdőlap</a>
+      <a href="#/tar" data-nav="tar">Filmtár</a>
+      <a href="#/zene" data-nav="zene">Zene</a>
+      <a href="#/lista" data-nav="lista">Saját lista</a>
+      <a href="#/chat" data-nav="chat">Közösség<span class="tbdg" id="chatBadge" hidden></span></a>
+    </nav>
+    <div class="tright">
+      <div class="tsearch" id="tsearch"><button class="ticon" id="sBtn" aria-label="Keresés">🔍</button><input id="sInp" type="search" placeholder="Címek, műfajok…" autocomplete="off"></div>
+      <a class="ticon tchat" href="#/dm" title="Üzenetek">💬<span class="tbdg" id="dmBadge" hidden></span></a>
+      <button class="tme" id="meMenu" aria-label="Profil menü"></button>
     </div>
-  </aside>
+  </header>
 
-  <main class="main">
-    <header class="mhead">
-      <button class="ibtn menu" id="menuBtn" aria-label="Menü">☰</button>
-      <div class="ttl" id="mTitle"></div>
-      <div class="topic" id="mTopic"></div>
-      <div class="acts" id="mActs"></div>
-    </header>
-    <div id="ownerbar"></div>
-    <div id="view"></div>
-  </main>
+  <!-- böngészős oldalak (kezdőlap, filmtár, lista, lejátszó, admin) -->
+  <main id="page"></main>
 
-  <aside class="members" id="members" hidden>
-    <div class="shead"><h2 class="gold">TAGOK</h2><span class="hint" id="memCount"></span></div>
-    <div class="sbody scroll" id="memList"></div>
-  </aside>
-  <div class="scrim" id="scrim"></div>
+  <!-- csevegés (Discord-szerű) -->
+  <div id="chat" hidden>
+    <aside class="side">
+      <div class="seg" id="seg"><a href="#/chat" data-seg="srv"># Csatornák</a><a href="#/dm" data-seg="dm">💬 Üzenetek<span class="tbdg" id="dmBadge2" hidden></span></a></div>
+      <div class="shead" id="sHead"></div>
+      <div class="sbody scroll" id="sBody"></div>
+      <div class="mebar">
+        <button class="who" id="meBtn" title="Profil és beállítások"></button>
+        <button class="ibtn" id="setBtn" title="Beállítások">⚙️</button>
+      </div>
+    </aside>
+    <section class="main">
+      <header class="mhead">
+        <button class="ibtn menu" id="menuBtn" aria-label="Csatornák">☰</button>
+        <div class="ttl" id="mTitle"></div>
+        <div class="topic" id="mTopic"></div>
+        <div class="acts" id="mActs"></div>
+      </header>
+      <div id="ownerbar" class="ownerslot"></div>
+      <div id="view"></div>
+    </section>
+    <aside class="members" id="members">
+      <div class="shead"><h2 class="gold">TAGOK</h2><span class="hint" id="memCount"></span></div>
+      <div class="sbody scroll" id="memList"></div>
+    </aside>
+    <div class="scrim" id="scrim"></div>
+  </div>
+
+  <!-- mobil alsó menü -->
+  <nav class="tabbar" id="tabbar">
+    <a href="#/" data-nav="home"><i>🏠</i>Kezdőlap</a>
+    <a href="#/kereses" data-nav="kereses"><i>🔍</i>Keresés</a>
+    <a href="#/chat" data-nav="chat"><i>💬</i>Közösség<span class="tbdg" id="chatBadge2" hidden></span></a>
+    <a href="#/zene" data-nav="zene"><i>🎵</i>Zene</a>
+    <a href="#/lista" data-nav="lista"><i>＋</i>Listám</a>
+  </nav>
+  <div class="pbar" id="pbar" hidden></div>
 </div>
 
 <div id="toast"></div>

@@ -30,8 +30,8 @@ service cloud.firestore {
       return d.uid == request.auth.uid
         && d.createdAt == request.time
         && d.text is string && d.text.size() <= 4000
-        && d.keys().hasOnly(['uid', 'text', 'createdAt', 'film', 'replyTo', 'reactions'])
-        && (d.text.size() > 0 || d.get('film', null) is string);
+        && d.keys().hasOnly(['uid', 'text', 'createdAt', 'film', 'track', 'replyTo', 'reactions'])
+        && (d.text.size() > 0 || d.get('film', null) is string || d.get('track', null) is string);
     }
     // saját üzenet szerkesztése vagy bárki reagál
     function msgUpdate() {
@@ -140,6 +140,19 @@ service cloud.firestore {
     // A film adatai (cím, poszter, állapot) nyilvánosak – a főoldal ezekből mutatja az előzetest.
     match /videos/{id} {
       allow read: if true;
+      allow write: if isAdmin();
+
+      // hozzászólások a filmekhez
+      match /comments/{cid} {
+        allow read: if active();
+        allow create: if canPost() && validMsg();
+        allow update: if msgUpdate();
+        allow delete: if (active() && resource.data.uid == request.auth.uid) || isMod();
+      }
+    }
+    // Zenék: csak belépett tagok látják, csak admin kezeli.
+    match /music/{id} {
+      allow read: if active();
       allow write: if isAdmin();
     }
     // A videó linkje csak belépett, megerősített tagoknak látszik.
