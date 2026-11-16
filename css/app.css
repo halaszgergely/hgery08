@@ -338,3 +338,23 @@ body{background:var(--bg)}
 .seg a:hover{color:#fff}
 .seg a.on{background:linear-gradient(180deg,#b6e8ff,#3aa3e8);color:#04121f}
 .seg .tbdg{top:-4px;right:-2px}
+
+/* ---------- egyedi tagek (Discord-rang) ---------- */
+.utag{display:inline-flex;align-items:center;gap:.3rem;margin-left:.35rem;padding:.08rem .45rem .1rem;border-radius:6px;font-size:.66rem;font-weight:700;line-height:1.4;letter-spacing:.02em;vertical-align:middle;white-space:nowrap;
+  color:var(--tc,#c9c3b5);background:color-mix(in srgb,var(--tc,#c9c3b5) 14%,transparent);border:1px solid color-mix(in srgb,var(--tc,#c9c3b5) 45%,transparent)}
+.utag::before{content:"";width:.5em;height:.5em;border-radius:50%;background:var(--tc,#c9c3b5)}
+.utag.more::before,.utag.add::before{display:none}
+.utag.lg{font-size:.78rem;padding:.18rem .55rem;margin:0 .3rem .3rem 0}
+.utag.add{cursor:pointer;color:var(--muted);background:rgba(255,255,255,.05);border:1px dashed var(--line2);font-size:.8rem;padding:.12rem .5rem}
+.utag.add:hover{color:#fff;border-color:var(--gold2)}
+.ptags{margin-top:.8rem}
+.ptags small{display:block;font-size:.66rem;letter-spacing:.2em;color:var(--muted);margin-bottom:.35rem}
+.ptags>div{display:flex;flex-wrap:wrap;align-items:center}
+.tagpick{display:flex;flex-wrap:wrap;gap:.5rem}
+.tagpick button{display:inline-flex;align-items:center;gap:.45rem;padding:.45rem .8rem;border-radius:10px;font-weight:600;font-size:.9rem;color:var(--ink2);background:rgba(255,255,255,.04);border:1px solid var(--line2);transition:.15s}
+.tagpick button i{width:.7em;height:.7em;border-radius:50%;background:var(--tc)}
+.tagpick button.on{color:var(--tc);background:color-mix(in srgb,var(--tc) 16%,transparent);border-color:var(--tc);box-shadow:0 0 0 1px var(--tc) inset}
+.tagpick button.on::after{content:"✓";font-size:.85em}
+.cpick{position:relative;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;border:1px dashed var(--line2);cursor:pointer;font-size:.95rem;overflow:hidden}
+.cpick input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.tprev{padding:.8rem 1rem;border-radius:12px;background:rgba(0,0,0,.3);border:1px solid var(--line)}

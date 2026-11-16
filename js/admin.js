@@ -1,7 +1,7 @@
 // HGWS – admin és moderátor felület: tagok, szerepkörök, filmek, csatornák
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG } from './core.js?v=202611162006';
-import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611162006';
-import { githubRepo } from '../firebase-config.js?v=202611162006';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG } from './core.js?v=202611162013';
+import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611162013';
+import { githubRepo } from '../firebase-config.js?v=202611162013';
 
 let C = null, current = null;
 export function init(ctx) { C = ctx; }
@@ -11,6 +11,7 @@ export function render(sub, again) {
   current = sub;
   const v = $('#page');
   if (sub === 'tagok' && C.isMod()) return members(v, again);
+  if (sub === 'cimkek' && C.isMod()) return tagsPage(v, again);
   if (sub === 'filmek' && C.isAdmin()) return films(v, again);
   if (sub === 'csatornak' && C.isAdmin()) return channels(v, again);
   if (sub === 'zene' && C.isAdmin()) return music(v, again);
@@ -19,7 +20,7 @@ export function render(sub, again) {
 }
 
 function tabs() {
-  const t = [['tagok', '🛡️ Tagok és jogok', C.isMod()], ['filmek', '🎞️ Filmek', C.isAdmin()], ['zene', '🎵 Zenék', C.isAdmin()], ['csatornak', '⚙️ Csatornák', C.isAdmin()]].filter(x => x[2]);
+  const t = [['tagok', '🛡️ Tagok és jogok', C.isMod()], ['cimkek', '🏷️ Tagek', C.isMod()], ['filmek', '🎞️ Filmek', C.isAdmin()], ['zene', '🎵 Zenék', C.isAdmin()], ['csatornak', '⚙️ Csatornák', C.isAdmin()]].filter(x => x[2]);
   return `<div class="atabs" style="margin:.6rem 0 1rem">${t.map(([k, l]) => `<a href="#/admin/${k}" class="${current === k ? 'on' : ''}">${l}</a>`).join('')}</div>`;
 }
 
@@ -39,10 +40,11 @@ function members(v, again) {
       return `<div class="arow"><span class="avw">${avatar(u, 42)}<i class="on${isOnline(u) ? ' y' : ''}" style="border-color:#0d1830"></i></span>
         <div class="who"><b data-u="${esc(u.id)}" style="cursor:pointer;color:${u.role && u.role !== 'user' ? ROLES[u.role].color : 'inherit'}">${esc(u.name)}</b>${self ? ' <span class="hint">(te)</span>' : ''}
           <small>${u.createdAt ? 'Tag ' + toDate(u.createdAt).toLocaleDateString('hu-HU') + ' óta' : ''}${u.lastSeen ? ' · ' + (isOnline(u) ? '🟢 online' : 'utoljára ' + timeLabel(u.lastSeen)) : ''}</small>
-          <div>${u.banned ? '<span class="tg red">⛔ KITILTVA</span>' : ''}${muted ? `<span class="tg red">🔇 NÉMÍTVA ${esc(timeLabel(u.mutedUntil))}-IG</span>` : ''}</div></div>
+          <div>${C.tagPills(u, 6)}${u.banned ? '<span class="tg red">⛔ KITILTVA</span>' : ''}${muted ? `<span class="tg red">🔇 NÉMÍTVA ${esc(timeLabel(u.mutedUntil))}-IG</span>` : ''}</div></div>
         <div class="ac">
           ${C.isAdmin() ? `<select data-role="${esc(u.id)}" ${self ? 'disabled title="A saját jogodat nem veheted el"' : ''}>${Object.entries(ROLES).map(([k, r]) => `<option value="${k}" ${(u.role || 'user') === k ? 'selected' : ''}>${r.label}</option>`).join('')}</select>`
             : `<span class="tg ${u.role === 'admin' ? 'g' : u.role === 'moderator' ? 'b' : ''}">${ROLES[u.role || 'user'].label.toUpperCase()}</span>`}
+          <button class="btn plain sm" data-tagu="${esc(u.id)}">🏷️ Tagek</button>
           ${canMod ? `<button class="btn plain sm" data-mod="${esc(u.id)}">🛡️ Moderálás</button>` : ''}
         </div></div>`;
     }).join('')}</div></div>`;
@@ -54,6 +56,74 @@ function members(v, again) {
     try { await FB.updateDoc(FB.doc(db, 'users', u.id), { role: r }); toast('Szerepkör frissítve ✓'); } catch (e) { toast(errText(e), true); s.value = u.role || 'user'; }
   });
   $$('[data-mod]', v).forEach(b => b.onclick = () => modModal(b.dataset.mod));
+  $$('[data-tagu]', v).forEach(b => b.onclick = () => tagAssign(b.dataset.tagu));
+}
+
+/* ================= TAGEK (Discord-rangszerű címkék) ================= */
+export const TAG_COLORS = ['#e8b656', '#ff5a4d', '#ff8fc7', '#c79bff', '#6c8cff', '#6cc6ff', '#4dd6c7', '#5ee08a', '#b6e35a', '#ffa94d', '#c9c3b5', '#8f8a7e'];
+const tagPill = t => `<span class="utag lg" style="--tc:${esc(t.color)}">${esc(t.name || 'Tag')}</span>`;
+function tagsPage(v) {
+  C.setTitle('🏷️', 'Tagek', 'Egyedi rangok: szöveg + szín');
+  const tags = C.S.tags, count = id => [...C.S.users.values()].filter(u => (u.tags || []).includes(id)).length;
+  v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div>${tabs()}<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap">
+    <div><h1 class="gold">Tagek</h1><p class="lead">Discord-rangszerű címkék. A moderátorok és adminok hozhatnak létre és oszthatnak ki ilyeneket – a tag neve mellett jelenik meg a csevegésben, a hozzászólásoknál és a profilján.</p></div>
+    <button class="btn goldb" id="newTag">＋ ÚJ TAG</button></div>
+    <div class="atable" style="margin-top:1.2rem">${tags.length ? tags.map(t => `<div class="arow"><span style="width:14px;height:14px;border-radius:50%;background:${esc(t.color)};box-shadow:0 0 10px ${esc(t.color)}"></span>
+      <div class="who">${tagPill(t)}<small>${count(t.id)} tagnál</small></div>
+      <div class="ac"><button class="btn plain sm" data-tedit="${esc(t.id)}">✏️ Szerkesztés</button><button class="btn danger sm" data-tdel="${esc(t.id)}">Törlés</button></div></div>`).join('')
+      : '<div class="empty">Még nincs egy tag sem. Hozd létre az elsőt az „Új tag” gombbal!</div>'}</div></div>`;
+  $('#newTag').onclick = () => tagModal();
+  $$('[data-tedit]', v).forEach(b => b.onclick = () => tagModal(tags.find(t => t.id === b.dataset.tedit)));
+  $$('[data-tdel]', v).forEach(b => b.onclick = async () => {
+    const t = tags.find(x => x.id === b.dataset.tdel), n = count(t.id);
+    if (!await confirmBox(`Törlöd a(z) „${t.name}” taget?${n ? ` ${n} tagról is lekerül.` : ''}`, 'Törlés')) return;
+    try {
+      const bt = FB.writeBatch(db);
+      [...C.S.users.values()].filter(u => (u.tags || []).includes(t.id)).forEach(u => bt.update(FB.doc(db, 'users', u.id), { tags: FB.arrayRemove(t.id) }));
+      bt.delete(FB.doc(db, 'tags', t.id)); await bt.commit(); toast('Tag törölve');
+    } catch (e) { toast(errText(e), true); }
+  });
+}
+export function tagModal(t) {
+  let color = t?.color || TAG_COLORS[Math.floor(Math.random() * 8)];
+  const el = modal({ title: t ? 'Tag szerkesztése' : 'Új tag', body: `
+    <div class="field"><label>Név <em>(max. 24 karakter)</em></label><input class="inp" name="n" maxlength="24" value="${esc(t?.name || '')}" placeholder="pl. Locsolómester, VIP, Tesztelő"></div>
+    <div class="field"><label>Szín</label><div class="swatches">${TAG_COLORS.map(c => `<button type="button" data-c="${c}" class="${c === color ? 'on' : ''}" style="background:${c}"></button>`).join('')}
+      <label class="cpick" title="Egyéni szín"><input type="color" value="${esc(color)}">🎨</label></div></div>
+    <div class="field"><label>Előnézet</label><div class="tprev"><b>Locsoló Laci</b> <span data-prev></span></div></div>`,
+    foot: `<button class="btn plain" data-x>Mégse</button><button class="btn goldb" data-save>${t ? 'Mentés' : 'Létrehozás'}</button>` });
+  const n = el.querySelector('[name=n]'), pick = el.querySelector('input[type=color]');
+  const prev = () => { el.querySelector('[data-prev]').innerHTML = tagPill({ name: n.value.trim() || 'Tag neve', color }); };
+  el.querySelector('.swatches').onclick = e => { const b = e.target.closest('[data-c]'); if (!b) return; color = b.dataset.c; pick.value = color; $$('.swatches [data-c]', el).forEach(x => x.classList.toggle('on', x === b)); prev(); };
+  pick.oninput = () => { color = pick.value; $$('.swatches [data-c]', el).forEach(x => x.classList.remove('on')); prev(); };
+  n.oninput = prev; prev(); setTimeout(() => n.focus(), 50);
+  el.querySelector('[data-save]').onclick = async () => {
+    const name = n.value.trim();
+    if (!name) return toast('Adj nevet a tagnek.', true);
+    if (!/^#[0-9a-fA-F]{6}$/.test(color)) return toast('Érvénytelen szín.', true);
+    try {
+      if (t) await FB.updateDoc(FB.doc(db, 'tags', t.id), { name, color });
+      else await FB.addDoc(FB.collection(db, 'tags'), { name, color, order: Date.now(), createdAt: FB.serverTimestamp() });
+      toast(t ? 'Tag mentve ✓' : 'Tag létrehozva ✓'); el.close();
+    } catch (e) { toast(errText(e), true); }
+  };
+}
+/* tagek kiosztása egy felhasználónak */
+export function tagAssign(id) {
+  const u = C.U(id), tags = C.S.tags;
+  const has = new Set(u.tags || []);
+  const el = modal({ title: 'Tagek – ' + u.name, body: tags.length ? `<p class="hint" style="margin-bottom:.8rem">Kattints a tagekre a ki- és bekapcsoláshoz (max. 10).</p>
+    <div class="tagpick">${tags.map(t => `<button type="button" class="${has.has(t.id) ? 'on' : ''}" data-t="${esc(t.id)}" style="--tc:${esc(t.color)}"><i></i>${esc(t.name)}</button>`).join('')}</div>`
+    : `<div class="empty">Még nincs egy tag sem.</div>`,
+    foot: `<a class="btn plain l" href="#/admin/cimkek">🏷️ Tagek kezelése</a><button class="btn plain" data-x>Mégse</button>${tags.length ? '<button class="btn goldb" data-save>Mentés</button>' : ''}` });
+  el.querySelector('.tagpick')?.addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (!b) return;
+    if (!b.classList.contains('on') && $$('.tagpick .on', el).length >= 10) return toast('Legfeljebb 10 tag lehet egy tagon.', true);
+    b.classList.toggle('on'); });
+  el.querySelector('[data-save]')?.addEventListener('click', async () => {
+    const ids = $$('.tagpick .on', el).map(b => b.dataset.t);
+    try { await FB.updateDoc(FB.doc(db, 'users', id), { tags: ids }); toast('Tagek mentve ✓'); el.close(); } catch (e) { toast(errText(e), true); }
+  });
+  el.querySelector('a[href="#/admin/cimkek"]')?.addEventListener('click', () => el.close());
 }
 
 export function modModal(id) {

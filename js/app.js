@@ -1,14 +1,14 @@
 // HGWS Közösség – csatornák, privát üzenetek, csoportok, filmtár
 import { FB, auth, db, notConfigured, $, $$, esc, ROLES, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
-  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG } from './core.js?v=202611162006';
-import { modal, confirmBox, popover, closePop, emojiPicker, QUICK, stageHtml } from './ui.js?v=202611162006';
-import * as Admin from './admin.js?v=202611162006';
-import * as Browse from './browse.js?v=202611162006';
-import * as Player from './player.js?v=202611162006';
+  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG } from './core.js?v=202611162013';
+import { modal, confirmBox, popover, closePop, emojiPicker, QUICK, stageHtml } from './ui.js?v=202611162013';
+import * as Admin from './admin.js?v=202611162013';
+import * as Browse from './browse.js?v=202611162013';
+import * as Player from './player.js?v=202611162013';
 
 const S = {
   user: null, me: null, users: new Map(), channels: [], convs: [], convsLoaded: false, videos: [], reads: { ch: {} },
-  owner: undefined, route: { sec: 'srv' }, chat: null, memOpen: innerWidth > 1100, myList: [], mode: '', music: [], progress: {}
+  owner: undefined, route: { sec: 'srv' }, chat: null, memOpen: innerWidth > 1100, myList: [], mode: '', music: [], progress: {}, tags: []
 };
 const uid = () => S.user.uid;
 const isAdmin = () => S.me?.role === 'admin';
@@ -18,6 +18,15 @@ const U = id => S.users.get(id) || { id, name: 'Ismeretlen', color: '#55606f' };
 const ms = t => toDate(t)?.getTime() || 0;
 const nameHtml = u => `<span class="nm" data-u="${esc(u.id)}" style="color:${u.role && u.role !== 'user' ? ROLES[u.role].color : (u.color || '#ebe6da')}">${esc(u.name)}</span>`;
 const roleBadge = u => u.role === 'admin' || u.role === 'moderator' ? `<span class="rb ${u.role}">${ROLES[u.role].label}</span>` : '';
+/* egyedi tagek (Discord-rangszerű címkék): szöveg + szín, moderátorok osztják ki */
+const userTags = u => (u?.tags || []).map(id => S.tags.find(t => t.id === id)).filter(Boolean).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+const tagPills = (u, max = 2) => { const l = userTags(u); return l.slice(0, max).map(t => `<span class="utag" style="--tc:${esc(t.color)}">${esc(t.name)}</span>`).join('') + (l.length > max ? `<span class="utag more">+${l.length - max}</span>` : ''); };
+function watchTags() {
+  FB.onSnapshot(FB.collection(db, 'tags'), s => {
+    S.tags = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    soon('tags', () => { S.chat?.rerender(); renderMembers(); renderOnline(); Admin.refresh(); Browse.tagsChanged?.(); });
+  }, e => console.warn(e));
+}
 
 /* ===================== INDÍTÁS ===================== */
 if (notConfigured) {
@@ -40,6 +49,7 @@ if (notConfigured) {
 }
 
 function start() {
+  watchTags();
   if (S.guest) return startGuest();
   const me = FB.doc(db, 'users', uid());
   FB.onSnapshot(me, s => {
@@ -404,6 +414,7 @@ function profile(id, anchor) {
     <h4>${esc(u.name)}</h4>
     <div class="meta">${isOnline(u) ? '🟢 Online' : u.lastSeen ? 'Utoljára: ' + timeLabel(u.lastSeen) : ''}${u.createdAt ? ' · Tag ' + toDate(u.createdAt).toLocaleDateString('hu-HU', { year: 'numeric', month: 'short' }) + ' óta' : ''}</div>
     ${u.bio ? `<div class="bio">${esc(u.bio)}</div>` : ''}
+    ${userTags(u).length || isMod() ? `<div class="ptags"><small>TAGEK</small><div>${userTags(u).map(t => `<span class="utag lg" style="--tc:${esc(t.color)}">${esc(t.name)}</span>`).join('')}${isMod() && !S.guest ? '<button class="utag add" data-a="tags" title="Tagek kiosztása">＋</button>' : ''}</div></div>` : ''}
     ${u.banned ? '<div class="stat">⛔ Kitiltva</div>' : muted ? `<div class="stat">🔇 Némítva eddig: ${timeLabel(u.mutedUntil)}</div>` : ''}
     <div class="sec">${self ? '<button class="btn plain sm" data-a="set">Profil szerkesztése</button>' : S.guest ? '' : `<button class="btn primary sm" data-a="dm">💬 Üzenet</button>`}
       ${canMod ? `<button class="btn plain sm" data-a="mod">🛡️ Moderálás</button>` : ''}</div>
@@ -414,6 +425,7 @@ function profile(id, anchor) {
     if (a === 'dm') location.hash = '#/u/' + id;
     if (a === 'set') settings();
     if (a === 'mod') Admin.modModal(id);
+    if (a === 'tags') Admin.tagAssign(id);
   });
 }
 
@@ -423,7 +435,7 @@ function userMenu(anchor) {
   if (S.guest) {
     const p = popover(anchor, `<div class="umenu"><div class="mh">${avatar(m, 40)}<div><b>Vendég</b><small>Csak filmnézés</small></div></div>
       <button data-a="reg">✨ Regisztráció</button><button data-a="login">🔑 Belépés</button><a href="#/lista">＋ Saját lista</a>
-      <hr><a href="https://bombasz.hu" target="_blank" rel="noopener">🤝 Partner: Bombasz ↗</a><a href="mailto:info@hgery08.hu">✉️ Kapcsolat: info@hgery08.hu</a><a href="miert_igyal.html">🍻 Ma miért igyál?</a><a href="vizsga.html">📝 Közigazgatási vizsga – gyakorló</a><button data-a="login">🚪 Kilépés</button></div>`);
+      <hr><a href="https://bombasz.hu" target="_blank" rel="noopener">🤝 Partner: Bombasz ↗</a><a href="https://zeroarmageddon.github.io/BFG-Managger/BFG_App.html" target="_blank" rel="noopener">🤝 Partner: Zerosites ↗</a><a href="mailto:info@hgery08.hu">✉️ Kapcsolat: info@hgery08.hu</a><a href="miert_igyal.html">🍻 Ma miért igyál?</a><a href="vizsga.html">📝 Közigazgatási vizsga – gyakorló</a><button data-a="login">🚪 Kilépés</button></div>`);
     const r = anchor.getBoundingClientRect();
     p.style.left = Math.max(8, Math.min(innerWidth - p.offsetWidth - 8, r.left < innerWidth / 2 ? r.left : r.right - p.offsetWidth)) + 'px';
     p.style.top = Math.max(8, r.bottom + 8 + p.offsetHeight > innerHeight ? r.top - p.offsetHeight - 8 : r.bottom + 8) + 'px';
@@ -433,7 +445,7 @@ function userMenu(anchor) {
   const p = popover(anchor, `<div class="umenu"><div class="mh">${avatar(m, 40)}<div><b>${esc(m.name)}</b><small>${esc(ROLES[m.role]?.label || '')}</small></div></div>
     <button data-a="set">⚙️ Profil és beállítások</button><a href="#/lista">＋ Saját lista</a><a href="#/chat">💬 Közösség</a><a href="#/dm">✉️ Privát üzenetek</a>
     ${isMod() ? `<hr><a href="#/admin/tagok">🛡️ Tagok és jogok</a>${isAdmin() ? '<a href="#/admin/filmek">🎞️ Filmek kezelése</a><a href="#/admin/zene">🎵 Zenék kezelése</a><a href="#/admin/csatornak">⚙️ Csatornák kezelése</a>' : ''}` : ''}
-    <hr><a href="https://bombasz.hu" target="_blank" rel="noopener">🤝 Partner: Bombasz ↗</a><a href="mailto:info@hgery08.hu">✉️ Kapcsolat: info@hgery08.hu</a><a href="miert_igyal.html">🍻 Ma miért igyál?</a><a href="vizsga.html">📝 Közigazgatási vizsga – gyakorló</a><button data-a="out">🚪 Kijelentkezés</button></div>`);
+    <hr><a href="https://bombasz.hu" target="_blank" rel="noopener">🤝 Partner: Bombasz ↗</a><a href="https://zeroarmageddon.github.io/BFG-Managger/BFG_App.html" target="_blank" rel="noopener">🤝 Partner: Zerosites ↗</a><a href="mailto:info@hgery08.hu">✉️ Kapcsolat: info@hgery08.hu</a><a href="miert_igyal.html">🍻 Ma miért igyál?</a><a href="vizsga.html">📝 Közigazgatási vizsga – gyakorló</a><button data-a="out">🚪 Kijelentkezés</button></div>`);
   const r = anchor.getBoundingClientRect();
   p.style.left = Math.max(8, Math.min(innerWidth - p.offsetWidth - 8, r.left < innerWidth / 2 ? r.left : r.right - p.offsetWidth)) + 'px';
   p.style.top = Math.max(8, r.bottom + 8 + p.offsetHeight > innerHeight ? r.top - p.offsetHeight - 8 : r.bottom + 8) + 'px';
@@ -513,7 +525,7 @@ function renderDmHome() {
   $('#view').innerHTML = `<div class="page"><h1 class="gold">Kivel beszélgetnél?</h1><p class="lead">Kattints valakire a privát üzenethez, vagy csinálj csoportot többekkel.</p>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1.2rem;align-items:center"><div class="search" style="flex:1;min-width:220px;margin:0"><input type="search" id="hq" placeholder="Tag keresése…" value="${esc(S.homeq || '')}"></div><button class="btn goldb" id="ng">👥 ÚJ CSOPORT</button></div>
     <div class="atable">${list.map(u => `<div class="arow"><span class="avw">${avatar(u, 42)}<i class="on${isOnline(u) ? ' y' : ''}" style="border-color:#0d1830"></i></span>
-      <div class="who"><b data-u="${esc(u.id)}" style="cursor:pointer">${esc(u.name)}</b> ${roleBadge(u)}<small>${isOnline(u) ? '🟢 Online' : u.lastSeen ? 'Utoljára ' + timeLabel(u.lastSeen) : ''}</small></div>
+      <div class="who"><b data-u="${esc(u.id)}" style="cursor:pointer">${esc(u.name)}</b> ${roleBadge(u)}${tagPills(u)}<small>${isOnline(u) ? '🟢 Online' : u.lastSeen ? 'Utoljára ' + timeLabel(u.lastSeen) : ''}</small></div>
       <div class="ac"><a class="btn primary sm" href="#/u/${esc(u.id)}">💬 Üzenet</a></div></div>`).join('') || '<div class="empty">Nincs találat.</div>'}</div></div>`;
   $('#ng').onclick = newGroup;
   const i = $('#hq'); i.oninput = () => { S.homeq = i.value; renderDmHome(); const n = $('#hq'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); };
@@ -700,7 +712,7 @@ class Chat {
     const rep = m.replyTo ? `<div class="rep" data-jump="${esc(m.replyTo.id)}">${avatar(U(m.replyTo.uid), 16)}<b>${esc(U(m.replyTo.uid).name)}</b><span>${esc(m.replyTo.text || '🎬 film')}</span></div>` : '';
     return `<div class="msg${cont ? ' cont' : ''}${me ? ' mention' : ''}" data-id="${esc(m.id)}">
       <div class="mg">${cont ? `<time>${t ? t.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }) : ''}</time>` : `<span data-u="${esc(u.id)}">${avatar(u, 40)}</span>`}</div>
-      <div class="mb">${rep}${cont ? '' : `<div class="mh">${nameHtml(u)}${roleBadge(u)}<time title="${t ? t.toLocaleString('hu-HU') : ''}">${m.pending ? 'küldés…' : timeLabel(m.createdAt)}</time></div>`}
+      <div class="mb">${rep}${cont ? '' : `<div class="mh">${nameHtml(u)}${roleBadge(u)}${tagPills(u)}<time title="${t ? t.toLocaleString('hu-HU') : ''}">${m.pending ? 'küldés…' : timeLabel(m.createdAt)}</time></div>`}
         ${m.text ? `<div class="mt${onlyEmoji(m.text) ? ' big' : ''}">${fmt(m.text)}${m.editedAt ? '<span class="ed">(szerkesztve)</span>' : ''}</div>` : ''}
         ${m.film ? filmCard(m.film) : ''}${m.track ? trackCard(m.track) : ''}${ytEmbeds(m.text)}
         ${rx.length ? `<div class="reacts">${rx.map(([e, l]) => `<button data-rx="${e}" class="${l.includes(uid()) ? 'me' : ''}" title="${esc(l.map(i => U(i).name).join(', '))}">${e}<b>${l.length}</b></button>`).join('')}</div>` : ''}
@@ -892,6 +904,6 @@ function shareFilm(filmId, chat, trackId) {
 }
 
 /* az admin modul ezeken keresztül éri el az állapotot */
-Admin.init({ S, uid, isAdmin, isMod, U, setTitle, renderSide, route });
-Browse.init({ S, uid, isAdmin, isMod, U, shareFilm, renderOwnerBar, convUnread, guestPrompt, guestLeave });
+Admin.init({ S, uid, isAdmin, isMod, U, setTitle, renderSide, route, tagPills, userTags });
+Browse.init({ S, uid, isAdmin, isMod, U, shareFilm, renderOwnerBar, convUnread, guestPrompt, guestLeave, tagPills });
 setInterval(() => S.users.size && renderOnline(), 60e3);

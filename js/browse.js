@@ -1,8 +1,8 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText } from './core.js?v=202611162006';
-import { stageHtml, confirmBox } from './ui.js?v=202611162006';
-import * as Player from './player.js?v=202611162006';
-import * as VP from './vplayer.js?v=202611162006';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText } from './core.js?v=202611162013';
+import { stageHtml, confirmBox } from './ui.js?v=202611162013';
+import * as Player from './player.js?v=202611162013';
+import * as VP from './vplayer.js?v=202611162013';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -60,7 +60,10 @@ function wireRows(root) {
 }
 
 /* ===================== lábléc: partner + kapcsolat ===================== */
-export const PARTNERS = [{ name: 'Bombasz', url: 'https://bombasz.hu', host: 'bombasz.hu' }];
+export const PARTNERS = [
+  { name: 'Bombasz', url: 'https://bombasz.hu', host: 'bombasz.hu' },
+  { name: 'Zerosites', url: 'https://zeroarmageddon.github.io/BFG-Managger/BFG_App.html', host: 'zerosites' }
+];
 export const CONTACT = 'info@hgery08.hu';
 function footHtml() {
   return `<footer class="sitefoot"><div class="fl"><img src="img/logo.webp" alt=""><div><b>HGWS Studios</b><small>Halász Gergely Watering Solutions</small></div></div>
@@ -76,14 +79,14 @@ function contactStrip() {
   return `<section class="cstrip"><div class="ci"><span class="cic">✉️</span><div><div class="eyebrow">// KAPCSOLAT</div><h3>Írj nekünk!</h3>
     <p>Kérdésed, ötleted vagy üzleti ajánlatod van? A HGWS Studios várja a leveled.</p></div></div>
     <div class="cbtns"><a class="pbtn play" href="mailto:${CONTACT}"><i>✉️</i>${CONTACT}</a><button class="pbtn info" data-copymail><i>📋</i>Másolás</button>
-    <a class="pbtn info" href="${PARTNERS[0].url}" target="_blank" rel="noopener"><i>🤝</i>Partner: ${esc(PARTNERS[0].name)}</a></div></section>`;
+    ${PARTNERS.map(p => `<a class="pbtn info" href="${p.url}" target="_blank" rel="noopener"><i>🤝</i>${esc(p.name)}</a>`).join('')}</div></section>`;
 }
 export function contact() {
   cleanup();
   document.title = 'Kapcsolat · HGWS';
   $('#page').innerHTML = `<div class="pg cpage"><div class="eyebrow">// HGWS STUDIOS</div><h1 class="gold">Kapcsolat</h1>
     <p class="lead">Kérdésed, ötleted, együttműködési vagy üzleti ajánlatod van? Írj bátran, válaszolunk.</p>
-    <div class="cgrid">
+    <div class="cgrid" style="--n:${PARTNERS.length}">
       <a class="ccard big" href="mailto:${CONTACT}"><span class="ico">✉️</span><small>E-MAIL</small><b>${CONTACT}</b><em>Kattints a levélíráshoz</em></a>
       <button class="ccard" data-copymail><span class="ico">📋</span><small>CÍM MÁSOLÁSA</small><b>Vágólapra</b><em>Ha a saját leveleződből írnál</em></button>
       ${PARTNERS.map(p => `<a class="ccard" href="${p.url}" target="_blank" rel="noopener"><span class="ico">🤝</span><small>PARTNEROLDAL</small><b>${esc(p.name)}</b><em>${esc(p.host)} ↗</em></a>`).join('')}
@@ -404,7 +407,7 @@ function comments(box, vid, ratings = () => ({})) {
     if (failed) { list.innerHTML = `<p class="hint">${esc(failed)}</p>`; return; }
     const R = ratings();
     list.innerHTML = items.length ? items.map(c => { const u = C.U(c.uid), likes = c.reactions?.['👍'] || [], r = R[c.uid];
-      return `<div class="cmt" data-c="${esc(c.id)}">${`<span data-u="${esc(u.id)}" style="cursor:pointer">${avatar(u, 40)}</span>`}<div class="cc"><div class="ch"><b data-u="${esc(u.id)}" style="color:${u.role && u.role !== 'user' ? ROLES[u.role].color : 'inherit'}">${esc(u.name)}</b>${r ? starRow(r, 'sm') : ''}<time>${timeLabel(c.createdAt)}</time></div>
+      return `<div class="cmt" data-c="${esc(c.id)}">${`<span data-u="${esc(u.id)}" style="cursor:pointer">${avatar(u, 40)}</span>`}<div class="cc"><div class="ch"><b data-u="${esc(u.id)}" style="color:${u.role && u.role !== 'user' ? ROLES[u.role].color : 'inherit'}">${esc(u.name)}</b>${C.tagPills(u)}${r ? starRow(r, 'sm') : ''}<time>${timeLabel(c.createdAt)}</time></div>
         <div class="ct">${esc(c.text)}</div><div class="ca"><button data-like class="${likes.includes(uid) ? 'me' : ''}">👍 ${likes.length || ''}</button>${!guest() && (c.uid === uid || C.isMod()) ? '<button data-del>Törlés</button>' : ''}</div></div></div>`; }).join('')
       : `<p class="hint">Még senki nem szólt hozzá.${guest() ? '' : ' Légy te az első!'}</p>`;
   };
