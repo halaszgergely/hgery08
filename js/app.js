@@ -1,6 +1,6 @@
 // HGWS Közösség – csatornák, privát üzenetek, csoportok, filmtár
 import { FB, auth, db, notConfigured, $, $$, esc, ROLES, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
-  ytId, toast, errText, ensureProfile, blip } from './core.js';
+  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG } from './core.js';
 import { modal, confirmBox, popover, closePop, emojiPicker, QUICK, stageHtml } from './ui.js';
 import * as Admin from './admin.js';
 import * as Browse from './browse.js';
@@ -84,6 +84,7 @@ function start() {
   si.oninput = () => { const q = si.value; if (location.hash.startsWith('#/kereses')) history.replaceState(null, '', '#/kereses/' + encodeURIComponent(q)); else location.hash = '#/kereses/' + encodeURIComponent(q); if (location.hash.startsWith('#/kereses')) Browse.search(encodeURIComponent(q)); };
   si.onblur = () => { if (!si.value) sb.classList.remove('open'); };
   zeroEgg();
+  let taps = 0, tapT; $('.tlogo').addEventListener('click', e => { taps++; clearTimeout(tapT); tapT = setTimeout(() => taps = 0, 1200); if (taps >= 5) { taps = 0; e.preventDefault(); showZero(); } });
   Player.init(() => S.music.filter(t => t.visible !== false));
   addEventListener('hashchange', route);
   document.addEventListener('click', globalClick);
@@ -340,7 +341,7 @@ function userMenu(anchor) {
   const p = popover(anchor, `<div class="umenu"><div class="mh">${avatar(m, 40)}<div><b>${esc(m.name)}</b><small>${esc(ROLES[m.role]?.label || '')}</small></div></div>
     <button data-a="set">⚙️ Profil és beállítások</button><a href="#/lista">＋ Saját lista</a><a href="#/chat">💬 Közösség</a><a href="#/dm">✉️ Privát üzenetek</a>
     ${isMod() ? `<hr><a href="#/admin/tagok">🛡️ Tagok és jogok</a>${isAdmin() ? '<a href="#/admin/filmek">🎞️ Filmek kezelése</a><a href="#/admin/zene">🎵 Zenék kezelése</a><a href="#/admin/csatornak">⚙️ Csatornák kezelése</a>' : ''}` : ''}
-    <hr><a href="./">🏠 HGWS főoldal</a><a href="miert_igyal.html">🍻 Ma miért igyál?</a><button data-a="out">🚪 Kijelentkezés</button></div>`);
+    <hr><a href="./">🏠 HGWS főoldal</a><a href="miert_igyal.html">🍻 Ma miért igyál?</a><a href="vizsga.html">📝 Közigazgatási vizsga – gyakorló</a><button data-a="out">🚪 Kijelentkezés</button></div>`);
   const r = anchor.getBoundingClientRect(); p.style.left = Math.max(8, r.right - p.offsetWidth) + 'px'; p.style.top = (r.bottom + 8) + 'px';
   p.addEventListener('click', e => { const a = e.target.closest('[data-a]')?.dataset.a; if (e.target.closest('a,button')) closePop(); if (a === 'set') settings(); if (a === 'out') FB.signOut(auth); });
 }
@@ -352,13 +353,17 @@ function zeroEgg() {
     if (e.target.closest('input,textarea')) return;
     buf = (buf + e.key.toLowerCase()).slice(-4);
     if (buf !== 'zero') return;
-    buf = '';
+    buf = ''; showZero();
+  });
+}
+function showZero() {
+  {
     const el = document.createElement('div'); el.className = 'zero';
     el.innerHTML = `<div class="zc"><div class="zt">// TITKOS STÁB</div><div class="zn">ZERO</div><div class="zs">a HGWS árnyékban dolgozó segítője</div><p>Köszi tesó, nélküled ez az oldal nem lenne ilyen. 💧</p><small>(megtaláltad az easter egget)</small></div>`;
     document.body.appendChild(el);
     for (let i = 0; i < 60; i++) { const d = document.createElement('i'); d.style.cssText = `left:${Math.random() * 100}%;animation-delay:${Math.random() * 1.5}s;animation-duration:${1.6 + Math.random() * 1.6}s`; d.textContent = Math.random() < .5 ? '0' : '💧'; el.appendChild(d); }
     el.onclick = () => el.remove(); setTimeout(() => el.remove(), 7000);
-  });
+  }
 }
 
 /* ===================== BEÁLLÍTÁSOK ===================== */
@@ -389,6 +394,7 @@ function settings() {
   el.querySelector('[data-save]').onclick = async () => {
     const name = el.querySelector('[name=name]').value.trim(), bio = el.querySelector('[name=bio]').value.trim();
     if (name.length < 2) return toast('A név legalább 2 karakter legyen.', true);
+    if (reservedName(name) && S.owner?.uid !== uid()) return toast(RESERVED_MSG, true);
     try { await FB.updateDoc(FB.doc(db, 'users', uid()), { name, nameLower: name.toLowerCase(), bio, color }); FB.updateProfile(S.user, { displayName: name }).catch(() => {}); toast('Mentve ✓'); el.close(); }
     catch (e) { toast(errText(e), true); }
   };

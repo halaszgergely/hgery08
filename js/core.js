@@ -88,12 +88,28 @@ export const errText = e => ({
   'permission-denied': 'Ehhez nincs jogosultságod.'
 }[e?.code] || (e?.message || String(e)));
 
+/* Foglalt nevek – ugyanaz a szabály, mint a firestore.rules-ban (ott is ellenőrizve van) */
+export function reservedName(n) {
+  const s = String(n || '').toLowerCase(), A = '[aáà4@]', E = '[eéè3]', sep = '[^a-z0-9áéíóöőúüű]*';
+  const full = r => new RegExp('^(?:' + r + ')$').test(s);
+  const gergely = '.*[g69]' + sep + E + sep + 'r' + sep + '[g69]' + sep + E + sep + 'l' + sep + '[yií1].*';
+  return full('.*h' + sep + '[g69]' + sep + E + sep + 'r' + sep + '[yií1].*')
+    || (full('.*h' + sep + A + sep + 'l' + sep + A + sep + 's' + sep + 'z.*') && full(gergely))
+    || full('(.*[^a-z]|)h[^a-z]+[g69]' + sep + E + sep + 'r' + sep + '[g69]' + sep + E + sep + 'l' + sep + '[yií1].*')
+    || full('.*h' + sep + A + sep + 'l' + sep + A + sep + 's' + sep + 'z[^a-z]+[g69]([^a-z].*|)');
+}
+export const RESERVED_MSG = 'Ez a név foglalt (a HGWS tulajdonosáé). Válassz másikat!';
+
 /* Bejelentkezett felhasználó profiljának létrehozása (ha még nincs) */
 export async function ensureProfile(user) {
   const ref = FB.doc(db, 'users', user.uid);
   const snap = await FB.getDoc(ref);
   if (snap.exists()) return { id: user.uid, ...snap.data() };
-  const name = (user.displayName || (user.email || 'Tag').split('@')[0]).slice(0, 32).padEnd(2, '_');
+  let name = (user.displayName || (user.email || 'Tag').split('@')[0]).slice(0, 32).padEnd(2, '_');
+  if (reservedName(name)) {
+    let owner = null; try { owner = (await FB.getDoc(FB.doc(db, 'meta', 'owner'))).data()?.uid; } catch (_) {}
+    if (owner && owner !== user.uid) name = 'Tag-' + user.uid.slice(0, 5);
+  }
   const data = { name, nameLower: name.toLowerCase(), color: pickColor(user.uid), role: 'user', banned: false,
     createdAt: FB.serverTimestamp(), lastSeen: FB.serverTimestamp(), photoURL: user.photoURL || '', bio: '' };
   await FB.setDoc(ref, data);
