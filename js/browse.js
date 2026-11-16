@@ -1,7 +1,8 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText } from './core.js?v=202611161159';
-import { stageHtml, confirmBox } from './ui.js?v=202611161159';
-import * as Player from './player.js?v=202611161159';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText } from './core.js?v=202611161934';
+import { stageHtml, confirmBox } from './ui.js?v=202611161934';
+import * as Player from './player.js?v=202611161934';
+import * as VP from './vplayer.js?v=202611161934';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -14,8 +15,9 @@ const inList = id => S().myList.includes(id);
 const img = v => v.banner || v.poster || '';
 const tracks = () => S().music.filter(t => t.visible !== false);
 const cov = t => t.cover ? `background-image:url('${esc(t.cover)}')` : '';
-let unsubs = [], heroTimer = null, countTimer = null;
-function cleanup() { unsubs.forEach(u => u()); unsubs = []; clearTimeout(heroTimer); clearInterval(countTimer); stopTrack(); }
+let unsubs = [], heroTimer = null, countTimer = null, vp = null;
+const guest = () => !!S().guest;
+function cleanup() { unsubs.forEach(u => u()); unsubs = []; clearTimeout(heroTimer); clearInterval(countTimer); stopTrack(); vp?.destroy(); vp = null; }
 
 /* ===================== kártyák, sorok ===================== */
 function badge(v) {
@@ -77,12 +79,12 @@ export function home() {
   const contList = Object.entries(S().progress || {}).filter(([id]) => film(id) && progOf(id) && !film(id).soon && film(id).visible !== false)
     .sort((a, b) => (toDate(b[1].at) || 0) - (toDate(a[1].at) || 0)).map(([id]) => film(id));
   page.innerHTML = `<div class="homeowner"><div class="ownerslot"></div></div>${heroHtml(f)}<div class="rows">
-    <div class="pills"><a href="#/" class="on">Kezdőlap</a>${kinds.map(k => `<a href="#/tar/${encodeURIComponent(k)}">${esc(PLURAL[k] || k)}</a>`).join('')}${tracks().length ? '<a href="#/zene">Zene</a>' : ''}<a href="#/chat">Közösség</a></div>
+    <div class="pills"><a href="#/" class="on">Kezdőlap</a>${kinds.map(k => `<a href="#/tar/${encodeURIComponent(k)}">${esc(PLURAL[k] || k)}</a>`).join('')}${tracks().length ? '<a href="#/zene">Zene</a>' : ''}${guest() ? '' : '<a href="#/chat">Közösség</a>'}</div>
     ${row('Folytatás', contList, '', false, true)}
     ${row(my.length ? 'Saját listám' : '', my, '#/lista')}
     ${row('Most megnézhető', released, '#/tar')}
     ${musicRow()}
-    ${commHtml(online)}
+    ${guest() ? guestHtml() : commHtml(online)}
     ${row('Hamarosan a HGWS-nél', soon, '#/tar')}
     ${list.length >= 2 ? row('Top a HGWS-en', list.slice(0, 10), '', true) : ''}
     ${kinds.length > 1 ? kinds.map(k => row(PLURAL[k] || k, list.filter(v => (v.kind || 'Film') === k), '#/tar/' + encodeURIComponent(k))).join('') : ''}
@@ -129,8 +131,13 @@ function commHtml(online) {
     <div class="stack">${online.slice(0, 7).map(u => `<span data-u="${esc(u.id)}" title="${esc(u.name)}">${avatar(u, 40)}</span>`).join('')}${online.length > 7 ? `<span class="more">+${online.length - 7}</span>` : ''}</div></div>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap"><a class="pbtn play" href="#/chat"><i>💬</i>Csatlakozom</a><a class="pbtn info" href="#/dm"><i>✉️</i>Üzenetek</a></div></section>`;
 }
+function guestHtml() {
+  return `<section class="comm" id="comm"><div class="txt"><div class="eyebrow">// VENDÉGKÉNT NÉZEL</div><h3 class="gold">Csatlakozz a HGWS közösséghez!</h3>
+    <p>Regisztrálj, és értékelheted a filmeket, hozzászólhatsz, csevegsz a többiekkel és megoszthatod a kedvenceidet.</p></div>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap"><button class="pbtn play" data-guestreg><i>✨</i>Regisztráció</button><button class="pbtn info" data-guestlogin><i>🔑</i>Belépés</button></div></section>`;
+}
 export function updateComm() {
-  const el = $('#comm'); if (!el) return;
+  const el = $('#comm'); if (!el || guest()) return;
   const online = [...S().users.values()].filter(u => isOnline(u) && !u.banned);
   el.outerHTML = commHtml(online);
 }
@@ -210,14 +217,14 @@ export function detail(id) {
         ${v.en ? `<p style="font-style:italic;color:#bfb8a9;margin-bottom:.6rem">${esc(v.en)}</p>` : ''}<p class="desc">${esc(v.desc || '')}</p></div>
       <div class="side2"><div><b>Típus:</b> ${esc(v.kind || 'Film')}</div>${v.genre ? `<div><b>Műfaj:</b> ${esc(v.genre)}</div>` : ''}${v.premiere ? `<div><b>Premier:</b> ${esc(huDate(v.premiere))}</div>` : ''}<div><b>Stúdió:</b> HGWS Studios</div></div>
       ${v.soon ? `<div class="stagebox"><h4>GYÁRTÁSI ÁLLAPOT</h4>${stageHtml(v.stage ?? 0)}</div>` : ''}
-      <div class="sect"><h3>Hozzászólások</h3><div class="cmts" id="cmts"></div></div>
+      <div class="sect"><h3>Értékelések és hozzászólások</h3><div class="cmts" id="cmts"></div></div>
       ${similar.length ? `<div class="sect"><h3>További HGWS-címek</h3><div class="grid" style="margin-top:0">${similar.map(x => tile(x)).join('')}</div></div>` : ''}
     </div></div>`;
   document.body.appendChild(el); document.body.style.overflow = 'hidden';
   el.addEventListener('click', e => { if (e.target === el || e.target.closest('[data-close]')) closeDetail(); });
   el._key = e => { if (e.key === 'Escape' && document.body.lastElementChild === el) closeDetail(); };
   addEventListener('keydown', el._key);
-  dlgUnsub = comments($('#cmts', el), v.id);
+  dlgUnsub = social($('#cmts', el), v.id);
   if (!location.hash.startsWith('#/film/')) { el._back = location.hash || '#/'; history.pushState(null, '', '#/film/' + v.id); }
 }
 export function closeDetail(fromRoute) {
@@ -235,32 +242,33 @@ export async function watch(id) {
   if (!v) { $('#page').innerHTML = '<div class="pg"><div class="noresult"><div class="big">🎬</div>Ez a film nem található.</div></div>'; return; }
   document.title = v.title + ' · HGWS';
   const more = vis().filter(x => x.id !== v.id);
-  $('#page').innerHTML = `<div class="watch"><div class="wframe" id="wf"><a class="wback" href="#/">‹ Vissza</a><div class="psoon" style="background-image:url('${esc(img(v))}')"><div><div class="spin" style="margin:0 auto"></div></div></div></div>
+  const next = more.find(x => !x.soon && x.hasVideo);
+  $('#page').innerHTML = `<div class="watch"><div class="wframe" id="wf"><div class="psoon" style="background-image:url('${esc(img(v))}')"><div><div class="spin" style="margin:0 auto"></div></div></div></div><a class="wback" href="#/">‹ Vissza</a>
     <div class="winfo"><div class="orig"><img src="img/logo.webp" alt=""><span><b>HGWS</b> ${esc((v.kind || 'Film').toUpperCase())}</span></div><h1>${esc(v.title)}</h1>
-      <div class="wrow"><div><div class="hmeta" style="margin-top:.4rem">${[v.year, v.len].filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('')}${v.genre ? `<span class="box">${esc(v.genre)}</span>` : ''}</div>
+      <div class="wrow"><div><div class="hmeta" style="margin-top:.4rem">${[v.year, v.len].filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('')}${v.genre ? `<span class="box">${esc(v.genre)}</span>` : ''}<span class="ravgmini" id="wavg"></span></div>
         <p style="margin-top:.9rem;line-height:1.65;color:#e2dccf">${esc(v.desc || '')}</p>
         <div class="hbtns"><button class="pbtn info" data-mylist="${esc(v.id)}"><i>${inList(v.id) ? '✓' : '＋'}</i>Saját lista</button><button class="pbtn info" data-share="${esc(v.id)}"><i>📤</i>Megosztás</button></div>
-        <div class="sect" style="margin-top:2rem"><h3 style="font-size:1.3rem;font-weight:700;margin-bottom:.8rem">Hozzászólások</h3><div class="cmts" id="cmts"></div></div></div>
+        <div class="sect" style="margin-top:2rem"><h3 style="font-size:1.3rem;font-weight:700;margin-bottom:.8rem">Értékelések és hozzászólások</h3><div class="cmts" id="cmts"></div></div></div>
       <div>${more.length ? `<h3 style="font-size:1.1rem;font-weight:700;margin-bottom:.8rem">Következő</h3><div class="grid" style="margin-top:0;grid-template-columns:1fr">${more.slice(0, 4).map(x => tile(x)).join('')}</div>` : ''}</div></div></div></div>`;
-  unsubs.push(comments($('#cmts'), v.id));
+  unsubs.push(social($('#cmts'), v.id, $('#wavg')));
   let src = {};
   if (!v.soon) { try { src = (await FB.getDoc(FB.doc(db, 'videoSources', v.id))).data() || {}; } catch (_) {} }
   const wf = $('#wf'); if (!wf || location.hash !== '#/nez/' + id) return;
-  const back = '<a class="wback" href="#/">‹ Vissza</a>';
   const pr = progOf(v.id), start = pr ? Math.floor(pr.t) : 0;
-  if (!v.soon && src.youtube) {
-    wf.innerHTML = back + `<iframe id="ytw" src="https://www.youtube-nocookie.com/embed/${esc(src.youtube)}?autoplay=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&start=${start}&origin=${encodeURIComponent(location.origin)}" title="${esc(v.title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
-    trackYT(v.id, $('#ytw'));
-  } else if (!v.soon && src.mp4) {
-    wf.innerHTML = back + `<video src="${esc(src.mp4)}" poster="${esc(v.poster || '')}" controls autoplay playsinline></video>`;
-    const vid = $('video', wf); if (start) vid.addEventListener('loadedmetadata', () => { vid.currentTime = start; }, { once: true });
-    track.id = v.id; vid.addEventListener('timeupdate', () => note(vid.currentTime, vid.duration)); vid.addEventListener('pause', flush);
+  if (!v.soon && (src.youtube || src.mp4)) {
+    stopTrack(); track.id = v.id;
+    vp = VP.mount(wf, {
+      youtube: src.mp4 ? '' : src.youtube, mp4: src.mp4 || '', poster: img(v), title: v.title, start,
+      onTime: note, onPause: flush, onEnd: flush,
+      next: next ? { title: next.title, href: '#/nez/' + next.id, poster: next.poster || img(next) } : null
+    });
+    wf.focus({ preventScroll: true });
   }
-  else wf.innerHTML = back + `<div class="psoon" style="background-image:url('${esc(img(v))}')"><div><b>HAMAROSAN</b><span>${v.premiere ? 'Premier: ' + esc(huDate(v.premiere)) : 'A videó még nem érhető el.'}</span>${v.soon ? stageHtml(v.stage ?? 0) : ''}</div></div>`;
+  else wf.innerHTML = `<div class="psoon" style="background-image:url('${esc(img(v))}')"><div><b>HAMAROSAN</b><span>${v.premiere ? 'Premier: ' + esc(huDate(v.premiere)) : 'A videó még nem érhető el.'}</span>${v.soon ? stageHtml(v.stage ?? 0) : ''}</div></div>`;
 }
 
 /* ===================== lejátszási pozíció (Folytatás) ===================== */
-const track = { id: null, t: 0, d: 0, saved: 0, timer: null, onMsg: null };
+const track = { id: null, t: 0, d: 0, saved: 0 };
 function note(t, d) { if (!isFinite(t) || !isFinite(d) || d <= 0) return; track.t = t; track.d = d; if (Date.now() - track.saved > 15000) flush(); }
 function flush() {
   if (!track.id || !track.d || track.t < 5) return;
@@ -268,30 +276,57 @@ function flush() {
   const done = track.t >= track.d * .95;
   FB.setDoc(FB.doc(db, 'users', C.uid(), 'private', 'progress'), { [track.id]: done ? FB.deleteField() : { t: Math.round(track.t), d: Math.round(track.d), at: FB.serverTimestamp() } }, { merge: true }).catch(() => {});
 }
-function trackYT(id, frame) {
-  stopTrack(); track.id = id;
-  const hello = () => { try { frame.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), '*'); } catch (_) {} };
-  frame.addEventListener('load', () => { hello(); setTimeout(hello, 1000); });
-  track.timer = setInterval(hello, 5000);
-  track.onMsg = e => {
-    if (!/youtube(-nocookie)?\.com$/.test(new URL(e.origin).hostname)) return;
-    let d; try { d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch (_) { return; }
-    const i = d?.info; if (i && typeof i.currentTime === 'number') note(i.currentTime, i.duration || track.d);
-  };
-  addEventListener('message', track.onMsg);
-}
 function stopTrack() {
   flush();
-  clearInterval(track.timer); if (track.onMsg) removeEventListener('message', track.onMsg);
-  Object.assign(track, { id: null, t: 0, d: 0, timer: null, onMsg: null });
+  Object.assign(track, { id: null, t: 0, d: 0 });
 }
 addEventListener('pagehide', flush);
 
-/* ===================== hozzászólások ===================== */
-function comments(box, vid) {
+/* ===================== értékelések (csillagok) + hozzászólások ===================== */
+const starRow = (n, cls = '') => `<span class="stars ${cls}" style="--p:${Math.max(0, Math.min(5, n)) / 5 * 100}%" aria-label="${n.toFixed(1).replace('.', ',')} / 5"></span>`;
+function social(box, vid, avgEl) {
+  box.innerHTML = '<div class="rate" data-rate></div><div data-cm></div>';
+  const rb = $('[data-rate]', box);
+  let R = {}, loaded = false, hover = 0;
+  const cm = comments($('[data-cm]', box), vid, () => R);
+  const mine = () => guest() ? 0 : (R[C.uid()] || 0);
+  function render() {
+    const vals = Object.values(R), n = vals.length, avg = n ? vals.reduce((a, b) => a + b, 0) / n : 0;
+    const dist = [5, 4, 3, 2, 1].map(s => [s, vals.filter(x => x === s).length]);
+    const my = mine(), show = hover || my;
+    rb.innerHTML = `<div class="rsum"><div class="ravg"><b>${n ? avg.toFixed(1).replace('.', ',') : '–'}</b>${starRow(avg)}<small>${n ? n + ' értékelés' : 'Még nincs értékelés'}</small></div>
+      <div class="rbars">${dist.map(([s, c]) => `<div><span>${s}★</span><i><b style="width:${n ? c / n * 100 : 0}%"></b></i><em>${c}</em></div>`).join('')}</div></div>
+      <div class="rmine${guest() ? ' off' : ''}"><span class="rl">${guest() ? 'Értékeléshez regisztrálj' : my ? 'A te értékelésed' : 'Értékeld te is!'}</span>
+        <div class="rstars" role="radiogroup" aria-label="Értékelés">${[1, 2, 3, 4, 5].map(s => `<button type="button" data-star="${s}" class="${s <= show ? 'on' : ''}" role="radio" aria-checked="${s === my}" aria-label="${s} csillag">★</button>`).join('')}</div>
+        <span class="rtxt">${show ? ['', 'Gyenge', 'Elmegy', 'Jó', 'Nagyon jó', 'Zseniális!'][show] : ''}</span>
+        ${my && !guest() ? '<button class="rdel" data-unrate>Törlés</button>' : ''}</div>`;
+    if (avgEl) avgEl.innerHTML = n ? `${starRow(avg, 'sm')}<b>${avg.toFixed(1).replace('.', ',')}</b><small>(${n})</small>` : '';
+  }
+  rb.addEventListener('mouseover', e => { const b = e.target.closest('[data-star]'); if (!b || guest()) return; if (hover !== +b.dataset.star) { hover = +b.dataset.star; render(); } });
+  rb.addEventListener('mouseleave', () => { if (hover) { hover = 0; render(); } });
+  rb.addEventListener('click', async e => {
+    const st = e.target.closest('[data-star]'), un = e.target.closest('[data-unrate]');
+    if (!st && !un) return;
+    if (guest()) return C.guestPrompt('Értékelni csak regisztrált tagok tudnak.');
+    const ref = FB.doc(db, 'videos', vid, 'ratings', C.uid());
+    try {
+      if (un) { await FB.deleteDoc(ref); toast('Értékelés törölve'); }
+      else { const s = +st.dataset.star; await FB.setDoc(ref, { stars: s, at: FB.serverTimestamp() }); toast(`Értékelted: ${'★'.repeat(s)} ✓`); }
+    } catch (er) { toast(errText(er), true); }
+  });
+  render();
+  const un = FB.onSnapshot(FB.collection(db, 'videos', vid, 'ratings'), s => {
+    R = {}; s.docs.forEach(d => { const x = d.data().stars; if (x >= 1 && x <= 5) R[d.id] = x; });
+    loaded = true; render(); cm.rerender();
+  }, () => { rb.innerHTML = ''; });
+  return () => { un(); cm.unsub(); };
+}
+
+function comments(box, vid, ratings = () => ({})) {
   const me = C.S.me, uid = C.uid();
   const mu = toDate(me?.mutedUntil) > new Date();
-  box.innerHTML = `${mu ? `<div class="cnote">🔇 Némítva vagy eddig: ${timeLabel(me.mutedUntil)}</div>` : `<div class="cform">${avatar(me, 40)}<div class="cb"><textarea maxlength="1500" placeholder="Mit gondolsz róla?"></textarea><div><button class="btn primary sm" data-send disabled>Küldés</button></div></div></div>`}<div data-list></div>`;
+  box.innerHTML = `${guest() ? `<div class="cnote guestnote">👀 Vendégként csak nézni tudsz. <button class="link" data-guestreg>Regisztrálj</button> vagy <button class="link" data-guestlogin>lépj be</button>, hogy hozzászólhass és értékelhess.</div>`
+    : mu ? `<div class="cnote">🔇 Némítva vagy eddig: ${timeLabel(me.mutedUntil)}</div>` : `<div class="cform">${avatar(me, 40)}<div class="cb"><textarea maxlength="1500" placeholder="Mit gondolsz róla?"></textarea><div><button class="btn primary sm" data-send disabled>Küldés</button></div></div></div>`}<div data-list></div>`;
   const ta = $('textarea', box), send = $('[data-send]', box), list = $('[data-list]', box);
   const col = FB.collection(db, 'videos', vid, 'comments');
   if (ta) {
@@ -301,22 +336,28 @@ function comments(box, vid) {
       try { await FB.addDoc(col, { uid, text: t, createdAt: FB.serverTimestamp() }); ta.value = ''; fit(); } catch (e) { toast(errText(e), true); send.disabled = false; } };
     send.onclick = go; ta.onkeydown = e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) go(); };
   }
-  let items = [];
+  let items = [], failed = '';
+  const draw = () => {
+    if (failed) { list.innerHTML = `<p class="hint">${esc(failed)}</p>`; return; }
+    const R = ratings();
+    list.innerHTML = items.length ? items.map(c => { const u = C.U(c.uid), likes = c.reactions?.['👍'] || [], r = R[c.uid];
+      return `<div class="cmt" data-c="${esc(c.id)}">${`<span data-u="${esc(u.id)}" style="cursor:pointer">${avatar(u, 40)}</span>`}<div class="cc"><div class="ch"><b data-u="${esc(u.id)}" style="color:${u.role && u.role !== 'user' ? ROLES[u.role].color : 'inherit'}">${esc(u.name)}</b>${r ? starRow(r, 'sm') : ''}<time>${timeLabel(c.createdAt)}</time></div>
+        <div class="ct">${esc(c.text)}</div><div class="ca"><button data-like class="${likes.includes(uid) ? 'me' : ''}">👍 ${likes.length || ''}</button>${!guest() && (c.uid === uid || C.isMod()) ? '<button data-del>Törlés</button>' : ''}</div></div></div>`; }).join('')
+      : `<p class="hint">Még senki nem szólt hozzá.${guest() ? '' : ' Légy te az első!'}</p>`;
+  };
   const un = FB.onSnapshot(FB.query(col, FB.orderBy('createdAt', 'desc'), FB.limit(100)), s => {
-    items = s.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }));
-    list.innerHTML = items.length ? items.map(c => { const u = C.U(c.uid), likes = c.reactions?.['👍'] || [];
-      return `<div class="cmt" data-c="${esc(c.id)}">${`<span data-u="${esc(u.id)}" style="cursor:pointer">${avatar(u, 40)}</span>`}<div class="cc"><div class="ch"><b data-u="${esc(u.id)}" style="color:${u.role && u.role !== 'user' ? ROLES[u.role].color : 'inherit'}">${esc(u.name)}</b><time>${timeLabel(c.createdAt)}</time></div>
-        <div class="ct">${esc(c.text)}</div><div class="ca"><button data-like class="${likes.includes(uid) ? 'me' : ''}">👍 ${likes.length || ''}</button>${c.uid === uid || C.isMod() ? '<button data-del>Törlés</button>' : ''}</div></div></div>`; }).join('')
-      : '<p class="hint">Még senki nem szólt hozzá. Légy te az első!</p>';
-  }, e => { list.innerHTML = `<p class="hint">${esc(errText(e))}</p>`; });
+    items = s.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) })); failed = ''; draw();
+  }, e => { failed = errText(e); draw(); });
   list.onclick = async e => {
     const el = e.target.closest('[data-c]'); if (!el) return; const c = items.find(x => x.id === el.dataset.c); if (!c) return;
     const ref = FB.doc(col, c.id);
-    if (e.target.closest('[data-like]')) { const has = (c.reactions?.['👍'] || []).includes(uid);
+    if (e.target.closest('[data-like]')) {
+      if (guest()) return C.guestPrompt('Kedvelni csak regisztrált tagok tudnak.');
+      const has = (c.reactions?.['👍'] || []).includes(uid);
       try { await FB.updateDoc(ref, new FB.FieldPath('reactions', '👍'), has ? FB.arrayRemove(uid) : FB.arrayUnion(uid)); } catch (er) { toast(errText(er), true); } }
     if (e.target.closest('[data-del]') && await confirmBox('Törlöd ezt a hozzászólást?', 'Törlés')) { try { await FB.deleteDoc(ref); } catch (er) { toast(errText(er), true); } }
   };
-  return un;
+  return { unsub: un, rerender: draw };
 }
 
 /* ===================== saját lista ===================== */
@@ -336,12 +377,14 @@ export function listChanged() {
 /* ===================== kattintások ===================== */
 export function onClick(e) {
   const t = e.target;
+  if (t.closest('[data-guestreg]')) { e.preventDefault(); C.guestLeave('reg'); return true; }
+  if (t.closest('[data-guestlogin]')) { e.preventDefault(); C.guestLeave('login'); return true; }
   const b = t.closest('[data-play],[data-mylist],[data-share],[data-info]');
   if (b) {
     e.preventDefault(); e.stopPropagation();
     if (b.dataset.play) { const v = film(b.dataset.play); if (v && !v.soon && v.hasVideo) { closeDetail(true); location.hash = '#/nez/' + v.id; } else detail(b.dataset.play); }
     else if (b.dataset.mylist) toggleList(b.dataset.mylist);
-    else if (b.dataset.share) C.shareFilm(b.dataset.share);
+    else if (b.dataset.share) guest() ? C.guestPrompt('Filmet megosztani csak regisztrált tagok tudnak.') : C.shareFilm(b.dataset.share);
     else if (b.dataset.info) detail(b.dataset.info);
     return true;
   }

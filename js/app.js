@@ -1,10 +1,10 @@
 // HGWS Közösség – csatornák, privát üzenetek, csoportok, filmtár
 import { FB, auth, db, notConfigured, $, $$, esc, ROLES, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
-  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG } from './core.js?v=202611161159';
-import { modal, confirmBox, popover, closePop, emojiPicker, QUICK, stageHtml } from './ui.js?v=202611161159';
-import * as Admin from './admin.js?v=202611161159';
-import * as Browse from './browse.js?v=202611161159';
-import * as Player from './player.js?v=202611161159';
+  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG } from './core.js?v=202611161934';
+import { modal, confirmBox, popover, closePop, emojiPicker, QUICK, stageHtml } from './ui.js?v=202611161934';
+import * as Admin from './admin.js?v=202611161934';
+import * as Browse from './browse.js?v=202611161934';
+import * as Player from './player.js?v=202611161934';
 
 const S = {
   user: null, me: null, users: new Map(), channels: [], convs: [], convsLoaded: false, videos: [], reads: { ch: {} },
@@ -21,12 +21,18 @@ const roleBadge = u => u.role === 'admin' || u.role === 'moderator' ? `<span cla
 
 /* ===================== INDÍTÁS ===================== */
 if (notConfigured) {
-  $('#boot').innerHTML = '<div class="full"><div><div class="big">🛠️</div><h2 class="gold">Hamarosan nyitunk</h2><p>A közösségi rész még beállítás alatt van.</p><a class="btn ghost" href="./">Vissza a főoldalra</a></div></div>';
+  $('#boot').innerHTML = '<div class="full"><div><div class="big">🛠️</div><h2 class="gold">Hamarosan nyitunk</h2><p>Az oldal még beállítás alatt van.</p></div></div>';
 } else {
   FB.onAuthStateChanged(auth, async user => {
-    if (!user) { location.replace('belepes.html?next=' + encodeURIComponent('app.html' + location.hash)); return; }
-    if (!user.emailVerified) { location.replace('belepes.html'); return; }
-    if (S.user) return;
+    if (S.leaving) return;
+    if (!user) { location.replace('belepes.html?next=' + encodeURIComponent('./' + location.hash)); return; }
+    if (S.user) { if (S.user.uid !== user.uid) location.reload(); return; }
+    if (user.isAnonymous) {
+      S.user = user; S.guest = true;
+      S.me = { id: user.uid, name: 'Vendég', role: 'guest', color: '#8f8a7e' };
+      start(); return;
+    }
+    if (!user.emailVerified) { location.replace('belepes.html?next=' + encodeURIComponent('./' + location.hash)); return; }
     S.user = user;
     try { S.me = await ensureProfile(user); } catch (e) { $('#boot').innerHTML = `<div class="full"><div><h2>Hiba</h2><p>${esc(errText(e))}</p></div></div>`; return; }
     start();
@@ -34,6 +40,7 @@ if (notConfigured) {
 }
 
 function start() {
+  if (S.guest) return startGuest();
   const me = FB.doc(db, 'users', uid());
   FB.onSnapshot(me, s => {
     const was = S.me; S.me = { id: uid(), ...s.data() };
@@ -58,7 +65,7 @@ function start() {
   }, e => console.warn(e));
   FB.onSnapshot(FB.collection(db, 'videos'), s => {
     S.videos = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    soon('vid', () => { if (S.mode === 'browse' && S.route.view !== 'admin' && S.route.view !== 'nez') route(true); S.chat?.rerender(); Admin.refresh(); });
+    soon('vid', () => { if (S.mode === 'browse' && (S.route.view === 'nez' ? !$('.watch') : S.route.view !== 'admin')) route(true); S.chat?.rerender(); Admin.refresh(); });
   });
   FB.onSnapshot(FB.collection(db, 'music'), s => {
     S.music = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -95,6 +102,60 @@ function start() {
   document.addEventListener('click', globalClick);
   route();
 }
+/* vendég: csak filmnézés (Firebase névtelen belépéssel) – nincs profil, csevegés, hozzászólás, értékelés */
+function startGuest() {
+  document.body.classList.add('guest');
+  S.convsLoaded = true; S.owner = null;
+  renderMe();
+  FB.onSnapshot(FB.collection(db, 'users'), s => {
+    s.docs.forEach(d => S.users.set(d.id, { id: d.id, ...d.data() }));
+    s.docChanges().forEach(c => c.type === 'removed' && S.users.delete(c.doc.id));
+    soon('users', () => { renderOnline(); });
+  }, e => console.warn(e));
+  FB.onSnapshot(FB.collection(db, 'videos'), s => {
+    S.videos = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    soon('vid', () => { if (S.mode === 'browse' && (S.route.view !== 'nez' || !$('.watch'))) route(true); });
+  }, e => console.warn(e));
+  FB.onSnapshot(FB.collection(db, 'music'), s => {
+    S.music = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    soon('mus', () => { if (S.mode === 'browse' && ['home', 'zene'].includes(S.route.view)) route(true); });
+  }, e => console.warn(e));
+  FB.onSnapshot(FB.doc(db, 'users', uid(), 'private', 'progress'), s => { S.progress = s.data() || {}; }, () => {});
+  FB.onSnapshot(FB.doc(db, 'users', uid(), 'private', 'list'), s => { S.myList = s.data()?.ids || []; Browse.listChanged(); }, () => {});
+
+  $('#boot').remove(); $('#shell').hidden = false;
+  $('#scrim').onclick = () => document.body.classList.remove('nav', 'mem');
+  $('#meBtn').onclick = $('#setBtn').onclick = $('#navSet').onclick = () => { document.body.classList.remove('anavopen'); guestPrompt(); };
+  $('#meMenu').onclick = e => userMenu(e.currentTarget);
+  addEventListener('scroll', () => $('#topnav').classList.toggle('solid', scrollY > 30), { passive: true });
+  const si = $('#sInp');
+  $('#sBtn').onclick = () => si.focus();
+  addEventListener('keydown', e => { if (e.key === '/' && !e.target.closest('input,textarea')) { e.preventDefault(); si.focus(); } });
+  $('#hamBtn').onclick = () => document.body.classList.toggle('anavopen');
+  $('#ascrim').onclick = () => document.body.classList.remove('anavopen');
+  $('#outBtn').title = 'Kilépés';
+  $('#outBtn').onclick = () => guestLeave('login');
+  si.oninput = () => { const q = si.value; if (location.hash.startsWith('#/kereses')) history.replaceState(null, '', '#/kereses/' + encodeURIComponent(q)); else location.hash = '#/kereses/' + encodeURIComponent(q); if (location.hash.startsWith('#/kereses')) Browse.search(encodeURIComponent(q)); };
+  zeroEgg();
+  let taps = 0, tapT; $('.tlogo').addEventListener('click', e => { taps++; clearTimeout(tapT); tapT = setTimeout(() => taps = 0, 1200); if (taps >= 5) { taps = 0; e.preventDefault(); showZero(); } });
+  Player.init(() => S.music.filter(t => t.visible !== false));
+  addEventListener('hashchange', route);
+  document.addEventListener('click', globalClick);
+  route();
+}
+/* vendég kilép, és a belépő / regisztrációs oldalra megy */
+async function guestLeave(to) {
+  S.leaving = true;
+  try { await FB.signOut(auth); } catch (_) {}
+  location.replace('belepes.html?next=' + encodeURIComponent('./' + location.hash) + (to === 'reg' ? '#regisztracio' : ''));
+}
+function guestPrompt(why) {
+  const el = modal({ title: 'Ehhez regisztrálnod kell', body: `<div style="text-align:center"><div style="font-size:2.6rem">👀</div>
+    <p style="margin-top:.6rem;line-height:1.6;color:var(--ink2)">${esc(why || 'Vendégként csak a filmeket tudod megnézni.')}<br>Regisztrálj (ingyenes, 1 perc), és értékelhetsz, hozzászólhatsz, csevegsz a közösséggel.</p></div>`,
+    foot: `<button class="btn plain" data-x>Maradok vendég</button><button class="btn plain" data-login>Belépés</button><button class="btn goldb" data-reg>Regisztráció</button>` });
+  el.querySelector('[data-reg]').onclick = () => guestLeave('reg');
+  el.querySelector('[data-login]').onclick = () => guestLeave('login');
+}
 const timers = {};
 function soon(k, f) { clearTimeout(timers[k]); timers[k] = setTimeout(f, 30); }
 
@@ -117,7 +178,11 @@ function route(force) {
   document.body.classList.remove('nav', 'mem', 'anavopen');
   closePop();
   $$('.modal').forEach(m => m.close ? m.close() : m.remove());
-  const [a, b] = h;
+  let [a, b] = h, pend = '';
+  if (S.guest && ['dm', 'c', 'chat', 'u', 'admin'].includes(a)) {
+    pend = a === 'admin' ? 'A kezelőfelület csak adminoknak érhető el.' : 'A közösségi rész (csevegés, üzenetek) csak regisztrált tagoknak érhető el.';
+    history.replaceState(null, '', '#/'); a = ''; b = undefined; force = true;
+  }
   if (a === 'filmek') { location.replace(b ? '#/film/' + b : '#/tar'); return; }
   if (a === 'u' && b) return openDm(b);
   let r;
@@ -159,6 +224,7 @@ function route(force) {
       if (!r.film) scrollTo(0, 0);
     }
     if (r.film && (!Browse.detailOpen() || filmBefore !== r.film)) Browse.detail(r.film);
+    if (pend) guestPrompt(pend);
     return;
   }
   setMode('chat');
@@ -210,7 +276,7 @@ function renderHome() {
 function renderMe() {
   const m = S.me; if (!m) return;
   const st = mutedUntil() ? `🔇 némítva` : ROLES[m.role]?.label || '';
-  $('#meMenu').innerHTML = `<span class="avw">${avatar(m, 40)}<i class="on y"></i></span><div><b>${esc(m.name)}</b><small>${esc(ROLES[m.role]?.label || '')} · Profil</small></div>`;
+  $('#meMenu').innerHTML = `<span class="avw">${avatar(m, 40)}<i class="on${S.guest ? '' : ' y'}"></i></span><div><b>${esc(m.name)}</b><small>${S.guest ? 'Csak nézés · Regisztráció' : esc(ROLES[m.role]?.label || '') + ' · Profil'}</small></div>`;
   $('#navAdmin').hidden = !isMod();
   $('#meBtn').innerHTML = `<span class="avw">${avatar(m, 34)}<i class="on y"></i></span><div><b>${esc(m.name)}</b><small>${esc(st)}</small></div>`;
 }
@@ -286,7 +352,7 @@ function renderMembers() {
 }
 
 function renderOwnerBar() {
-  if (S.owner !== null) { $$('.ownerslot').forEach(e => e.innerHTML = ''); return; }
+  if (S.owner !== null || S.guest) { $$('.ownerslot').forEach(e => e.innerHTML = ''); return; }
   $$('.ownerslot').forEach(e => e.innerHTML = `<div class="ownerbar"><span>👑 <b>Még nincs admin.</b> Ha te vagy az oldal tulajdonosa, igényeld az admin jogot. (Csak egyszer lehet, utána az admin oszt jogokat.)</span><button class="btn goldb sm" data-claim>ADMIN JOG IGÉNYLÉSE</button></div>`);
   $$('[data-claim]').forEach(b => b.onclick = async () => {
     try {
@@ -335,7 +401,7 @@ function profile(id, anchor) {
     <div class="meta">${isOnline(u) ? '🟢 Online' : u.lastSeen ? 'Utoljára: ' + timeLabel(u.lastSeen) : ''}${u.createdAt ? ' · Tag ' + toDate(u.createdAt).toLocaleDateString('hu-HU', { year: 'numeric', month: 'short' }) + ' óta' : ''}</div>
     ${u.bio ? `<div class="bio">${esc(u.bio)}</div>` : ''}
     ${u.banned ? '<div class="stat">⛔ Kitiltva</div>' : muted ? `<div class="stat">🔇 Némítva eddig: ${timeLabel(u.mutedUntil)}</div>` : ''}
-    <div class="sec">${self ? '<button class="btn plain sm" data-a="set">Profil szerkesztése</button>' : `<button class="btn primary sm" data-a="dm">💬 Üzenet</button>`}
+    <div class="sec">${self ? '<button class="btn plain sm" data-a="set">Profil szerkesztése</button>' : S.guest ? '' : `<button class="btn primary sm" data-a="dm">💬 Üzenet</button>`}
       ${canMod ? `<button class="btn plain sm" data-a="mod">🛡️ Moderálás</button>` : ''}</div>
   </div></div>`);
   p.addEventListener('click', e => {
@@ -350,10 +416,20 @@ function profile(id, anchor) {
 /* ===================== PROFIL MENÜ ===================== */
 function userMenu(anchor) {
   const m = S.me;
+  if (S.guest) {
+    const p = popover(anchor, `<div class="umenu"><div class="mh">${avatar(m, 40)}<div><b>Vendég</b><small>Csak filmnézés</small></div></div>
+      <button data-a="reg">✨ Regisztráció</button><button data-a="login">🔑 Belépés</button><a href="#/lista">＋ Saját lista</a>
+      <hr><a href="miert_igyal.html">🍻 Ma miért igyál?</a><a href="vizsga.html">📝 Közigazgatási vizsga – gyakorló</a><button data-a="login">🚪 Kilépés</button></div>`);
+    const r = anchor.getBoundingClientRect();
+    p.style.left = Math.max(8, Math.min(innerWidth - p.offsetWidth - 8, r.left < innerWidth / 2 ? r.left : r.right - p.offsetWidth)) + 'px';
+    p.style.top = Math.max(8, r.bottom + 8 + p.offsetHeight > innerHeight ? r.top - p.offsetHeight - 8 : r.bottom + 8) + 'px';
+    p.addEventListener('click', e => { const a = e.target.closest('[data-a]')?.dataset.a; if (e.target.closest('a,button')) closePop(); if (a) guestLeave(a); });
+    return;
+  }
   const p = popover(anchor, `<div class="umenu"><div class="mh">${avatar(m, 40)}<div><b>${esc(m.name)}</b><small>${esc(ROLES[m.role]?.label || '')}</small></div></div>
     <button data-a="set">⚙️ Profil és beállítások</button><a href="#/lista">＋ Saját lista</a><a href="#/chat">💬 Közösség</a><a href="#/dm">✉️ Privát üzenetek</a>
     ${isMod() ? `<hr><a href="#/admin/tagok">🛡️ Tagok és jogok</a>${isAdmin() ? '<a href="#/admin/filmek">🎞️ Filmek kezelése</a><a href="#/admin/zene">🎵 Zenék kezelése</a><a href="#/admin/csatornak">⚙️ Csatornák kezelése</a>' : ''}` : ''}
-    <hr><a href="./">🏠 HGWS főoldal</a><a href="miert_igyal.html">🍻 Ma miért igyál?</a><a href="vizsga.html">📝 Közigazgatási vizsga – gyakorló</a><button data-a="out">🚪 Kijelentkezés</button></div>`);
+    <hr><a href="miert_igyal.html">🍻 Ma miért igyál?</a><a href="vizsga.html">📝 Közigazgatási vizsga – gyakorló</a><button data-a="out">🚪 Kijelentkezés</button></div>`);
   const r = anchor.getBoundingClientRect();
   p.style.left = Math.max(8, Math.min(innerWidth - p.offsetWidth - 8, r.left < innerWidth / 2 ? r.left : r.right - p.offsetWidth)) + 'px';
   p.style.top = Math.max(8, r.bottom + 8 + p.offsetHeight > innerHeight ? r.top - p.offsetHeight - 8 : r.bottom + 8) + 'px';
@@ -813,5 +889,5 @@ function shareFilm(filmId, chat, trackId) {
 
 /* az admin modul ezeken keresztül éri el az állapotot */
 Admin.init({ S, uid, isAdmin, isMod, U, setTitle, renderSide, route });
-Browse.init({ S, uid, isAdmin, isMod, U, shareFilm, renderOwnerBar, convUnread });
+Browse.init({ S, uid, isAdmin, isMod, U, shareFilm, renderOwnerBar, convUnread, guestPrompt, guestLeave });
 setInterval(() => S.users.size && renderOnline(), 60e3);

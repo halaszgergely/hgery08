@@ -6,7 +6,8 @@ rules_version = '2';
 // Szerepkörök (users/{uid}.role):  admin  >  moderator  >  user
 //   admin      – mindent kezel: filmek, csatornák, szerepkörök, tiltás
 //   moderator  – üzeneteket töröl a csatornákban, usereket némít / kitilt
-//   user       – csevegés, csoportok, filmnézés
+//   user       – csevegés, csoportok, filmnézés, értékelés
+//   vendég     – Firebase névtelen (Anonymous) belépés: csak filmnézés, olvasás – írni, értékelni nem tud
 service cloud.firestore {
   match /databases/{db}/documents {
 
@@ -63,7 +64,8 @@ service cloud.firestore {
 
     // ---------- felhasználók ----------
     match /users/{uid} {
-      allow read: if verified() || (signedIn() && request.auth.uid == uid);
+      // a nevek a hozzászólásokhoz kellenek, ezért a vendégek is olvashatják
+      allow read: if signedIn();
 
       allow create: if signedIn() && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['name', 'nameLower', 'color', 'role', 'banned', 'createdAt', 'lastSeen', 'photoURL', 'bio'])
@@ -165,22 +167,33 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
 
-      // hozzászólások a filmekhez
+      // hozzászólások a filmekhez (a vendég olvashatja, de nem írhat)
       match /comments/{cid} {
-        allow read: if active();
+        allow read: if signedIn();
         allow create: if canPost() && validMsg();
         allow update: if msgUpdate();
         allow delete: if (active() && resource.data.uid == request.auth.uid) || isMod();
       }
+
+      // csillagos értékelés: dokumentum-azonosító = a tag uid-ja, így mindenki csak egyszer értékelhet
+      match /ratings/{rid} {
+        allow read: if signedIn();
+        allow create, update: if active() && rid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['stars', 'at'])
+          && request.resource.data.stars is int
+          && request.resource.data.stars >= 1 && request.resource.data.stars <= 5
+          && request.resource.data.at == request.time;
+        allow delete: if (active() && rid == request.auth.uid) || isMod();
+      }
     }
-    // Zenék: csak belépett tagok látják, csak admin kezeli.
+    // Zenék: belépett tagok és vendégek hallgathatják, csak admin kezeli.
     match /music/{id} {
-      allow read: if active();
+      allow read: if signedIn();
       allow write: if isAdmin();
     }
-    // A videó linkje csak belépett, megerősített tagoknak látszik.
+    // A videó forrása csak belépett tagoknak és vendégeknek látszik (a lejátszóhoz kell).
     match /videoSources/{id} {
-      allow read: if active();
+      allow read: if signedIn();
       allow write: if isAdmin();
     }
   }

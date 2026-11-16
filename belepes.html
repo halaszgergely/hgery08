@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600&family=Oswald:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/base.css?v=202611161159">
+<link rel="stylesheet" href="css/base.css?v=202611161934">
 <style>
 body{min-height:100%;display:grid;place-items:center;padding:clamp(1rem,4vw,2rem);overflow-x:hidden;
   background:radial-gradient(ellipse at 50% -20%,#12305a 0%,transparent 60%),radial-gradient(ellipse at 100% 120%,rgba(232,182,86,.12),transparent 50%),var(--bg)}
@@ -48,8 +48,11 @@ form{display:flex;flex-direction:column;gap:1rem}
 .center p{color:var(--ink2);line-height:1.6;margin-top:.7rem;font-size:.95rem}
 .center .big{font-size:3rem;line-height:1}
 .center .btns{display:flex;flex-direction:column;gap:.6rem;margin-top:1.4rem}
-.back{display:block;text-align:center;margin-top:1.2rem;font-size:.85rem;color:var(--muted);text-decoration:none}
-.back:hover{color:var(--ink)}
+.guest{display:flex;flex-direction:column;align-items:center;gap:.15rem;width:100%;padding:.75rem;border-radius:18px;border:1px solid var(--line2);background:rgba(255,255,255,.04);color:var(--ink);font-weight:600;font-size:.95rem;margin-bottom:.7rem;transition:background .2s,transform .15s}
+.guest span{display:none}
+.guest small{font-weight:400;font-size:.75rem;color:var(--muted)}
+.guest:hover{background:rgba(255,255,255,.08)}
+.guest:active{transform:scale(.98)}
 .str{height:4px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:.1rem}
 .str i{display:block;height:100%;width:0;transition:width .3s,background .3s}
 .hint{font-size:.8rem;color:var(--muted)}
@@ -60,7 +63,7 @@ form{display:flex;flex-direction:column;gap:1rem}
 
 <div class="box">
   <div class="top">
-    <a href="./"><img src="img/logo.webp" alt="HGWS"></a>
+    <img src="img/logo.webp" alt="HGWS">
     <h1 class="gold">HGWS KÖZÖSSÉG</h1>
     <p>FILMEK · CSEVEGÉS · CSAPAT</p>
   </div>
@@ -90,6 +93,7 @@ form{display:flex;flex-direction:column;gap:1rem}
       </form>
 
       <div class="or">VAGY</div>
+      <button class="guest" id="guest" type="button"><span>👀</span>Belépés vendégként<small>Csak filmnézés – hozzászólni és értékelni regisztráció után lehet</small></button>
       <button class="google" id="google" type="button"><svg width="20" height="20" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Folytatás Google-fiókkal</button>
     </div>
 
@@ -124,15 +128,14 @@ form{display:flex;flex-direction:column;gap:1rem}
 
     <div id="vBusy" class="center" hidden style="padding:2rem 0"><div class="spin" style="margin:0 auto"></div></div>
   </div>
-  <a class="back" href="./">← Vissza a főoldalra</a>
 </div>
 
 <div id="toast"></div>
 
 <script type="module">
-import { FB, auth, db, notConfigured, $, $$, errText, ensureProfile, toast, reservedName, RESERVED_MSG } from './js/core.js?v=202611161159';
+import { FB, auth, db, notConfigured, $, $$, errText, ensureProfile, toast, reservedName, RESERVED_MSG } from './js/core.js?v=202611161934';
 
-const next = (() => { const n = new URLSearchParams(location.search).get('next') || ''; return n.startsWith('app.html') ? n : 'app.html'; })();
+const next = (() => { const n = new URLSearchParams(location.search).get('next') || ''; return n.startsWith('./') ? n : './'; })();
 const V = ['vAuth', 'vForgot', 'vVerify', 'vSetup', 'vBusy'];
 const show = v => V.forEach(id => $('#' + id).hidden = id !== v);
 const err = (box, e) => { const m = $('[data-err]', box); m.textContent = e ? (typeof e === 'string' ? e : errText(e)) : ''; m.hidden = !e; };
@@ -180,7 +183,11 @@ async function run(form, fn) {
 }
 
 $('#fLogin').onsubmit = e => { e.preventDefault(); const f = e.target;
-  run(f, () => FB.signInWithEmailAndPassword(auth, f.email.value.trim(), f.pw.value)); };
+  run(f, async () => {
+    // a busy zár alatt az onAuthStateChanged nem hívja a gate()-et, ezért itt kell továbbengedni
+    const { user } = await FB.signInWithEmailAndPassword(auth, f.email.value.trim(), f.pw.value);
+    await gate(user);
+  }); };
 
 $('#fReg').onsubmit = e => { e.preventDefault(); const f = e.target;
   run(f, async () => {
@@ -192,7 +199,7 @@ $('#fReg').onsubmit = e => { e.preventDefault(); const f = e.target;
     const { user } = await FB.createUserWithEmailAndPassword(auth, f.email.value.trim(), f.pw.value);
     await FB.updateProfile(user, { displayName: name });
     await ensureProfile(user);
-    await FB.sendEmailVerification(user, { url: location.origin + location.pathname.replace(/[^/]*$/, '') + 'app.html' });
+    await FB.sendEmailVerification(user, { url: location.origin + location.pathname.replace(/[^/]*$/, '') });
     gate(user);
   });
 };
@@ -205,6 +212,14 @@ $('#vForgot').onsubmit = e => { e.preventDefault(); const f = e.target;
   });
 };
 
+$('#guest').onclick = async () => {
+  const b = $('#guest'); b.disabled = true; err($('#fLogin'), ''); err($('#fReg'), '');
+  try { await FB.signInAnonymously(auth); }
+  catch (e) {
+    err($('#fLogin').hidden ? $('#fReg') : $('#fLogin'), e.code === 'auth/admin-restricted-operation' || e.code === 'auth/operation-not-allowed'
+      ? 'A vendég belépés még nincs bekapcsolva (Firebase → Authentication → Sign-in method → Anonymous).' : e);
+  } finally { b.disabled = false; }
+};
 $('#google').onclick = async () => {
   try { await FB.signInWithPopup(auth, new FB.GoogleAuthProvider()); }
   catch (e) {
@@ -228,6 +243,7 @@ $('#other').onclick = () => FB.signOut(auth);
 
 async function gate(user) {
   if (!user) { show('vAuth'); return; }
+  if (user.isAnonymous) { show('vBusy'); location.replace(next); return; }
   if (!user.emailVerified) { $('#vEmail').textContent = user.email; show('vVerify'); return; }
   show('vBusy');
   try { await ensureProfile(user); location.replace(next); }
