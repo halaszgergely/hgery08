@@ -1,8 +1,8 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText } from './core.js?v=202611162006';
-import { stageHtml, confirmBox } from './ui.js?v=202611162006';
-import * as Player from './player.js?v=202611162006';
-import * as VP from './vplayer.js?v=202611162006';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText } from './core.js?v=202611162011';
+import { stageHtml, confirmBox } from './ui.js?v=202611162011';
+import * as Player from './player.js?v=202611162011';
+import * as VP from './vplayer.js?v=202611162011';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -404,7 +404,7 @@ function comments(box, vid, ratings = () => ({})) {
     if (failed) { list.innerHTML = `<p class="hint">${esc(failed)}</p>`; return; }
     const R = ratings();
     list.innerHTML = items.length ? items.map(c => { const u = C.U(c.uid), likes = c.reactions?.['👍'] || [], r = R[c.uid];
-      return `<div class="cmt" data-c="${esc(c.id)}">${`<span data-u="${esc(u.id)}" style="cursor:pointer">${avatar(u, 40)}</span>`}<div class="cc"><div class="ch"><b data-u="${esc(u.id)}" style="color:${u.role && u.role !== 'user' ? ROLES[u.role].color : 'inherit'}">${esc(u.name)}</b>${r ? starRow(r, 'sm') : ''}<time>${timeLabel(c.createdAt)}</time></div>
+      return `<div class="cmt" data-c="${esc(c.id)}">${`<span data-u="${esc(u.id)}" style="cursor:pointer">${avatar(u, 40)}</span>`}<div class="cc"><div class="ch"><b data-u="${esc(u.id)}" style="color:${u.role && u.role !== 'user' ? ROLES[u.role].color : 'inherit'}">${esc(u.name)}</b>${C.tagPills(u)}${r ? starRow(r, 'sm') : ''}<time>${timeLabel(c.createdAt)}</time></div>
         <div class="ct">${esc(c.text)}</div><div class="ca"><button data-like class="${likes.includes(uid) ? 'me' : ''}">👍 ${likes.length || ''}</button>${!guest() && (c.uid === uid || C.isMod()) ? '<button data-del>Törlés</button>' : ''}</div></div></div>`; }).join('')
       : `<p class="hint">Még senki nem szólt hozzá.${guest() ? '' : ' Légy te az első!'}</p>`;
   };

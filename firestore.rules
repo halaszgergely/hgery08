@@ -91,7 +91,10 @@ service cloud.firestore {
           && (!('name' in changed()) || (validName(request.resource.data.name) && nameAllowed(uid, request.resource.data.name))))
         // moderátor csak sima usert némíthat / tilthat ki
         || (isMod() && resource.data.role == 'user' && request.auth.uid != uid
-          && changed().hasOnly(['banned', 'mutedUntil']));
+          && changed().hasOnly(['banned', 'mutedUntil']))
+        // tagek (Discord-rangszerű címkék) kiosztása: moderátor és admin bárkinek
+        || (isMod() && changed().hasOnly(['tags'])
+          && request.resource.data.tags is list && request.resource.data.tags.size() <= 10);
 
       allow delete: if isAdmin();
 
@@ -99,6 +102,16 @@ service cloud.firestore {
       match /private/{doc} {
         allow read, write: if signedIn() && request.auth.uid == uid;
       }
+    }
+
+    // tagek: szöveg + szín, a moderátorok és adminok kezelik, mindenki (vendég is) látja
+    match /tags/{tid} {
+      allow read: if signedIn();
+      allow create, update: if isMod()
+        && request.resource.data.keys().hasOnly(['name', 'color', 'order', 'createdAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 24
+        && request.resource.data.color is string && request.resource.data.color.matches('^#[0-9a-fA-F]{6}$');
+      allow delete: if isMod();
     }
 
     // tulajdonos jelölő (az első admin igénylésekor jön létre)
