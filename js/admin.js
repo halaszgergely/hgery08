@@ -1,6 +1,7 @@
 // HGWS – admin és moderátor felület: tagok, szerepkörök, filmek, csatornák
 import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, isOnline, ytId, toast, errText } from './core.js';
 import { modal, confirmBox, compress, STAGES } from './ui.js';
+import { githubRepo } from '../firebase-config.js';
 
 let C = null, current = null;
 export function init(ctx) { C = ctx; }
@@ -8,12 +9,18 @@ export function refresh() { if (current && C.S.route.view === 'admin') render(cu
 
 export function render(sub, again) {
   current = sub;
-  const v = $('#view');
+  const v = $('#page');
   if (sub === 'tagok' && C.isMod()) return members(v, again);
   if (sub === 'filmek' && C.isAdmin()) return films(v, again);
   if (sub === 'csatornak' && C.isAdmin()) return channels(v, again);
+  if (sub === 'zene' && C.isAdmin()) return music(v, again);
   C.setTitle('🔒', 'Nincs jogosultság');
   v.innerHTML = '<div class="full"><div><div class="big">🔒</div><h2>Ehhez nincs jogosultságod</h2></div></div>';
+}
+
+function tabs() {
+  const t = [['tagok', '🛡️ Tagok és jogok', C.isMod()], ['filmek', '🎞️ Filmek', C.isAdmin()], ['zene', '🎵 Zenék', C.isAdmin()], ['csatornak', '⚙️ Csatornák', C.isAdmin()]].filter(x => x[2]);
+  return `<div class="atabs" style="margin:.6rem 0 1rem">${t.map(([k, l]) => `<a href="#/admin/${k}" class="${current === k ? 'on' : ''}">${l}</a>`).join('')}</div>`;
 }
 
 /* ================= TAGOK ================= */
@@ -23,7 +30,7 @@ function members(v, again) {
   const me = C.uid(), list = [...C.S.users.values()].filter(u => !mq || u.name.toLowerCase().includes(mq))
     .sort((a, b) => (ROLES[b.role]?.rank || 0) - (ROLES[a.role]?.rank || 0) || a.name.localeCompare(b.name, 'hu'));
   const focus = again && document.activeElement?.id === 'aq';
-  v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div><h1 class="gold">Tagok és jogok</h1>
+  v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div>${tabs()}<h1 class="gold">Tagok és jogok</h1>
     <p class="lead">${C.isAdmin() ? '<b style="color:var(--gold2)">Admin</b>: mindent kezel (filmek, csatornák, jogok). <b style="color:var(--water)">Moderátor</b>: üzeneteket töröl, tagokat némít vagy kitilt. <b>Tag</b>: csevegés és filmnézés.' : 'Moderátorként sima tagokat némíthatsz vagy tilthatsz ki, és bármelyik csatornán törölhetsz üzenetet.'}</p>
     <div class="search" style="margin:1.2rem 0 0;max-width:380px"><input type="search" id="aq" placeholder="Keresés név szerint…" value="${esc(mq)}"></div>
     <div class="atable">${list.map(u => {
@@ -85,7 +92,7 @@ export async function defaultChannels() {
 function channels(v) {
   C.setTitle('⚙️', 'Csatornák kezelése');
   const list = C.S.channels;
-  v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div><div style="display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap"><div><h1 class="gold">Csatornák</h1>
+  v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div>${tabs()}<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap"><div><h1 class="gold">Csatornák</h1>
     <p class="lead">A „Bejelentés” típusú csatornára csak adminok és moderátorok írhatnak.</p></div><button class="btn goldb" id="nc">+ ÚJ CSATORNA</button></div>
     ${list.length ? `<div class="atable">${list.map((c, i) => `<div class="arow"><div class="ord"><button data-up="${i}" ${i ? '' : 'disabled'}>▲</button><button data-dn="${i}" ${i < list.length - 1 ? '' : 'disabled'}>▼</button></div>
       <div class="who"><b>${c.type === 'announce' ? '📢' : '#'} ${esc(c.name)}</b><small>${esc(c.category || '')}${c.topic ? ' · ' + esc(c.topic) : ''}</small></div>
@@ -131,7 +138,7 @@ export function channelModal(c) {
 function films(v) {
   C.setTitle('🎞️', 'Filmek kezelése', 'Ami itt szerepel, az látszik a filmtárban és a főoldalon');
   const list = C.S.videos;
-  v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div><div style="display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap"><div><h1 class="gold">Filmek</h1>
+  v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div>${tabs()}<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap"><div><h1 class="gold">Filmek</h1>
     <p class="lead">A YouTube-linket a „Megjelent” bepipálása után mindenki látja, aki be van lépve. A főoldal csak a címet, a posztert és az állapotot mutatja.</p></div><button class="btn goldb" id="nf">+ ÚJ FILM</button></div>
     ${list.length ? `<div class="atable">${list.map((x, i) => `<div class="arow" style="grid-template-columns:auto auto 1fr auto"><div class="ord"><button data-up="${i}" ${i ? '' : 'disabled'}>▲</button><button data-dn="${i}" ${i < list.length - 1 ? '' : 'disabled'}>▼</button></div>
       <div class="fthumb">${x.poster ? `<img src="${esc(x.poster)}" alt="" loading="lazy">` : ''}</div>
@@ -227,4 +234,71 @@ async function importFilms(btn) {
     });
     await b.commit(); toast(`${list.length} cím áthozva ✓`);
   } catch (e) { toast(errText(e), true); btn.disabled = false; }
+}
+
+/* ================= ZENÉK ================= */
+function music(v) {
+  C.setTitle('🎵', 'Zenék kezelése');
+  const list = C.S.music;
+  v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div>${tabs()}<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap"><div><h1 class="gold">Zenék</h1>
+    <p class="lead">1. Töltsd fel az mp3-at a GitHubon a <b>zene</b> mappába (<a href="https://github.com/${githubRepo}/upload/main/zene" target="_blank" rel="noopener">feltöltés itt ↗</a> – behúzod, majd „Commit changes”).<br>2. Pár perc múlva itt az „Új zene” gombnál kiválaszthatod.</p></div><button class="btn goldb" id="nm">+ ÚJ ZENE</button></div>
+    ${list.length ? `<div class="atable">${list.map((t, i) => `<div class="arow" style="grid-template-columns:auto auto 1fr auto"><div class="ord"><button data-up="${i}" ${i ? '' : 'disabled'}>▲</button><button data-dn="${i}" ${i < list.length - 1 ? '' : 'disabled'}>▼</button></div>
+      <span class="pc" style="width:52px;height:52px;${t.cover ? `background-image:url('${esc(t.cover)}')` : ''}"></span>
+      <div class="who"><b>${esc(t.title)}</b><small>${esc(t.artist || 'HGWS')} · ${esc(t.src)}</small>${t.visible === false ? '<div><span class="tg">REJTETT</span></div>' : ''}</div>
+      <div class="ac"><button class="btn plain sm" data-ed="${esc(t.id)}">Szerkesztés</button></div></div>`).join('')}</div>`
+    : '<div class="empty"><div class="big">🎵</div>Még nincs zene.</div>'}</div>`;
+  $('#nm').onclick = () => musicModal();
+  $$('[data-ed]', v).forEach(b => b.onclick = () => musicModal(list.find(x => x.id === b.dataset.ed)));
+  $$('[data-up],[data-dn]', v).forEach(b => b.onclick = () => reorder('music', list, +(b.dataset.up ?? b.dataset.dn), b.dataset.up != null ? -1 : 1));
+}
+
+async function repoFiles() {
+  try {
+    const r = await fetch(`https://api.github.com/repos/${githubRepo}/contents/zene`, { headers: { Accept: 'application/vnd.github+json' } });
+    if (!r.ok) return [];
+    return (await r.json()).filter(f => f.type === 'file' && /\.(mp3|m4a|aac|ogg|oga|wav|flac|webm|opus)$/i.test(f.name)).map(f => f.path);
+  } catch (_) { return []; }
+}
+
+async function musicModal(t) {
+  const d = t || { visible: true };
+  let cover = d.cover || '';
+  const el = modal({ title: t ? 'Zene szerkesztése' : 'Új zene', body: `
+    <div class="grid2"><div class="field"><label>Cím *</label><input class="inp" name="title" maxlength="120" value="${esc(d.title || '')}"></div>
+      <div class="field"><label>Előadó</label><input class="inp" name="artist" maxlength="120" value="${esc(d.artist || '')}" placeholder="HGWS"></div></div>
+    <div class="field"><label>Zenefájl</label><select class="inp" name="pick"><option value="">Betöltés…</option></select>
+      <input class="inp" name="src" value="${esc(d.src || '')}" placeholder="zene/szam.mp3  vagy  https://…/szam.mp3" style="margin-top:.4rem">
+      <span class="hint">Válassz a feltöltött fájlok közül, vagy írj be egy linket. Az újonnan feltöltött fájl pár perc múlva jelenik meg a listában.</span>
+      <audio controls preload="none" style="width:100%;margin-top:.4rem" ${d.src ? `src="${esc(d.src)}"` : ''}></audio></div>
+    <div class="field"><label>Borító <em>(négyzetes kép, nem kötelező)</em></label><div class="imgp"><div class="prev" style="aspect-ratio:1;max-width:140px"></div>
+      <div class="c"><div class="r"><label class="btn plain sm">Kép feltöltése<input type="file" accept="image/*" hidden></label><button type="button" class="btn danger sm" data-clr>Törlés</button></div></div></div></div>
+    <label class="chk"><input type="checkbox" name="vis" ${d.visible !== false ? 'checked' : ''}> Látható</label>`,
+    foot: `${t ? '<button class="btn danger l" data-del>Törlés</button>' : ''}<button class="btn plain" data-x>Mégse</button><button class="btn goldb" data-ok>Mentés</button>` });
+  const q = n => el.querySelector(`[name=${n}]`), au = el.querySelector('audio'), prev = el.querySelector('.prev');
+  const paintCover = () => { prev.style.backgroundImage = cover ? `url("${cover.replace(/"/g, '%22')}")` : ''; prev.textContent = cover ? '' : 'nincs kép'; };
+  paintCover();
+  el.querySelector('input[type=file]').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { cover = await compress(f, 600); paintCover(); } catch (_) { toast('A képet nem sikerült beolvasni.', true); } };
+  el.querySelector('[data-clr]').onclick = () => { cover = ''; paintCover(); };
+  q('src').onchange = () => { au.src = q('src').value.trim(); };
+  repoFiles().then(files => {
+    const sel = q('pick');
+    sel.innerHTML = `<option value="">${files.length ? '— Válassz a zene mappából —' : '(a zene mappában még nincs fájl)'}</option>` + files.map(f => `<option ${f === d.src ? 'selected' : ''}>${esc(f)}</option>`).join('');
+    sel.onchange = () => { if (!sel.value) return; q('src').value = sel.value; au.src = sel.value;
+      if (!q('title').value) q('title').value = sel.value.split('/').pop().replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '); };
+  });
+  el.querySelector('[data-ok]').onclick = async () => {
+    const title = q('title').value.trim(), src = q('src').value.trim();
+    if (!title) return toast('Add meg a címet.', true);
+    if (!src) return toast('Válassz zenefájlt vagy adj meg linket.', true);
+    const data = { title, artist: q('artist').value.trim(), src, cover, visible: q('vis').checked, updatedAt: FB.serverTimestamp() };
+    try {
+      if (t) await FB.updateDoc(FB.doc(db, 'music', t.id), data);
+      else await FB.addDoc(FB.collection(db, 'music'), { ...data, order: Math.max(-10, ...C.S.music.map(x => x.order || 0)) + 10, createdAt: FB.serverTimestamp() });
+      toast('Mentve ✓'); el.close();
+    } catch (e) { toast(errText(e), true); }
+  };
+  const del = el.querySelector('[data-del]'); if (del) del.onclick = async () => {
+    if (!await confirmBox(`Törlöd: „${t.title}”? (A fájl a GitHubon marad.)`, 'Törlés')) return;
+    try { await FB.deleteDoc(FB.doc(db, 'music', t.id)); toast('Törölve'); el.close(); } catch (e) { toast(errText(e), true); }
+  };
 }

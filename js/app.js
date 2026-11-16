@@ -3,10 +3,12 @@ import { FB, auth, db, notConfigured, $, $$, esc, ROLES, COLORS, avatar, toDate,
   ytId, toast, errText, ensureProfile, blip } from './core.js';
 import { modal, confirmBox, popover, closePop, emojiPicker, QUICK, stageHtml } from './ui.js';
 import * as Admin from './admin.js';
+import * as Browse from './browse.js';
+import * as Player from './player.js';
 
 const S = {
   user: null, me: null, users: new Map(), channels: [], convs: [], convsLoaded: false, videos: [], reads: { ch: {} },
-  owner: undefined, route: { sec: 'srv' }, chat: null, filmFilter: 'all', memOpen: innerWidth > 1100
+  owner: undefined, route: { sec: 'srv' }, chat: null, memOpen: innerWidth > 1100, myList: [], mode: '', music: []
 };
 const uid = () => S.user.uid;
 const isAdmin = () => S.me?.role === 'admin';
@@ -42,22 +44,27 @@ function start() {
   FB.onSnapshot(FB.collection(db, 'users'), s => {
     s.docs.forEach(d => S.users.set(d.id, { id: d.id, ...d.data() }));
     s.docChanges().forEach(c => c.type === 'removed' && S.users.delete(c.doc.id));
-    soon('users', () => { renderMembers(); if (S.route.sec === 'dm') renderSide(); S.chat?.rerender(); if (S.route.view === 'dmhome') renderDmHome(); Admin.refresh(); });
+    soon('users', () => { renderMembers(); if (S.route.sec === 'dm') renderSide(); S.chat?.rerender(); if (S.route.view === 'dmhome') renderDmHome(); Admin.refresh(); Browse.updateComm(); });
   }, e => console.warn(e));
   FB.onSnapshot(FB.query(FB.collection(db, 'channels'), FB.orderBy('order')), s => {
     S.channels = s.docs.map(d => ({ id: d.id, ...d.data() }));
-    soon('chan', () => { if (S.route.sec === 'srv') renderSide(); if (!S.route.view || (S.route.view === 'home')) route(); Admin.refresh(); });
+    soon('chan', () => { if (S.route.sec === 'srv') renderSide(); if (S.route.view === 'chathome') route(true); Admin.refresh(); });
   }, e => console.warn(e));
   FB.onSnapshot(FB.query(FB.collection(db, 'conversations'), FB.where('members', 'array-contains', uid())), s => {
     const first = !S.convsLoaded; S.convsLoaded = true;
     S.convs = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => ms(b.updatedAt) - ms(a.updatedAt));
     if (!first) s.docChanges().forEach(c => { if (c.type !== 'removed') notifyConv({ id: c.doc.id, ...c.doc.data() }); });
-    soon('conv', () => { if (S.route.sec === 'dm') renderSide(); badges(); if (S.chat?.conv) S.chat.updateConv(); });
+    soon('conv', () => { if (S.route.sec === 'dm') renderSide(); badges(); if (S.chat?.conv) S.chat.updateConv(); Browse.updateComm(); });
   }, e => console.warn(e));
   FB.onSnapshot(FB.collection(db, 'videos'), s => {
     S.videos = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    soon('vid', () => { if (S.route.view === 'films') renderFilms(); S.chat?.rerender(); Admin.refresh(); });
+    soon('vid', () => { if (S.mode === 'browse' && S.route.view !== 'admin' && S.route.view !== 'nez') route(true); S.chat?.rerender(); Admin.refresh(); });
   });
+  FB.onSnapshot(FB.collection(db, 'music'), s => {
+    S.music = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    soon('mus', () => { if (S.mode === 'browse' && ['home', 'zene'].includes(S.route.view)) route(true); S.chat?.rerender(); Admin.refresh(); });
+  }, e => console.warn(e));
+  FB.onSnapshot(FB.doc(db, 'users', uid(), 'private', 'list'), s => { S.myList = s.data()?.ids || []; Browse.listChanged(); });
   FB.onSnapshot(FB.doc(db, 'users', uid(), 'private', 'reads'), s => { S.reads = { ch: {}, ...(s.data() || {}) }; soon('reads', () => { if (S.route.sec === 'srv') renderSide(); }); });
   FB.getDoc(FB.doc(db, 'meta', 'owner')).then(s => { S.owner = s.exists() ? s.data() : null; renderOwnerBar(); }).catch(() => {});
 
@@ -66,12 +73,18 @@ function start() {
   ping(); setInterval(ping, 60e3); document.addEventListener('visibilitychange', () => { if (!document.hidden) { ping(); S.chat?.markRead(); } });
 
   // UI
-  $('#boot').remove(); $('#app').hidden = false;
+  $('#boot').remove(); $('#shell').hidden = false;
   $('#menuBtn').onclick = () => document.body.classList.toggle('nav');
   $('#scrim').onclick = () => document.body.classList.remove('nav', 'mem');
   $('#meBtn').onclick = $('#setBtn').onclick = settings;
-  $('#members').hidden = false;
-  document.body.classList.toggle('memoff', !S.memOpen);
+  $('#meMenu').onclick = e => userMenu(e.currentTarget);
+  addEventListener('scroll', () => $('#topnav').classList.toggle('solid', scrollY > 30), { passive: true });
+  const sb = $('#tsearch'), si = $('#sInp');
+  $('#sBtn').onclick = () => { sb.classList.add('open'); si.focus(); };
+  si.oninput = () => { const q = si.value; if (location.hash.startsWith('#/kereses')) history.replaceState(null, '', '#/kereses/' + encodeURIComponent(q)); else location.hash = '#/kereses/' + encodeURIComponent(q); if (location.hash.startsWith('#/kereses')) Browse.search(encodeURIComponent(q)); };
+  si.onblur = () => { if (!si.value) sb.classList.remove('open'); };
+  zeroEgg();
+  Player.init(() => S.music.filter(t => t.visible !== false));
   addEventListener('hashchange', route);
   document.addEventListener('click', globalClick);
   route();
@@ -81,35 +94,69 @@ function soon(k, f) { clearTimeout(timers[k]); timers[k] = setTimeout(f, 30); }
 
 function banned() {
   S.chat?.destroy(); S.chat = null;
-  $('#app').innerHTML = `<div class="full" style="grid-column:1/-1"><div><div class="big">⛔</div><h2 class="gold">Ki vagy tiltva</h2><p>Egy moderátor vagy admin letiltotta a fiókodat a közösségből.</p><button class="btn plain" id="lo">Kijelentkezés</button></div></div>`;
+  document.body.classList.add('chatmode'); $('#shell').innerHTML = `<div class="full" style="height:100vh"><div><div class="big">⛔</div><h2 class="gold">Ki vagy tiltva</h2><p>Egy moderátor vagy admin letiltotta a fiókodat a közösségből.</p><button class="btn plain" id="lo">Kijelentkezés</button></div></div>`;
   $('#lo').onclick = () => FB.signOut(auth);
 }
 
 /* ===================== ÚTVONALAK ===================== */
-function route() {
+function setMode(m) {
+  if (S.mode === m) return;
+  S.mode = m;
+  document.body.classList.toggle('chatmode', m === 'chat');
+  $('#page').hidden = m !== 'browse'; $('#chat').hidden = m !== 'chat';
+  if (m === 'browse') { S.chat?.destroy(); S.chat = null; } else Browse.cleanup();
+}
+function route(force) {
   const h = location.hash.replace(/^#\/?/, '').split('/');
-  document.body.classList.remove('nav');
+  document.body.classList.remove('nav', 'mem');
   closePop();
+  $$('.modal').forEach(m => m.close ? m.close() : m.remove());
   const [a, b] = h;
+  if (a === 'filmek') { location.replace(b ? '#/film/' + b : '#/tar'); return; }
+  if (a === 'u' && b) return openDm(b);
   let r;
-  if (a === 'dm' && b) r = { sec: 'dm', view: 'conv', id: b };
-  else if (a === 'dm') r = { sec: 'dm', view: 'dmhome' };
-  else if (a === 'u' && b) return openDm(b);
+  if (a === 'dm') r = b ? { sec: 'dm', view: 'conv', id: b } : { sec: 'dm', view: 'dmhome' };
   else if (a === 'c' && b) r = { sec: 'srv', view: 'chan', id: b };
-  else if (a === 'filmek') r = { sec: 'srv', view: 'films', id: b };
-  else if (a === 'admin') r = { sec: 'srv', view: 'admin', id: b || 'tagok' };
-  else {
+  else if (a === 'chat') {
     const c = S.channels.find(c => c.type !== 'announce') || S.channels[0];
     if (c) { location.replace('#/c/' + c.id); return; }
-    r = { sec: 'srv', view: 'home' };
+    r = { sec: 'srv', view: 'chathome' };
   }
-  const same = S.route.view === r.view && S.route.id === r.id;
+  else if (a === 'admin') r = { mode: 'browse', view: 'admin', id: b || 'tagok' };
+  else if (a === 'tar') r = { mode: 'browse', view: 'tar', id: b || '' };
+  else if (a === 'lista') r = { mode: 'browse', view: 'lista' };
+  else if (a === 'zene') r = { mode: 'browse', view: 'zene' };
+  else if (a === 'kereses') r = { mode: 'browse', view: 'kereses', id: b || '' };
+  else if (a === 'nez' && b) r = { mode: 'browse', view: 'nez', id: b };
+  else if (a === 'film' && b) r = { mode: 'browse', view: S.route.mode === 'browse' && S.route.view !== 'nez' ? S.route.view : 'home', id: S.route.mode === 'browse' ? S.route.id : '', film: b };
+  else r = { mode: 'browse', view: 'home' };
+  r.mode ||= 'chat';
+  // navigáció kiemelése
+  const nav = r.mode === 'chat' ? 'chat' : r.view === 'kereses' ? 'kereses' : r.view === 'tar' ? 'tar' : r.view === 'lista' ? 'lista' : r.view === 'zene' ? 'zene' : r.view === 'home' ? 'home' : '';
+  $$('[data-nav]').forEach(x => x.classList.toggle('on', x.dataset.nav === nav));
+  $$('#seg [data-seg]').forEach(x => x.classList.toggle('on', x.dataset.seg === r.sec));
+  const same = !force && S.route.mode === r.mode && S.route.view === r.view && S.route.id === r.id;
+  const filmBefore = S.route.film;
   S.route = r;
-  $('#rSrv').classList.toggle('on', r.sec === 'srv' && r.view !== 'films');
-  $('#rDm').classList.toggle('on', r.sec === 'dm');
-  $('#rFilm').classList.toggle('on', r.view === 'films');
+  if (!r.film && Browse.detailOpen()) Browse.closeDetail(true);
+  if (r.mode === 'browse') {
+    setMode('browse');
+    if (!same) {
+      if (r.view !== 'kereses') { $('#sInp').value = ''; $('#tsearch').classList.remove('open'); }
+      if (r.view === 'home') Browse.home();
+      else if (r.view === 'tar') Browse.tar(r.id);
+      else if (r.view === 'lista') Browse.myList();
+      else if (r.view === 'zene') Browse.music();
+      else if (r.view === 'kereses') Browse.search(r.id);
+      else if (r.view === 'nez') Browse.watch(r.id);
+      else if (r.view === 'admin') { Browse.cleanup(); Admin.render(r.id); }
+      if (!r.film) scrollTo(0, 0);
+    }
+    if (r.film && (!Browse.detailOpen() || filmBefore !== r.film)) Browse.detail(r.film);
+    return;
+  }
+  setMode('chat');
   renderSide();
-  if (same && r.view === 'films' && r.id) return openFilm(r.id);
   if (same && S.chat) return;
   S.chat?.destroy(); S.chat = null;
   $('#mActs').innerHTML = ''; $('#mTopic').textContent = '';
@@ -120,11 +167,9 @@ function route() {
     S.chat = new Chat({ kind: 'chan', id: c.id, chan: c });
   } else if (r.view === 'conv') {
     const c = S.convs.find(x => x.id === r.id);
-    if (!c && !S.convsLoaded) { setTimeout(route, 200); S.route = {}; return; }
+    if (!c && !S.convsLoaded) { setTimeout(() => route(true), 200); return; }
     S.chat = new Chat({ kind: 'conv', id: r.id, conv: c });
   } else if (r.view === 'dmhome') renderDmHome();
-  else if (r.view === 'films') { S._filmsShown = null; renderFilms(); if (r.id) openFilm(r.id); }
-  else if (r.view === 'admin') Admin.render(r.id);
   else renderHome();
 }
 function setTitle(icon, text, topic = '') {
@@ -159,6 +204,7 @@ function renderHome() {
 function renderMe() {
   const m = S.me; if (!m) return;
   const st = mutedUntil() ? `🔇 némítva` : ROLES[m.role]?.label || '';
+  $('#meMenu').innerHTML = avatar(m, 34);
   $('#meBtn').innerHTML = `<span class="avw">${avatar(m, 34)}<i class="on y"></i></span><div><b>${esc(m.name)}</b><small>${esc(st)}</small></div>`;
 }
 
@@ -201,21 +247,16 @@ function renderSide() {
   if ($('#addCh')) $('#addCh').onclick = () => Admin.channelModal();
   const cats = []; S.channels.forEach(c => { const k = c.category || 'Csatornák'; let g = cats.find(x => x.k === k); if (!g) cats.push(g = { k, l: [] }); g.l.push(c); });
   $('#sBody').innerHTML = `<div class="banner"></div>
-    <a class="si${r.view === 'films' ? ' on' : ''}" href="#/filmek"><span class="hash">🎬</span><span class="nm">Filmtár</span></a>
     ${cats.map(g => `<div class="cat">${esc(g.k)}</div>${g.l.map(c => `<a class="si${r.view === 'chan' && r.id === c.id ? ' on' : ''}${chanUnread(c) ? ' unread' : ''}" href="#/c/${esc(c.id)}">
       <span class="hash">${c.type === 'announce' ? '📢' : '#'}</span><span class="nm">${esc(c.name)}</span></a>`).join('')}`).join('')}
     ${!S.channels.length ? '<p class="hint" style="padding:.8rem .6rem">Még nincsenek csatornák.</p>' : ''}
-    ${isMod() ? `<div class="cat">Kezelés</div>
-      <a class="si${r.view === 'admin' && r.id === 'tagok' ? ' on' : ''}" href="#/admin/tagok"><span class="hash">🛡️</span><span class="nm">Tagok és jogok</span></a>
-      ${isAdmin() ? `<a class="si${r.view === 'admin' && r.id === 'filmek' ? ' on' : ''}" href="#/admin/filmek"><span class="hash">🎞️</span><span class="nm">Filmek kezelése</span></a>
-      <a class="si${r.view === 'admin' && r.id === 'csatornak' ? ' on' : ''}" href="#/admin/csatornak"><span class="hash">⚙️</span><span class="nm">Csatornák kezelése</span></a>` : ''}` : ''}`;
+`;
   badges();
 }
 
 function badges() {
-  const n = S.convs.filter(convUnread).length;
-  const b = $('#dmBadge'); if (b) { b.hidden = !n; b.textContent = n > 9 ? '9+' : n; }
-  $('#rSrv')?.classList.toggle('dot', S.route.sec !== 'srv' && S.channels.some(chanUnread));
+  const n = S.convs.filter(convUnread).length, t = n > 9 ? '9+' : String(n);
+  ['#dmBadge', '#dmBadge2', '#chatBadge', '#chatBadge2'].forEach(k => { const b = $(k); if (b) { b.hidden = !n; b.textContent = t; } });
   const base = document.title.replace(/^\(\d+\+?\) /, '');
   document.title = (n ? `(${n}) ` : '') + base;
 }
@@ -232,10 +273,9 @@ function renderMembers() {
 }
 
 function renderOwnerBar() {
-  const el = $('#ownerbar');
-  if (S.owner !== null) { el.innerHTML = ''; return; }
-  el.innerHTML = `<div class="ownerbar"><span>👑 <b>Még nincs admin.</b> Ha te vagy az oldal tulajdonosa, igényeld az admin jogot. (Csak egyszer lehet, utána az admin oszt jogokat.)</span><button class="btn goldb sm" id="claim">ADMIN JOG IGÉNYLÉSE</button></div>`;
-  $('#claim').onclick = async () => {
+  if (S.owner !== null) { $$('.ownerslot').forEach(e => e.innerHTML = ''); return; }
+  $$('.ownerslot').forEach(e => e.innerHTML = `<div class="ownerbar"><span>👑 <b>Még nincs admin.</b> Ha te vagy az oldal tulajdonosa, igényeld az admin jogot. (Csak egyszer lehet, utána az admin oszt jogokat.)</span><button class="btn goldb sm" data-claim>ADMIN JOG IGÉNYLÉSE</button></div>`);
+  $$('[data-claim]').forEach(b => b.onclick = async () => {
     try {
       const b = FB.writeBatch(db);
       b.update(FB.doc(db, 'users', uid()), { role: 'admin' });
@@ -244,7 +284,7 @@ function renderOwnerBar() {
       S.owner = { uid: uid() }; renderOwnerBar();
       setTimeout(async () => { if (!S.channels.length) await Admin.defaultChannels().catch(() => {}); toast('Mostantól te vagy az admin 👑'); }, 800);
     } catch (e) { toast(errText(e), true); }
-  };
+  });
 }
 
 /* ===================== ÉRTESÍTÉSEK ===================== */
@@ -266,8 +306,7 @@ function notifyConv(c) {
 function globalClick(e) {
   const u = e.target.closest('[data-u]');
   if (u && !e.target.closest('.pop')) { e.preventDefault(); return profile(u.dataset.u, u); }
-  const f = e.target.closest('[data-film]');
-  if (f) { e.preventDefault(); return openFilm(f.dataset.film); }
+  if (Browse.onClick(e)) return;
   const y = e.target.closest('.yt[data-yt]');
   if (y && !y.querySelector('iframe')) { y.insertAdjacentHTML('beforeend', `<iframe src="https://www.youtube-nocookie.com/embed/${esc(y.dataset.yt)}?autoplay=1&rel=0&playsinline=1" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`); }
 }
@@ -292,6 +331,33 @@ function profile(id, anchor) {
     if (a === 'dm') location.hash = '#/u/' + id;
     if (a === 'set') settings();
     if (a === 'mod') Admin.modModal(id);
+  });
+}
+
+/* ===================== PROFIL MENÜ ===================== */
+function userMenu(anchor) {
+  const m = S.me;
+  const p = popover(anchor, `<div class="umenu"><div class="mh">${avatar(m, 40)}<div><b>${esc(m.name)}</b><small>${esc(ROLES[m.role]?.label || '')}</small></div></div>
+    <button data-a="set">⚙️ Profil és beállítások</button><a href="#/lista">＋ Saját lista</a><a href="#/chat">💬 Közösség</a><a href="#/dm">✉️ Privát üzenetek</a>
+    ${isMod() ? `<hr><a href="#/admin/tagok">🛡️ Tagok és jogok</a>${isAdmin() ? '<a href="#/admin/filmek">🎞️ Filmek kezelése</a><a href="#/admin/zene">🎵 Zenék kezelése</a><a href="#/admin/csatornak">⚙️ Csatornák kezelése</a>' : ''}` : ''}
+    <hr><a href="./">🏠 HGWS főoldal</a><a href="miert_igyal.html">🍻 Ma miért igyál?</a><button data-a="out">🚪 Kijelentkezés</button></div>`);
+  const r = anchor.getBoundingClientRect(); p.style.left = Math.max(8, r.right - p.offsetWidth) + 'px'; p.style.top = (r.bottom + 8) + 'px';
+  p.addEventListener('click', e => { const a = e.target.closest('[data-a]')?.dataset.a; if (e.target.closest('a,button')) closePop(); if (a === 'set') settings(); if (a === 'out') FB.signOut(auth); });
+}
+
+/* titkos köszönet Zerónak – írd be bárhol: z e r o */
+function zeroEgg() {
+  let buf = '';
+  addEventListener('keydown', e => {
+    if (e.target.closest('input,textarea')) return;
+    buf = (buf + e.key.toLowerCase()).slice(-4);
+    if (buf !== 'zero') return;
+    buf = '';
+    const el = document.createElement('div'); el.className = 'zero';
+    el.innerHTML = `<div class="zc"><div class="zt">// TITKOS STÁB</div><div class="zn">ZERO</div><div class="zs">a HGWS árnyékban dolgozó segítője</div><p>Köszi tesó, nélküled ez az oldal nem lenne ilyen. 💧</p><small>(megtaláltad az easter egget)</small></div>`;
+    document.body.appendChild(el);
+    for (let i = 0; i < 60; i++) { const d = document.createElement('i'); d.style.cssText = `left:${Math.random() * 100}%;animation-delay:${Math.random() * 1.5}s;animation-duration:${1.6 + Math.random() * 1.6}s`; d.textContent = Math.random() < .5 ? '0' : '💧'; el.appendChild(d); }
+    el.onclick = () => el.remove(); setTimeout(() => el.remove(), 7000);
   });
 }
 
@@ -427,6 +493,11 @@ function ytEmbeds(text) {
   const ids = [...new Set([...(text || '').matchAll(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/[^\s<]+/g)].map(m => ytId(m[0])).filter(Boolean))].slice(0, 2);
   return ids.map(id => `<div class="embed"><div class="yt" data-yt="${esc(id)}" style="background-image:url(https://i.ytimg.com/vi/${esc(id)}/hqdefault.jpg)"><span class="pb">▶</span><span class="lb">YouTube</span></div></div>`).join('');
 }
+function trackCard(id) {
+  const t = S.music.find(x => x.id === id);
+  if (!t) return `<div class="embed" style="padding:.8rem;color:var(--muted);font-size:.85rem">🎵 Ez a zene már nem elérhető.</div>`;
+  return `<div class="embed trackc${Player.current() === id ? ' cur' + (Player.isPlaying() ? ' isplay' : '') : ''}" data-track="${esc(t.id)}"><span class="pc" style="${t.cover ? `background-image:url('${esc(t.cover)}')` : ''}"></span><div><b>${esc(t.title)}</b><small>🎵 ${esc(t.artist || 'HGWS')}</small></div><span class="tp"><span>▶</span></span></div>`;
+}
 function filmCard(id) {
   const v = S.videos.find(x => x.id === id);
   if (!v) return `<div class="embed" style="padding:.8rem;color:var(--muted);font-size:.85rem">🎬 Ez a film már nem elérhető.</div>`;
@@ -495,7 +566,7 @@ class Chat {
       if (day !== lastDay) { items.push({ key: 'd' + day, sig: day, html: `<div class="day">${DAY(d)}</div>` }); lastDay = day; last = null; }
       const cont = last && last.uid === m.uid && !m.replyTo && d - (toDate(last.createdAt) || d) < 5 * 60e3;
       const u = U(m.uid);
-      const sig = JSON.stringify([m.text, ms(m.editedAt), m.reactions, m.film, cont, u.name, u.role, u.color, u.photoURL, m.pending, this.editing === m.id, S.videos.length]);
+      const sig = JSON.stringify([m.text, ms(m.editedAt), m.reactions, m.film, m.track, S.music.length, cont, u.name, u.role, u.color, u.photoURL, m.pending, this.editing === m.id, S.videos.length]);
       items.push({ key: m.id, sig, m, cont });
       last = m;
     }
@@ -531,7 +602,7 @@ class Chat {
       <div class="mg">${cont ? `<time>${t ? t.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }) : ''}</time>` : `<span data-u="${esc(u.id)}">${avatar(u, 40)}</span>`}</div>
       <div class="mb">${rep}${cont ? '' : `<div class="mh">${nameHtml(u)}${roleBadge(u)}<time title="${t ? t.toLocaleString('hu-HU') : ''}">${m.pending ? 'küldés…' : timeLabel(m.createdAt)}</time></div>`}
         ${m.text ? `<div class="mt${onlyEmoji(m.text) ? ' big' : ''}">${fmt(m.text)}${m.editedAt ? '<span class="ed">(szerkesztve)</span>' : ''}</div>` : ''}
-        ${m.film ? filmCard(m.film) : ''}${ytEmbeds(m.text)}
+        ${m.film ? filmCard(m.film) : ''}${m.track ? trackCard(m.track) : ''}${ytEmbeds(m.text)}
         ${rx.length ? `<div class="reacts">${rx.map(([e, l]) => `<button data-rx="${e}" class="${l.includes(uid()) ? 'me' : ''}" title="${esc(l.map(i => U(i).name).join(', '))}">${e}<b>${l.length}</b></button>`).join('')}</div>` : ''}
       </div>
       <div class="mtools">${QUICK.slice(0, 3).map(e => `<button data-rx="${e}" title="${e}">${e}</button>`).join('')}<button data-act="emo" title="Reakció">😊</button><button data-act="reply" title="Válasz">↩️</button>
@@ -589,7 +660,7 @@ class Chat {
     const ph = this.kind === 'chan' ? `Üzenet a #${this.chan.name} csatornára` : `Üzenet ${this.conv ? (this.conv.type === 'group' ? 'a csoportnak' : '@' + convName(this.conv) + ' részére') : ''}`;
     const prevText = $('#mtext')?.value || '';
     c.innerHTML = `${this.reply ? `<div class="replybar">↩️ <span>Válasz neki: <b>${esc(U(this.reply.uid).name)}</b> — ${esc((this.reply.text || '🎬').slice(0, 80))}</span><button class="ibtn" id="rx" style="width:26px;height:26px">✕</button></div>` : ''}
-      <div class="cbox"><button class="ibtn" id="cFilm" title="Film megosztása">🎬</button><button class="ibtn" id="cEmo" title="Emoji">😊</button>
+      <div class="cbox"><button class="ibtn" id="cFilm" title="Film megosztása">🎬</button><button class="ibtn" id="cMus" title="Zene megosztása">🎵</button><button class="ibtn" id="cEmo" title="Emoji">😊</button>
       <textarea id="mtext" rows="1" maxlength="4000" placeholder="${esc(ph)}"></textarea><button class="ibtn send" id="cSend" title="Küldés" disabled>➤</button></div>
       <div class="chint"><span>Enter: küldés · Shift+Enter: új sor · @név: megemlítés</span><span>**félkövér** *dőlt* \`kód\`</span></div>`;
     const ta = $('#mtext'), send = $('#cSend');
@@ -606,6 +677,7 @@ class Chat {
     send.onclick = () => this.send();
     $('#cEmo').onclick = e => emojiPicker(e.currentTarget, em => { const p = ta.selectionStart; ta.value = ta.value.slice(0, p) + em + ta.value.slice(ta.selectionEnd); ta.focus(); ta.selectionStart = ta.selectionEnd = p + em.length; fit(); });
     $('#cFilm').onclick = () => shareFilm(null, this);
+    $('#cMus').onclick = () => shareFilm(null, this, '*');
     const rx = $('#rx'); if (rx) rx.onclick = () => { this.reply = null; this.renderComposer(); };
     if (matchMedia('(hover:hover)').matches) ta.focus();
   }
@@ -639,12 +711,13 @@ class Chat {
     ta.selectionStart = ta.selectionEnd = start + name.length + 2; ta.focus();
     this.mp?.remove(); this.mp = null; ta.dispatchEvent(new Event('input'));
   }
-  async send(film = null, textIn = null) {
+  async send(film = null, textIn = null, track = null) {
     const ta = $('#mtext');
     const text = (textIn ?? ta?.value ?? '').trim();
-    if (!text && !film) return;
+    if (!text && !film && !track) return;
     const data = { uid: uid(), text, createdAt: FB.serverTimestamp() };
     if (film) data.film = film;
+    if (track) data.track = track;
     if (this.reply && textIn == null) data.replyTo = { id: this.reply.id, uid: this.reply.uid, text: (this.reply.text || '').slice(0, 140) };
     if (ta && textIn == null) { ta.value = ''; ta.dispatchEvent(new Event('input')); }
     this.reply = null; if (data.replyTo) this.renderComposer();
@@ -675,7 +748,7 @@ async function postTo(kind, id, data, conv) {
   const b = FB.writeBatch(db);
   const ref = FB.doc(FB.collection(db, kind === 'chan' ? 'channels' : 'conversations', id, 'messages'));
   b.set(ref, data);
-  const preview = data.text ? data.text.slice(0, 120) : '🎬 megosztott egy filmet';
+  const preview = data.text ? data.text.slice(0, 120) : data.track ? '🎵 megosztott egy zenét' : '🎬 megosztott egy filmet';
   if (kind === 'chan') b.update(FB.doc(db, 'channels', id), { lastMessageAt: FB.serverTimestamp() });
   else {
     const upd = { lastMessage: { text: preview, uid: uid(), at: FB.serverTimestamp() }, updatedAt: FB.serverTimestamp() };
@@ -686,65 +759,32 @@ async function postTo(kind, id, data, conv) {
   if (kind === 'chan') FB.setDoc(FB.doc(db, 'users', uid(), 'private', 'reads'), { ch: { [id]: FB.serverTimestamp() } }, { merge: true }).catch(() => {});
 }
 
-/* ===================== FILMTÁR ===================== */
-function renderFilms() {
-  setTitle('🎬', 'Filmtár', 'HGWS Studios – filmek, animék, trailerek');
-  const vis = S.videos.filter(v => v.visible !== false);
-  const kinds = [...new Set(vis.map(v => v.kind || 'Film'))];
-  const f = S.filmFilter, list = vis.filter(v => f === 'all' || (v.kind || 'Film') === f);
-  const again = S._filmsShown === S.route.id + f; S._filmsShown = S.route.id + f;
-  $('#view').innerHTML = `<div class="page"><div class="eyebrow">// HGWS STUDIOS</div><h1 class="gold">Filmtár</h1>
-    <p class="lead">Nézd meg, oszd meg a többiekkel, beszéljétek meg.</p>
-    ${kinds.length > 1 ? `<div class="ftabs"><button data-k="all" class="${f === 'all' ? 'on' : ''}">Mind</button>${kinds.map(k => `<button data-k="${esc(k)}" class="${f === k ? 'on' : ''}">${esc(k)}</button>`).join('')}</div>` : ''}
-    ${list.length ? `<div class="fgrid">${list.map((v, i) => `<article class="fcard${v.soon ? ' soon' : ''}" tabindex="0" data-film="${esc(v.id)}" style="${again ? 'animation:none' : `animation-delay:${i * 40}ms`}">
-      <div class="th">${v.poster ? `<img src="${esc(v.poster)}" alt="" loading="lazy">` : ''}<span class="bd${v.soon ? '' : ' r'}">${v.soon ? 'HAMAROSAN' : 'MEGNÉZHETŐ'}</span><span class="pl">${v.soon ? '🔒' : '▶'}</span>${v.len ? `<span class="dur">${esc(v.len)}</span>` : ''}</div>
-      <h4>${esc(v.title)}</h4>${v.en ? `<em>${esc(v.en)}</em>` : ''}<small>${esc([v.kind, v.year, v.genre].filter(Boolean).join(' · '))}</small>
-      <span class="st">● ${esc(v.soon ? (v.status || 'GYÁRTÁSBAN') : (v.premiere ? 'PREMIER: ' + huDate(v.premiere).toUpperCase() : 'MEGJELENT'))}</span></article>`).join('')}</div>`
-      : `<div class="empty"><div class="big">🎬</div>Még nincs film a tárban.${isAdmin() ? '<br><a class="btn goldb" href="#/admin/filmek">FILMEK KEZELÉSE</a>' : ''}</div>`}</div>`;
-  $$('.ftabs button').forEach(b => b.onclick = () => { S.filmFilter = b.dataset.k; renderFilms(); });
-  $$('.fcard').forEach(c => c.onkeydown = e => { if (e.key === 'Enter') openFilm(c.dataset.film); });
-}
-
-async function openFilm(id) {
-  const v = S.videos.find(x => x.id === id);
-  if (!v) { if (!S.videos.length) setTimeout(() => S.videos.length && openFilm(id), 600); return; }
-  if (S.route.view === 'films' && location.hash !== '#/filmek/' + id) history.replaceState(null, '', '#/filmek/' + id);
-  const el = modal({ title: v.title, cls: 'player', onClose: () => { if (location.hash.startsWith('#/filmek/')) history.replaceState(null, '', '#/filmek'); },
-    body: `<div class="pframe" id="pf"><div class="psoon" style="background-image:url('${esc(v.banner || v.poster || '')}')"><div><div class="spin" style="margin:0 auto"></div></div></div></div>
-      ${v.en ? `<em style="color:#bfb8a9">${esc(v.en)}</em>` : ''}
-      <div class="tagrow">${[v.kind, v.year, v.genre, v.len, v.premiere ? 'Premier: ' + huDate(v.premiere) : ''].filter(Boolean).map(t => `<span>${esc(t)}</span>`).join('')}</div>
-      ${v.desc ? `<p style="color:var(--ink2);line-height:1.6">${esc(v.desc)}</p>` : ''}`,
-    foot: `<button class="btn plain" data-x>Bezárás</button><button class="btn goldb" data-share>📤 Megosztás</button>` });
-  el.querySelector('[data-share]').onclick = () => shareFilm(v.id);
-  let src = {};
-  if (!v.soon) { try { src = (await FB.getDoc(FB.doc(db, 'videoSources', v.id))).data() || {}; } catch (_) {} }
-  const pf = el.querySelector('#pf'); if (!pf) return;
-  if (!v.soon && src.youtube) pf.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${esc(src.youtube)}?autoplay=1&rel=0&modestbranding=1&playsinline=1" title="${esc(v.title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
-  else if (!v.soon && src.mp4) pf.innerHTML = `<video src="${esc(src.mp4)}" poster="${esc(v.poster || '')}" controls autoplay playsinline></video>`;
-  else pf.innerHTML = `<div class="psoon" style="background-image:url('${esc(v.banner || v.poster || '')}')"><div><b>HAMAROSAN</b><span>${v.premiere ? 'Premier: ' + esc(huDate(v.premiere)) : v.soon ? 'A premier időpontját hamarosan bejelentjük.' : 'A videó még nincs feltöltve.'}</span>${v.soon ? stageHtml(v.stage ?? 0) : ''}</div></div>`;
-}
-
-function shareFilm(filmId, chat) {
-  const films = S.videos.filter(v => v.visible !== false);
-  if (!films.length) return toast('Még nincs film a tárban.', true);
+/* ===================== FILM MEGOSZTÁSA ===================== */
+function shareFilm(filmId, chat, trackId) {
+  const music = !!trackId, items = music ? S.music.filter(t => t.visible !== false) : S.videos.filter(v => v.visible !== false);
+  if (!items.length) return toast(music ? 'Még nincs zene feltöltve.' : 'Még nincs film a tárban.', true);
+  const fixed = music ? (trackId !== '*' ? trackId : null) : filmId;
   const canChan = c => c.type !== 'announce' || isMod();
-  const el = modal({ title: 'Film megosztása', body: `
-    ${filmId ? '' : `<div class="field"><label>Melyik film?</label><div class="pick">${films.map((v, i) => `<label><input type="radio" name="f" value="${esc(v.id)}" ${i === 0 ? 'checked' : ''}><span class="fthumb" style="width:72px">${v.poster ? `<img src="${esc(v.poster)}" alt="">` : ''}</span><span>${esc(v.title)}</span></label>`).join('')}</div></div>`}
+  const el = modal({ title: music ? 'Zene megosztása' : 'Film megosztása', body: `
+    ${fixed ? '' : `<div class="field"><label>${music ? 'Melyik szám?' : 'Melyik film?'}</label><div class="pick">${items.map((v, i) => `<label><input type="radio" name="f" value="${esc(v.id)}" ${i === 0 ? 'checked' : ''}>${music
+      ? `<span class="pc" style="width:40px;height:40px;${v.cover ? `background-image:url('${esc(v.cover)}')` : ''}"></span><span>${esc(v.title)} <span class="hint">· ${esc(v.artist || 'HGWS')}</span></span>`
+      : `<span class="fthumb" style="width:72px">${v.poster ? `<img src="${esc(v.poster)}" alt="">` : ''}</span><span>${esc(v.title)}</span>`}</label>`).join('')}</div></div>`}
     ${chat ? '' : `<div class="field"><label>Hova küldjük?</label><div class="pick">
       ${S.channels.filter(canChan).length ? '<div class="grp">CSATORNÁK</div>' : ''}${S.channels.filter(canChan).map(c => `<label><input type="radio" name="t" value="chan:${esc(c.id)}"><span class="hash" style="width:30px;text-align:center">#</span><span>${esc(c.name)}</span></label>`).join('')}
       ${S.convs.length ? '<div class="grp">BESZÉLGETÉSEK</div>' : ''}${S.convs.map(c => `<label><input type="radio" name="t" value="conv:${esc(c.id)}">${convAv(c, 30)}<span>${esc(convName(c))}</span></label>`).join('')}
     </div></div>`}
-    <div class="field"><label>Üzenet <em>(nem kötelező)</em></label><input class="inp" name="m" maxlength="500" placeholder="Ezt nézd meg! 🍿"></div>`,
+    <div class="field"><label>Üzenet <em>(nem kötelező)</em></label><input class="inp" name="m" maxlength="500" placeholder="${music ? 'Ezt hallgasd meg! 🎧' : 'Ezt nézd meg! 🍿'}"></div>`,
     foot: `<button class="btn plain" data-x>Mégse</button><button class="btn goldb" data-ok>Küldés</button>` });
   el.querySelector('[data-ok]').onclick = async () => {
-    const f = filmId || el.querySelector('[name=f]:checked')?.value;
+    const f = fixed || el.querySelector('[name=f]:checked')?.value;
     const msg = el.querySelector('[name=m]').value.trim();
-    if (!f) return toast('Válassz filmet.', true);
-    if (chat) { el.close(); return chat.send(f, msg); }
+    if (!f) return toast('Válassz egyet.', true);
+    if (chat) { el.close(); return music ? chat.send(null, msg, f) : chat.send(f, msg); }
     const t = el.querySelector('[name=t]:checked')?.value; if (!t) return toast('Válaszd ki, hova küldjük.', true);
     const [kind, id] = t.split(':');
+    const data = { uid: uid(), text: msg, createdAt: FB.serverTimestamp() }; data[music ? 'track' : 'film'] = f;
     try {
-      await postTo(kind, id, { uid: uid(), text: msg, film: f, createdAt: FB.serverTimestamp() }, S.convs.find(c => c.id === id));
+      await postTo(kind, id, data, S.convs.find(c => c.id === id));
       $$('.modal').forEach(m => m.close ? m.close() : m.remove());
       toast('Elküldve ✓'); location.hash = kind === 'chan' ? '#/c/' + id : '#/dm/' + id;
     } catch (e) { toast(errText(e), true); }
@@ -753,3 +793,4 @@ function shareFilm(filmId, chat) {
 
 /* az admin modul ezeken keresztül éri el az állapotot */
 Admin.init({ S, uid, isAdmin, isMod, U, setTitle, renderSide, route });
+Browse.init({ S, uid, isAdmin, isMod, U, shareFilm, renderOwnerBar, convUnread });

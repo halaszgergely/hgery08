@@ -15,3 +15,6 @@ export const notConfigured = !firebaseConfig.apiKey || firebaseConfig.apiKey.sta
 
 // Helyi teszteléshez (Firebase Emulator): a böngésző konzoljában localStorage.hgws_emu = '1'
 export const useEmulator = (() => { try { return localStorage.getItem('hgws_emu') === '1'; } catch (_) { return false; } })();
+
+// A GitHub-repó, ahol az oldal van – az admin innen listázza a feltöltött zenéket (zene/ mappa)
+export const githubRepo = "halaszgergely/hgery08";
