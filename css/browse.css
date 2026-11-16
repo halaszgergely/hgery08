@@ -534,3 +534,16 @@ body.vp-lock{overflow:hidden}
 body.guest [data-nav=chat],body.guest [data-nav=dm],body.guest #navAdmin,body.guest .topnav a[href="#/dm"],body.guest [data-share]{display:none!important}
 .guestnote .link{color:var(--water);text-decoration:underline;text-underline-offset:3px;font-weight:600}
 .guestbadge{display:inline-block;padding:.1rem .45rem;border-radius:6px;background:rgba(255,255,255,.08);color:var(--ink2);font-size:.7rem;letter-spacing:.1em}
+
+/* ---------- lábléc ---------- */
+.sitefoot{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:1.6rem 2rem;align-items:start;margin:3rem var(--pad) 0;padding:2rem 0 calc(2rem + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+.sitefoot .fl{display:flex;align-items:center;gap:.8rem}
+.sitefoot .fl img{width:44px;height:44px}
+.sitefoot .fl b{display:block;font-family:var(--head);color:var(--gold2);letter-spacing:.05em}
+.sitefoot .fl small{color:var(--muted);font-size:.78rem}
+.sitefoot h4{font-size:.72rem;letter-spacing:.22em;color:var(--muted);font-weight:600;margin-bottom:.6rem;text-transform:uppercase}
+.sitefoot .fc a{display:block;color:var(--ink);text-decoration:none;padding:.2rem 0;font-weight:500}
+.sitefoot .fc a:hover{color:var(--gold2)}
+.sitefoot .fc small{color:var(--muted);font-weight:400;margin-left:.3rem}
+.sitefoot .fcopy{grid-column:1/-1;color:var(--muted);font-size:.78rem}
+@media (max-width:760px){.sitefoot{grid-template-columns:1fr;padding-bottom:calc(5rem + env(safe-area-inset-bottom))}}

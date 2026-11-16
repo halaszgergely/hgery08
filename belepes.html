@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600&family=Oswald:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/base.css?v=202611161934">
+<link rel="stylesheet" href="css/base.css?v=202611161941">
 <style>
 body{min-height:100%;display:grid;place-items:center;padding:clamp(1rem,4vw,2rem);overflow-x:hidden;
   background:radial-gradient(ellipse at 50% -20%,#12305a 0%,transparent 60%),radial-gradient(ellipse at 100% 120%,rgba(232,182,86,.12),transparent 50%),var(--bg)}
@@ -56,6 +56,8 @@ form{display:flex;flex-direction:column;gap:1rem}
 .str{height:4px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:.1rem}
 .str i{display:block;height:100%;width:0;transition:width .3s,background .3s}
 .hint{font-size:.8rem;color:var(--muted)}
+.foot{text-align:center;margin-top:1.2rem;font-size:.82rem;color:var(--muted)}
+.foot a{color:var(--ink2);text-decoration:underline;text-underline-offset:3px}
 </style>
 </head>
 <body>
@@ -130,10 +132,11 @@ form{display:flex;flex-direction:column;gap:1rem}
   </div>
 </div>
 
+  <p class="foot">Kapcsolat: <a href="mailto:info@hgery08.hu">info@hgery08.hu</a> · Partner: <a href="https://bombasz.hu" target="_blank" rel="noopener">Bombasz</a></p>
 <div id="toast"></div>
 
 <script type="module">
-import { FB, auth, db, notConfigured, $, $$, errText, ensureProfile, toast, reservedName, RESERVED_MSG } from './js/core.js?v=202611161934';
+import { FB, auth, db, notConfigured, $, $$, errText, ensureProfile, toast, reservedName, RESERVED_MSG } from './js/core.js?v=202611161941';
 
 const next = (() => { const n = new URLSearchParams(location.search).get('next') || ''; return n.startsWith('./') ? n : './'; })();
 const V = ['vAuth', 'vForgot', 'vVerify', 'vSetup', 'vBusy'];

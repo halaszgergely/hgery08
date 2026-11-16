@@ -1,8 +1,8 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText } from './core.js?v=202611161934';
-import { stageHtml, confirmBox } from './ui.js?v=202611161934';
-import * as Player from './player.js?v=202611161934';
-import * as VP from './vplayer.js?v=202611161934';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText } from './core.js?v=202611161941';
+import { stageHtml, confirmBox } from './ui.js?v=202611161941';
+import * as Player from './player.js?v=202611161941';
+import * as VP from './vplayer.js?v=202611161941';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -59,6 +59,16 @@ function wireRows(root) {
   });
 }
 
+/* ===================== lábléc: partner + kapcsolat ===================== */
+export const PARTNERS = [{ name: 'Bombasz', url: 'https://bombasz.hu', host: 'bombasz.hu' }];
+export const CONTACT = 'info@hgery08.hu';
+function footHtml() {
+  return `<footer class="sitefoot"><div class="fl"><img src="img/logo.webp" alt=""><div><b>HGWS Studios</b><small>Halász Gergely Watering Solutions</small></div></div>
+    <div class="fc"><h4>Partneroldalak</h4>${PARTNERS.map(p => `<a href="${p.url}" target="_blank" rel="noopener">🤝 ${esc(p.name)} <small>${esc(p.host)} ↗</small></a>`).join('')}</div>
+    <div class="fc"><h4>Kapcsolat</h4><a href="mailto:${CONTACT}">✉️ ${CONTACT}</a></div>
+    <div class="fcopy">© ${new Date().getFullYear()} HGWS Studios</div></footer>`;
+}
+
 /* ===================== kezdőlap ===================== */
 export function home() {
   cleanup();
@@ -68,7 +78,7 @@ export function home() {
     page.innerHTML = `<div class="homeowner"><div class="ownerslot"></div></div><section class="hero"><div class="bg" style="background-image:url(img/logo.webp);background-size:min(60vh,70vw);background-position:75% 45%;background-repeat:no-repeat"></div>
       <div class="in"><div class="orig"><img src="img/logo.webp" alt=""><span><b>HGWS</b> STUDIOS</span></div><h1>Hamarosan</h1>
       <p class="d">Az első HGWS-filmek az utómunka utolsó fázisában vannak. Addig csatlakozz a közösséghez!</p>
-      <div class="hbtns"><a class="pbtn play" href="#/chat"><i>💬</i>Közösség</a>${C.isAdmin() ? '<a class="pbtn info" href="#/admin/filmek"><i>🎞️</i>Filmek kezelése</a>' : ''}</div></div></section>`;
+      <div class="hbtns">${guest() ? '' : '<a class="pbtn play" href="#/chat"><i>💬</i>Közösség</a>'}${C.isAdmin() ? '<a class="pbtn info" href="#/admin/filmek"><i>🎞️</i>Filmek kezelése</a>' : ''}</div></div></section>${footHtml()}`;
     C.renderOwnerBar(); return;
   }
   const f = list.find(v => v.featured) || list.find(v => !v.soon) || list[0];
@@ -88,7 +98,7 @@ export function home() {
     ${row('Hamarosan a HGWS-nél', soon, '#/tar')}
     ${list.length >= 2 ? row('Top a HGWS-en', list.slice(0, 10), '', true) : ''}
     ${kinds.length > 1 ? kinds.map(k => row(PLURAL[k] || k, list.filter(v => (v.kind || 'Film') === k), '#/tar/' + encodeURIComponent(k))).join('') : ''}
-  </div>`;
+  </div>${footHtml()}`;
   C.renderOwnerBar();
   wireRows(page); heroWire(f); Player.refreshMarks();
 }
@@ -173,7 +183,7 @@ export function tar(kind) {
   $('#page').innerHTML = `<div class="pg"><div class="eyebrow">// HGWS STUDIOS</div><h1 class="gold">${k === 'all' ? 'Filmtár' : esc(PLURAL[k] || k)}</h1>
     <div class="chipsrow"><button data-k="all" class="${k === 'all' ? 'on' : ''}">Minden</button>${kinds.map(x => `<button data-k="${esc(x)}" class="${k === x ? 'on' : ''}">${esc(PLURAL[x] || x)}</button>`).join('')}
       <span style="width:1px;background:var(--line2);margin:0 .3rem"></span><button data-s="ready" class="${st === 'ready' ? 'on' : ''}">▶ Megnézhető</button><button data-s="soon" class="${st === 'soon' ? 'on' : ''}">🔔 Hamarosan</button></div>
-    ${shown.length ? `<div class="grid">${shown.map(v => tile(v)).join('')}</div>` : '<div class="noresult"><div class="big">🎬</div>Nincs ilyen cím.</div>'}</div>`;
+    ${shown.length ? `<div class="grid">${shown.map(v => tile(v)).join('')}</div>` : '<div class="noresult"><div class="big">🎬</div>Nincs ilyen cím.</div>'}</div>${footHtml()}`;
   $$('[data-k]').forEach(b => b.onclick = () => location.hash = b.dataset.k === 'all' ? '#/tar' : '#/tar/' + encodeURIComponent(b.dataset.k));
   $$('[data-s]').forEach(b => b.onclick = () => { S().tarStatus = S().tarStatus === b.dataset.s ? 'all' : b.dataset.s; tar(kind); });
 }
