@@ -1,10 +1,10 @@
 // HGWS Közösség – csatornák, privát üzenetek, csoportok, filmtár
 import { FB, auth, db, notConfigured, $, $$, esc, ROLES, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
-  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG } from './core.js?v=202611161934';
-import { modal, confirmBox, popover, closePop, emojiPicker, QUICK, stageHtml } from './ui.js?v=202611161934';
-import * as Admin from './admin.js?v=202611161934';
-import * as Browse from './browse.js?v=202611161934';
-import * as Player from './player.js?v=202611161934';
+  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG } from './core.js?v=202611162006';
+import { modal, confirmBox, popover, closePop, emojiPicker, QUICK, stageHtml } from './ui.js?v=202611162006';
+import * as Admin from './admin.js?v=202611162006';
+import * as Browse from './browse.js?v=202611162006';
+import * as Player from './player.js?v=202611162006';
 
 const S = {
   user: null, me: null, users: new Map(), channels: [], convs: [], convsLoaded: false, videos: [], reads: { ch: {} },
@@ -197,13 +197,15 @@ function route(force) {
   else if (a === 'tar') r = { mode: 'browse', view: 'tar', id: b || '' };
   else if (a === 'lista') r = { mode: 'browse', view: 'lista' };
   else if (a === 'zene') r = { mode: 'browse', view: 'zene' };
+  else if (a === 'arcade') r = { mode: 'browse', view: 'arcade', id: b || '' };
+  else if (a === 'kapcsolat') r = { mode: 'browse', view: 'kapcsolat' };
   else if (a === 'kereses') r = { mode: 'browse', view: 'kereses', id: b || '' };
   else if (a === 'nez' && b) r = { mode: 'browse', view: 'nez', id: b };
   else if (a === 'film' && b) r = { mode: 'browse', view: S.route.mode === 'browse' && S.route.view !== 'nez' ? S.route.view : 'home', id: S.route.mode === 'browse' ? S.route.id : '', film: b };
   else r = { mode: 'browse', view: 'home' };
   r.mode ||= 'chat';
   // navigáció kiemelése
-  const nav = r.mode === 'chat' ? (r.sec === 'dm' ? 'dm' : 'chat') : r.view === 'admin' ? 'admin' : r.view === 'kereses' ? 'kereses' : r.view === 'tar' ? 'tar' : r.view === 'lista' ? 'lista' : r.view === 'zene' ? 'zene' : r.view === 'home' ? 'home' : '';
+  const nav = r.mode === 'chat' ? (r.sec === 'dm' ? 'dm' : 'chat') : r.view === 'admin' ? 'admin' : r.view === 'kereses' ? 'kereses' : r.view === 'tar' ? 'tar' : r.view === 'lista' ? 'lista' : r.view === 'zene' ? 'zene' : r.view === 'arcade' ? 'arcade' : r.view === 'kapcsolat' ? 'kapcsolat' : r.view === 'home' ? 'home' : '';
   $$('[data-nav]').forEach(x => x.classList.toggle('on', x.dataset.nav === nav));
   $$('#seg [data-seg]').forEach(x => x.classList.toggle('on', x.dataset.seg === r.sec));
   const same = !force && S.route.mode === r.mode && S.route.view === r.view && S.route.id === r.id;
@@ -218,6 +220,8 @@ function route(force) {
       else if (r.view === 'tar') Browse.tar(r.id);
       else if (r.view === 'lista') Browse.myList();
       else if (r.view === 'zene') Browse.music();
+      else if (r.view === 'arcade') Browse.arcade(r.id);
+      else if (r.view === 'kapcsolat') Browse.contact();
       else if (r.view === 'kereses') Browse.search(r.id);
       else if (r.view === 'nez') Browse.watch(r.id);
       else if (r.view === 'admin') { Browse.cleanup(); Admin.render(r.id); }
@@ -419,7 +423,7 @@ function userMenu(anchor) {
   if (S.guest) {
     const p = popover(anchor, `<div class="umenu"><div class="mh">${avatar(m, 40)}<div><b>Vendég</b><small>Csak filmnézés</small></div></div>
       <button data-a="reg">✨ Regisztráció</button><button data-a="login">🔑 Belépés</button><a href="#/lista">＋ Saját lista</a>
-      <hr><a href="miert_igyal.html">🍻 Ma miért igyál?</a><a href="vizsga.html">📝 Közigazgatási vizsga – gyakorló</a><button data-a="login">🚪 Kilépés</button></div>`);
+      <hr><a href="https://bombasz.hu" target="_blank" rel="noopener">🤝 Partner: Bombasz ↗</a><a href="mailto:info@hgery08.hu">✉️ Kapcsolat: info@hgery08.hu</a><a href="miert_igyal.html">🍻 Ma miért igyál?</a><a href="vizsga.html">📝 Közigazgatási vizsga – gyakorló</a><button data-a="login">🚪 Kilépés</button></div>`);
     const r = anchor.getBoundingClientRect();
     p.style.left = Math.max(8, Math.min(innerWidth - p.offsetWidth - 8, r.left < innerWidth / 2 ? r.left : r.right - p.offsetWidth)) + 'px';
     p.style.top = Math.max(8, r.bottom + 8 + p.offsetHeight > innerHeight ? r.top - p.offsetHeight - 8 : r.bottom + 8) + 'px';
@@ -429,7 +433,7 @@ function userMenu(anchor) {
   const p = popover(anchor, `<div class="umenu"><div class="mh">${avatar(m, 40)}<div><b>${esc(m.name)}</b><small>${esc(ROLES[m.role]?.label || '')}</small></div></div>
     <button data-a="set">⚙️ Profil és beállítások</button><a href="#/lista">＋ Saját lista</a><a href="#/chat">💬 Közösség</a><a href="#/dm">✉️ Privát üzenetek</a>
     ${isMod() ? `<hr><a href="#/admin/tagok">🛡️ Tagok és jogok</a>${isAdmin() ? '<a href="#/admin/filmek">🎞️ Filmek kezelése</a><a href="#/admin/zene">🎵 Zenék kezelése</a><a href="#/admin/csatornak">⚙️ Csatornák kezelése</a>' : ''}` : ''}
-    <hr><a href="miert_igyal.html">🍻 Ma miért igyál?</a><a href="vizsga.html">📝 Közigazgatási vizsga – gyakorló</a><button data-a="out">🚪 Kijelentkezés</button></div>`);
+    <hr><a href="https://bombasz.hu" target="_blank" rel="noopener">🤝 Partner: Bombasz ↗</a><a href="mailto:info@hgery08.hu">✉️ Kapcsolat: info@hgery08.hu</a><a href="miert_igyal.html">🍻 Ma miért igyál?</a><a href="vizsga.html">📝 Közigazgatási vizsga – gyakorló</a><button data-a="out">🚪 Kijelentkezés</button></div>`);
   const r = anchor.getBoundingClientRect();
   p.style.left = Math.max(8, Math.min(innerWidth - p.offsetWidth - 8, r.left < innerWidth / 2 ? r.left : r.right - p.offsetWidth)) + 'px';
   p.style.top = Math.max(8, r.bottom + 8 + p.offsetHeight > innerHeight ? r.top - p.offsetHeight - 8 : r.bottom + 8) + 'px';

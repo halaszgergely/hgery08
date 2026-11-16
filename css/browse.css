@@ -534,3 +534,70 @@ body.vp-lock{overflow:hidden}
 body.guest [data-nav=chat],body.guest [data-nav=dm],body.guest #navAdmin,body.guest .topnav a[href="#/dm"],body.guest [data-share]{display:none!important}
 .guestnote .link{color:var(--water);text-decoration:underline;text-underline-offset:3px;font-weight:600}
 .guestbadge{display:inline-block;padding:.1rem .45rem;border-radius:6px;background:rgba(255,255,255,.08);color:var(--ink2);font-size:.7rem;letter-spacing:.1em}
+
+/* ---------- lábléc ---------- */
+.sitefoot{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:1.6rem 2rem;align-items:start;margin:3rem var(--pad) 0;padding:2rem 0 calc(2rem + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+.sitefoot .fl{display:flex;align-items:center;gap:.8rem}
+.sitefoot .fl img{width:44px;height:44px}
+.sitefoot .fl b{display:block;font-family:var(--head);color:var(--gold2);letter-spacing:.05em}
+.sitefoot .fl small{color:var(--muted);font-size:.78rem}
+.sitefoot h4{font-size:.72rem;letter-spacing:.22em;color:var(--muted);font-weight:600;margin-bottom:.6rem;text-transform:uppercase}
+.sitefoot .fc a{display:block;color:var(--ink);text-decoration:none;padding:.2rem 0;font-weight:500}
+.sitefoot .fc a:hover{color:var(--gold2)}
+.sitefoot .fc small{color:var(--muted);font-weight:400;margin-left:.3rem}
+.sitefoot .fcopy{grid-column:1/-1;color:var(--muted);font-size:.78rem}
+@media (max-width:760px){.sitefoot{grid-template-columns:1fr;padding-bottom:calc(5rem + env(safe-area-inset-bottom))}}
+
+/* ---------- HGWS szalag ---------- */
+.ticker{overflow:hidden;border-block:1px solid rgba(232,182,86,.22);background:linear-gradient(90deg,rgba(232,182,86,.09),rgba(108,198,255,.07)),#05070c;padding:.8rem 0;transform:rotate(-1deg) scale(1.03);margin:0 0 2.4rem;position:relative;z-index:2}
+.tk{display:flex;gap:1.6rem;width:max-content;animation:marq 38s linear infinite;font-family:var(--head);font-weight:900;font-size:clamp(.95rem,2.2vw,1.35rem);letter-spacing:.18em;white-space:nowrap}
+.tk span{background:linear-gradient(180deg,var(--gold1),var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent;padding-top:.15em}
+.tk b{color:var(--water);font-size:.7em;align-self:center}
+@keyframes marq{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.tk{animation:none}}
+
+/* ---------- Arcade a kezdőlapon ---------- */
+.agrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(.6rem,1.5vw,1rem);padding:0 var(--pad)}
+.acard{position:relative;display:flex;flex-direction:column;gap:.35rem;padding:1.1rem 1.1rem 1rem;border-radius:18px;text-decoration:none;color:var(--ink);overflow:hidden;
+  background:radial-gradient(120% 90% at 100% 0%,color-mix(in srgb,var(--c) 22%,transparent),transparent 60%),linear-gradient(180deg,rgba(16,26,46,.9),rgba(8,13,24,.95));border:1px solid rgba(255,255,255,.08);transition:transform .25s,border-color .25s,box-shadow .25s}
+.acard:hover{transform:translateY(-5px);border-color:color-mix(in srgb,var(--c) 55%,transparent);box-shadow:0 18px 40px rgba(0,0,0,.45)}
+.acard .an{position:absolute;top:.8rem;right:1rem;font-family:var(--mono,monospace);font-size:.75rem;color:var(--muted);letter-spacing:.15em}
+.acard .ai{font-size:2.2rem;line-height:1;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
+.acard b{font-family:var(--head);font-weight:900;font-size:1.15rem;letter-spacing:.06em;margin-top:.3rem;color:var(--gold1)}
+.acard small{color:#a9a397;font-size:.85rem;line-height:1.45;flex:1}
+.acard .af{display:flex;justify-content:space-between;align-items:center;margin-top:.5rem;font-size:.75rem}
+.acard .af em{font-style:normal;font-family:var(--mono,monospace);color:var(--gold2);letter-spacing:.08em}
+.acard .af i{font-style:normal;font-weight:700;letter-spacing:.15em;color:#04121f;background:var(--c);padding:.3rem .6rem;border-radius:999px}
+@media (max-width:1000px){.agrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:480px){.agrid{grid-template-columns:1fr}}
+
+/* ---------- Arcade oldal (beágyazva) ---------- */
+.arcframe{display:block;width:100%;height:calc(100vh - var(--nav));height:calc(100dvh - var(--nav));margin-top:var(--nav);border:0;background:#04070e}
+@media (max-width:760px){.arcframe{height:calc(100dvh - var(--nav) - 62px - env(safe-area-inset-bottom))}}
+.sitefoot{grid-template-columns:1.4fr 1fr 1fr 1fr}
+.sitefoot .fslogan{grid-column:1/-1;font-family:var(--head);font-weight:900;letter-spacing:.14em;font-size:clamp(1rem,2.6vw,1.35rem);background:linear-gradient(180deg,var(--gold1),var(--gold2) 55%,var(--gold3));-webkit-background-clip:text;background-clip:text;color:transparent;padding-top:.6rem;border-top:1px solid var(--line)}
+@media (max-width:900px){.sitefoot{grid-template-columns:1fr 1fr}}
+@media (max-width:520px){.sitefoot{grid-template-columns:1fr}}
+
+/* ---------- kapcsolat ---------- */
+.cstrip{display:flex;align-items:center;justify-content:space-between;gap:1.2rem 2rem;flex-wrap:wrap;margin:0 var(--pad) 2.6rem;padding:1.4rem 1.6rem;border-radius:20px;
+  background:linear-gradient(120deg,rgba(232,182,86,.16),rgba(108,198,255,.08) 60%,rgba(8,13,24,.9));border:1px solid rgba(232,182,86,.35)}
+.cstrip .ci{display:flex;align-items:center;gap:1.1rem;min-width:0}
+.cstrip .cic{font-size:2.4rem;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
+.cstrip h3{font-family:var(--head);font-weight:900;font-size:clamp(1.2rem,2.4vw,1.6rem);color:var(--gold1);margin-top:.15rem}
+.cstrip p{color:#c9c3b5;font-size:.92rem;margin-top:.2rem}
+.cstrip .cbtns{display:flex;gap:.6rem;flex-wrap:wrap}
+.cpage .lead{max-width:44rem}
+.cgrid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:1rem;margin-top:1.8rem}
+.ccard{display:flex;flex-direction:column;gap:.35rem;padding:1.4rem;border-radius:20px;text-align:left;text-decoration:none;color:var(--ink);background:linear-gradient(180deg,rgba(16,26,46,.9),rgba(8,13,24,.95));border:1px solid var(--line2);transition:transform .2s,border-color .2s;font:inherit;cursor:pointer}
+.ccard:hover{transform:translateY(-4px);border-color:rgba(232,182,86,.55)}
+.ccard .ico{font-size:2rem}
+.ccard small{font-size:.7rem;letter-spacing:.22em;color:var(--muted);margin-top:.4rem}
+.ccard b{font-size:1.15rem;font-weight:700;overflow-wrap:anywhere}
+.ccard em{font-style:normal;color:var(--muted);font-size:.85rem}
+.ccard.big{background:linear-gradient(130deg,rgba(232,182,86,.22),rgba(16,26,46,.95) 70%);border-color:rgba(232,182,86,.45)}
+.ccard.big b{font-family:var(--head);font-size:clamp(1.3rem,3vw,1.9rem);color:var(--gold1)}
+.cinfo{display:flex;flex-wrap:wrap;gap:1rem 3rem;margin-top:2rem;padding-top:1.4rem;border-top:1px solid var(--line)}
+.cinfo small{display:block;font-size:.7rem;letter-spacing:.22em;color:var(--muted)}
+.cinfo b{font-weight:600}
+@media (max-width:860px){.cgrid{grid-template-columns:1fr}}

@@ -1,8 +1,8 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText } from './core.js?v=202611161934';
-import { stageHtml, confirmBox } from './ui.js?v=202611161934';
-import * as Player from './player.js?v=202611161934';
-import * as VP from './vplayer.js?v=202611161934';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText } from './core.js?v=202611162006';
+import { stageHtml, confirmBox } from './ui.js?v=202611162006';
+import * as Player from './player.js?v=202611162006';
+import * as VP from './vplayer.js?v=202611162006';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -59,6 +59,39 @@ function wireRows(root) {
   });
 }
 
+/* ===================== lábléc: partner + kapcsolat ===================== */
+export const PARTNERS = [{ name: 'Bombasz', url: 'https://bombasz.hu', host: 'bombasz.hu' }];
+export const CONTACT = 'info@hgery08.hu';
+function footHtml() {
+  return `<footer class="sitefoot"><div class="fl"><img src="img/logo.webp" alt=""><div><b>HGWS Studios</b><small>Halász Gergely Watering Solutions</small></div></div>
+    <div class="fc"><h4>Partneroldalak</h4>${PARTNERS.map(p => `<a href="${p.url}" target="_blank" rel="noopener">🤝 ${esc(p.name)} <small>${esc(p.host)} ↗</small></a>`).join('')}</div>
+    <div class="fc"><h4>Kapcsolat</h4><a href="mailto:${CONTACT}">✉️ ${CONTACT}</a><a href="#/kapcsolat">📇 Kapcsolat oldal</a></div>
+    <div class="fc"><h4>Szórakozás</h4><a href="#/arcade">🎮 HGWS Arcade</a><a href="miert_igyal.html">🍻 Ma miért igyál?</a></div>
+    <div class="fslogan">VÍZ. ERŐ. TECHNIKA. ÉLETFORMA.</div>
+    <div class="fcopy">© ${new Date().getFullYear()} Halász Gergely Watering Solutions Kft. · HGWS Studios</div></footer>`;
+}
+
+/* ===================== kapcsolat ===================== */
+function contactStrip() {
+  return `<section class="cstrip"><div class="ci"><span class="cic">✉️</span><div><div class="eyebrow">// KAPCSOLAT</div><h3>Írj nekünk!</h3>
+    <p>Kérdésed, ötleted vagy üzleti ajánlatod van? A HGWS Studios várja a leveled.</p></div></div>
+    <div class="cbtns"><a class="pbtn play" href="mailto:${CONTACT}"><i>✉️</i>${CONTACT}</a><button class="pbtn info" data-copymail><i>📋</i>Másolás</button>
+    <a class="pbtn info" href="${PARTNERS[0].url}" target="_blank" rel="noopener"><i>🤝</i>Partner: ${esc(PARTNERS[0].name)}</a></div></section>`;
+}
+export function contact() {
+  cleanup();
+  document.title = 'Kapcsolat · HGWS';
+  $('#page').innerHTML = `<div class="pg cpage"><div class="eyebrow">// HGWS STUDIOS</div><h1 class="gold">Kapcsolat</h1>
+    <p class="lead">Kérdésed, ötleted, együttműködési vagy üzleti ajánlatod van? Írj bátran, válaszolunk.</p>
+    <div class="cgrid">
+      <a class="ccard big" href="mailto:${CONTACT}"><span class="ico">✉️</span><small>E-MAIL</small><b>${CONTACT}</b><em>Kattints a levélíráshoz</em></a>
+      <button class="ccard" data-copymail><span class="ico">📋</span><small>CÍM MÁSOLÁSA</small><b>Vágólapra</b><em>Ha a saját leveleződből írnál</em></button>
+      ${PARTNERS.map(p => `<a class="ccard" href="${p.url}" target="_blank" rel="noopener"><span class="ico">🤝</span><small>PARTNEROLDAL</small><b>${esc(p.name)}</b><em>${esc(p.host)} ↗</em></a>`).join('')}
+    </div>
+    <div class="cinfo"><div><small>CÉG</small><b>Halász Gergely Watering Solutions Kft.</b></div><div><small>STÚDIÓ</small><b>HGWS Studios</b></div><div><small>WEBOLDAL</small><b>hgery08.hu</b></div></div>
+  </div>${footHtml()}`;
+}
+
 /* ===================== kezdőlap ===================== */
 export function home() {
   cleanup();
@@ -68,7 +101,7 @@ export function home() {
     page.innerHTML = `<div class="homeowner"><div class="ownerslot"></div></div><section class="hero"><div class="bg" style="background-image:url(img/logo.webp);background-size:min(60vh,70vw);background-position:75% 45%;background-repeat:no-repeat"></div>
       <div class="in"><div class="orig"><img src="img/logo.webp" alt=""><span><b>HGWS</b> STUDIOS</span></div><h1>Hamarosan</h1>
       <p class="d">Az első HGWS-filmek az utómunka utolsó fázisában vannak. Addig csatlakozz a közösséghez!</p>
-      <div class="hbtns"><a class="pbtn play" href="#/chat"><i>💬</i>Közösség</a>${C.isAdmin() ? '<a class="pbtn info" href="#/admin/filmek"><i>🎞️</i>Filmek kezelése</a>' : ''}</div></div></section>`;
+      <div class="hbtns">${guest() ? '' : '<a class="pbtn play" href="#/chat"><i>💬</i>Közösség</a>'}${C.isAdmin() ? '<a class="pbtn info" href="#/admin/filmek"><i>🎞️</i>Filmek kezelése</a>' : ''}</div></div></section>${footHtml()}`;
     C.renderOwnerBar(); return;
   }
   const f = list.find(v => v.featured) || list.find(v => !v.soon) || list[0];
@@ -79,16 +112,19 @@ export function home() {
   const contList = Object.entries(S().progress || {}).filter(([id]) => film(id) && progOf(id) && !film(id).soon && film(id).visible !== false)
     .sort((a, b) => (toDate(b[1].at) || 0) - (toDate(a[1].at) || 0)).map(([id]) => film(id));
   page.innerHTML = `<div class="homeowner"><div class="ownerslot"></div></div>${heroHtml(f)}<div class="rows">
-    <div class="pills"><a href="#/" class="on">Kezdőlap</a>${kinds.map(k => `<a href="#/tar/${encodeURIComponent(k)}">${esc(PLURAL[k] || k)}</a>`).join('')}${tracks().length ? '<a href="#/zene">Zene</a>' : ''}${guest() ? '' : '<a href="#/chat">Közösség</a>'}</div>
+    <div class="pills"><a href="#/" class="on">Kezdőlap</a>${kinds.map(k => `<a href="#/tar/${encodeURIComponent(k)}">${esc(PLURAL[k] || k)}</a>`).join('')}${tracks().length ? '<a href="#/zene">Zene</a>' : ''}<a href="#/arcade">Arcade</a>${guest() ? '' : '<a href="#/chat">Közösség</a>'}</div>
+    ${tickerHtml()}
     ${row('Folytatás', contList, '', false, true)}
     ${row(my.length ? 'Saját listám' : '', my, '#/lista')}
     ${row('Most megnézhető', released, '#/tar')}
+    ${contactStrip()}
     ${musicRow()}
+    ${arcadeRow()}
     ${guest() ? guestHtml() : commHtml(online)}
     ${row('Hamarosan a HGWS-nél', soon, '#/tar')}
     ${list.length >= 2 ? row('Top a HGWS-en', list.slice(0, 10), '', true) : ''}
     ${kinds.length > 1 ? kinds.map(k => row(PLURAL[k] || k, list.filter(v => (v.kind || 'Film') === k), '#/tar/' + encodeURIComponent(k))).join('') : ''}
-  </div>`;
+  </div>${footHtml()}`;
   C.renderOwnerBar();
   wireRows(page); heroWire(f); Player.refreshMarks();
 }
@@ -142,6 +178,33 @@ export function updateComm() {
   el.outerHTML = commHtml(online);
 }
 
+/* ===================== HGWS márka-szalag és Arcade ===================== */
+function tickerHtml() {
+  const w = ['VÍZ', 'ERŐ', 'TECHNIKA', 'ÉLETFORMA', 'HGWS', 'HAMAROSAN A KERTEDBEN'];
+  const one = w.map(x => `<span>${x}</span><b>◆</b>`).join('');
+  return `<div class="ticker" aria-hidden="true"><div class="tk">${one}${one}${one}${one}</div></div>`;
+}
+export const GAMES = [
+  { id: 'locsolo', name: 'Locsoló Mester', icon: '🌻', desc: 'Locsold meg a hervadó virágokat, mielőtt Szikkadt Szilárd kiszárítja a kertet!', c: '#5ee08a' },
+  { id: 'nyomas', name: 'Nyomásmester', icon: '🎛️', desc: 'Állítsd meg a mutatót a zöld zónában – a PLC rád bízta a szivattyút.', c: '#6cc6ff' },
+  { id: 'vizagyu', name: 'Vízágyú', icon: '💦', desc: 'Kaktuszok és tűzgolyók zúdulnak a kertre. Célozz a vízágyúval!', c: '#ff7a6e' },
+  { id: 'csepp', name: 'Csepp Futam', icon: '💧', desc: 'Repülj át a csövek között egy bátor vízcseppel – egy ütközés és vége!', c: '#e8b656' }
+];
+const best = id => { try { return +localStorage.getItem('hgws_best_' + id) || 0; } catch (_) { return 0; } };
+function arcadeRow() {
+  return `<section class="row arcrow"><div class="rowh"><h2>🎮 HGWS Arcade</h2><a href="#/arcade">Mind ›</a></div>
+    <div class="agrid">${GAMES.map((g, i) => `<a class="acard" href="#/arcade/${g.id}" style="--c:${g.c}"><span class="an">0${i + 1}</span><span class="ai">${g.icon}</span>
+      <b>${esc(g.name)}</b><small>${esc(g.desc)}</small><span class="af"><em>REKORD: ${best(g.id).toLocaleString('hu-HU')}</em><i>JÁTÉK ▶</i></span></a>`).join('')}</div></section>`;
+}
+export function arcade(id) {
+  cleanup();
+  document.title = 'Arcade · HGWS';
+  const g = GAMES.find(x => x.id === id);
+  $('#page').innerHTML = `<iframe class="arcframe" src="arcade.html${g ? '#play=' + g.id : ''}" title="HGWS Arcade" allow="autoplay; fullscreen"></iframe>`;
+  const f = $('.arcframe');
+  f.addEventListener('load', () => { try { f.contentWindow.focus(); } catch (_) {} });
+}
+
 /* ===================== zene ===================== */
 function sq(t) {
   return `<div class="sq" data-track="${esc(t.id)}"><div class="cv" style="${cov(t)}"><button tabindex="-1" aria-label="Lejátszás">▶</button></div><b>${esc(t.title)}</b><small>${esc(t.artist || 'HGWS')}</small></div>`;
@@ -173,7 +236,7 @@ export function tar(kind) {
   $('#page').innerHTML = `<div class="pg"><div class="eyebrow">// HGWS STUDIOS</div><h1 class="gold">${k === 'all' ? 'Filmtár' : esc(PLURAL[k] || k)}</h1>
     <div class="chipsrow"><button data-k="all" class="${k === 'all' ? 'on' : ''}">Minden</button>${kinds.map(x => `<button data-k="${esc(x)}" class="${k === x ? 'on' : ''}">${esc(PLURAL[x] || x)}</button>`).join('')}
       <span style="width:1px;background:var(--line2);margin:0 .3rem"></span><button data-s="ready" class="${st === 'ready' ? 'on' : ''}">▶ Megnézhető</button><button data-s="soon" class="${st === 'soon' ? 'on' : ''}">🔔 Hamarosan</button></div>
-    ${shown.length ? `<div class="grid">${shown.map(v => tile(v)).join('')}</div>` : '<div class="noresult"><div class="big">🎬</div>Nincs ilyen cím.</div>'}</div>`;
+    ${shown.length ? `<div class="grid">${shown.map(v => tile(v)).join('')}</div>` : '<div class="noresult"><div class="big">🎬</div>Nincs ilyen cím.</div>'}</div>${footHtml()}`;
   $$('[data-k]').forEach(b => b.onclick = () => location.hash = b.dataset.k === 'all' ? '#/tar' : '#/tar/' + encodeURIComponent(b.dataset.k));
   $$('[data-s]').forEach(b => b.onclick = () => { S().tarStatus = S().tarStatus === b.dataset.s ? 'all' : b.dataset.s; tar(kind); });
 }
@@ -377,6 +440,7 @@ export function listChanged() {
 /* ===================== kattintások ===================== */
 export function onClick(e) {
   const t = e.target;
+  if (t.closest('[data-copymail]')) { e.preventDefault(); navigator.clipboard?.writeText(CONTACT).then(() => toast('E-mail-cím kimásolva ✓'), () => toast(CONTACT)); return true; }
   if (t.closest('[data-guestreg]')) { e.preventDefault(); C.guestLeave('reg'); return true; }
   if (t.closest('[data-guestlogin]')) { e.preventDefault(); C.guestLeave('login'); return true; }
   const b = t.closest('[data-play],[data-mylist],[data-share],[data-info]');
