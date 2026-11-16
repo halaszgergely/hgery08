@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="robots" content="noindex">
+<title>HGWS Közösség</title>
+<meta name="theme-color" content="#04070e">
+<link rel="icon" type="image/png" href="img/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600&family=Oswald:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="boot"><img src="img/logo.webp" alt="HGWS"></div>
+
+<div id="app" hidden>
+  <nav class="rail" aria-label="Fő navigáció">
+    <a class="ri srv" id="rSrv" href="#/" title="HGWS Studios"><img src="img/logo.webp" alt="HGWS"></a>
+    <a class="ri" id="rDm" href="#/dm" title="Privát üzenetek">💬<span class="bdg" id="dmBadge" hidden></span></a>
+    <div class="rsep"></div>
+    <a class="ri" id="rFilm" href="#/filmek" title="Filmtár">🎬</a>
+    <div class="sp"></div>
+    <a class="ri" href="./" title="Vissza a főoldalra">🏠</a>
+  </nav>
+
+  <aside class="side">
+    <div class="shead" id="sHead"></div>
+    <div class="sbody scroll" id="sBody"></div>
+    <div class="mebar">
+      <button class="who" id="meBtn" title="Profil és beállítások"></button>
+      <button class="ibtn" id="setBtn" title="Beállítások">⚙️</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="mhead">
+      <button class="ibtn menu" id="menuBtn" aria-label="Menü">☰</button>
+      <div class="ttl" id="mTitle"></div>
+      <div class="topic" id="mTopic"></div>
+      <div class="acts" id="mActs"></div>
+    </header>
+    <div id="ownerbar"></div>
+    <div id="view"></div>
+  </main>
+
+  <aside class="members" id="members" hidden>
+    <div class="shead"><h2 class="gold">TAGOK</h2><span class="hint" id="memCount"></span></div>
+    <div class="sbody scroll" id="memList"></div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+</div>
+
+<div id="toast"></div>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
