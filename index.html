@@ -1111,10 +1111,10 @@ renderCards();
 </script>
 <script type="module">
 /* Címek betöltése a Firebase-ből (a közösségi oldal admin felületén szerkeszthetők). */
-import { firebaseConfig, notConfigured, useEmulator } from './firebase-config.js';
+import { firebaseConfig, notConfigured, useEmulator } from './firebase-config.js?v=202611161159';
 if (!notConfigured) {
   try {
-    const F = await import('./js/firebase-lite.js');
+    const F = await import('./js/firebase-lite.js?v=202611161159');
     const db = F.getFirestore(F.initializeApp(firebaseConfig));
     if (useEmulator) F.connectFirestoreEmulator(db, '127.0.0.1', 8080);
     const snap = await F.getDocs(F.collection(db, 'videos'));

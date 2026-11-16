@@ -1,7 +1,7 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText } from './core.js';
-import { stageHtml, confirmBox } from './ui.js';
-import * as Player from './player.js';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText } from './core.js?v=202611161159';
+import { stageHtml, confirmBox } from './ui.js?v=202611161159';
+import * as Player from './player.js?v=202611161159';
 
 let C = null;
 export function init(ctx) { C = ctx; }
