@@ -1,10 +1,10 @@
 // HGWS Közösség – csatornák, privát üzenetek, csoportok, filmtár
 import { FB, auth, db, notConfigured, $, $$, esc, ROLES, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
-  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG } from './core.js?v=202611161949';
-import { modal, confirmBox, popover, closePop, emojiPicker, QUICK, stageHtml } from './ui.js?v=202611161949';
-import * as Admin from './admin.js?v=202611161949';
-import * as Browse from './browse.js?v=202611161949';
-import * as Player from './player.js?v=202611161949';
+  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG } from './core.js?v=202611162006';
+import { modal, confirmBox, popover, closePop, emojiPicker, QUICK, stageHtml } from './ui.js?v=202611162006';
+import * as Admin from './admin.js?v=202611162006';
+import * as Browse from './browse.js?v=202611162006';
+import * as Player from './player.js?v=202611162006';
 
 const S = {
   user: null, me: null, users: new Map(), channels: [], convs: [], convsLoaded: false, videos: [], reads: { ch: {} },
@@ -198,13 +198,14 @@ function route(force) {
   else if (a === 'lista') r = { mode: 'browse', view: 'lista' };
   else if (a === 'zene') r = { mode: 'browse', view: 'zene' };
   else if (a === 'arcade') r = { mode: 'browse', view: 'arcade', id: b || '' };
+  else if (a === 'kapcsolat') r = { mode: 'browse', view: 'kapcsolat' };
   else if (a === 'kereses') r = { mode: 'browse', view: 'kereses', id: b || '' };
   else if (a === 'nez' && b) r = { mode: 'browse', view: 'nez', id: b };
   else if (a === 'film' && b) r = { mode: 'browse', view: S.route.mode === 'browse' && S.route.view !== 'nez' ? S.route.view : 'home', id: S.route.mode === 'browse' ? S.route.id : '', film: b };
   else r = { mode: 'browse', view: 'home' };
   r.mode ||= 'chat';
   // navigáció kiemelése
-  const nav = r.mode === 'chat' ? (r.sec === 'dm' ? 'dm' : 'chat') : r.view === 'admin' ? 'admin' : r.view === 'kereses' ? 'kereses' : r.view === 'tar' ? 'tar' : r.view === 'lista' ? 'lista' : r.view === 'zene' ? 'zene' : r.view === 'arcade' ? 'arcade' : r.view === 'home' ? 'home' : '';
+  const nav = r.mode === 'chat' ? (r.sec === 'dm' ? 'dm' : 'chat') : r.view === 'admin' ? 'admin' : r.view === 'kereses' ? 'kereses' : r.view === 'tar' ? 'tar' : r.view === 'lista' ? 'lista' : r.view === 'zene' ? 'zene' : r.view === 'arcade' ? 'arcade' : r.view === 'kapcsolat' ? 'kapcsolat' : r.view === 'home' ? 'home' : '';
   $$('[data-nav]').forEach(x => x.classList.toggle('on', x.dataset.nav === nav));
   $$('#seg [data-seg]').forEach(x => x.classList.toggle('on', x.dataset.seg === r.sec));
   const same = !force && S.route.mode === r.mode && S.route.view === r.view && S.route.id === r.id;
@@ -220,6 +221,7 @@ function route(force) {
       else if (r.view === 'lista') Browse.myList();
       else if (r.view === 'zene') Browse.music();
       else if (r.view === 'arcade') Browse.arcade(r.id);
+      else if (r.view === 'kapcsolat') Browse.contact();
       else if (r.view === 'kereses') Browse.search(r.id);
       else if (r.view === 'nez') Browse.watch(r.id);
       else if (r.view === 'admin') { Browse.cleanup(); Admin.render(r.id); }

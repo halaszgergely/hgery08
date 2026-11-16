@@ -1,7 +1,7 @@
 // HGWS – admin és moderátor felület: tagok, szerepkörök, filmek, csatornák
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG } from './core.js?v=202611161949';
-import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611161949';
-import { githubRepo } from '../firebase-config.js?v=202611161949';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG } from './core.js?v=202611162006';
+import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611162006';
+import { githubRepo } from '../firebase-config.js?v=202611162006';
 
 let C = null, current = null;
 export function init(ctx) { C = ctx; }

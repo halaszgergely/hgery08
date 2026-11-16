@@ -1,8 +1,8 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText } from './core.js?v=202611161949';
-import { stageHtml, confirmBox } from './ui.js?v=202611161949';
-import * as Player from './player.js?v=202611161949';
-import * as VP from './vplayer.js?v=202611161949';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText } from './core.js?v=202611162006';
+import { stageHtml, confirmBox } from './ui.js?v=202611162006';
+import * as Player from './player.js?v=202611162006';
+import * as VP from './vplayer.js?v=202611162006';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -65,10 +65,31 @@ export const CONTACT = 'info@hgery08.hu';
 function footHtml() {
   return `<footer class="sitefoot"><div class="fl"><img src="img/logo.webp" alt=""><div><b>HGWS Studios</b><small>Halász Gergely Watering Solutions</small></div></div>
     <div class="fc"><h4>Partneroldalak</h4>${PARTNERS.map(p => `<a href="${p.url}" target="_blank" rel="noopener">🤝 ${esc(p.name)} <small>${esc(p.host)} ↗</small></a>`).join('')}</div>
-    <div class="fc"><h4>Kapcsolat</h4><a href="mailto:${CONTACT}">✉️ ${CONTACT}</a></div>
+    <div class="fc"><h4>Kapcsolat</h4><a href="mailto:${CONTACT}">✉️ ${CONTACT}</a><a href="#/kapcsolat">📇 Kapcsolat oldal</a></div>
     <div class="fc"><h4>Szórakozás</h4><a href="#/arcade">🎮 HGWS Arcade</a><a href="miert_igyal.html">🍻 Ma miért igyál?</a></div>
     <div class="fslogan">VÍZ. ERŐ. TECHNIKA. ÉLETFORMA.</div>
     <div class="fcopy">© ${new Date().getFullYear()} Halász Gergely Watering Solutions Kft. · HGWS Studios</div></footer>`;
+}
+
+/* ===================== kapcsolat ===================== */
+function contactStrip() {
+  return `<section class="cstrip"><div class="ci"><span class="cic">✉️</span><div><div class="eyebrow">// KAPCSOLAT</div><h3>Írj nekünk!</h3>
+    <p>Kérdésed, ötleted vagy üzleti ajánlatod van? A HGWS Studios várja a leveled.</p></div></div>
+    <div class="cbtns"><a class="pbtn play" href="mailto:${CONTACT}"><i>✉️</i>${CONTACT}</a><button class="pbtn info" data-copymail><i>📋</i>Másolás</button>
+    <a class="pbtn info" href="${PARTNERS[0].url}" target="_blank" rel="noopener"><i>🤝</i>Partner: ${esc(PARTNERS[0].name)}</a></div></section>`;
+}
+export function contact() {
+  cleanup();
+  document.title = 'Kapcsolat · HGWS';
+  $('#page').innerHTML = `<div class="pg cpage"><div class="eyebrow">// HGWS STUDIOS</div><h1 class="gold">Kapcsolat</h1>
+    <p class="lead">Kérdésed, ötleted, együttműködési vagy üzleti ajánlatod van? Írj bátran, válaszolunk.</p>
+    <div class="cgrid">
+      <a class="ccard big" href="mailto:${CONTACT}"><span class="ico">✉️</span><small>E-MAIL</small><b>${CONTACT}</b><em>Kattints a levélíráshoz</em></a>
+      <button class="ccard" data-copymail><span class="ico">📋</span><small>CÍM MÁSOLÁSA</small><b>Vágólapra</b><em>Ha a saját leveleződből írnál</em></button>
+      ${PARTNERS.map(p => `<a class="ccard" href="${p.url}" target="_blank" rel="noopener"><span class="ico">🤝</span><small>PARTNEROLDAL</small><b>${esc(p.name)}</b><em>${esc(p.host)} ↗</em></a>`).join('')}
+    </div>
+    <div class="cinfo"><div><small>CÉG</small><b>Halász Gergely Watering Solutions Kft.</b></div><div><small>STÚDIÓ</small><b>HGWS Studios</b></div><div><small>WEBOLDAL</small><b>hgery08.hu</b></div></div>
+  </div>${footHtml()}`;
 }
 
 /* ===================== kezdőlap ===================== */
@@ -96,6 +117,7 @@ export function home() {
     ${row('Folytatás', contList, '', false, true)}
     ${row(my.length ? 'Saját listám' : '', my, '#/lista')}
     ${row('Most megnézhető', released, '#/tar')}
+    ${contactStrip()}
     ${musicRow()}
     ${arcadeRow()}
     ${guest() ? guestHtml() : commHtml(online)}
@@ -418,6 +440,7 @@ export function listChanged() {
 /* ===================== kattintások ===================== */
 export function onClick(e) {
   const t = e.target;
+  if (t.closest('[data-copymail]')) { e.preventDefault(); navigator.clipboard?.writeText(CONTACT).then(() => toast('E-mail-cím kimásolva ✓'), () => toast(CONTACT)); return true; }
   if (t.closest('[data-guestreg]')) { e.preventDefault(); C.guestLeave('reg'); return true; }
   if (t.closest('[data-guestlogin]')) { e.preventDefault(); C.guestLeave('login'); return true; }
   const b = t.closest('[data-play],[data-mylist],[data-share],[data-info]');
