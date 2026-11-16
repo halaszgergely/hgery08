@@ -15,7 +15,7 @@ const img = v => v.banner || v.poster || '';
 const tracks = () => S().music.filter(t => t.visible !== false);
 const cov = t => t.cover ? `background-image:url('${esc(t.cover)}')` : '';
 let unsubs = [], heroTimer = null, countTimer = null;
-function cleanup() { unsubs.forEach(u => u()); unsubs = []; clearTimeout(heroTimer); clearInterval(countTimer); }
+function cleanup() { unsubs.forEach(u => u()); unsubs = []; clearTimeout(heroTimer); clearInterval(countTimer); stopTrack(); }
 
 /* ===================== kártyák, sorok ===================== */
 function badge(v) {
@@ -27,10 +27,13 @@ function meta(v) {
   return [v.soon ? `<span class="y">${esc(v.status || 'Hamarosan')}</span>` : isNew(v) ? '<span class="g">Új</span>' : '<span class="g">Megnézhető</span>',
     v.year, v.len, v.genre].filter(Boolean).map(x => x.startsWith('<') ? x : `<span>${esc(x)}</span>`).join('');
 }
-export function tile(v, top) {
-  return `<div class="tile${top ? ' top' : ''}" tabindex="0" data-film="${esc(v.id)}">
+const progOf = id => { const p = S().progress?.[id]; return p && p.d > 0 && p.t > 15 && p.t < p.d * .95 ? p : null; };
+const leftLabel = p => { const m = Math.max(1, Math.round((p.d - p.t) / 60)); return m >= 60 ? `Még ${Math.floor(m / 60)} ó ${m % 60} p` : `Még ${m} perc`; };
+export function tile(v, top, cont) {
+  const pr = cont ? progOf(v.id) : null;
+  return `<div class="tile${top ? ' top' : ''}${pr ? ' cont' : ''}" tabindex="0" data-film="${esc(v.id)}">
     ${top ? `<span class="num">${top}</span>` : ''}
-    <div class="im" style="background-image:url('${esc(top ? (v.poster || img(v)) : (v.poster || img(v)))}')">${badge(v)}<img class="logo" src="img/logo.webp" alt=""></div>
+    <div class="im" style="background-image:url('${esc(v.poster || img(v))}')">${pr ? `<span class="left">${leftLabel(pr)}</span>` : badge(v)}${pr ? '' : '<img class="logo" src="img/logo.webp" alt="">'}${pr ? `<div class="prog"><i style="width:${Math.round(pr.t / pr.d * 100)}%"></i></div>` : ''}</div>
     ${top ? '' : `<div class="tt">${esc(v.title)}</div>`}
     <div class="ov"><h4>${esc(v.title)}</h4><div class="b">
       <button class="rnd pl" data-play="${esc(v.id)}" title="${v.soon ? 'Részletek' : 'Lejátszás'}">${v.soon ? '🔔' : '▶'}</button>
@@ -40,10 +43,10 @@ export function tile(v, top) {
       <div class="m">${meta(v)}</div></div>
   </div>`;
 }
-function row(title, list, link, top) {
-  if (!list.length) return '';
+function row(title, list, link, top, cont) {
+  if (!list.length || !title) return '';
   return `<section class="row"><div class="rowh"><h2>${esc(title)}</h2>${link ? `<a href="${link}">Mind ›</a>` : ''}</div>
-    <div class="track"><button class="arr l" hidden aria-label="Vissza">‹</button><div class="strip">${list.map((v, i) => tile(v, top ? i + 1 : 0)).join('')}</div><button class="arr r" aria-label="Tovább">›</button></div></section>`;
+    <div class="track"><button class="arr l" hidden aria-label="Vissza">‹</button><div class="strip">${list.map((v, i) => tile(v, top ? i + 1 : 0, cont)).join('')}</div><button class="arr r" aria-label="Tovább">›</button></div></section>`;
 }
 function wireRows(root) {
   $$('.track', root).forEach(t => {
@@ -71,7 +74,11 @@ export function home() {
   const kinds = [...new Set(list.map(v => v.kind || 'Film'))];
   const my = S().myList.map(film).filter(v => v && v.visible !== false);
   const online = [...S().users.values()].filter(u => isOnline(u) && !u.banned);
+  const contList = Object.entries(S().progress || {}).filter(([id]) => film(id) && progOf(id) && !film(id).soon && film(id).visible !== false)
+    .sort((a, b) => (toDate(b[1].at) || 0) - (toDate(a[1].at) || 0)).map(([id]) => film(id));
   page.innerHTML = `<div class="homeowner"><div class="ownerslot"></div></div>${heroHtml(f)}<div class="rows">
+    <div class="pills"><a href="#/" class="on">Kezdőlap</a>${kinds.map(k => `<a href="#/tar/${encodeURIComponent(k)}">${esc(PLURAL[k] || k)}</a>`).join('')}${tracks().length ? '<a href="#/zene">Zene</a>' : ''}<a href="#/chat">Közösség</a></div>
+    ${row('Folytatás', contList, '', false, true)}
     ${row(my.length ? 'Saját listám' : '', my, '#/lista')}
     ${row('Most megnézhető', released, '#/tar')}
     ${musicRow()}
@@ -240,10 +247,45 @@ export async function watch(id) {
   if (!v.soon) { try { src = (await FB.getDoc(FB.doc(db, 'videoSources', v.id))).data() || {}; } catch (_) {} }
   const wf = $('#wf'); if (!wf || location.hash !== '#/nez/' + id) return;
   const back = '<a class="wback" href="#/">‹ Vissza</a>';
-  if (!v.soon && src.youtube) wf.innerHTML = back + `<iframe src="https://www.youtube-nocookie.com/embed/${esc(src.youtube)}?autoplay=1&rel=0&modestbranding=1&playsinline=1" title="${esc(v.title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
-  else if (!v.soon && src.mp4) wf.innerHTML = back + `<video src="${esc(src.mp4)}" poster="${esc(v.poster || '')}" controls autoplay playsinline></video>`;
+  const pr = progOf(v.id), start = pr ? Math.floor(pr.t) : 0;
+  if (!v.soon && src.youtube) {
+    wf.innerHTML = back + `<iframe id="ytw" src="https://www.youtube-nocookie.com/embed/${esc(src.youtube)}?autoplay=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&start=${start}&origin=${encodeURIComponent(location.origin)}" title="${esc(v.title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
+    trackYT(v.id, $('#ytw'));
+  } else if (!v.soon && src.mp4) {
+    wf.innerHTML = back + `<video src="${esc(src.mp4)}" poster="${esc(v.poster || '')}" controls autoplay playsinline></video>`;
+    const vid = $('video', wf); if (start) vid.addEventListener('loadedmetadata', () => { vid.currentTime = start; }, { once: true });
+    track.id = v.id; vid.addEventListener('timeupdate', () => note(vid.currentTime, vid.duration)); vid.addEventListener('pause', flush);
+  }
   else wf.innerHTML = back + `<div class="psoon" style="background-image:url('${esc(img(v))}')"><div><b>HAMAROSAN</b><span>${v.premiere ? 'Premier: ' + esc(huDate(v.premiere)) : 'A videó még nem érhető el.'}</span>${v.soon ? stageHtml(v.stage ?? 0) : ''}</div></div>`;
 }
+
+/* ===================== lejátszási pozíció (Folytatás) ===================== */
+const track = { id: null, t: 0, d: 0, saved: 0, timer: null, onMsg: null };
+function note(t, d) { if (!isFinite(t) || !isFinite(d) || d <= 0) return; track.t = t; track.d = d; if (Date.now() - track.saved > 15000) flush(); }
+function flush() {
+  if (!track.id || !track.d || track.t < 5) return;
+  track.saved = Date.now();
+  const done = track.t >= track.d * .95;
+  FB.setDoc(FB.doc(db, 'users', C.uid(), 'private', 'progress'), { [track.id]: done ? FB.deleteField() : { t: Math.round(track.t), d: Math.round(track.d), at: FB.serverTimestamp() } }, { merge: true }).catch(() => {});
+}
+function trackYT(id, frame) {
+  stopTrack(); track.id = id;
+  const hello = () => { try { frame.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), '*'); } catch (_) {} };
+  frame.addEventListener('load', () => { hello(); setTimeout(hello, 1000); });
+  track.timer = setInterval(hello, 5000);
+  track.onMsg = e => {
+    if (!/youtube(-nocookie)?\.com$/.test(new URL(e.origin).hostname)) return;
+    let d; try { d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch (_) { return; }
+    const i = d?.info; if (i && typeof i.currentTime === 'number') note(i.currentTime, i.duration || track.d);
+  };
+  addEventListener('message', track.onMsg);
+}
+function stopTrack() {
+  flush();
+  clearInterval(track.timer); if (track.onMsg) removeEventListener('message', track.onMsg);
+  Object.assign(track, { id: null, t: 0, d: 0, timer: null, onMsg: null });
+}
+addEventListener('pagehide', flush);
 
 /* ===================== hozzászólások ===================== */
 function comments(box, vid) {
