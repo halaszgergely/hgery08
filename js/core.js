@@ -1,6 +1,6 @@
 // HGWS – közös Firebase-indítás és segédfüggvények
-import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611161159';
-import * as FB from './firebase.js?v=202611161159';
+import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611161934';
+import * as FB from './firebase.js?v=202611161934';
 
 export { FB, notConfigured };
 
@@ -85,6 +85,11 @@ export const errText = e => ({
   'auth/network-request-failed': 'Nincs internetkapcsolat.',
   'auth/popup-blocked': 'A böngésző letiltotta a felugró ablakot.',
   'auth/requires-recent-login': 'Ehhez újra be kell jelentkezned.',
+  'auth/invalid-login-credentials': 'Hibás e-mail-cím vagy jelszó.',
+  'auth/user-disabled': 'Ez a fiók le van tiltva.',
+  'auth/account-exists-with-different-credential': 'Ezzel az e-mail-címmel már van fiók – lépj be e-maillel és jelszóval.',
+  'auth/unauthorized-domain': 'Erről a címről a Google-belépés nincs engedélyezve (Firebase → Authentication → Authorized domains).',
+  'auth/missing-email': 'Add meg az e-mail-címed.',
   'permission-denied': 'Ehhez nincs jogosultságod.'
 }[e?.code] || (e?.message || String(e)));
 

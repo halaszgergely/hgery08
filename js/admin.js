@@ -1,7 +1,7 @@
 // HGWS – admin és moderátor felület: tagok, szerepkörök, filmek, csatornák
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG } from './core.js?v=202611161159';
-import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611161159';
-import { githubRepo } from '../firebase-config.js?v=202611161159';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG } from './core.js?v=202611161934';
+import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611161934';
+import { githubRepo } from '../firebase-config.js?v=202611161934';
 
 let C = null, current = null;
 export function init(ctx) { C = ctx; }
@@ -176,7 +176,7 @@ async function filmModal(f) {
     <div class="grid2"><div class="field"><label>Műfaj</label><input class="inp" name="genre" maxlength="80" value="${esc(d.genre || '')}" placeholder="Akció · Vígjáték"></div>
       <div class="field"><label>Premier dátuma <em>(nem kötelező)</em></label><input class="inp" type="date" name="premiere" value="${esc(d.premiere || '')}"></div></div>
     <div class="field"><label>Leírás</label><textarea class="inp" name="desc" rows="4" maxlength="1500">${esc(d.desc || '')}</textarea></div>
-    <div class="field"><label>YouTube link <em>(a „Megjelent” után mindenki látja, aki be van lépve)</em></label><input class="inp" name="yt" value="${esc(src.youtube ? 'https://youtu.be/' + src.youtube : '')}" placeholder="https://youtu.be/…  vagy  https://www.youtube.com/watch?v=…"><span class="hint" id="ytok"></span></div>
+    <div class="field"><label>YouTube link <em>(a lejátszó a saját HGWS-felülettel játssza le)</em></label><input class="inp" name="yt" value="${esc(src.youtube ? 'https://youtu.be/' + src.youtube : '')}" placeholder="https://youtu.be/…  vagy  https://www.youtube.com/watch?v=…"><span class="hint" id="ytok"></span></div>
     <div class="field"><label>…vagy MP4 videó URL</label><input class="inp" name="mp4" value="${esc(src.mp4 || '')}" placeholder="videok/film.mp4"></div>
     <div class="field"><label>Gyártási fázis</label><div class="stagepick" id="sp"></div></div>
     <div class="grid2"><div class="field"><label>Állapot felirat</label><input class="inp" name="status" maxlength="40" value="${esc(d.status || STAGES[stage].toUpperCase())}"></div><div></div></div>
