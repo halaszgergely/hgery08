@@ -24,6 +24,26 @@ service cloud.firestore {
 
     function validName(n) { return n is string && n.size() >= 2 && n.size() <= 32; }
 
+    // Foglalt nevek: a hgery / hgery08 / Halász Gergely bármilyen változatát csak a tulajdonos használhatja
+    function reservedName(n) {
+      let s = n.lower();
+      let A = '[aáà4@]';
+      let E = '[eéè3]';
+      let sep = '[^a-z0-9áéíóöőúüű]*';
+      let hgery = '.*h' + sep + '[g69]' + sep + E + sep + 'r' + sep + '[yií1].*';
+      let halasz = '.*h' + sep + A + sep + 'l' + sep + A + sep + 's' + sep + 'z.*';
+      let gergely = '.*[g69]' + sep + E + sep + 'r' + sep + '[g69]' + sep + E + sep + 'l' + sep + '[yií1].*';
+      return s.matches(hgery)
+        || (s.matches(halasz) && s.matches(gergely))
+        || s.matches('(.*[^a-z]|)h[^a-z]+' + '[g69]' + sep + E + sep + 'r' + sep + '[g69]' + sep + E + sep + 'l' + sep + '[yií1].*')
+        || s.matches('.*h' + sep + A + sep + 'l' + sep + A + sep + 's' + sep + 'z[^a-z]+[g69]([^a-z].*|)');
+    }
+    function ownerUid() {
+      return exists(/databases/$(db)/documents/meta/owner) ? get(/databases/$(db)/documents/meta/owner).data.uid : '';
+    }
+    // a név akkor jó, ha nem foglalt – vagy ha a tulajdonos fiókjáról van szó (amíg nincs tulajdonos, szabad)
+    function nameAllowed(uid, n) { return !reservedName(n) || !exists(/databases/$(db)/documents/meta/owner) || uid == ownerUid(); }
+
     // új üzenet formai ellenőrzése
     function validMsg() {
       let d = request.resource.data;
@@ -49,13 +69,15 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['name', 'nameLower', 'color', 'role', 'banned', 'createdAt', 'lastSeen', 'photoURL', 'bio'])
         && request.resource.data.role == 'user'
         && request.resource.data.banned == false
-        && validName(request.resource.data.name);
+        && validName(request.resource.data.name)
+        && nameAllowed(uid, request.resource.data.name);
 
       allow update: if
         // saját profil
         (signedIn() && request.auth.uid == uid
           && changed().hasOnly(['name', 'nameLower', 'bio', 'color', 'lastSeen', 'photoURL'])
           && validName(request.resource.data.name)
+          && (!('name' in changed()) || nameAllowed(uid, request.resource.data.name))
           && request.resource.data.get('bio', '').size() <= 300)
         // az első admin (tulajdonos) igénylése – csak amíg nincs tulajdonos
         || (verified() && request.auth.uid == uid
@@ -63,7 +85,8 @@ service cloud.firestore {
           && !exists(/databases/$(db)/documents/meta/owner)
           && getAfter(/databases/$(db)/documents/meta/owner).data.uid == request.auth.uid)
         // admin bármit állíthat (szerepkör, tiltás…)
-        || (isAdmin() && request.resource.data.role in ['admin', 'moderator', 'user'])
+        || (isAdmin() && request.resource.data.role in ['admin', 'moderator', 'user']
+          && (!('name' in changed()) || (validName(request.resource.data.name) && nameAllowed(uid, request.resource.data.name))))
         // moderátor csak sima usert némíthat / tilthat ki
         || (isMod() && resource.data.role == 'user' && request.auth.uid != uid
           && changed().hasOnly(['banned', 'mutedUntil']));
@@ -78,7 +101,7 @@ service cloud.firestore {
 
     // tulajdonos jelölő (az első admin igénylésekor jön létre)
     match /meta/owner {
-      allow read: if signedIn();
+      allow read: if true;
       allow create: if verified()
         && request.resource.data.uid == request.auth.uid
         && getAfter(profilePath()).data.role == 'admin';

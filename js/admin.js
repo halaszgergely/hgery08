@@ -1,5 +1,5 @@
 // HGWS – admin és moderátor felület: tagok, szerepkörök, filmek, csatornák
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, isOnline, ytId, toast, errText } from './core.js';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG } from './core.js';
 import { modal, confirmBox, compress, STAGES } from './ui.js';
 import { githubRepo } from '../firebase-config.js';
 
@@ -60,6 +60,7 @@ export function modModal(id) {
   const u = C.U(id), muted = toDate(u.mutedUntil) > new Date();
   const el = modal({ title: 'Moderálás – ' + u.name, body: `
     <div style="display:flex;align-items:center;gap:.9rem">${avatar(u, 52)}<div><b style="font-size:1.05rem">${esc(u.name)}</b><div class="hint">${ROLES[u.role || 'user'].label}${u.banned ? ' · ⛔ kitiltva' : ''}${muted ? ' · 🔇 némítva ' + timeLabel(u.mutedUntil) + '-ig' : ''}</div></div></div>
+    ${C.isAdmin() ? `<div class="field"><label>Megjelenített név <em>(csak admin)</em></label><div style="display:flex;gap:.5rem;flex-wrap:wrap"><input class="inp" name="nm" maxlength="32" value="${esc(u.name)}" style="flex:1;min-width:180px"><button class="btn plain sm" data-rn>Mentés</button><button class="btn danger sm" data-rst title="A nevet egy semleges „Tag-…” névre cseréli">Név törlése</button></div></div>` : ''}
     <div class="field"><label>Némítás <em>(nem írhat sehova, de olvashat)</em></label><div style="display:flex;gap:.4rem;flex-wrap:wrap">
       ${[['10 perc', 10], ['1 óra', 60], ['1 nap', 1440], ['1 hét', 10080]].map(([l, m]) => `<button class="btn plain sm" data-mute="${m}">${l}</button>`).join('')}
       ${muted ? '<button class="btn primary sm" data-mute="0">Némítás feloldása</button>' : ''}</div></div>
@@ -67,6 +68,14 @@ export function modModal(id) {
       ${u.banned ? '<button class="btn primary sm" data-ban="0">Kitiltás feloldása</button>' : '<button class="btn danger sm" data-ban="1">⛔ Kitiltás</button>'}</div></div>`,
     foot: '<button class="btn plain" data-x>Bezárás</button>' });
   const ref = FB.doc(db, 'users', id);
+  const setName = async name => {
+    name = name.trim();
+    if (name.length < 2) return toast('A név legalább 2 karakter legyen.', true);
+    if (reservedName(name) && C.S.owner?.uid !== id) return toast(RESERVED_MSG, true);
+    try { await FB.updateDoc(ref, { name, nameLower: name.toLowerCase() }); toast('Név módosítva ✓'); el.close(); } catch (e) { toast(errText(e), true); }
+  };
+  const rn = el.querySelector('[data-rn]'); if (rn) rn.onclick = () => setName(el.querySelector('[name=nm]').value);
+  const rst = el.querySelector('[data-rst]'); if (rst) rst.onclick = () => setName('Tag-' + id.slice(0, 5));
   $$('[data-mute]', el).forEach(b => b.onclick = async () => {
     const m = +b.dataset.mute;
     try { await FB.updateDoc(ref, { mutedUntil: m ? FB.Timestamp.fromDate(new Date(Date.now() + m * 60e3)) : null }); toast(m ? 'Némítva 🔇' : 'Némítás feloldva'); el.close(); } catch (e) { toast(errText(e), true); }

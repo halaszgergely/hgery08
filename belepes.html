@@ -130,7 +130,7 @@ form{display:flex;flex-direction:column;gap:1rem}
 <div id="toast"></div>
 
 <script type="module">
-import { FB, auth, notConfigured, $, $$, errText, ensureProfile, toast } from './js/core.js';
+import { FB, auth, db, notConfigured, $, $$, errText, ensureProfile, toast, reservedName, RESERVED_MSG } from './js/core.js';
 
 const next = (() => { const n = new URLSearchParams(location.search).get('next') || ''; return n.startsWith('app.html') ? n : 'app.html'; })();
 const V = ['vAuth', 'vForgot', 'vVerify', 'vSetup', 'vBusy'];
@@ -186,6 +186,7 @@ $('#fReg').onsubmit = e => { e.preventDefault(); const f = e.target;
   run(f, async () => {
     const name = f.name.value.trim();
     if (name.length < 2) throw 'A név legalább 2 karakter legyen.';
+    if (reservedName(name)) { let o = null; try { o = (await FB.getDoc(FB.doc(db, 'meta', 'owner'))).exists(); } catch (_) {} if (o) throw RESERVED_MSG; }
     if (f.pw.value.length < 8) throw 'A jelszó legalább 8 karakter legyen.';
     if (f.pw.value !== f.pw2.value) throw 'A két jelszó nem egyezik.';
     const { user } = await FB.createUserWithEmailAndPassword(auth, f.email.value.trim(), f.pw.value);
