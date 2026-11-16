@@ -1,23 +1,38 @@
 // HGWS Közösség – csatornák, privát üzenetek, csoportok, filmtár
-import { FB, auth, db, notConfigured, $, $$, esc, ROLES, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
-  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG } from './core.js?v=202611162013';
-import { modal, confirmBox, popover, closePop, emojiPicker, QUICK, stageHtml } from './ui.js?v=202611162013';
-import * as Admin from './admin.js?v=202611162013';
-import * as Browse from './browse.js?v=202611162013';
-import * as Player from './player.js?v=202611162013';
+import { FB, auth, db, notConfigured, $, $$, esc, ROLES, roleOf, applyRoles, OWNER_UID, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
+  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG } from './core.js?v=202611170008';
+import { modal, confirmBox, popover, closePop, emojiPicker, QUICK, stageHtml } from './ui.js?v=202611170008';
+import * as Admin from './admin.js?v=202611170008';
+import * as Browse from './browse.js?v=202611170008';
+import * as Ideas from './ideas.js?v=202611170008';
+import * as Player from './player.js?v=202611170008';
 
 const S = {
   user: null, me: null, users: new Map(), channels: [], convs: [], convsLoaded: false, videos: [], reads: { ch: {} },
   owner: undefined, route: { sec: 'srv' }, chat: null, memOpen: innerWidth > 1100, myList: [], mode: '', music: [], progress: {}, tags: []
 };
 const uid = () => S.user.uid;
-const isAdmin = () => S.me?.role === 'admin';
-const isMod = () => ['admin', 'moderator'].includes(S.me?.role);
+/* jogosultságok: a tulaj mindent tud, a többieknél a rangjuk jogai számítanak */
+const isOwner = () => !!S.user && !S.guest && S.user.uid === OWNER_UID;
+const can = p => isOwner() || (!S.guest && !!roleOf(S.me?.role).perms?.[p]);
+const rankOfUser = u => u?.id === OWNER_UID ? 1000 : roleOf(u?.role).rank;
+const myRank = () => isOwner() ? 1000 : roleOf(S.me?.role).rank;
+const isStaff = () => ['moderate', 'manageTags', 'tickets', 'submitMedia', 'publishMedia', 'manageChannels', 'assignRoles'].some(can);
+const isAdmin = () => can('publishMedia');
+const isMod = () => can('moderate');
+const roleKey = u => u?.id === OWNER_UID ? 'owner' : (u?.role || 'user');
 const mutedUntil = () => { const d = toDate(S.me?.mutedUntil); return d && d > new Date() ? d : null; };
 const U = id => S.users.get(id) || { id, name: 'Ismeretlen', color: '#55606f' };
 const ms = t => toDate(t)?.getTime() || 0;
-const nameHtml = u => `<span class="nm" data-u="${esc(u.id)}" style="color:${u.role && u.role !== 'user' ? ROLES[u.role].color : (u.color || '#ebe6da')}">${esc(u.name)}</span>`;
-const roleBadge = u => u.role === 'admin' || u.role === 'moderator' ? `<span class="rb ${u.role}">${ROLES[u.role].label}</span>` : '';
+const roleColor = u => roleKey(u) !== 'user' && ROLES[roleKey(u)] ? roleOf(roleKey(u)).color : null;
+const nameHtml = u => `<span class="nm" data-u="${esc(u.id)}" style="color:${roleColor(u) || u.color || '#ebe6da'}">${esc(u.name)}</span>`;
+const roleBadge = u => { const k = roleKey(u); return k !== 'user' && ROLES[k] ? `<span class="rb" style="--rc:${esc(roleOf(k).color)}">${k === 'owner' ? '👑 ' : ''}${esc(roleOf(k).label)}</span>` : ''; };
+function watchRoles() {
+  FB.onSnapshot(FB.collection(db, 'roles'), s => {
+    applyRoles(s.docs.map(d => ({ id: d.id, ...d.data() })));
+    soon('roles', () => { renderMe(); renderSide(); renderMembers(); renderOnline(); S.chat?.rerender(); S.chat?.renderComposer?.(); Admin.refresh(); });
+  }, e => console.warn(e));
+}
 /* egyedi tagek (Discord-rangszerű címkék): szöveg + szín, moderátorok osztják ki */
 const userTags = u => (u?.tags || []).map(id => S.tags.find(t => t.id === id)).filter(Boolean).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 const tagPills = (u, max = 2) => { const l = userTags(u); return l.slice(0, max).map(t => `<span class="utag" style="--tc:${esc(t.color)}">${esc(t.name)}</span>`).join('') + (l.length > max ? `<span class="utag more">+${l.length - max}</span>` : ''); };
@@ -49,11 +64,13 @@ if (notConfigured) {
 }
 
 function start() {
-  watchTags();
+  watchTags(); watchRoles();
   if (S.guest) return startGuest();
   const me = FB.doc(db, 'users', uid());
   FB.onSnapshot(me, s => {
     const was = S.me; S.me = { id: uid(), ...s.data() };
+    // a tulaj fiókja mindig „owner” rangú (a szabályok csak neki engedik)
+    if (isOwner() && S.me.role !== 'owner') FB.updateDoc(me, { role: 'owner' }).catch(e => console.warn(e));
     renderMe();
     if (S.me.banned) return banned();
     if (was?.role !== S.me.role || ms(was?.mutedUntil) !== ms(S.me.mutedUntil)) { renderSide(); S.chat?.renderComposer(); }
@@ -84,7 +101,7 @@ function start() {
   FB.onSnapshot(FB.doc(db, 'users', uid(), 'private', 'progress'), s => { S.progress = s.data() || {}; });
   FB.onSnapshot(FB.doc(db, 'users', uid(), 'private', 'list'), s => { S.myList = s.data()?.ids || []; Browse.listChanged(); });
   FB.onSnapshot(FB.doc(db, 'users', uid(), 'private', 'reads'), s => { S.reads = { ch: {}, ...(s.data() || {}) }; soon('reads', () => { if (S.route.sec === 'srv') renderSide(); }); });
-  FB.getDoc(FB.doc(db, 'meta', 'owner')).then(s => { S.owner = s.exists() ? s.data() : null; renderOwnerBar(); }).catch(() => {});
+  S.owner = { uid: OWNER_UID };
 
   // jelenlét
   const ping = () => { if (!document.hidden && !S.me?.banned) FB.updateDoc(me, { lastSeen: FB.serverTimestamp() }).catch(() => {}); };
@@ -189,7 +206,7 @@ function route(force) {
   closePop();
   $$('.modal').forEach(m => m.close ? m.close() : m.remove());
   let [a, b] = h, pend = '';
-  if (S.guest && ['dm', 'c', 'chat', 'u', 'admin'].includes(a)) {
+  if (S.guest && ['dm', 'c', 'chat', 'u', 'admin', 'otletek'].includes(a)) {
     pend = a === 'admin' ? 'A kezelőfelület csak adminoknak érhető el.' : 'A közösségi rész (csevegés, üzenetek) csak regisztrált tagoknak érhető el.';
     history.replaceState(null, '', '#/'); a = ''; b = undefined; force = true;
   }
@@ -203,19 +220,20 @@ function route(force) {
     if (c) { location.replace('#/c/' + c.id); return; }
     r = { sec: 'srv', view: 'chathome' };
   }
-  else if (a === 'admin') r = { mode: 'browse', view: 'admin', id: b || 'tagok' };
+  else if (a === 'admin') r = { mode: 'browse', view: 'admin', id: b || Admin.firstTab() };
   else if (a === 'tar') r = { mode: 'browse', view: 'tar', id: b || '' };
   else if (a === 'lista') r = { mode: 'browse', view: 'lista' };
   else if (a === 'zene') r = { mode: 'browse', view: 'zene' };
   else if (a === 'arcade') r = { mode: 'browse', view: 'arcade', id: b || '' };
   else if (a === 'kapcsolat') r = { mode: 'browse', view: 'kapcsolat' };
+  else if (a === 'otletek') r = { mode: 'browse', view: 'otletek', id: b || '' };
   else if (a === 'kereses') r = { mode: 'browse', view: 'kereses', id: b || '' };
   else if (a === 'nez' && b) r = { mode: 'browse', view: 'nez', id: b };
   else if (a === 'film' && b) r = { mode: 'browse', view: S.route.mode === 'browse' && S.route.view !== 'nez' ? S.route.view : 'home', id: S.route.mode === 'browse' ? S.route.id : '', film: b };
   else r = { mode: 'browse', view: 'home' };
   r.mode ||= 'chat';
   // navigáció kiemelése
-  const nav = r.mode === 'chat' ? (r.sec === 'dm' ? 'dm' : 'chat') : r.view === 'admin' ? 'admin' : r.view === 'kereses' ? 'kereses' : r.view === 'tar' ? 'tar' : r.view === 'lista' ? 'lista' : r.view === 'zene' ? 'zene' : r.view === 'arcade' ? 'arcade' : r.view === 'kapcsolat' ? 'kapcsolat' : r.view === 'home' ? 'home' : '';
+  const nav = r.mode === 'chat' ? (r.sec === 'dm' ? 'dm' : 'chat') : r.view === 'admin' ? 'admin' : r.view === 'kereses' ? 'kereses' : r.view === 'tar' ? 'tar' : r.view === 'lista' ? 'lista' : r.view === 'zene' ? 'zene' : r.view === 'arcade' ? 'arcade' : r.view === 'kapcsolat' ? 'kapcsolat' : r.view === 'otletek' ? 'otletek' : r.view === 'home' ? 'home' : '';
   $$('[data-nav]').forEach(x => x.classList.toggle('on', x.dataset.nav === nav));
   $$('#seg [data-seg]').forEach(x => x.classList.toggle('on', x.dataset.seg === r.sec));
   const same = !force && S.route.mode === r.mode && S.route.view === r.view && S.route.id === r.id;
@@ -232,6 +250,7 @@ function route(force) {
       else if (r.view === 'zene') Browse.music();
       else if (r.view === 'arcade') Browse.arcade(r.id);
       else if (r.view === 'kapcsolat') Browse.contact();
+      else if (r.view === 'otletek') Ideas.render(r.id);
       else if (r.view === 'kereses') Browse.search(r.id);
       else if (r.view === 'nez') Browse.watch(r.id);
       else if (r.view === 'admin') { Browse.cleanup(); Admin.render(r.id); }
@@ -281,17 +300,19 @@ function showMembers(on) {
 function renderHome() {
   setTitle('🏠', 'HGWS Studios');
   $('#view').innerHTML = `<div class="full"><div><div class="big">🌊</div><h2 class="gold">Üdv a HGWS közösségben!</h2>
-    <p>${isAdmin() ? 'Még nincs egy csatorna sem. Hozd létre az elsőket!' : 'Az admin hamarosan megnyitja a csatornákat. Addig nézz körül a filmtárban, vagy írj valakinek privátban.'}</p>
-    ${isAdmin() ? '<button class="btn goldb" id="mkDef">ALAP CSATORNÁK LÉTREHOZÁSA</button>' : '<a class="btn ghost" href="#/filmek">🎬 FILMTÁR</a>'}</div></div>`;
+    <p>${can('manageChannels') ? 'Még nincs egy csatorna sem. Hozd létre az elsőket!' : 'Az admin hamarosan megnyitja a csatornákat. Addig nézz körül a filmtárban, vagy írj valakinek privátban.'}</p>
+    ${can('manageChannels') ? '<button class="btn goldb" id="mkDef">ALAP CSATORNÁK LÉTREHOZÁSA</button>' : '<a class="btn ghost" href="#/filmek">🎬 FILMTÁR</a>'}</div></div>`;
   const b = $('#mkDef'); if (b) b.onclick = () => Admin.defaultChannels().then(() => toast('Csatornák létrehozva ✓')).catch(e => toast(errText(e), true));
 }
 
 /* ===================== OLDALSÁV ===================== */
 function renderMe() {
   const m = S.me; if (!m) return;
-  const st = mutedUntil() ? `🔇 némítva` : ROLES[m.role]?.label || '';
-  $('#meMenu').innerHTML = `<span class="avw">${avatar(m, 40)}<i class="on${S.guest ? '' : ' y'}"></i></span><div><b>${esc(m.name)}</b><small>${S.guest ? 'Csak nézés · Regisztráció' : esc(ROLES[m.role]?.label || '') + ' · Profil'}</small></div>`;
-  $('#navAdmin').hidden = !isMod();
+  const st = mutedUntil() ? `🔇 némítva` : S.guest ? '' : roleOf(roleKey(m)).label;
+  $('#meMenu').innerHTML = `<span class="avw">${avatar(m, 40)}<i class="on${S.guest ? '' : ' y'}"></i></span><div><b>${esc(m.name)}</b><small>${S.guest ? 'Csak nézés · Regisztráció' : esc(roleOf(roleKey(m)).label) + ' · Profil'}</small></div>`;
+  $('#navAdmin').hidden = !isStaff();
+  if (isStaff()) { $('#navAdmin').href = '#/admin/' + Admin.firstTab(); Admin.watch(); }
+  const ni = $('#navIdeas'); if (ni) ni.hidden = !!S.guest;
   $('#meBtn').innerHTML = `<span class="avw">${avatar(m, 34)}<i class="on y"></i></span><div><b>${esc(m.name)}</b><small>${esc(st)}</small></div>`;
 }
 
@@ -330,7 +351,7 @@ function renderSide() {
     const inp = $('#dmq'); inp.oninput = () => { S.dmq = inp.value; renderSide(); const n = $('#dmq'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); };
     return;
   }
-  $('#sHead').innerHTML = `<h2 class="gold">HGWS STUDIOS</h2>${isAdmin() ? '<button class="ibtn" id="addCh" title="Új csatorna">➕</button>' : ''}`;
+  $('#sHead').innerHTML = `<h2 class="gold">HGWS STUDIOS</h2>${can('manageChannels') ? '<button class="ibtn" id="addCh" title="Új csatorna">➕</button>' : ''}`;
   if ($('#addCh')) $('#addCh').onclick = () => Admin.channelModal();
   const cats = []; S.channels.forEach(c => { const k = c.category || 'Csatornák'; let g = cats.find(x => x.k === k); if (!g) cats.push(g = { k, l: [] }); g.l.push(c); });
   $('#sBody').innerHTML = `<div class="banner"></div>
@@ -349,24 +370,29 @@ function badges() {
 }
 
 function renderOnline() {
-  const on = [...S.users.values()].filter(u => isOnline(u) && !u.banned).sort((a, b) => (ROLES[b.role]?.rank || 0) - (ROLES[a.role]?.rank || 0) || a.name.localeCompare(b.name, 'hu'));
+  const on = [...S.users.values()].filter(u => isOnline(u) && !u.banned).sort((a, b) => rankOfUser(b) - rankOfUser(a) || a.name.localeCompare(b.name, 'hu'));
   $('#onCount').textContent = on.length;
-  $('#onList').innerHTML = on.map(u => `<button class="onu" data-u="${esc(u.id)}" title="${esc(u.name)}"><span class="avw">${avatar(u, 34)}<i class="on y"></i></span><b style="color:${u.role && u.role !== 'user' ? ROLES[u.role].color : 'inherit'}">${esc(u.name)}</b></button>`).join('');
+  $('#onList').innerHTML = on.map(u => `<button class="onu" data-u="${esc(u.id)}" title="${esc(u.name)}"><span class="avw">${avatar(u, 34)}<i class="on y"></i></span><b style="color:${roleColor(u) || 'inherit'}">${esc(u.name)}</b></button>`).join('');
 }
 
 function renderMembers() {
   if (!S.me || $('#members').style.display === 'none') return;
   const all = [...S.users.values()].filter(u => !u.banned);
   const on = all.filter(isOnline), off = all.filter(u => !isOnline(u));
-  const by = (l, role) => l.filter(u => (u.role || 'user') === role).sort((a, b) => a.name.localeCompare(b.name, 'hu'));
+  const by = (l, role) => l.filter(u => roleKey(u) === role).sort((a, b) => a.name.localeCompare(b.name, 'hu'));
   const grp = (t, l, y) => l.length ? `<div class="cat">${t} — ${l.length}</div>${l.map(u => `<button class="mi${y ? ' y' : ''}" data-u="${esc(u.id)}">
-    <span class="avw">${avatar(u, 32)}<i class="on${y ? ' y' : ''}"></i></span><b style="color:${u.role !== 'user' && u.role ? ROLES[u.role].color : 'inherit'}">${esc(u.name)}</b></button>`).join('')}` : '';
-  $('#memList').innerHTML = grp('Admin', by(on, 'admin'), 1) + grp('Moderátor', by(on, 'moderator'), 1) + grp('Online', by(on, 'user'), 1) + grp('Offline', off.sort((a, b) => a.name.localeCompare(b.name, 'hu')), 0);
+    <span class="avw">${avatar(u, 32)}<i class="on${y ? ' y' : ''}"></i></span><b style="color:${roleColor(u) || 'inherit'}">${esc(u.name)}</b></button>`).join('')}` : '';
+  // online tagok rangok szerint csoportosítva (a „Tag” rangúak az „Online” csoportba kerülnek)
+  const staffRoles = Object.entries(ROLES).filter(([k]) => k !== 'user').sort((a, b) => b[1].rank - a[1].rank);
+  const known = new Set(staffRoles.map(([k]) => k));
+  $('#memList').innerHTML = staffRoles.map(([k, r]) => grp(esc(r.label), by(on, k), 1)).join('')
+    + grp('Online', on.filter(u => !known.has(roleKey(u))).sort((a, b) => a.name.localeCompare(b.name, 'hu')), 1)
+    + grp('Offline', off.sort((a, b) => a.name.localeCompare(b.name, 'hu')), 0);
   $('#memCount').textContent = `${on.length} online`;
 }
 
 function renderOwnerBar() {
-  if (S.owner !== null || S.guest) { $$('.ownerslot').forEach(e => e.innerHTML = ''); return; }
+  if (true) { $$('.ownerslot').forEach(e => e.innerHTML = ''); return; }
   $$('.ownerslot').forEach(e => e.innerHTML = `<div class="ownerbar"><span>👑 <b>Még nincs admin.</b> Ha te vagy az oldal tulajdonosa, igényeld az admin jogot. (Csak egyszer lehet, utána az admin oszt jogokat.)</span><button class="btn goldb sm" data-claim>ADMIN JOG IGÉNYLÉSE</button></div>`);
   $$('[data-claim]').forEach(b => b.onclick = async () => {
     try {
@@ -408,13 +434,13 @@ function globalClick(e) {
 function profile(id, anchor) {
   const u = U(id), self = id === uid();
   const muted = toDate(u.mutedUntil) > new Date();
-  const canMod = !self && (isAdmin() || (isMod() && (u.role || 'user') === 'user'));
+  const canMod = !self && id !== OWNER_UID && can('moderate') && rankOfUser(u) < myRank();
   const p = popover(anchor, `<div class="prof" style="--pc:${u.color || '#e8b656'}"><div class="cv"></div><div class="pb">
     <div class="pa"><span class="avw">${avatar(u, 72)}<i class="on${isOnline(u) ? ' y' : ''}" style="width:18px;height:18px;border-width:4px;border-color:var(--bg3)"></i></span>${roleBadge(u)}</div>
     <h4>${esc(u.name)}</h4>
     <div class="meta">${isOnline(u) ? '🟢 Online' : u.lastSeen ? 'Utoljára: ' + timeLabel(u.lastSeen) : ''}${u.createdAt ? ' · Tag ' + toDate(u.createdAt).toLocaleDateString('hu-HU', { year: 'numeric', month: 'short' }) + ' óta' : ''}</div>
     ${u.bio ? `<div class="bio">${esc(u.bio)}</div>` : ''}
-    ${userTags(u).length || isMod() ? `<div class="ptags"><small>TAGEK</small><div>${userTags(u).map(t => `<span class="utag lg" style="--tc:${esc(t.color)}">${esc(t.name)}</span>`).join('')}${isMod() && !S.guest ? '<button class="utag add" data-a="tags" title="Tagek kiosztása">＋</button>' : ''}</div></div>` : ''}
+    ${userTags(u).length || can('manageTags') ? `<div class="ptags"><small>TAGEK</small><div>${userTags(u).map(t => `<span class="utag lg" style="--tc:${esc(t.color)}">${esc(t.name)}</span>`).join('')}${can('manageTags') && (id !== OWNER_UID || isOwner()) ? '<button class="utag add" data-a="tags" title="Tagek kiosztása">＋</button>' : ''}</div></div>` : ''}
     ${u.banned ? '<div class="stat">⛔ Kitiltva</div>' : muted ? `<div class="stat">🔇 Némítva eddig: ${timeLabel(u.mutedUntil)}</div>` : ''}
     <div class="sec">${self ? '<button class="btn plain sm" data-a="set">Profil szerkesztése</button>' : S.guest ? '' : `<button class="btn primary sm" data-a="dm">💬 Üzenet</button>`}
       ${canMod ? `<button class="btn plain sm" data-a="mod">🛡️ Moderálás</button>` : ''}</div>
@@ -442,9 +468,9 @@ function userMenu(anchor) {
     p.addEventListener('click', e => { const a = e.target.closest('[data-a]')?.dataset.a; if (e.target.closest('a,button')) closePop(); if (a) guestLeave(a); });
     return;
   }
-  const p = popover(anchor, `<div class="umenu"><div class="mh">${avatar(m, 40)}<div><b>${esc(m.name)}</b><small>${esc(ROLES[m.role]?.label || '')}</small></div></div>
-    <button data-a="set">⚙️ Profil és beállítások</button><a href="#/lista">＋ Saját lista</a><a href="#/chat">💬 Közösség</a><a href="#/dm">✉️ Privát üzenetek</a>
-    ${isMod() ? `<hr><a href="#/admin/tagok">🛡️ Tagok és jogok</a>${isAdmin() ? '<a href="#/admin/filmek">🎞️ Filmek kezelése</a><a href="#/admin/zene">🎵 Zenék kezelése</a><a href="#/admin/csatornak">⚙️ Csatornák kezelése</a>' : ''}` : ''}
+  const p = popover(anchor, `<div class="umenu"><div class="mh">${avatar(m, 40)}<div><b>${esc(m.name)}</b><small>${esc(roleOf(roleKey(m)).label)}</small></div></div>
+    <button data-a="set">⚙️ Profil és beállítások</button><a href="#/lista">＋ Saját lista</a><a href="#/chat">💬 Közösség</a><a href="#/dm">✉️ Privát üzenetek</a><a href="#/otletek">💡 Ötletek</a>
+    ${isStaff() ? `<hr>${Admin.menuLinks()}` : ''}
     <hr><a href="https://bombasz.hu" target="_blank" rel="noopener">🤝 Partner: Bombasz ↗</a><a href="https://zeroarmageddon.github.io/BFG-Managger/BFG_App.html" target="_blank" rel="noopener">🤝 Partner: Zerosites ↗</a><a href="mailto:info@hgery08.hu">✉️ Kapcsolat: info@hgery08.hu</a><a href="miert_igyal.html">🍻 Ma miért igyál?</a><a href="vizsga.html">📝 Közigazgatási vizsga – gyakorló</a><button data-a="out">🚪 Kijelentkezés</button></div>`);
   const r = anchor.getBoundingClientRect();
   p.style.left = Math.max(8, Math.min(innerWidth - p.offsetWidth - 8, r.left < innerWidth / 2 ? r.left : r.right - p.offsetWidth)) + 'px';
@@ -477,7 +503,7 @@ function settings() {
   const m = S.me, pwUser = S.user.providerData.some(p => p.providerId === 'password');
   const notif = 'Notification' in window ? Notification.permission : 'unsupported';
   const el = modal({ title: 'Profil és beállítások', body: `
-    <div style="display:flex;align-items:center;gap:1rem">${avatar(m, 64)}<div><b style="font-size:1.1rem">${esc(m.name)}</b><div class="hint">${esc(S.user.email || '')} · ${ROLES[m.role]?.label}</div></div></div>
+    <div style="display:flex;align-items:center;gap:1rem">${avatar(m, 64)}<div><b style="font-size:1.1rem">${esc(m.name)}</b><div class="hint">${esc(S.user.email || '')} · ${esc(roleOf(roleKey(m)).label)}</div></div></div>
     <div class="field"><label>Megjelenített név</label><input class="inp" name="name" maxlength="32" value="${esc(m.name)}"></div>
     <div class="field"><label>Bemutatkozás <em>(nem kötelező)</em></label><textarea class="inp" name="bio" maxlength="300" rows="3">${esc(m.bio || '')}</textarea></div>
     <div class="field"><label>Színed</label><div class="swatches">${COLORS.map(c => `<button type="button" data-c="${c}" class="${c === m.color ? 'on' : ''}" style="background:${c}"></button>`).join('')}</div></div>
@@ -500,7 +526,7 @@ function settings() {
   el.querySelector('[data-save]').onclick = async () => {
     const name = el.querySelector('[name=name]').value.trim(), bio = el.querySelector('[name=bio]').value.trim();
     if (name.length < 2) return toast('A név legalább 2 karakter legyen.', true);
-    if (reservedName(name) && S.owner?.uid !== uid()) return toast(RESERVED_MSG, true);
+    if (reservedName(name) && !isOwner()) return toast(RESERVED_MSG, true);
     try { await FB.updateDoc(FB.doc(db, 'users', uid()), { name, nameLower: name.toLowerCase(), bio, color }); FB.updateProfile(S.user, { displayName: name }).catch(() => {}); toast('Mentve ✓'); el.close(); }
     catch (e) { toast(errText(e), true); }
   };
@@ -707,7 +733,7 @@ class Chat {
   msgHtml(m, cont) {
     const u = U(m.uid), mine = m.uid === uid(), t = toDate(m.createdAt);
     const me = S.me.name && (m.text || '').includes('@' + S.me.name) && !mine;
-    const canDel = mine || (this.kind === 'chan' && isMod());
+    const canDel = mine || (this.kind === 'chan' && can('deleteMessages') && m.uid !== OWNER_UID);
     const rx = Object.entries(m.reactions || {}).filter(([, l]) => l?.length);
     const rep = m.replyTo ? `<div class="rep" data-jump="${esc(m.replyTo.id)}">${avatar(U(m.replyTo.uid), 16)}<b>${esc(U(m.replyTo.uid).name)}</b><span>${esc(m.replyTo.text || '🎬 film')}</span></div>` : '';
     return `<div class="msg${cont ? ' cont' : ''}${me ? ' mention' : ''}" data-id="${esc(m.id)}">
@@ -767,7 +793,7 @@ class Chat {
     const mu = mutedUntil();
     let note = '';
     if (mu) note = `🔇 Némítva vagy eddig: ${timeLabel(mu)}`;
-    else if (this.kind === 'chan' && this.chan.type === 'announce' && !isMod()) note = '📢 Ide csak az adminok és moderátorok írhatnak.';
+    else if (this.kind === 'chan' && this.chan.type === 'announce' && !can('announce')) note = '📢 Ide csak az adminok és moderátorok írhatnak.';
     if (note) { c.innerHTML = `<div class="cnote">${note}</div>`; return; }
     const ph = this.kind === 'chan' ? `Üzenet a #${this.chan.name} csatornára` : `Üzenet ${this.conv ? (this.conv.type === 'group' ? 'a csoportnak' : '@' + convName(this.conv) + ' részére') : ''}`;
     const prevText = $('#mtext')?.value || '';
@@ -876,7 +902,7 @@ function shareFilm(filmId, chat, trackId) {
   const music = !!trackId, items = music ? S.music.filter(t => t.visible !== false) : S.videos.filter(v => v.visible !== false);
   if (!items.length) return toast(music ? 'Még nincs zene feltöltve.' : 'Még nincs film a tárban.', true);
   const fixed = music ? (trackId !== '*' ? trackId : null) : filmId;
-  const canChan = c => c.type !== 'announce' || isMod();
+  const canChan = c => c.type !== 'announce' || can('announce');
   const el = modal({ title: music ? 'Zene megosztása' : 'Film megosztása', body: `
     ${fixed ? '' : `<div class="field"><label>${music ? 'Melyik szám?' : 'Melyik film?'}</label><div class="pick">${items.map((v, i) => `<label><input type="radio" name="f" value="${esc(v.id)}" ${i === 0 ? 'checked' : ''}>${music
       ? `<span class="pc" style="width:40px;height:40px;${v.cover ? `background-image:url('${esc(v.cover)}')` : ''}"></span><span>${esc(v.title)} <span class="hint">· ${esc(v.artist || 'HGWS')}</span></span>`
@@ -904,6 +930,7 @@ function shareFilm(filmId, chat, trackId) {
 }
 
 /* az admin modul ezeken keresztül éri el az állapotot */
-Admin.init({ S, uid, isAdmin, isMod, U, setTitle, renderSide, route, tagPills, userTags });
-Browse.init({ S, uid, isAdmin, isMod, U, shareFilm, renderOwnerBar, convUnread, guestPrompt, guestLeave, tagPills });
+Admin.init({ S, uid, isAdmin, isMod, can, isOwner, myRank, rankOfUser, roleKey, roleBadge, U, setTitle, renderSide, route, tagPills, userTags });
+Ideas.init({ S, uid, can, isOwner, U, roleBadge, tagPills });
+Browse.init({ S, uid, isAdmin, isMod, can, U, shareFilm, renderOwnerBar, convUnread, guestPrompt, guestLeave, tagPills });
 setInterval(() => S.users.size && renderOnline(), 60e3);

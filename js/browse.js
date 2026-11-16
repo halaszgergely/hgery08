@@ -1,8 +1,8 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText } from './core.js?v=202611162013';
-import { stageHtml, confirmBox } from './ui.js?v=202611162013';
-import * as Player from './player.js?v=202611162013';
-import * as VP from './vplayer.js?v=202611162013';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText } from './core.js?v=202611170008';
+import { stageHtml, confirmBox } from './ui.js?v=202611170008';
+import * as Player from './player.js?v=202611170008';
+import * as VP from './vplayer.js?v=202611170008';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -104,7 +104,7 @@ export function home() {
     page.innerHTML = `<div class="homeowner"><div class="ownerslot"></div></div><section class="hero"><div class="bg" style="background-image:url(img/logo.webp);background-size:min(60vh,70vw);background-position:75% 45%;background-repeat:no-repeat"></div>
       <div class="in"><div class="orig"><img src="img/logo.webp" alt=""><span><b>HGWS</b> STUDIOS</span></div><h1>Hamarosan</h1>
       <p class="d">Az első HGWS-filmek az utómunka utolsó fázisában vannak. Addig csatlakozz a közösséghez!</p>
-      <div class="hbtns">${guest() ? '' : '<a class="pbtn play" href="#/chat"><i>💬</i>Közösség</a>'}${C.isAdmin() ? '<a class="pbtn info" href="#/admin/filmek"><i>🎞️</i>Filmek kezelése</a>' : ''}</div></div></section>${footHtml()}`;
+      <div class="hbtns">${guest() ? '' : '<a class="pbtn play" href="#/chat"><i>💬</i>Közösség</a>'}${C.can('publishMedia') || C.can('submitMedia') ? '<a class="pbtn info" href="#/admin/filmek"><i>🎞️</i>Filmek kezelése</a>' : ''}</div></div></section>${footHtml()}`;
     C.renderOwnerBar(); return;
   }
   const f = list.find(v => v.featured) || list.find(v => !v.soon) || list[0];
@@ -225,7 +225,7 @@ export function music() {
     <div class="tracks">${l.length ? `<div class="acts"><button class="bigplay" data-playall title="Összes lejátszása">▶</button><span class="hint">Lejátszás közben nyugodtan lapozz tovább – a zene szól.</span></div>
       ${l.map((t, i) => `<div class="trow" data-track="${esc(t.id)}"><span class="n">${i + 1}</span><span class="pc" style="${cov(t)}"></span><div style="min-width:0"><b>${esc(t.title)}</b><small>${esc(t.artist || 'HGWS')}</small></div>
         <div class="ta"><button data-trackshare="${esc(t.id)}" title="Megosztás">📤</button></div></div>`).join('')}`
-      : `<div class="noresult"><div class="big">🎵</div>Még nincs zene feltöltve.${C.isAdmin() ? '<br><br><a class="pbtn info" href="#/admin/zene">Zenék kezelése</a>' : ''}</div>`}</div>`;
+      : `<div class="noresult"><div class="big">🎵</div>Még nincs zene feltöltve.${C.can('publishMedia') || C.can('submitMedia') ? '<br><br><a class="pbtn info" href="#/admin/zene">Zenék kezelése</a>' : ''}</div>`}</div>`;
   Player.refreshMarks();
 }
 
@@ -407,8 +407,8 @@ function comments(box, vid, ratings = () => ({})) {
     if (failed) { list.innerHTML = `<p class="hint">${esc(failed)}</p>`; return; }
     const R = ratings();
     list.innerHTML = items.length ? items.map(c => { const u = C.U(c.uid), likes = c.reactions?.['👍'] || [], r = R[c.uid];
-      return `<div class="cmt" data-c="${esc(c.id)}">${`<span data-u="${esc(u.id)}" style="cursor:pointer">${avatar(u, 40)}</span>`}<div class="cc"><div class="ch"><b data-u="${esc(u.id)}" style="color:${u.role && u.role !== 'user' ? ROLES[u.role].color : 'inherit'}">${esc(u.name)}</b>${C.tagPills(u)}${r ? starRow(r, 'sm') : ''}<time>${timeLabel(c.createdAt)}</time></div>
-        <div class="ct">${esc(c.text)}</div><div class="ca"><button data-like class="${likes.includes(uid) ? 'me' : ''}">👍 ${likes.length || ''}</button>${!guest() && (c.uid === uid || C.isMod()) ? '<button data-del>Törlés</button>' : ''}</div></div></div>`; }).join('')
+      return `<div class="cmt" data-c="${esc(c.id)}">${`<span data-u="${esc(u.id)}" style="cursor:pointer">${avatar(u, 40)}</span>`}<div class="cc"><div class="ch"><b data-u="${esc(u.id)}" style="color:${u.role && u.role !== 'user' && ROLES[u.role] ? ROLES[u.role].color : 'inherit'}">${esc(u.name)}</b>${C.tagPills(u)}${r ? starRow(r, 'sm') : ''}<time>${timeLabel(c.createdAt)}</time></div>
+        <div class="ct">${esc(c.text)}</div><div class="ca"><button data-like class="${likes.includes(uid) ? 'me' : ''}">👍 ${likes.length || ''}</button>${!guest() && (c.uid === uid || C.can('deleteMessages')) ? '<button data-del>Törlés</button>' : ''}</div></div></div>`; }).join('')
       : `<p class="hint">Még senki nem szólt hozzá.${guest() ? '' : ' Légy te az első!'}</p>`;
   };
   const un = FB.onSnapshot(FB.query(col, FB.orderBy('createdAt', 'desc'), FB.limit(100)), s => {

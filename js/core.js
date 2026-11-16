@@ -1,6 +1,6 @@
 // HGWS – közös Firebase-indítás és segédfüggvények
-import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611162013';
-import * as FB from './firebase.js?v=202611162013';
+import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611170008';
+import * as FB from './firebase.js?v=202611170008';
 
 export { FB, notConfigured };
 
@@ -20,11 +20,41 @@ export const $ = (s, el = document) => el.querySelector(s);
 export const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-export const ROLES = {
-  admin: { label: 'Admin', color: '#e8b656', rank: 3 },
-  moderator: { label: 'Moderátor', color: '#6cc6ff', rank: 2 },
-  user: { label: 'Tag', color: '#c9c3b5', rank: 1 }
+/* ---------- rangok és jogosultságok ----------
+   A tulaj fiókja be van égetve (a Firestore-szabályokba is): őt senki nem tilthatja, némíthatja, nem veheti el a rangját.
+   A többi rang adatai (név, szín, szint, jogok) a Firestore „roles” gyűjteményéből jönnek – a tulaj szerkeszti őket a Kezelés → Rangok oldalon.
+   Ha egy rangnak még nincs dokumentuma, az alábbi alapértékek érvényesek (a szabályokban ugyanezek vannak). */
+export const OWNER_UID = 'bzKz3gAS55hLmf3pru7Ljw0NETN2';
+export const PERMS = [
+  ['moderate', 'Némítás, kitiltás, átnevezés', 'csak az alacsonyabb rangúaknál'],
+  ['deleteMessages', 'Üzenetek és hozzászólások törlése', 'csatornákban és a filmeknél'],
+  ['announce', 'Írás a bejelentés-csatornákba', ''],
+  ['manageTags', 'Tagek létrehozása és kiosztása', ''],
+  ['tickets', 'Ötletek (ticketek) megválaszolása', 'státusz állítása is'],
+  ['submitMedia', 'Film és zene beküldése', 'egy admin hagyja jóvá'],
+  ['publishMedia', 'Filmek, zenék közvetlen kezelése', 'és a beküldések jóváhagyása'],
+  ['manageChannels', 'Csatornák kezelése', ''],
+  ['assignRoles', 'Rangok kiosztásának kérelmezése', 'alacsonyabb rangokra, a tulaj hagyja jóvá']
+];
+const ALL = Object.fromEntries(PERMS.map(p => [p[0], true]));
+const MOD = { moderate: true, deleteMessages: true, announce: true, manageTags: true, tickets: true };
+export const SYSTEM_ROLES = ['owner', 'admin', 'szerkeszto', 'moderator', 'user'];
+export const DEFAULT_ROLES = {
+  owner: { label: 'Tulaj', color: '#ff7847', rank: 100, perms: ALL },
+  admin: { label: 'Admin', color: '#e8b656', rank: 80, perms: ALL },
+  szerkeszto: { label: 'Szerkesztő', color: '#c79bff', rank: 60, perms: { ...MOD, submitMedia: true } },
+  moderator: { label: 'Moderátor', color: '#6cc6ff', rank: 40, perms: MOD },
+  user: { label: 'Tag', color: '#c9c3b5', rank: 10, perms: {} }
 };
+export const ROLES = JSON.parse(JSON.stringify(DEFAULT_ROLES));
+export const roleOf = r => ROLES[r] || ROLES.user;
+/* a Firestore „roles” gyűjtemény alkalmazása (alapértékek + egyedi rangok) */
+export function applyRoles(docs) {
+  Object.keys(ROLES).forEach(k => delete ROLES[k]);
+  Object.assign(ROLES, JSON.parse(JSON.stringify(DEFAULT_ROLES)));
+  docs.forEach(d => { if (d.id === 'owner') return; ROLES[d.id] = { ...(ROLES[d.id] || {}), label: d.name || ROLES[d.id]?.label || d.id, color: d.color || '#c9c3b5', rank: d.rank ?? 10, perms: d.perms || {} }; });
+}
+export const rolesSorted = () => Object.entries(ROLES).sort((a, b) => b[1].rank - a[1].rank);
 export const COLORS = ['#e8b656', '#6cc6ff', '#5ee08a', '#ff7a6e', '#c79bff', '#ffa94d', '#4dd6c7', '#ff8fc7'];
 export const pickColor = s => COLORS[[...String(s)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % COLORS.length];
 
