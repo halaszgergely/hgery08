@@ -588,7 +588,8 @@ body.guest [data-nav=chat],body.guest [data-nav=dm],body.guest #navAdmin,body.gu
 .cstrip p{color:#c9c3b5;font-size:.92rem;margin-top:.2rem}
 .cstrip .cbtns{display:flex;gap:.6rem;flex-wrap:wrap}
 .cpage .lead{max-width:44rem}
-.cgrid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:1rem;margin-top:1.8rem}
+.cgrid{display:grid;grid-template-columns:2fr 1fr repeat(var(--n,1),1fr);gap:1rem;margin-top:1.8rem}
+@media (max-width:1200px){.cgrid{grid-template-columns:repeat(2,1fr)}.ccard.big{grid-column:1/-1}}
 .ccard{display:flex;flex-direction:column;gap:.35rem;padding:1.4rem;border-radius:20px;text-align:left;text-decoration:none;color:var(--ink);background:linear-gradient(180deg,rgba(16,26,46,.9),rgba(8,13,24,.95));border:1px solid var(--line2);transition:transform .2s,border-color .2s;font:inherit;cursor:pointer}
 .ccard:hover{transform:translateY(-4px);border-color:rgba(232,182,86,.55)}
 .ccard .ico{font-size:2rem}
