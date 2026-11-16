@@ -8,7 +8,7 @@ import * as Player from './player.js';
 
 const S = {
   user: null, me: null, users: new Map(), channels: [], convs: [], convsLoaded: false, videos: [], reads: { ch: {} },
-  owner: undefined, route: { sec: 'srv' }, chat: null, memOpen: innerWidth > 1100, myList: [], mode: '', music: []
+  owner: undefined, route: { sec: 'srv' }, chat: null, memOpen: innerWidth > 1100, myList: [], mode: '', music: [], progress: {}
 };
 const uid = () => S.user.uid;
 const isAdmin = () => S.me?.role === 'admin';
@@ -44,7 +44,7 @@ function start() {
   FB.onSnapshot(FB.collection(db, 'users'), s => {
     s.docs.forEach(d => S.users.set(d.id, { id: d.id, ...d.data() }));
     s.docChanges().forEach(c => c.type === 'removed' && S.users.delete(c.doc.id));
-    soon('users', () => { renderMembers(); if (S.route.sec === 'dm') renderSide(); S.chat?.rerender(); if (S.route.view === 'dmhome') renderDmHome(); Admin.refresh(); Browse.updateComm(); });
+    soon('users', () => { renderMembers(); renderOnline(); if (S.route.sec === 'dm') renderSide(); S.chat?.rerender(); if (S.route.view === 'dmhome') renderDmHome(); Admin.refresh(); Browse.updateComm(); });
   }, e => console.warn(e));
   FB.onSnapshot(FB.query(FB.collection(db, 'channels'), FB.orderBy('order')), s => {
     S.channels = s.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -64,6 +64,7 @@ function start() {
     S.music = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     soon('mus', () => { if (S.mode === 'browse' && ['home', 'zene'].includes(S.route.view)) route(true); S.chat?.rerender(); Admin.refresh(); });
   }, e => console.warn(e));
+  FB.onSnapshot(FB.doc(db, 'users', uid(), 'private', 'progress'), s => { S.progress = s.data() || {}; });
   FB.onSnapshot(FB.doc(db, 'users', uid(), 'private', 'list'), s => { S.myList = s.data()?.ids || []; Browse.listChanged(); });
   FB.onSnapshot(FB.doc(db, 'users', uid(), 'private', 'reads'), s => { S.reads = { ch: {}, ...(s.data() || {}) }; soon('reads', () => { if (S.route.sec === 'srv') renderSide(); }); });
   FB.getDoc(FB.doc(db, 'meta', 'owner')).then(s => { S.owner = s.exists() ? s.data() : null; renderOwnerBar(); }).catch(() => {});
@@ -79,10 +80,14 @@ function start() {
   $('#meBtn').onclick = $('#setBtn').onclick = settings;
   $('#meMenu').onclick = e => userMenu(e.currentTarget);
   addEventListener('scroll', () => $('#topnav').classList.toggle('solid', scrollY > 30), { passive: true });
-  const sb = $('#tsearch'), si = $('#sInp');
-  $('#sBtn').onclick = () => { sb.classList.add('open'); si.focus(); };
+  const si = $('#sInp');
+  $('#sBtn').onclick = () => si.focus();
+  addEventListener('keydown', e => { if (e.key === '/' && !e.target.closest('input,textarea')) { e.preventDefault(); si.focus(); } });
+  $('#hamBtn').onclick = () => document.body.classList.toggle('anavopen');
+  $('#ascrim').onclick = () => document.body.classList.remove('anavopen');
+  $('#navSet').onclick = () => { document.body.classList.remove('anavopen'); settings(); };
+  $('#outBtn').onclick = async () => { if (await confirmBox('Kijelentkezel?', 'Kijelentkezés', false)) FB.signOut(auth); };
   si.oninput = () => { const q = si.value; if (location.hash.startsWith('#/kereses')) history.replaceState(null, '', '#/kereses/' + encodeURIComponent(q)); else location.hash = '#/kereses/' + encodeURIComponent(q); if (location.hash.startsWith('#/kereses')) Browse.search(encodeURIComponent(q)); };
-  si.onblur = () => { if (!si.value) sb.classList.remove('open'); };
   zeroEgg();
   let taps = 0, tapT; $('.tlogo').addEventListener('click', e => { taps++; clearTimeout(tapT); tapT = setTimeout(() => taps = 0, 1200); if (taps >= 5) { taps = 0; e.preventDefault(); showZero(); } });
   Player.init(() => S.music.filter(t => t.visible !== false));
@@ -109,7 +114,7 @@ function setMode(m) {
 }
 function route(force) {
   const h = location.hash.replace(/^#\/?/, '').split('/');
-  document.body.classList.remove('nav', 'mem');
+  document.body.classList.remove('nav', 'mem', 'anavopen');
   closePop();
   $$('.modal').forEach(m => m.close ? m.close() : m.remove());
   const [a, b] = h;
@@ -133,7 +138,7 @@ function route(force) {
   else r = { mode: 'browse', view: 'home' };
   r.mode ||= 'chat';
   // navigáció kiemelése
-  const nav = r.mode === 'chat' ? 'chat' : r.view === 'kereses' ? 'kereses' : r.view === 'tar' ? 'tar' : r.view === 'lista' ? 'lista' : r.view === 'zene' ? 'zene' : r.view === 'home' ? 'home' : '';
+  const nav = r.mode === 'chat' ? (r.sec === 'dm' ? 'dm' : 'chat') : r.view === 'admin' ? 'admin' : r.view === 'kereses' ? 'kereses' : r.view === 'tar' ? 'tar' : r.view === 'lista' ? 'lista' : r.view === 'zene' ? 'zene' : r.view === 'home' ? 'home' : '';
   $$('[data-nav]').forEach(x => x.classList.toggle('on', x.dataset.nav === nav));
   $$('#seg [data-seg]').forEach(x => x.classList.toggle('on', x.dataset.seg === r.sec));
   const same = !force && S.route.mode === r.mode && S.route.view === r.view && S.route.id === r.id;
@@ -143,7 +148,7 @@ function route(force) {
   if (r.mode === 'browse') {
     setMode('browse');
     if (!same) {
-      if (r.view !== 'kereses') { $('#sInp').value = ''; $('#tsearch').classList.remove('open'); }
+      if (r.view !== 'kereses') $('#sInp').value = '';
       if (r.view === 'home') Browse.home();
       else if (r.view === 'tar') Browse.tar(r.id);
       else if (r.view === 'lista') Browse.myList();
@@ -205,7 +210,8 @@ function renderHome() {
 function renderMe() {
   const m = S.me; if (!m) return;
   const st = mutedUntil() ? `🔇 némítva` : ROLES[m.role]?.label || '';
-  $('#meMenu').innerHTML = avatar(m, 34);
+  $('#meMenu').innerHTML = `<span class="avw">${avatar(m, 40)}<i class="on y"></i></span><div><b>${esc(m.name)}</b><small>${esc(ROLES[m.role]?.label || '')} · Profil</small></div>`;
+  $('#navAdmin').hidden = !isMod();
   $('#meBtn').innerHTML = `<span class="avw">${avatar(m, 34)}<i class="on y"></i></span><div><b>${esc(m.name)}</b><small>${esc(st)}</small></div>`;
 }
 
@@ -260,6 +266,12 @@ function badges() {
   ['#dmBadge', '#dmBadge2', '#chatBadge', '#chatBadge2'].forEach(k => { const b = $(k); if (b) { b.hidden = !n; b.textContent = t; } });
   const base = document.title.replace(/^\(\d+\+?\) /, '');
   document.title = (n ? `(${n}) ` : '') + base;
+}
+
+function renderOnline() {
+  const on = [...S.users.values()].filter(u => isOnline(u) && !u.banned).sort((a, b) => (ROLES[b.role]?.rank || 0) - (ROLES[a.role]?.rank || 0) || a.name.localeCompare(b.name, 'hu'));
+  $('#onCount').textContent = on.length;
+  $('#onList').innerHTML = on.map(u => `<button class="onu" data-u="${esc(u.id)}" title="${esc(u.name)}"><span class="avw">${avatar(u, 34)}<i class="on y"></i></span><b style="color:${u.role && u.role !== 'user' ? ROLES[u.role].color : 'inherit'}">${esc(u.name)}</b></button>`).join('');
 }
 
 function renderMembers() {
@@ -342,7 +354,9 @@ function userMenu(anchor) {
     <button data-a="set">⚙️ Profil és beállítások</button><a href="#/lista">＋ Saját lista</a><a href="#/chat">💬 Közösség</a><a href="#/dm">✉️ Privát üzenetek</a>
     ${isMod() ? `<hr><a href="#/admin/tagok">🛡️ Tagok és jogok</a>${isAdmin() ? '<a href="#/admin/filmek">🎞️ Filmek kezelése</a><a href="#/admin/zene">🎵 Zenék kezelése</a><a href="#/admin/csatornak">⚙️ Csatornák kezelése</a>' : ''}` : ''}
     <hr><a href="./">🏠 HGWS főoldal</a><a href="miert_igyal.html">🍻 Ma miért igyál?</a><a href="vizsga.html">📝 Közigazgatási vizsga – gyakorló</a><button data-a="out">🚪 Kijelentkezés</button></div>`);
-  const r = anchor.getBoundingClientRect(); p.style.left = Math.max(8, r.right - p.offsetWidth) + 'px'; p.style.top = (r.bottom + 8) + 'px';
+  const r = anchor.getBoundingClientRect();
+  p.style.left = Math.max(8, Math.min(innerWidth - p.offsetWidth - 8, r.left < innerWidth / 2 ? r.left : r.right - p.offsetWidth)) + 'px';
+  p.style.top = Math.max(8, r.bottom + 8 + p.offsetHeight > innerHeight ? r.top - p.offsetHeight - 8 : r.bottom + 8) + 'px';
   p.addEventListener('click', e => { const a = e.target.closest('[data-a]')?.dataset.a; if (e.target.closest('a,button')) closePop(); if (a === 'set') settings(); if (a === 'out') FB.signOut(auth); });
 }
 
@@ -800,3 +814,4 @@ function shareFilm(filmId, chat, trackId) {
 /* az admin modul ezeken keresztül éri el az állapotot */
 Admin.init({ S, uid, isAdmin, isMod, U, setTitle, renderSide, route });
 Browse.init({ S, uid, isAdmin, isMod, U, shareFilm, renderOwnerBar, convUnread });
+setInterval(() => S.users.size && renderOnline(), 60e3);

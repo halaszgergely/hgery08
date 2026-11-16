@@ -154,7 +154,7 @@ function films(v) {
       <div class="who"><b>${esc(x.title)}</b><small>${esc([x.kind, x.year, x.genre].filter(Boolean).join(' · '))}</small>
         <div>${x.featured ? '<span class="tg g">★ KIEMELT</span>' : ''}${x.soon === false ? '<span class="tg ok">MEGJELENT</span>' : `<span class="tg b">${esc((x.status || STAGES[x.stage ?? 0]).toUpperCase())}</span>`}${x.hasVideo ? '<span class="tg">▶ VIDEÓ</span>' : ''}${x.visible === false ? '<span class="tg">REJTETT</span>' : ''}</div></div>
       <div class="ac"><button class="btn plain sm" data-ed="${esc(x.id)}">Szerkesztés</button></div></div>`).join('')}</div>`
-    : `<div class="empty"><div class="big">🎬</div>Még nincs film.<br><button class="btn primary" id="imp">A MOSTANI FŐOLDALI CÍMEK ÁTHOZÁSA</button></div>`}</div>`;
+    : `<div class="empty"><div class="big">🎬</div>Még nincs film.<br><button class="btn primary" id="imp">A KORÁBBI FŐOLDALI CÍMEK ÁTHOZÁSA</button></div>`}</div>`;
   $('#nf').onclick = () => filmModal();
   const imp = $('#imp'); if (imp) imp.onclick = () => importFilms(imp);
   $$('[data-ed]', v).forEach(b => b.onclick = () => filmModal(list.find(x => x.id === b.dataset.ed)));
@@ -228,11 +228,9 @@ async function filmModal(f) {
 async function importFilms(btn) {
   btn.disabled = true;
   try {
-    const html = await (await fetch('./index.html', { cache: 'no-store' })).text();
-    const a = html.indexOf('const VIDEOS = ['), z = html.indexOf('\n];', a);
-    if (a < 0 || z < 0) throw new Error('A főoldalon nem találom a címlistát.');
-    const list = Function('"use strict";return ' + html.slice(a + 'const VIDEOS = '.length, z + 2))();
-    const banner = (html.match(/id="feature">\s*<img(?: id="featImg")? src="([^"]+)"/) || [])[1] || '';
+    const seed = await (await fetch('./seed-films.json', { cache: 'no-store' })).json();
+    const list = seed.films || [], banner = seed.banner || '';
+    if (!list.length) throw new Error('Nincs áthozható cím.');
     const b = FB.writeBatch(db), t = FB.serverTimestamp();
     list.forEach((x, i) => {
       const id = x.id || slug(x.title);

@@ -18,20 +18,32 @@
 <div id="boot"><img src="img/logo.webp" alt="HGWS"></div>
 
 <div id="shell" hidden>
-  <!-- felső navigáció -->
-  <header class="topnav" id="topnav">
-    <a class="tlogo" href="#/" aria-label="HGWS kezdőlap"><img src="img/logo.webp" alt=""><span>HGWS</span></a>
-    <nav class="tlinks">
-      <a href="#/" data-nav="home">Kezdőlap</a>
-      <a href="#/tar" data-nav="tar">Filmtár</a>
-      <a href="#/zene" data-nav="zene">Zene</a>
-      <a href="#/lista" data-nav="lista">Saját lista</a>
-      <a href="#/chat" data-nav="chat">Közösség<span class="tbdg" id="chatBadge" hidden></span></a>
+  <!-- bal oldali menüsáv -->
+  <aside class="appnav" id="appnav">
+    <a class="alogo" href="#/" aria-label="HGWS főoldal"><img src="img/logo.webp" alt=""><span>HGWS</span></a>
+    <nav class="anav">
+      <a href="#/" data-nav="home" title="Főoldal"><i>🏠</i><span>Főoldal</span></a>
+      <a href="#/tar" data-nav="tar" title="Filmtár"><i>🎬</i><span>Filmtár</span></a>
+      <a href="#/zene" data-nav="zene" title="Zene"><i>🎵</i><span>Zene</span></a>
+      <a href="#/chat" data-nav="chat" title="Közösség"><i>👥</i><span>Közösség</span></a>
+      <a href="#/dm" data-nav="dm" title="Üzenetek"><i>💬</i><span>Üzenetek</span><b class="nbdg" id="dmBadge" hidden></b></a>
+      <a href="#/lista" data-nav="lista" title="Saját lista"><i>＋</i><span>Saját lista</span></a>
+      <a href="#/admin/tagok" data-nav="admin" id="navAdmin" title="Kezelés" hidden><i>🛡️</i><span>Kezelés</span></a>
+      <button id="navSet" title="Beállítások"><i>⚙️</i><span>Beállítások</span></button>
     </nav>
+    <div class="aonline"><div class="aoh">ONLINE <b id="onCount">0</b></div><div id="onList"></div></div>
+    <button class="ame" id="meMenu" title="Profil"></button>
+  </aside>
+  <div class="ascrim" id="ascrim"></div>
+
+  <!-- felső sáv: keresés -->
+  <header class="topnav" id="topnav">
+    <button class="ticon tham" id="hamBtn" aria-label="Menü">☰</button>
+    <a class="tlogo" href="#/" aria-label="HGWS"><img src="img/logo.webp" alt=""><span>HGWS</span></a>
     <div class="tright">
-      <div class="tsearch" id="tsearch"><button class="ticon" id="sBtn" aria-label="Keresés">🔍</button><input id="sInp" type="search" placeholder="Címek, műfajok…" autocomplete="off"></div>
-      <a class="ticon tchat" href="#/dm" title="Üzenetek">💬<span class="tbdg" id="dmBadge" hidden></span></a>
-      <button class="tme" id="meMenu" aria-label="Profil menü"></button>
+      <label class="tsearch open" id="tsearch"><span class="ticon" id="sBtn">🔍</span><input id="sInp" type="search" placeholder="Keresés…" autocomplete="off"><kbd>/</kbd></label>
+      <a class="ticon" href="#/dm" title="Üzenetek">💬<span class="tbdg" id="chatBadge" hidden></span></a>
+      <button class="ticon" id="outBtn" title="Kijelentkezés">⏻</button>
     </div>
   </header>
 
