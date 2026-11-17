@@ -94,10 +94,10 @@
 .tk b{color:rgba(232,182,86,.55);font-size:.6em}
 
 /* ---------- üres állapotok ---------- */
-.big:has(.ic),.noresult .big,.empty .big,.full .big,.ne>.ic{display:grid;place-items:center;width:84px;height:84px;margin:0 auto .9rem;border-radius:50%;font-size:2rem;color:var(--gold2);
+div.big:has(> .ic):not(.mt),.noresult .big,.empty .big,.full .big,.ne>.ic{display:grid;place-items:center;width:84px;height:84px;margin:0 auto .9rem;border-radius:50%;font-size:2rem;color:var(--gold2);
   background:radial-gradient(circle at 50% 30%,rgba(232,182,86,.22),rgba(232,182,86,.04) 70%);border:1px solid rgba(232,182,86,.28);
   box-shadow:0 0 0 8px rgba(232,182,86,.04),0 18px 40px -16px rgba(232,182,86,.4)}
-.big .ic{width:36px;height:36px}
+div.big:not(.mt)>.ic{width:36px;height:36px}
 .welcome .big{color:#fff;background:linear-gradient(160deg,#2f8fe0,#13406e);border:0}
 .noresult{max-width:30rem;margin-inline:auto;line-height:1.6}
 .empty{border-style:solid;border-color:rgba(255,255,255,.07);background:radial-gradient(60% 80% at 50% 0%,rgba(232,182,86,.06),transparent 70%),rgba(255,255,255,.015)}
