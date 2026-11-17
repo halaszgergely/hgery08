@@ -1,6 +1,6 @@
 // HGWS saját videólejátszó – YouTube-forrásnál a YouTube IFrame API-t vezérli saját gombokkal
 // (a YouTube felülete nem kattintható, így a videó linkje sem érhető el egy kattintással), MP4-nél sima <video>.
-import { esc } from './core.js?v=202611170825';
+import { esc } from './core.js?v=202611171028';
 
 let ytLoad = null;
 function loadYT() {
@@ -107,13 +107,13 @@ export function mount(box, o) {
     if (auto) v.play().catch(() => state('paused'));
     ready();
   } else if (o.youtube) {
-    q('.vp-spin').hidden = false;
+    q('.vp-spin').hidden = false; box.classList.add('yt');
     const el = document.createElement('div'); media.appendChild(el);
     loadYT().then(() => {
       if (dead) return;
       const p = new YT.Player(el, {
         host: 'https://www.youtube-nocookie.com', videoId: o.youtube, width: '100%', height: '100%',
-        playerVars: { autoplay: o.autoplay === false ? 0 : 1, controls: 0, disablekb: 1, fs: 0, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3, cc_load_policy: 0, start: Math.floor(o.start || 0), origin: location.origin },
+        playerVars: { autoplay: o.autoplay === false ? 0 : 1, controls: 0, disablekb: 1, fs: 0, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3, cc_load_policy: 0, cc_lang_pref: 'hu', hl: 'hu', start: Math.floor(o.start || 0), origin: location.origin },
         events: {
           onReady: () => {
             if (dead) return;
@@ -128,7 +128,8 @@ export function mount(box, o) {
             q('.vp-spin').hidden = true;
             ready(); if (o.autoplay !== false) A.play();
           },
-          onStateChange: e => state({ '-1': 'unstarted', 0: 'ended', 1: 'playing', 2: 'paused', 3: 'buffering', 5: 'cued' }[e.data]),
+          onStateChange: e => { if (e.data === 1 && !ccOn) ytCc(p, false); state({ '-1': 'unstarted', 0: 'ended', 1: 'playing', 2: 'paused', 3: 'buffering', 5: 'cued' }[e.data]); },
+          onApiChange: () => { if (!ccOn) ytCc(p, false); },
           onError: () => err('Ez a videó most nem játszható le.')
         }
       });
