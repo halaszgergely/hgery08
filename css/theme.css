@@ -319,3 +319,13 @@ html{scrollbar-color:rgba(232,182,86,.28) transparent;scrollbar-width:thin}
   font:500 clamp(.95rem,2.1vw,1.5rem)/1.5 Inter,system-ui,sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.6)}
 .vp:not(.idle) .vp-sub,.vp.paused .vp-sub{bottom:calc(6% + 84px)}
 .vp.isfs .vp-sub span,.vp.vp-pseudo .vp-sub span{font-size:clamp(1.2rem,2.6vw,2.2rem)}
+
+/* ---------- YouTube: megállítva a saját felülete (cím, logó, ajánlók) ne látszódjon ----------
+   a borítókép visszajön elsötétítve, rajta a mi nagy lejátszás gombunk és a vezérlősáv */
+.vp.yt.paused .vp-cover{opacity:1;pointer-events:none}
+.vp.yt.paused .vp-cover::after{background:radial-gradient(circle,rgba(0,0,0,.35),rgba(0,0,0,.78))}
+
+/* ---------- chat: a sor magassága a képernyőhöz kötve, hogy az üzenetlista görgessen ---------- */
+#chat{grid-template-rows:minmax(0,1fr)}
+#chat>.side,#chat>.main,#chat>.members{min-height:0}
+.main .msgs{min-height:0}
