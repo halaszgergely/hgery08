@@ -386,3 +386,67 @@ body{background:var(--bg)}
 .subrow{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;padding:.35rem 0}
 .subrow small{color:var(--muted)}
 @media (max-width:620px){.apb{flex-direction:column}.appic{width:100%}}
+
+/* ---------- értesítések ---------- */
+.npopw{padding:0;width:min(380px,calc(100vw - 16px))}
+.npop .nh{display:flex;align-items:center;gap:.6rem;padding:.8rem 1rem;border-bottom:1px solid var(--line)}
+.npop .nh b{flex:1;font-size:1rem}
+.npop .nh button{font-size:.75rem;color:var(--water);font-weight:600}
+.npop .nl{max-height:min(70vh,520px);overflow:auto}
+.ni{display:flex;align-items:flex-start;gap:.7rem;width:100%;text-align:left;padding:.75rem 1rem;border-bottom:1px solid var(--line);position:relative}
+.ni:hover{background:rgba(255,255,255,.04)}
+.ni.un{background:rgba(108,198,255,.06)}
+.nic{font-size:1.25rem;line-height:1.2}
+.nt{flex:1;display:flex;flex-direction:column;gap:.15rem;font-size:.88rem;line-height:1.4}
+.nt small{color:var(--muted);font-size:.74rem}
+.nd{width:9px;height:9px;border-radius:50%;background:var(--water);margin-top:.35rem;flex:none}
+.ne{padding:2.2rem 1rem;text-align:center;color:var(--muted);line-height:1.8}
+#bellBtn{position:relative}
+
+/* ---------- szavazás (poll) a csevegésben ---------- */
+.poll{margin-top:.4rem;max-width:460px;padding:.8rem;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--line2)}
+.pq{font-weight:700;margin-bottom:.55rem}
+.po{position:relative;display:flex;align-items:center;justify-content:space-between;gap:.6rem;width:100%;padding:.55rem .75rem;margin-bottom:.35rem;border-radius:10px;border:1px solid var(--line2);overflow:hidden;text-align:left;font-size:.9rem;background:rgba(0,0,0,.2)}
+.po i{position:absolute;left:0;top:0;bottom:0;background:rgba(232,182,86,.18);transition:width .4s;border-radius:0 4px 4px 0}
+.po span,.po b{position:relative}
+.po b{font-family:var(--mono);color:var(--gold2);font-size:.8rem}
+.po.me{border-color:var(--gold2)}
+.po.me i{background:rgba(232,182,86,.32)}
+.po:hover{border-color:rgba(232,182,86,.6)}
+.poll small{color:var(--muted);font-size:.74rem}
+.popts{display:flex;flex-direction:column;gap:.4rem}
+
+/* ---------- napló ---------- */
+.lfil{display:flex;justify-content:space-between;align-items:center;gap:.8rem;flex-wrap:wrap;margin:1.2rem 0 .6rem}
+.lfil .ifilt{margin:0}
+.lday{font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:1.2rem 0 .4rem;padding-bottom:.3rem;border-bottom:1px solid var(--line)}
+.lrow{display:grid;grid-template-columns:3.2rem 1.8rem 1fr;gap:.5rem;align-items:start;padding:.5rem .3rem;border-radius:10px;font-size:.9rem}
+.lrow:hover{background:rgba(255,255,255,.03)}
+.lrow time{font-family:var(--mono);color:var(--muted);font-size:.8rem;padding-top:.15rem}
+.lic{text-align:center}
+.lwho{display:inline-flex;align-items:center;gap:.3rem;cursor:pointer;vertical-align:middle}
+.lrow small{display:block;color:var(--muted);font-size:.8rem;margin-top:.1rem}
+
+/* ---------- statisztika ---------- */
+.stiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.8rem;margin-top:1.2rem}
+.stile{padding:1rem 1.1rem;border-radius:16px;background:linear-gradient(180deg,rgba(16,26,46,.85),rgba(8,13,24,.9));border:1px solid var(--line2)}
+.stile small{font-size:.68rem;letter-spacing:.2em;color:var(--muted)}
+.stile b{display:block;font-size:2rem;font-weight:800;color:var(--gold1);line-height:1.15;margin:.25rem 0}
+.stile b em{font-style:normal;font-size:1.1rem;color:var(--muted)}
+.stile span{font-size:.8rem;color:var(--ink2)}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem}
+.sbox{padding:1.1rem 1.2rem;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid var(--line2);min-width:0}
+.sbox.wide{grid-column:1/-1}
+.sbox h3{font-size:.95rem;font-weight:700;margin-bottom:.9rem}
+.hb{display:flex;flex-direction:column;gap:.45rem}
+.hbr{display:grid;grid-template-columns:minmax(80px,38%) 1fr auto;gap:.6rem;align-items:center;font-size:.85rem}
+.hbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink2)}
+.hbt{height:10px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden}
+.hbt i{display:block;height:100%;border-radius:0 4px 4px 0;background:#e8b656}
+.hbr b{font-family:var(--mono);font-size:.8rem;color:var(--ink);min-width:2.5rem;text-align:right}
+.cols{display:flex;align-items:flex-end;gap:2px;height:140px;padding-top:.4rem;border-bottom:1px solid var(--line2)}
+.col{flex:1;height:100%;display:flex;align-items:flex-end;cursor:default}
+.col i{display:block;width:100%;min-height:0;border-radius:4px 4px 0 0;background:#e8b656;transition:filter .15s}
+.col:hover i{filter:brightness(1.25)}
+.colx{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-top:.35rem}
+@media (max-width:860px){.sgrid{grid-template-columns:1fr}}

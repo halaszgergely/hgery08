@@ -1,6 +1,6 @@
 // HGWS – közös Firebase-indítás és segédfüggvények
-import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611170008';
-import * as FB from './firebase.js?v=202611170008';
+import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611170221';
+import * as FB from './firebase.js?v=202611170221';
 
 export { FB, notConfigured };
 
@@ -161,4 +161,21 @@ export function blip() {
     g.gain.setValueAtTime(.08, t); g.gain.exponentialRampToValueAtTime(.0001, t + .25);
     o.connect(g).connect(ac.destination); o.start(t); o.stop(t + .26);
   } catch (_) {}
+}
+
+/* ---------- értesítések: users/{uid}/notifs ----------
+   type: mention | idea | approve | role | tag | premiere | party
+   Mindig a cselekvő tag írja a címzettnek (szerver nélkül). Saját magának nem küld. */
+export function notify(to, type, text, link = '') {
+  const me = auth?.currentUser?.uid;
+  if (!to || !me || (to === me && type !== 'premiere')) return Promise.resolve();
+  return FB.addDoc(FB.collection(db, 'users', to, 'notifs'), { type, text: String(text).slice(0, 200), link: String(link).slice(0, 200), by: me, at: FB.serverTimestamp(), read: false })
+    .catch(e => console.warn('értesítés', e));
+}
+
+/* ---------- napló (audit log): ki mit csinált a kezelőfelületen ---------- */
+export function audit(action, target = '', detail = '') {
+  const me = auth?.currentUser?.uid; if (!me) return Promise.resolve();
+  return FB.addDoc(FB.collection(db, 'audit'), { by: me, action, target: String(target).slice(0, 120), detail: String(detail).slice(0, 300), at: FB.serverTimestamp() })
+    .catch(e => console.warn('napló', e));
 }

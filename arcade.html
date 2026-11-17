@@ -202,6 +202,25 @@ h2{font-family:var(--head);font-weight:900;font-size:clamp(1.8rem,5.2vw,3.2rem);
 @media (max-width:760px){.hmi{grid-template-columns:repeat(2,1fr)}}
 
 /* arcade */
+.lbw{margin-top:2.6rem;padding:1.4rem;border-radius:20px;border:1px solid rgba(232,182,86,.3);background:linear-gradient(160deg,rgba(232,182,86,.08),rgba(8,13,24,.9) 50%)}
+.lbh{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}
+.lbh h3{font-family:var(--head);font-weight:900;font-size:1.4rem;letter-spacing:.06em;color:var(--gold1)}
+.lbt{display:flex;gap:.3rem;background:rgba(0,0,0,.35);padding:.25rem;border-radius:999px}
+.lbt button{padding:.4rem .9rem;border-radius:999px;color:#c9c3b5;font-weight:700;font-size:.8rem;letter-spacing:.08em}
+.lbt button.on{background:var(--gold2);color:#1a1205}
+.lbn{color:#9a9486;font-size:.85rem;margin:.6rem 0 1rem}
+.lbg{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+@media (max-width:980px){.lbg{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:520px){.lbg{grid-template-columns:1fr}}
+.lbc{padding:.9rem 1rem;border-radius:14px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.07)}
+.lbc h4{font-size:.95rem;font-weight:800;margin-bottom:.6rem;display:flex;gap:.4rem;align-items:center}
+.lbr{display:grid;grid-template-columns:1.6rem 1fr auto;gap:.4rem;align-items:center;padding:.3rem 0;font-size:.88rem;border-bottom:1px solid rgba(255,255,255,.05)}
+.lbr:last-child{border:0}
+.lbr i{font-style:normal;font-family:var(--mono);color:#8f8a7e;text-align:center}
+.lbr span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lbr b{font-family:var(--mono);color:var(--gold2)}
+.lbr.me{background:rgba(108,198,255,.1);border-radius:8px;padding-inline:.3rem}
+.lbe{color:#8f8a7e;font-size:.82rem}
 .games{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(.8rem,2vw,1.2rem);margin-top:2.4rem}
 @media (max-width:980px){.games{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:520px){.games{grid-template-columns:1fr}}
@@ -311,6 +330,8 @@ body.embed .scroll{display:none}
     <h2 class="reveal">Szünet a filmek között?</h2>
     <p class="lead reveal">Négy minijáték a HGWS-univerzumból. Rekordokat a böngésződ megjegyzi – döntsd meg a sajátodat.</p>
     <div class="games" id="games"></div>
+    <div class="lbw" id="lbw" hidden><div class="lbh"><h3>🏆 Ranglista</h3><div class="lbt"><button data-lbt="week" class="on">E heti</button><button data-lbt="all">Mindenkori</button></div></div>
+      <p class="lbn" id="lbn"></p><div class="lbg" id="lbg"></div></div>
   </div>
 </section>
 <div class="afoot"><div class="fs">VÍZ. ERŐ. TECHNIKA. ÉLETFORMA.</div><p>© <span id="yr">2026</span> HALÁSZ GERGELY WATERING SOLUTIONS KFT.</p></div>
@@ -612,6 +633,7 @@ function over() {
   $('#oRank').textContent = (G.game.ranks.filter(r => G.score >= r[0]).pop() || [0, ''])[1].toUpperCase();
   $('#oBest').textContent = nb ? '🏆 ÚJ REKORD!' : 'Rekord: ' + prev.toLocaleString('hu-HU');
   setTimeout(() => { UI.pOver.hidden = false; }, 450); hud(); renderCards();
+  if (window.top !== window && G.score > 0) parent.postMessage({ hgws: 'score', game: G.game.id, score: G.score }, location.origin);
 }
 function close() { G.running = false; cancelAnimationFrame(G.raf); gEl.classList.remove('open'); document.body.classList.remove('locked'); renderCards(); }
 $('#pGo').onclick = start; $('#oAgain').onclick = start; $('#oExit').onclick = close; $('#gClose').onclick = close;
@@ -915,6 +937,18 @@ $('#yr').textContent = new Date().getFullYear();
 startHero();
 function deep() { const m = location.hash.match(/^#play=(\w+)/); const gm = m && GAMES.find(x => x.id === m[1]); if (gm) { openGame(gm); history.replaceState(null, '', location.pathname + location.search); } }
 deep(); addEventListener('hashchange', deep);
+/* online ranglista: az adatokat a HGWS főoldal küldi (ott van a bejelentkezés) */
+let LB = null, lbt = 'week';
+function lbDraw() {
+  if (!LB) return;
+  $('#lbw').hidden = false;
+  $('#lbn').textContent = LB.guest ? 'Vendégként is játszhatsz, de a ranglistára csak regisztrált tagok kerülnek fel.' : (lbt === 'week' ? `E heti verseny (${LB.week}) – a hét végén a játékonkénti győztesek megkapják az „Arcade-bajnok” taget! 🏆` : 'Minden idők legjobbjai.');
+  $('#lbg').innerHTML = GAMES.map(g => { const l = (LB.boards[g.id] || {})[lbt] || [];
+    return `<div class="lbc"><h4>${g.icon || ''} ${g.name}</h4>${l.length ? l.map((r, i) => `<div class="lbr${r.me ? ' me' : ''}"><i>${['🥇', '🥈', '🥉'][i] || i + 1}</i><span>${r.name.replace(/[<>&"]/g, '')}</span><b>${r.score.toLocaleString('hu-HU')}</b></div>`).join('') : '<p class="lbe">Még senki – légy te az első!</p>'}</div>`; }).join('');
+}
+$('#lbw').addEventListener('click', e => { const b = e.target.closest('[data-lbt]'); if (!b) return; lbt = b.dataset.lbt; document.querySelectorAll('[data-lbt]').forEach(x => x.classList.toggle('on', x === b)); lbDraw(); });
+addEventListener('message', e => { if (e.origin !== location.origin || e.data?.hgws !== 'lb') return; LB = e.data; lbDraw(); });
+if (window.top !== window) parent.postMessage({ hgws: 'lbreq' }, location.origin);
 })();
 </script>
 </body>

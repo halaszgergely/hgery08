@@ -1,7 +1,7 @@
 // HGWS – kezelőfelület: tagok és rangok, tagek, filmek, zenék, csatornák, jóváhagyások, rangok szerkesztése
-import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG } from './core.js?v=202611170008';
-import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611170008';
-import { githubRepo } from '../firebase-config.js?v=202611170008';
+import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG } from './core.js?v=202611170221';
+import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611170221';
+import { githubRepo } from '../firebase-config.js?v=202611170221';
 
 let C = null, current = null;
 export function init(ctx) { C = ctx; }
@@ -34,9 +34,11 @@ export function render(sub, again) {
     zene: C.can('publishMedia') || C.can('submitMedia'),
     csatornak: C.can('manageChannels'),
     jovahagyas: C.can('publishMedia') || C.isOwner() || C.can('submitMedia') || C.can('assignRoles'),
-    rangok: C.isOwner()
+    rangok: C.isOwner(),
+    naplo: C.isOwner() || C.can('assignRoles'),
+    stat: C.isOwner() || C.can('publishMedia')
   };
-  if (ok[sub]) return ({ tagok: members, cimkek: tagsPage, filmek: films, zene: music, csatornak: channels, jovahagyas: approvals, rangok: rolesPage })[sub](v, again);
+  if (ok[sub]) return ({ tagok: members, cimkek: tagsPage, filmek: films, zene: music, csatornak: channels, jovahagyas: approvals, rangok: rolesPage, naplo: auditPage, stat: statsPage })[sub](v, again);
   C.setTitle('🔒', 'Nincs jogosultság');
   v.innerHTML = '<div class="full"><div><div class="big">🔒</div><h2>Ehhez nincs jogosultságod</h2></div></div>';
 }
@@ -47,6 +49,7 @@ function tabList() {
     ['filmek', '🎞️ Filmek', C.can('publishMedia') || C.can('submitMedia')], ['zene', '🎵 Zenék', C.can('publishMedia') || C.can('submitMedia')],
     ['csatornak', '⚙️ Csatornák', C.can('manageChannels')],
     ['jovahagyas', `✅ Jóváhagyások${n ? ` <span class="cnt">${n}</span>` : ''}`, C.can('publishMedia') || C.isOwner() || C.can('submitMedia') || C.can('assignRoles')],
+    ['stat', '📊 Statisztika', C.isOwner() || C.can('publishMedia')], ['naplo', '📜 Napló', C.isOwner() || C.can('assignRoles')],
     ['rangok', '👑 Rangok', C.isOwner()]].filter(x => x[2]);
 }
 function tabs() {
@@ -97,14 +100,15 @@ function members(v, again) {
     const u = C.U(s.dataset.role), r = s.value, prev = C.roleKey(u);
     if (r === 'admin' && !await confirmBox(`${u.name} ADMIN lesz: filmeket, zenéket, csatornákat kezel és rangokat kérhet. Biztos?`, 'Admin lesz', false)) { s.value = prev; return; }
     if (r !== 'admin' && !await confirmBox(`${u.name} rangja: ${roleOf(r).label}?`, 'Mentés', false)) { s.value = prev; return; }
-    try { await FB.updateDoc(FB.doc(db, 'users', u.id), { role: r }); toast('Rang frissítve ✓'); } catch (e) { toast(errText(e), true); s.value = prev; }
+    try { await FB.updateDoc(FB.doc(db, 'users', u.id), { role: r }); audit('role.set', u.name, `${roleOf(prev).label} → ${roleOf(r).label}`); notify(u.id, 'role', `Új rangot kaptál: ${roleOf(r).label} 👑`, '#/profil/' + u.id); toast('Rang frissítve ✓'); } catch (e) { toast(errText(e), true); s.value = prev; }
   });
   // admin: rangkérelem a tulajnak
   $$('[data-req]', v).forEach(s => s.onchange = async () => {
     const u = C.U(s.dataset.req), r = s.value, prev = C.roleKey(u);
     if (r === prev) return;
     if (!await confirmBox(`Kérelmezed, hogy ${u.name} rangja ${roleOf(r).label} legyen? A tulaj hagyja jóvá.`, 'Kérelem küldése', false)) { s.value = prev; return; }
-    try { await FB.addDoc(FB.collection(db, 'roleRequests'), { target: u.id, role: r, prev, by: C.uid(), at: FB.serverTimestamp(), status: 'pending' }); toast('Kérelem elküldve a tulajnak ✓'); }
+    try { await FB.addDoc(FB.collection(db, 'roleRequests'), { target: u.id, role: r, prev, by: C.uid(), at: FB.serverTimestamp(), status: 'pending' });
+      audit('role.request', u.name, `${roleOf(prev).label} → ${roleOf(r).label}`); notify(OWNER_UID, 'role', `${C.S.me.name} rangot kér: ${u.name} → ${roleOf(r).label}`, '#/admin/jovahagyas'); toast('Kérelem elküldve a tulajnak ✓'); }
     catch (e) { toast(errText(e), true); s.value = prev; }
   });
   $$('[data-unreq]', v).forEach(b => b.onclick = async () => { try { await FB.deleteDoc(FB.doc(db, 'roleRequests', b.dataset.unreq)); toast('Kérelem visszavonva'); } catch (e) { toast(errText(e), true); } });
@@ -141,7 +145,7 @@ function tagsPage(v) {
     try {
       const bt = FB.writeBatch(db), t0 = Date.now();
       miss.forEach(([name, color], i) => bt.set(FB.doc(FB.collection(db, 'tags')), { name, color, order: t0 + i, createdAt: FB.serverTimestamp() }));
-      await bt.commit(); toast(`${miss.length} tag létrehozva ✓`);
+      await bt.commit(); audit('tag.create', `${miss.length} HGWS alap tag`); toast(`${miss.length} tag létrehozva ✓`);
     } catch (e) { toast(errText(e), true); pt.disabled = false; }
   };
   $$('[data-tedit]', v).forEach(b => b.onclick = () => tagModal(tags.find(t => t.id === b.dataset.tedit)));
@@ -151,7 +155,7 @@ function tagsPage(v) {
     try {
       const bt = FB.writeBatch(db);
       [...C.S.users.values()].filter(u => (u.tags || []).includes(t.id)).forEach(u => bt.update(FB.doc(db, 'users', u.id), { tags: FB.arrayRemove(t.id) }));
-      bt.delete(FB.doc(db, 'tags', t.id)); await bt.commit(); toast('Tag törölve');
+      bt.delete(FB.doc(db, 'tags', t.id)); await bt.commit(); audit('tag.delete', t.name); toast('Tag törölve');
     } catch (e) { toast(errText(e), true); }
   });
 }
@@ -175,6 +179,7 @@ export function tagModal(t) {
     try {
       if (t) await FB.updateDoc(FB.doc(db, 'tags', t.id), { name, color });
       else await FB.addDoc(FB.collection(db, 'tags'), { name, color, order: Date.now(), createdAt: FB.serverTimestamp() });
+      audit(t ? 'tag.edit' : 'tag.create', name);
       toast(t ? 'Tag mentve ✓' : 'Tag létrehozva ✓'); el.close();
     } catch (e) { toast(errText(e), true); }
   };
@@ -192,7 +197,10 @@ export function tagAssign(id) {
     b.classList.toggle('on'); });
   el.querySelector('[data-save]')?.addEventListener('click', async () => {
     const ids = $$('.tagpick .on', el).map(b => b.dataset.t);
-    try { await FB.updateDoc(FB.doc(db, 'users', id), { tags: ids }); toast('Tagek mentve ✓'); el.close(); } catch (e) { toast(errText(e), true); }
+    try { await FB.updateDoc(FB.doc(db, 'users', id), { tags: ids }); toast('Tagek mentve ✓'); el.close();
+      const added = ids.filter(x => !has.has(x)).map(x => tags.find(t => t.id === x)?.name).filter(Boolean), removed = [...has].filter(x => !ids.includes(x)).map(x => tags.find(t => t.id === x)?.name).filter(Boolean);
+      if (added.length || removed.length) audit('tag.assign', u.name, [added.length ? '+ ' + added.join(', ') : '', removed.length ? '− ' + removed.join(', ') : ''].filter(Boolean).join(' · '));
+      if (added.length) notify(id, 'tag', `Új taget kaptál: ${added.join(', ')} 🏷️`, '#/profil/' + id); } catch (e) { toast(errText(e), true); }
   });
   el.querySelector('a[href="#/admin/cimkek"]')?.addEventListener('click', () => el.close());
 }
@@ -213,18 +221,18 @@ export function modModal(id) {
     name = name.trim();
     if (name.length < 2) return toast('A név legalább 2 karakter legyen.', true);
     if (reservedName(name) && C.S.owner?.uid !== id) return toast(RESERVED_MSG, true);
-    try { await FB.updateDoc(ref, { name, nameLower: name.toLowerCase() }); toast('Név módosítva ✓'); el.close(); } catch (e) { toast(errText(e), true); }
+    try { await FB.updateDoc(ref, { name, nameLower: name.toLowerCase() }); audit('user.rename', u.name, '→ ' + name); toast('Név módosítva ✓'); el.close(); } catch (e) { toast(errText(e), true); }
   };
   const rn = el.querySelector('[data-rn]'); if (rn) rn.onclick = () => setName(el.querySelector('[name=nm]').value);
   const rst = el.querySelector('[data-rst]'); if (rst) rst.onclick = () => setName('Tag-' + id.slice(0, 5));
   $$('[data-mute]', el).forEach(b => b.onclick = async () => {
     const m = +b.dataset.mute;
-    try { await FB.updateDoc(ref, { mutedUntil: m ? FB.Timestamp.fromDate(new Date(Date.now() + m * 60e3)) : null }); toast(m ? 'Némítva 🔇' : 'Némítás feloldva'); el.close(); } catch (e) { toast(errText(e), true); }
+    try { await FB.updateDoc(ref, { mutedUntil: m ? FB.Timestamp.fromDate(new Date(Date.now() + m * 60e3)) : null }); audit(m ? 'user.mute' : 'user.unmute', u.name, m ? m + ' perc' : ''); toast(m ? 'Némítva 🔇' : 'Némítás feloldva'); el.close(); } catch (e) { toast(errText(e), true); }
   });
   $$('[data-ban]', el).forEach(b => b.onclick = async () => {
     const on = b.dataset.ban === '1';
     if (on && !await confirmBox(`Kitiltod ${u.name} felhasználót a közösségből?`, 'Kitiltás')) return;
-    try { await FB.updateDoc(ref, { banned: on }); toast(on ? 'Kitiltva ⛔' : 'Kitiltás feloldva'); el.close(); } catch (e) { toast(errText(e), true); }
+    try { await FB.updateDoc(ref, { banned: on }); audit(on ? 'user.ban' : 'user.unban', u.name); toast(on ? 'Kitiltva ⛔' : 'Kitiltás feloldva'); el.close(); } catch (e) { toast(errText(e), true); }
   });
 }
 
@@ -273,6 +281,7 @@ export function channelModal(c) {
     if (!name) return toast('Adj nevet a csatornának.', true);
     const data = { name, topic: el.querySelector('[name=topic]').value.trim(), category: el.querySelector('[name=cat]').value.trim() || 'Beszélgetés', type: el.querySelector('[name=type]').value };
     try {
+      audit(c ? 'channel.edit' : 'channel.create', '#' + data.name);
       if (c) await FB.updateDoc(FB.doc(db, 'channels', c.id), data);
       else { const ref = FB.doc(FB.collection(db, 'channels')); await FB.setDoc(ref, { ...data, order: (Math.max(0, ...C.S.channels.map(x => x.order || 0)) + 10), createdAt: FB.serverTimestamp() }); location.hash = '#/c/' + ref.id; }
       toast('Mentve ✓'); el.close();
@@ -280,7 +289,7 @@ export function channelModal(c) {
   };
   const d = el.querySelector('[data-del]'); if (d) d.onclick = async () => {
     if (!await confirmBox(`Törlöd a #${c.name} csatornát? (A régi üzenetek nem fognak látszani.)`, 'Törlés')) return;
-    try { await FB.deleteDoc(FB.doc(db, 'channels', c.id)); toast('Törölve'); el.close(); if (location.hash === '#/c/' + c.id) location.hash = '#/'; } catch (e) { toast(errText(e), true); }
+    try { await FB.deleteDoc(FB.doc(db, 'channels', c.id)); audit('channel.delete', '#' + c.name); toast('Törölve'); el.close(); if (location.hash === '#/c/' + c.id) location.hash = '#/'; } catch (e) { toast(errText(e), true); }
   };
 }
 
@@ -363,13 +372,13 @@ async function filmModal(f) {
       b.set(FB.doc(db, 'videos', id), data, { merge: true });
       b.set(FB.doc(db, 'videoSources', id), { youtube: yt, mp4 });
       if (data.featured) C.S.videos.filter(x => x.featured && x.id !== id).forEach(x => b.update(FB.doc(db, 'videos', x.id), { featured: false }));
-      await b.commit(); toast('Mentve ✓'); el.close();
+      await b.commit(); audit(f ? 'film.edit' : 'film.create', title); toast('Mentve ✓'); el.close();
     } catch (e) { toast(errText(e), true); }
   };
   const del = el.querySelector('[data-del]'); if (del) del.onclick = async () => {
     if (!await confirmBox(`Törlöd: „${f.title}”?${C.can('publishMedia') ? '' : ' (Jóváhagyásra megy egy adminhoz.)'}`, 'Törlés')) return;
     if (!C.can('publishMedia')) { try { await submit({ type: 'film', action: 'delete', targetId: f.id, title: f.title, data: {}, src: {} }); el.close(); } catch (e) { toast(errText(e), true); } return; }
-    try { const b = FB.writeBatch(db); b.delete(FB.doc(db, 'videos', f.id)); b.delete(FB.doc(db, 'videoSources', f.id)); await b.commit(); toast('Törölve'); el.close(); } catch (e) { toast(errText(e), true); }
+    try { const b = FB.writeBatch(db); b.delete(FB.doc(db, 'videos', f.id)); b.delete(FB.doc(db, 'videoSources', f.id)); await b.commit(); audit('film.delete', f.title); toast('Törölve'); el.close(); } catch (e) { toast(errText(e), true); }
   };
 }
 
@@ -455,13 +464,13 @@ async function musicModal(t) {
     try {
       if (t) await FB.updateDoc(FB.doc(db, 'music', t.id), data);
       else await FB.addDoc(FB.collection(db, 'music'), { ...data, order: Math.max(-10, ...C.S.music.map(x => x.order || 0)) + 10, createdAt: FB.serverTimestamp() });
-      toast('Mentve ✓'); el.close();
+      audit(t ? 'music.edit' : 'music.create', title); toast('Mentve ✓'); el.close();
     } catch (e) { toast(errText(e), true); }
   };
   const del = el.querySelector('[data-del]'); if (del) del.onclick = async () => {
     if (!await confirmBox(`Törlöd: „${t.title}”? (A fájl a GitHubon marad.)${C.can('publishMedia') ? '' : ' Jóváhagyásra megy egy adminhoz.'}`, 'Törlés')) return;
     if (!C.can('publishMedia')) { try { await submit({ type: 'music', action: 'delete', targetId: t.id, title: t.title, data: {}, src: {} }); el.close(); } catch (e) { toast(errText(e), true); } return; }
-    try { await FB.deleteDoc(FB.doc(db, 'music', t.id)); toast('Törölve'); el.close(); } catch (e) { toast(errText(e), true); }
+    try { await FB.deleteDoc(FB.doc(db, 'music', t.id)); audit('music.delete', t.title); toast('Törölve'); el.close(); } catch (e) { toast(errText(e), true); }
   };
 }
 
@@ -473,6 +482,8 @@ const ST = { pending: ['⏳ JÓVÁHAGYÁSRA VÁR', 'b'], approved: ['✓ JÓVÁH
 async function submit(x) {
   await FB.addDoc(FB.collection(db, 'submissions'), { ...x, by: C.uid(), at: FB.serverTimestamp(), status: 'pending' });
   toast('Beküldve – egy admin hagyja jóvá ✓');
+  audit('media.submit', x.title, `${TYPE[x.type]} · ${ACT[x.action]}`);
+  [...C.S.users.values()].filter(u => u.id === OWNER_UID || roleOf(u.role).perms?.publishMedia).forEach(u => notify(u.id, 'approve', `${C.S.me.name} beküldött: ${ACT[x.action]} ${x.type === 'film' ? 'film' : 'zene'} – ${x.title}`, '#/admin/jovahagyas'));
 }
 /* a szerkesztő saját beküldései a film / zene oldal tetején */
 function mySubs(type) {
@@ -515,7 +526,8 @@ function approvals(v) {
   $$('[data-rej]', v).forEach(b => b.onclick = async () => {
     const s = subs.find(x => x.id === b.dataset.rej), note = v.querySelector(`[data-note="${s.id}"]`)?.value.trim() || '';
     if (!await confirmBox(`Elutasítod: „${s.title}”?`, 'Elutasítás')) return;
-    try { await FB.updateDoc(FB.doc(db, 'submissions', s.id), { status: 'rejected', reviewedBy: C.uid(), reviewedAt: FB.serverTimestamp(), note }); toast('Elutasítva'); } catch (e) { toast(errText(e), true); }
+    try { await FB.updateDoc(FB.doc(db, 'submissions', s.id), { status: 'rejected', reviewedBy: C.uid(), reviewedAt: FB.serverTimestamp(), note }); toast('Elutasítva');
+      audit('media.reject', s.title, note); notify(s.by, 'reject', `Elutasítva: ${s.title}${note ? ' – „' + note + '”' : ''}`, '#/admin/jovahagyas'); } catch (e) { toast(errText(e), true); }
   });
   $$('[data-rok]', v).forEach(b => b.onclick = async () => {
     const r = reqs.find(x => x.id === b.dataset.rok); b.disabled = true;
@@ -524,10 +536,15 @@ function approvals(v) {
       bt.update(FB.doc(db, 'users', r.target), { role: r.role });
       bt.update(FB.doc(db, 'roleRequests', r.id), { status: 'approved', reviewedAt: FB.serverTimestamp() });
       await bt.commit(); toast(`${C.U(r.target).name} mostantól ${roleOf(r.role).label} ✓`);
+      audit('role.approve', C.U(r.target).name, `→ ${roleOf(r.role).label} (kérte: ${C.U(r.by).name})`);
+      notify(r.target, 'role', `Új rangot kaptál: ${roleOf(r.role).label} 👑`, '#/profil/' + r.target);
+      notify(r.by, 'approve', `A tulaj jóváhagyta: ${C.U(r.target).name} → ${roleOf(r.role).label}`, '#/admin/tagok');
     } catch (e) { toast(errText(e), true); b.disabled = false; }
   });
   $$('[data-rrej]', v).forEach(b => b.onclick = async () => {
-    try { await FB.updateDoc(FB.doc(db, 'roleRequests', b.dataset.rrej), { status: 'rejected', reviewedAt: FB.serverTimestamp() }); toast('Rangkérelem elutasítva'); } catch (e) { toast(errText(e), true); }
+    const r = reqs.find(x => x.id === b.dataset.rrej);
+    try { await FB.updateDoc(FB.doc(db, 'roleRequests', r.id), { status: 'rejected', reviewedAt: FB.serverTimestamp() }); toast('Rangkérelem elutasítva');
+      audit('role.reject', C.U(r.target).name, `→ ${roleOf(r.role).label}`); notify(r.by, 'reject', `A tulaj elutasította: ${C.U(r.target).name} → ${roleOf(r.role).label}`, '#/admin/jovahagyas'); } catch (e) { toast(errText(e), true); }
   });
 }
 async function approve(s, btn) {
@@ -551,6 +568,7 @@ async function approve(s, btn) {
     }
     bt.update(FB.doc(db, 'submissions', s.id), { status: 'approved', reviewedBy: C.uid(), reviewedAt: t, note });
     await bt.commit(); toast('Jóváhagyva – kint van az oldalon ✓');
+    audit('media.approve', s.title, `${TYPE[s.type]} · ${ACT[s.action]}`); notify(s.by, 'approve', `Jóváhagyva: ${s.title} ✓${note ? ' – „' + note + '”' : ''}`, s.type === 'film' && s.action !== 'delete' ? '#/tar' : '#/admin/jovahagyas');
   } catch (e) { toast(errText(e), true); btn.disabled = false; }
 }
 
@@ -593,7 +611,7 @@ function roleModal(k) {
     const perms = Object.fromEntries($$('[data-p]', el).filter(c => c.checked).map(c => [c.dataset.p, true]));
     let id = k;
     if (!id) { const b = slug(name).replace(/-/g, '_') || 'rang'; id = b; let i = 2; while (ROLES[id]) id = b + '_' + i++; }
-    try { await FB.setDoc(FB.doc(db, 'roles', id), { name, color, rank, perms }); toast(k ? 'Rang mentve ✓' : 'Rang létrehozva ✓'); el.close(); } catch (e) { toast(errText(e), true); }
+    try { await FB.setDoc(FB.doc(db, 'roles', id), { name, color, rank, perms }); audit(k ? 'rank.edit' : 'rank.create', name, `szint ${rank} · ${Object.keys(perms).length} jog`); toast(k ? 'Rang mentve ✓' : 'Rang létrehozva ✓'); el.close(); } catch (e) { toast(errText(e), true); }
   };
   el.querySelector('[data-reset]')?.addEventListener('click', async () => {
     if (!await confirmBox(`Visszaállítod a(z) „${r.label}” rangot az alapértékekre?`, 'Visszaállítás', false)) return;
@@ -602,7 +620,107 @@ function roleModal(k) {
   el.querySelector('[data-del]')?.addEventListener('click', async () => {
     const users = [...C.S.users.values()].filter(u => u.role === k);
     if (!await confirmBox(`Törlöd a(z) „${r.label}” rangot?${users.length ? ` ${users.length} tag visszakerül sima Tag rangra.` : ''}`, 'Törlés')) return;
-    try { const bt = FB.writeBatch(db); users.forEach(u => bt.update(FB.doc(db, 'users', u.id), { role: 'user' })); bt.delete(FB.doc(db, 'roles', k)); await bt.commit(); toast('Rang törölve'); el.close(); }
+    try { const bt = FB.writeBatch(db); users.forEach(u => bt.update(FB.doc(db, 'users', u.id), { role: 'user' })); bt.delete(FB.doc(db, 'roles', k)); await bt.commit(); audit('rank.delete', r.label); toast('Rang törölve'); el.close(); }
     catch (e) { toast(errText(e), true); }
   });
 }
+
+/* ================= NAPLÓ (audit log) ================= */
+const ACTIONS = {
+  'role.set': ['👑', 'Rangot adott', 'rang'], 'role.request': ['📨', 'Rangot kért', 'rang'], 'role.approve': ['✅', 'Rangkérelmet jóváhagyott', 'rang'], 'role.reject': ['✕', 'Rangkérelmet elutasított', 'rang'],
+  'rank.create': ['✨', 'Rangot hozott létre', 'rang'], 'rank.edit': ['✏️', 'Rangot módosított', 'rang'], 'rank.delete': ['🗑️', 'Rangot törölt', 'rang'],
+  'user.ban': ['⛔', 'Kitiltott', 'mod'], 'user.unban': ['↩️', 'Feloldotta a kitiltást', 'mod'], 'user.mute': ['🔇', 'Lenémított', 'mod'], 'user.unmute': ['🔊', 'Feloldotta a némítást', 'mod'], 'user.rename': ['✏️', 'Átnevezett', 'mod'],
+  'msg.delete': ['🗑️', 'Üzenetet törölt', 'mod'],
+  'tag.create': ['🏷️', 'Taget hozott létre', 'tag'], 'tag.edit': ['✏️', 'Taget módosított', 'tag'], 'tag.delete': ['🗑️', 'Taget törölt', 'tag'], 'tag.assign': ['🏷️', 'Tageket osztott', 'tag'],
+  'film.create': ['🎬', 'Filmet adott hozzá', 'media'], 'film.edit': ['✏️', 'Filmet módosított', 'media'], 'film.delete': ['🗑️', 'Filmet törölt', 'media'],
+  'music.create': ['🎵', 'Zenét adott hozzá', 'media'], 'music.edit': ['✏️', 'Zenét módosított', 'media'], 'music.delete': ['🗑️', 'Zenét törölt', 'media'],
+  'media.submit': ['📤', 'Beküldött', 'media'], 'media.approve': ['✅', 'Beküldést jóváhagyott', 'media'], 'media.reject': ['✕', 'Beküldést elutasított', 'media'],
+  'channel.create': ['💬', 'Csatornát hozott létre', 'chan'], 'channel.edit': ['✏️', 'Csatornát módosított', 'chan'], 'channel.delete': ['🗑️', 'Csatornát törölt', 'chan'],
+  'idea.status': ['💡', 'Ötlet állapotát állította', 'idea'], 'arcade.champion': ['🏆', 'Heti Arcade-bajnok', 'tag']
+};
+const AGROUPS = [['', 'Mind'], ['rang', '👑 Rangok'], ['mod', '🛡️ Moderálás'], ['tag', '🏷️ Tagek'], ['media', '🎬 Filmek, zenék'], ['chan', '💬 Csatornák'], ['idea', '💡 Ötletek']];
+const LOG = { items: [], at: 0, grp: '', q: '' };
+async function auditPage(v, again) {
+  C.setTitle('📜', 'Napló', 'Ki mit csinált a kezelőfelületen');
+  if (!again || Date.now() - LOG.at > 30000) {
+    try { const s = await FB.getDocs(FB.query(FB.collection(db, 'audit'), FB.orderBy('at', 'desc'), FB.limit(400))); LOG.items = s.docs.map(d => ({ id: d.id, ...d.data() })); LOG.at = Date.now(); }
+    catch (e) { v.innerHTML = `<div class="page">${tabs()}<p class="hint">${esc(errText(e))}</p></div>`; return; }
+    if (current !== 'naplo') return;
+  }
+  const q = LOG.q.toLowerCase();
+  const list = LOG.items.filter(x => (!LOG.grp || ACTIONS[x.action]?.[2] === LOG.grp) && (!q || [C.U(x.by).name, x.target, x.detail, ACTIONS[x.action]?.[1]].join(' ').toLowerCase().includes(q)));
+  const focus = document.activeElement?.id === 'lq';
+  let day = '';
+  v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div>${tabs()}<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap">
+    <div><h1 class="gold">Napló</h1><p class="lead">Minden kezelési művelet: rangok, moderálás, tagek, filmek, csatornák. Csak a tulaj és az adminok látják, és senki nem törölheti.</p></div>
+    <button class="btn plain" id="lr">↻ Frissítés</button></div>
+    <div class="lfil"><div class="ifilt">${AGROUPS.map(([k, l]) => `<button data-g="${k}" class="${LOG.grp === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <div class="search" style="max-width:300px;margin:0"><input type="search" id="lq" placeholder="Keresés (név, cél, részlet)…" value="${esc(LOG.q)}"></div></div>
+    <div class="logl">${list.length ? list.map(x => {
+      const a = ACTIONS[x.action] || ['•', x.action], u = C.U(x.by), t = toDate(x.at), d = t ? t.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }) : '';
+      const head = d !== day ? `<div class="lday">${esc(d)}</div>` : ''; day = d;
+      return `${head}<div class="lrow"><time>${t ? t.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }) : ''}</time><span class="lic">${a[0]}</span>
+        <div><span data-u="${esc(u.id)}" class="lwho">${avatar(u, 22)} <b>${esc(u.name)}</b></span> ${esc(a[1].toLowerCase())}${x.target ? `: <b>${esc(x.target)}</b>` : ''}${x.detail ? `<small>${esc(x.detail)}</small>` : ''}</div></div>`;
+    }).join('') : '<div class="empty sm">Nincs bejegyzés.</div>'}</div></div>`;
+  $('#lr').onclick = () => { LOG.at = 0; auditPage(v, true); };
+  $$('[data-g]', v).forEach(b => b.onclick = () => { LOG.grp = b.dataset.g; auditPage(v, true); });
+  const lq = $('#lq'); lq.oninput = () => { LOG.q = lq.value; auditPage(v, true); };
+  if (focus) { lq.focus(); lq.setSelectionRange(lq.value.length, lq.value.length); }
+}
+
+/* ================= STATISZTIKA ================= */
+const DAY = 864e5;
+/* vízszintes sávdiagram – egy sorozat, közvetlen címkék, hover-tooltip */
+const hbars = (rows, unit = '') => { const max = Math.max(1, ...rows.map(r => r[1]));
+  return `<div class="hb">${rows.map(([l, n, c]) => `<div class="hbr" title="${esc(l)}: ${n.toLocaleString('hu-HU')}${unit}"><span class="hbl">${l}</span><span class="hbt"><i style="width:${Math.max(n ? 2 : 0, n / max * 100)}%;${c ? `background:${c}` : ''}"></i></span><b>${n.toLocaleString('hu-HU')}</b></div>`).join('')}</div>`; };
+async function statsPage(v) {
+  C.setTitle('📊', 'Statisztika');
+  const users = [...C.S.users.values()], now = Date.now();
+  const seen = u => toDate(u.lastSeen)?.getTime() || 0, born = u => toDate(u.createdAt)?.getTime() || 0;
+  const act = d => users.filter(u => now - seen(u) < d * DAY).length;
+  const online = users.filter(u => isOnline(u) && !u.banned).length;
+  // regisztrációk az elmúlt 30 napban (napi oszlopok)
+  const days = [...Array(30)].map((_, i) => { const d0 = new Date(); d0.setHours(0, 0, 0, 0); return d0.getTime() - (29 - i) * DAY; });
+  const reg = days.map(d0 => users.filter(u => born(u) >= d0 && born(u) < d0 + DAY).length), regMax = Math.max(1, ...reg);
+  const roles = rolesSorted().map(([k, r]) => [esc(r.label), users.filter(u => C.roleKey(u) === k).length, r.color]).filter(r => r[1]);
+  const vids = C.S.videos;
+  v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div>${tabs()}<h1 class="gold">Statisztika</h1><p class="lead">A HGWS közösség és a filmek számokban.</p>
+    <div class="stiles">
+      <div class="stile"><small>TAGOK</small><b>${users.length}</b><span>${users.filter(u => now - born(u) < 7 * DAY).length} új a héten</span></div>
+      <div class="stile"><small>MOST ONLINE</small><b>${online}</b><span>${act(1)} aktív ma</span></div>
+      <div class="stile"><small>AKTÍV 7 / 30 NAP</small><b>${act(7)} <em>/ ${act(30)}</em></b><span>legalább egyszer belépett</span></div>
+      <div class="stile"><small>FILMEK</small><b>${vids.filter(x => !x.soon).length}</b><span>+ ${vids.filter(x => x.soon).length} hamarosan</span></div>
+      <div class="stile"><small>ÉRTÉKELÉSEK</small><b id="stR">…</b><span id="stRa">&nbsp;</span></div>
+      <div class="stile"><small>MEGTEKINTÉSEK</small><b id="stV">…</b><span>összesen</span></div>
+    </div>
+    <div class="sgrid">
+      <section class="sbox wide"><h3>Új regisztrációk – elmúlt 30 nap</h3>
+        <div class="cols">${reg.map((n, i) => `<div class="col" title="${new Date(days[i]).toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })}: ${n} új tag"><i style="height:${n / regMax * 100}%"></i></div>`).join('')}</div>
+        <div class="colx"><span>${new Date(days[0]).toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })}</span><span>ma</span></div></section>
+      <section class="sbox"><h3>Legnézettebb filmek</h3><div id="stTop"><div class="spin"></div></div></section>
+      <section class="sbox"><h3>Legjobbra értékelt filmek</h3><div id="stRate"><div class="spin"></div></div></section>
+      <section class="sbox"><h3>Tagok rangok szerint</h3>${hbars(roles, ' fő')}</section>
+      <section class="sbox"><h3>Ötletek állapota</h3><div id="stIdea"><div class="spin"></div></div></section>
+      <section class="sbox"><h3>Arcade – játékosok száma</h3><div id="stArc"><div class="spin"></div></div></section>
+    </div></div>`;
+  const name = id => esc(vids.find(x => x.id === id)?.title || id);
+  FB.getDocs(FB.collection(db, 'views')).then(s => {
+    const l = s.docs.map(d => [d.id, d.data().n || 0]).sort((a, b) => b[1] - a[1]);
+    $('#stV').textContent = l.reduce((a, b) => a + b[1], 0).toLocaleString('hu-HU');
+    $('#stTop').innerHTML = l.length ? hbars(l.slice(0, 8).map(([id, n]) => [name(id), n]), ' megtekintés') : '<p class="hint">Még nincs adat – a megtekintéseket mostantól számoljuk.</p>';
+  }).catch(() => { $('#stV').textContent = '–'; $('#stTop').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
+  FB.getDocs(FB.collectionGroup(db, 'ratings')).then(s => {
+    const sum = {}, n = {}; let all = 0;
+    s.docs.forEach(d => { const id = d.ref.parent.parent?.id, x = d.data().stars; if (!id || !x) return; sum[id] = (sum[id] || 0) + x; n[id] = (n[id] || 0) + 1; all += x; });
+    $('#stR').textContent = s.size.toLocaleString('hu-HU'); $('#stRa').textContent = s.size ? `átlag ★ ${(all / s.size).toFixed(1).replace('.', ',')}` : 'még nincs';
+    const l = Object.keys(sum).map(id => [id, sum[id] / n[id], n[id]]).sort((a, b) => b[1] - a[1] || b[2] - a[2]).slice(0, 8);
+    $('#stRate').innerHTML = l.length ? `<div class="hb">${l.map(([id, a, c]) => `<div class="hbr" title="${name(id)}: ${a.toFixed(2)} (${c} értékelés)"><span class="hbl">${name(id)}</span><span class="hbt"><i style="width:${a / 5 * 100}%"></i></span><b>★ ${a.toFixed(1).replace('.', ',')}</b></div>`).join('')}</div>` : '<p class="hint">Még nincs értékelés.</p>';
+  }).catch(() => { $('#stR').textContent = '–'; $('#stRate').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
+  FB.getDocs(FB.collection(db, 'ideas')).then(s => {
+    const st = { nyitott: ['Nyitott', '#6cc6ff'], folyamatban: ['Folyamatban', '#ffa94d'], kesz: ['Kész', '#5ee08a'], elutasitva: ['Elutasítva', '#ff7a6e'] };
+    $('#stIdea').innerHTML = s.size ? hbars(Object.entries(st).map(([k, [l, c]]) => [l, s.docs.filter(d => d.data().status === k).length, c]), ' db') : '<p class="hint">Még nincs beküldött ötlet.</p>';
+  }).catch(() => { $('#stIdea').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
+  import('./browse.js?v=202611170221').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
+    .then(l => { $('#stArc').innerHTML = hbars(l, ' játékos'); });
+}
+const lbScores = g => FB.collection(db, 'leaderboards', g, 'scores');

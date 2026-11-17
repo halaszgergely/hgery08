@@ -1,11 +1,14 @@
 // HGWS Közösség – csatornák, privát üzenetek, csoportok, filmtár
-import { FB, auth, db, notConfigured, $, $$, esc, ROLES, roleOf, applyRoles, OWNER_UID, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
-  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG } from './core.js?v=202611170008';
-import { modal, confirmBox, popover, closePop, emojiPicker, QUICK, stageHtml } from './ui.js?v=202611170008';
-import * as Admin from './admin.js?v=202611170008';
-import * as Browse from './browse.js?v=202611170008';
-import * as Ideas from './ideas.js?v=202611170008';
-import * as Player from './player.js?v=202611170008';
+import { FB, auth, db, notConfigured, $, $$, esc, ROLES, roleOf, applyRoles, OWNER_UID, notify, audit, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
+  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG } from './core.js?v=202611170221';
+import { modal, confirmBox, popover, closePop, emojiPicker, QUICK, stageHtml } from './ui.js?v=202611170221';
+import * as Admin from './admin.js?v=202611170221';
+import * as Browse from './browse.js?v=202611170221';
+import * as Notif from './notif.js?v=202611170221';
+import * as Profile from './profile.js?v=202611170221';
+import * as Party from './party.js?v=202611170221';
+import * as Ideas from './ideas.js?v=202611170221';
+import * as Player from './player.js?v=202611170221';
 
 const S = {
   user: null, me: null, users: new Map(), channels: [], convs: [], convsLoaded: false, videos: [], reads: { ch: {} },
@@ -20,6 +23,26 @@ const myRank = () => isOwner() ? 1000 : roleOf(S.me?.role).rank;
 const isStaff = () => ['moderate', 'manageTags', 'tickets', 'submitMedia', 'publishMedia', 'manageChannels', 'assignRoles'].some(can);
 const isAdmin = () => can('publishMedia');
 const isMod = () => can('moderate');
+/* azok a nézetek, amelyek a filmlistából épülnek – filmváltozáskor újrarajzoljuk őket */
+const VID_VIEWS = new Set(['home', 'tar', 'lista', 'kereses', 'zene']);
+/* premier-értesítő: ha egy figyelt film megjelent, értesítést kap a tag (magának írja) */
+function checkPremieres() {
+  if (S.guest || !S.alertsLoaded || !S.videos.length) return;
+  const out = (S.alerts || []).map(id => S.videos.find(v => v.id === id)).filter(v => v && !v.soon && v.hasVideo && v.visible !== false);
+  if (!out.length) return;
+  out.forEach(v => notify(uid(), 'premiere', `Megjelent: ${v.title}! Nézd meg most 🎬`, '#/nez/' + v.id));
+  S.alerts = S.alerts.filter(id => !out.some(v => v.id === id));
+  FB.setDoc(FB.doc(db, 'users', uid(), 'private', 'alerts'), { ids: FB.arrayRemove(...out.map(v => v.id)) }, { merge: true }).catch(() => {});
+}
+/* szavazás (poll) egy üzenetben – m.poll = { q, opts }, m.pv = { uid: választott index } */
+function pollHtml(m) {
+  const votes = Object.entries(m.pv || {}), n = votes.length, mine = m.pv?.[uid()];
+  return `<div class="poll"><div class="pq">📊 ${esc(m.poll.q)}</div>${m.poll.opts.map((o, i) => {
+    const vs = votes.filter(([, v]) => v === i), p = n ? Math.round(vs.length / n * 100) : 0;
+    return `<button class="po${mine === i ? ' me' : ''}" data-pv="${i}" title="${esc(vs.map(([id]) => U(id).name).join(', ') || 'Még senki')}">
+      <i style="width:${p}%"></i><span>${mine === i ? '✓ ' : ''}${esc(o)}</span><b>${vs.length ? p + '%' : ''}</b></button>`; }).join('')}
+    <small>${n} szavazat${mine !== undefined ? ' · kattints újra a visszavonáshoz' : S.guest ? '' : ' · kattints a szavazáshoz'}</small></div>`;
+}
 const roleKey = u => u?.id === OWNER_UID ? 'owner' : (u?.role || 'user');
 const mutedUntil = () => { const d = toDate(S.me?.mutedUntil); return d && d > new Date() ? d : null; };
 const U = id => S.users.get(id) || { id, name: 'Ismeretlen', color: '#55606f' };
@@ -66,6 +89,7 @@ if (notConfigured) {
 function start() {
   watchTags(); watchRoles();
   if (S.guest) return startGuest();
+  Notif.start();
   const me = FB.doc(db, 'users', uid());
   FB.onSnapshot(me, s => {
     const was = S.me; S.me = { id: uid(), ...s.data() };
@@ -92,7 +116,7 @@ function start() {
   }, e => console.warn(e));
   FB.onSnapshot(FB.collection(db, 'videos'), s => {
     S.videos = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    soon('vid', () => { if (S.mode === 'browse' && (S.route.view === 'nez' ? !$('.watch') : S.route.view !== 'admin')) route(true); S.chat?.rerender(); Admin.refresh(); });
+    soon('vid', () => { if (S.mode === 'browse' && (S.route.view === 'nez' ? !$('.watch') : VID_VIEWS.has(S.route.view))) route(true); S.chat?.rerender(); Admin.refresh(); checkPremieres(); });
   });
   FB.onSnapshot(FB.collection(db, 'music'), s => {
     S.music = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -100,6 +124,7 @@ function start() {
   }, e => console.warn(e));
   FB.onSnapshot(FB.doc(db, 'users', uid(), 'private', 'progress'), s => { S.progress = s.data() || {}; });
   FB.onSnapshot(FB.doc(db, 'users', uid(), 'private', 'list'), s => { S.myList = s.data()?.ids || []; Browse.listChanged(); });
+  FB.onSnapshot(FB.doc(db, 'users', uid(), 'private', 'alerts'), s => { S.alerts = s.data()?.ids || []; S.alertsLoaded = true; checkPremieres(); }, () => {});
   FB.onSnapshot(FB.doc(db, 'users', uid(), 'private', 'reads'), s => { S.reads = { ch: {}, ...(s.data() || {}) }; soon('reads', () => { if (S.route.sec === 'srv') renderSide(); }); });
   S.owner = { uid: OWNER_UID };
 
@@ -141,7 +166,7 @@ function startGuest() {
   }, e => console.warn(e));
   FB.onSnapshot(FB.collection(db, 'videos'), s => {
     S.videos = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    soon('vid', () => { if (S.mode === 'browse' && (S.route.view !== 'nez' || !$('.watch'))) route(true); });
+    soon('vid', () => { if (S.mode === 'browse' && (S.route.view === 'nez' ? !$('.watch') : VID_VIEWS.has(S.route.view))) route(true); });
   }, e => console.warn(e));
   FB.onSnapshot(FB.collection(db, 'music'), s => {
     S.music = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -227,6 +252,8 @@ function route(force) {
   else if (a === 'arcade') r = { mode: 'browse', view: 'arcade', id: b || '' };
   else if (a === 'kapcsolat') r = { mode: 'browse', view: 'kapcsolat' };
   else if (a === 'otletek') r = { mode: 'browse', view: 'otletek', id: b || '' };
+  else if (a === 'profil' && b) r = { mode: 'browse', view: 'profil', id: b };
+  else if (a === 'party' && b) r = { mode: 'browse', view: 'party', id: b };
   else if (a === 'kereses') r = { mode: 'browse', view: 'kereses', id: b || '' };
   else if (a === 'nez' && b) r = { mode: 'browse', view: 'nez', id: b };
   else if (a === 'film' && b) r = { mode: 'browse', view: S.route.mode === 'browse' && S.route.view !== 'nez' ? S.route.view : 'home', id: S.route.mode === 'browse' ? S.route.id : '', film: b };
@@ -239,6 +266,7 @@ function route(force) {
   const same = !force && S.route.mode === r.mode && S.route.view === r.view && S.route.id === r.id;
   const filmBefore = S.route.film;
   S.route = r;
+  if (r.view !== 'party') Party.leave();
   if (!r.film && Browse.detailOpen()) Browse.closeDetail(true);
   if (r.mode === 'browse') {
     setMode('browse');
@@ -251,6 +279,8 @@ function route(force) {
       else if (r.view === 'arcade') Browse.arcade(r.id);
       else if (r.view === 'kapcsolat') Browse.contact();
       else if (r.view === 'otletek') Ideas.render(r.id);
+      else if (r.view === 'profil') Profile.render(r.id);
+      else if (r.view === 'party') Party.render(r.id);
       else if (r.view === 'kereses') Browse.search(r.id);
       else if (r.view === 'nez') Browse.watch(r.id);
       else if (r.view === 'admin') { Browse.cleanup(); Admin.render(r.id); }
@@ -442,7 +472,7 @@ function profile(id, anchor) {
     ${u.bio ? `<div class="bio">${esc(u.bio)}</div>` : ''}
     ${userTags(u).length || can('manageTags') ? `<div class="ptags"><small>TAGEK</small><div>${userTags(u).map(t => `<span class="utag lg" style="--tc:${esc(t.color)}">${esc(t.name)}</span>`).join('')}${can('manageTags') && (id !== OWNER_UID || isOwner()) ? '<button class="utag add" data-a="tags" title="Tagek kiosztása">＋</button>' : ''}</div></div>` : ''}
     ${u.banned ? '<div class="stat">⛔ Kitiltva</div>' : muted ? `<div class="stat">🔇 Némítva eddig: ${timeLabel(u.mutedUntil)}</div>` : ''}
-    <div class="sec">${self ? '<button class="btn plain sm" data-a="set">Profil szerkesztése</button>' : S.guest ? '' : `<button class="btn primary sm" data-a="dm">💬 Üzenet</button>`}
+    <div class="sec"><a class="btn plain sm" href="#/profil/${esc(id)}" data-a="prof">👤 Profil</a>${self ? '<button class="btn plain sm" data-a="set">Profil szerkesztése</button>' : S.guest ? '' : `<button class="btn primary sm" data-a="dm">💬 Üzenet</button>`}
       ${canMod ? `<button class="btn plain sm" data-a="mod">🛡️ Moderálás</button>` : ''}</div>
   </div></div>`);
   p.addEventListener('click', e => {
@@ -704,7 +734,7 @@ class Chat {
       if (day !== lastDay) { items.push({ key: 'd' + day, sig: day, html: `<div class="day">${DAY(d)}</div>` }); lastDay = day; last = null; }
       const cont = last && last.uid === m.uid && !m.replyTo && d - (toDate(last.createdAt) || d) < 5 * 60e3;
       const u = U(m.uid);
-      const sig = JSON.stringify([m.text, ms(m.editedAt), m.reactions, m.film, m.track, S.music.length, cont, u.name, u.role, u.color, u.photoURL, m.pending, this.editing === m.id, S.videos.length]);
+      const sig = JSON.stringify([m.text, ms(m.editedAt), m.reactions, m.pv, m.film, m.track, S.music.length, cont, u.name, u.role, u.color, u.photoURL, m.pending, this.editing === m.id, S.videos.length]);
       items.push({ key: m.id, sig, m, cont });
       last = m;
     }
@@ -740,7 +770,7 @@ class Chat {
       <div class="mg">${cont ? `<time>${t ? t.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }) : ''}</time>` : `<span data-u="${esc(u.id)}">${avatar(u, 40)}</span>`}</div>
       <div class="mb">${rep}${cont ? '' : `<div class="mh">${nameHtml(u)}${roleBadge(u)}${tagPills(u)}<time title="${t ? t.toLocaleString('hu-HU') : ''}">${m.pending ? 'küldés…' : timeLabel(m.createdAt)}</time></div>`}
         ${m.text ? `<div class="mt${onlyEmoji(m.text) ? ' big' : ''}">${fmt(m.text)}${m.editedAt ? '<span class="ed">(szerkesztve)</span>' : ''}</div>` : ''}
-        ${m.film ? filmCard(m.film) : ''}${m.track ? trackCard(m.track) : ''}${ytEmbeds(m.text)}
+        ${m.poll ? pollHtml(m) : ''}${m.film ? filmCard(m.film) : ''}${m.track ? trackCard(m.track) : ''}${m.poll ? '' : ytEmbeds(m.text)}
         ${rx.length ? `<div class="reacts">${rx.map(([e, l]) => `<button data-rx="${e}" class="${l.includes(uid()) ? 'me' : ''}" title="${esc(l.map(i => U(i).name).join(', '))}">${e}<b>${l.length}</b></button>`).join('')}</div>` : ''}
       </div>
       <div class="mtools">${QUICK.slice(0, 3).map(e => `<button data-rx="${e}" title="${e}">${e}</button>`).join('')}<button data-act="emo" title="Reakció">😊</button><button data-act="reply" title="Válasz">↩️</button>
@@ -751,6 +781,7 @@ class Chat {
     const el = e.target.closest('.msg'); if (!el) return;
     const m = this.msgs.find(x => x.id === el.dataset.id); if (!m) return;
     const rx = e.target.closest('[data-rx]'); if (rx) return this.react(m, rx.dataset.rx, rx);
+    const pv = e.target.closest('[data-pv]'); if (pv) return this.vote(m, +pv.dataset.pv);
     const j = e.target.closest('[data-jump]'); if (j) return this.jump(j.dataset.jump);
     const a = e.target.closest('[data-act]')?.dataset.act;
     if (a === 'emo') emojiPicker(e.target.closest('button'), em => this.react(m, em));
@@ -770,7 +801,7 @@ class Chat {
   }
   async del(m) {
     if (!await confirmBox(m.uid === uid() ? 'Törlöd ezt az üzenetet?' : `Törlöd ${U(m.uid).name} üzenetét? (moderátori törlés)`, 'Törlés')) return;
-    try { await FB.deleteDoc(FB.doc(this.ref(), m.id)); } catch (e) { toast(errText(e), true); }
+    try { await FB.deleteDoc(FB.doc(this.ref(), m.id)); if (m.uid !== uid()) audit('msg.delete', U(m.uid).name, (this.kind === 'chan' ? '#' + this.chan.name + ': ' : '') + (m.text || '').slice(0, 120)); } catch (e) { toast(errText(e), true); }
   }
   mountEdit(el, m) {
     const mb = el.querySelector('.mb'), old = mb.querySelector('.mt');
@@ -798,7 +829,7 @@ class Chat {
     const ph = this.kind === 'chan' ? `Üzenet a #${this.chan.name} csatornára` : `Üzenet ${this.conv ? (this.conv.type === 'group' ? 'a csoportnak' : '@' + convName(this.conv) + ' részére') : ''}`;
     const prevText = $('#mtext')?.value || '';
     c.innerHTML = `${this.reply ? `<div class="replybar">↩️ <span>Válasz neki: <b>${esc(U(this.reply.uid).name)}</b> — ${esc((this.reply.text || '🎬').slice(0, 80))}</span><button class="ibtn" id="rx" style="width:26px;height:26px">✕</button></div>` : ''}
-      <div class="cbox"><button class="ibtn" id="cFilm" title="Film megosztása">🎬</button><button class="ibtn" id="cMus" title="Zene megosztása">🎵</button><button class="ibtn" id="cEmo" title="Emoji">😊</button>
+      <div class="cbox"><button class="ibtn" id="cFilm" title="Film megosztása">🎬</button><button class="ibtn" id="cMus" title="Zene megosztása">🎵</button><button class="ibtn" id="cEmo" title="Emoji">😊</button><button class="ibtn" id="cPoll" title="Szavazás">📊</button>
       <textarea id="mtext" rows="1" maxlength="4000" placeholder="${esc(ph)}"></textarea><button class="ibtn send" id="cSend" title="Küldés" disabled>➤</button></div>
       <div class="chint"><span>Enter: küldés · Shift+Enter: új sor · @név: megemlítés</span><span>**félkövér** *dőlt* \`kód\`</span></div>`;
     const ta = $('#mtext'), send = $('#cSend');
@@ -813,6 +844,7 @@ class Chat {
       if (e.key === 'ArrowUp' && !ta.value) { const m = [...this.msgs].reverse().find(x => x.uid === uid() && x.text); if (m) { e.preventDefault(); this.editing = m.id; this.render(false, true); } }
     };
     send.onclick = () => this.send();
+    $('#cPoll').onclick = () => this.pollModal();
     $('#cEmo').onclick = e => emojiPicker(e.currentTarget, em => { const p = ta.selectionStart; ta.value = ta.value.slice(0, p) + em + ta.value.slice(ta.selectionEnd); ta.focus(); ta.selectionStart = ta.selectionEnd = p + em.length; fit(); });
     $('#cFilm').onclick = () => shareFilm(null, this);
     $('#cMus').onclick = () => shareFilm(null, this, '*');
@@ -849,6 +881,27 @@ class Chat {
     ta.selectionStart = ta.selectionEnd = start + name.length + 2; ta.focus();
     this.mp?.remove(); this.mp = null; ta.dispatchEvent(new Event('input'));
   }
+  async vote(m, i) {
+    if (S.guest) return;
+    const cur = m.pv?.[uid()];
+    try { await FB.updateDoc(FB.doc(this.ref(), m.id), new FB.FieldPath('pv', uid()), cur === i ? FB.deleteField() : i); } catch (e) { toast(errText(e), true); }
+  }
+  pollModal() {
+    const el = modal({ title: '📊 Új szavazás', body: `<div class="field"><label>Kérdés</label><input class="inp" name="q" maxlength="200" placeholder="pl. Melyik legyen a következő HGWS film?"></div>
+      <div class="field"><label>Válaszlehetőségek <em>(2–6)</em></label><div class="popts">${[1, 2, 3].map(i => `<input class="inp" maxlength="80" placeholder="${i}. lehetőség">`).join('')}</div>
+      <button type="button" class="btn plain sm" data-add style="margin-top:.5rem">＋ Lehetőség</button></div>`,
+      foot: '<button class="btn plain" data-x>Mégse</button><button class="btn goldb" data-ok>Szavazás indítása</button>' });
+    const box = el.querySelector('.popts');
+    el.querySelector('[data-add]').onclick = () => { if (box.children.length >= 6) return toast('Legfeljebb 6 lehetőség lehet.', true); const i = document.createElement('input'); i.className = 'inp'; i.maxLength = 80; i.placeholder = box.children.length + 1 + '. lehetőség'; box.appendChild(i); i.focus(); };
+    setTimeout(() => el.querySelector('[name=q]').focus(), 50);
+    el.querySelector('[data-ok]').onclick = async () => {
+      const q = el.querySelector('[name=q]').value.trim(), opts = [...box.querySelectorAll('input')].map(i => i.value.trim()).filter(Boolean);
+      if (!q) return toast('Írd be a kérdést.', true);
+      if (opts.length < 2) return toast('Legalább 2 lehetőség kell.', true);
+      el.close();
+      try { await postTo(this.kind, this.id, { uid: uid(), text: '📊 ' + q, poll: { q, opts }, createdAt: FB.serverTimestamp() }, this.conv); } catch (e) { toast(errText(e), true); }
+    };
+  }
   async send(film = null, textIn = null, track = null) {
     const ta = $('#mtext');
     const text = (textIn ?? ta?.value ?? '').trim();
@@ -859,7 +912,15 @@ class Chat {
     if (this.reply && textIn == null) data.replyTo = { id: this.reply.id, uid: this.reply.uid, text: (this.reply.text || '').slice(0, 140) };
     if (ta && textIn == null) { ta.value = ''; ta.dispatchEvent(new Event('input')); }
     this.reply = null; if (data.replyTo) this.renderComposer();
-    try { await postTo(this.kind, this.id, data, this.conv); }
+    try {
+      await postTo(this.kind, this.id, data, this.conv);
+      // megemlítések (@név) → értesítés a csatornában (privátban a beszélgetés maga jelez)
+      if (this.kind === 'chan' && text.includes('@')) {
+        const low = text.toLowerCase();
+        [...S.users.values()].filter(u => u.id !== uid() && u.name && low.includes('@' + u.name.toLowerCase()))
+          .forEach(u => notify(u.id, 'mention', `${S.me.name} megemlített a #${this.chan.name} csatornán: „${text.slice(0, 90)}”`, '#/c/' + this.id));
+      }
+    }
     catch (e) { toast(errText(e), true); if (ta && textIn == null && !ta.value) { ta.value = text; ta.dispatchEvent(new Event('input')); } }
   }
   markRead() {
@@ -932,5 +993,8 @@ function shareFilm(filmId, chat, trackId) {
 /* az admin modul ezeken keresztül éri el az állapotot */
 Admin.init({ S, uid, isAdmin, isMod, can, isOwner, myRank, rankOfUser, roleKey, roleBadge, U, setTitle, renderSide, route, tagPills, userTags });
 Ideas.init({ S, uid, can, isOwner, U, roleBadge, tagPills });
-Browse.init({ S, uid, isAdmin, isMod, can, U, shareFilm, renderOwnerBar, convUnread, guestPrompt, guestLeave, tagPills });
+Notif.init({ S, uid, U });
+Profile.init({ S, uid, can, isOwner, U, roleBadge, tagPills, userTags, roleKey, rankOfUser, myRank, openDm: id => location.hash = '#/u/' + id });
+Party.init({ S, uid, can, U, roleBadge });
+Browse.init({ S, uid, isAdmin, isMod, can, isOwner, U, shareFilm, renderOwnerBar, convUnread, guestPrompt, guestLeave, tagPills });
 setInterval(() => S.users.size && renderOnline(), 60e3);

@@ -1,6 +1,6 @@
 // HGWS saját videólejátszó – YouTube-forrásnál a YouTube IFrame API-t vezérli saját gombokkal
 // (a YouTube felülete nem kattintható, így a videó linkje sem érhető el egy kattintással), MP4-nél sima <video>.
-import { esc } from './core.js?v=202611170008';
+import { esc } from './core.js?v=202611170221';
 
 let ytLoad = null;
 function loadYT() {
@@ -35,11 +35,12 @@ const ICON = {
 
 /**
  * Lejátszó beillesztése egy dobozba.
- * o: { youtube, mp4, poster, title, start, onTime(t, d), onPause(), onEnd(), next: { title, href, poster } }
+ * o: { youtube, mp4, poster, title, start, onTime(t, d), onPause(), onEnd(), next: { title, href, poster },
+ *      locked (közös nézés vendégként: csak a házigazda irányít), onLocked(), onAction(kind, t) – a néző saját mozdulatai }
  * Visszaad: { destroy() }
  */
 export function mount(box, o) {
-  box.classList.add('vp');
+  box.classList.add('vp'); if (o.locked) box.classList.add('locked');
   box.tabIndex = 0;
   box.innerHTML = `
     <div class="vp-media"></div>
@@ -73,7 +74,8 @@ export function mount(box, o) {
   function err(msg) { const e = q('.vp-err'); e.textContent = msg; e.hidden = false; q('.vp-spin').hidden = true; q('.vp-big').hidden = true; }
   if (o.mp4) {
     const v = document.createElement('video');
-    Object.assign(v, { src: o.mp4, playsInline: true, preload: 'auto', autoplay: true, poster: o.poster || '' });
+    const auto = o.autoplay !== false;
+    Object.assign(v, { src: o.mp4, playsInline: true, preload: 'auto', autoplay: auto, poster: o.poster || '' });
     v.setAttribute('playsinline', ''); v.setAttribute('controlsList', 'nodownload noplaybackrate'); v.disablePictureInPicture = true;
     media.appendChild(v);
     A = {
@@ -88,7 +90,7 @@ export function mount(box, o) {
     v.addEventListener('waiting', () => state('buffering'));
     v.addEventListener('ended', () => state('ended'));
     v.addEventListener('error', () => err('A videót nem sikerült betölteni.'));
-    v.play().catch(() => state('paused'));
+    if (auto) v.play().catch(() => state('paused'));
     ready();
   } else if (o.youtube) {
     q('.vp-spin').hidden = false;
@@ -97,7 +99,7 @@ export function mount(box, o) {
       if (dead) return;
       const p = new YT.Player(el, {
         host: 'https://www.youtube-nocookie.com', videoId: o.youtube, width: '100%', height: '100%',
-        playerVars: { autoplay: 1, controls: 0, disablekb: 1, fs: 0, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3, cc_load_policy: 0, start: Math.floor(o.start || 0), origin: location.origin },
+        playerVars: { autoplay: o.autoplay === false ? 0 : 1, controls: 0, disablekb: 1, fs: 0, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3, cc_load_policy: 0, start: Math.floor(o.start || 0), origin: location.origin },
         events: {
           onReady: () => {
             if (dead) return;
@@ -108,7 +110,7 @@ export function mount(box, o) {
               vol: x => p.setVolume(x), mute: m => m ? p.mute() : p.unMute(), rate: r => p.setPlaybackRate(r), destroy: () => { try { p.destroy(); } catch (_) {} }
             };
             q('.vp-spin').hidden = true;
-            ready(); A.play();
+            ready(); if (o.autoplay !== false) A.play();
           },
           onStateChange: e => state({ '-1': 'unstarted', 0: 'ended', 1: 'playing', 2: 'paused', 3: 'buffering', 5: 'cued' }[e.data]),
           onError: () => err('Ez a videó most nem játszható le.')
@@ -150,8 +152,8 @@ export function mount(box, o) {
   const setBar = f => { f = Math.max(0, Math.min(1, f)); q('.vp-fill').style.width = f * 100 + '%'; q('.vp-knob').style.left = f * 100 + '%'; };
 
   /* ---------- vezérlők ---------- */
-  const toggle = () => { if (!A) return; if (ended) { A.seek(0); A.play(); } else playing ? A.pause() : A.play(); };
-  const skip = s => { if (!A) return; A.seek(Math.max(0, Math.min(A.dur() - .5, A.time() + s))); tick(); flash(s > 0 ? '+' + s + ' mp' : s + ' mp'); };
+  const toggle = () => { if (!A) return; if (o.locked) { o.onLocked?.(); return; } if (ended) { A.seek(0); A.play(); o.onAction?.('play', 0); } else if (playing) { A.pause(); o.onAction?.('pause', A.time()); } else { A.play(); o.onAction?.('play', A.time()); } };
+  const skip = s => { if (!A) return; if (o.locked) { flash('🍿 A házigazda irányít'); return; } const t = Math.max(0, Math.min(A.dur() - .5, A.time() + s)); A.seek(t); tick(); flash(s > 0 ? '+' + s + ' mp' : s + ' mp'); o.onAction?.('seek', t); };
   function volUi() {
     volR.value = muted ? 0 : vol;
     volR.style.setProperty('--v', (muted ? 0 : vol) + '%');
@@ -195,7 +197,7 @@ export function mount(box, o) {
   });
   volR.addEventListener('input', () => setVol(+volR.value));
   q('.vp-big').onclick = e => { e.stopPropagation(); toggle(); };
-  q('.vp-again').onclick = e => { e.stopPropagation(); A?.seek(0); A?.play(); };
+  q('.vp-again').onclick = e => { e.stopPropagation(); if (o.locked) return o.onLocked?.(); A?.seek(0); A?.play(); o.onAction?.('play', 0); };
 
   // kattintás a képre: egy = lejátszás/szünet, dupla = teljes képernyő; érintésnél az első koppintás csak a vezérlőket hozza elő
   const shield = q('.vp-shield');
@@ -222,8 +224,8 @@ export function mount(box, o) {
     if (seeking) setBar(f);
   });
   bar.addEventListener('pointerleave', () => { if (!seeking) tip.hidden = true; });
-  bar.addEventListener('pointerdown', e => { if (!A?.dur()) return; seeking = true; bar.setPointerCapture(e.pointerId); box.classList.add('seeking'); setBar(frac(e)); });
-  const endSeek = e => { if (!seeking) return; seeking = false; box.classList.remove('seeking'); tip.hidden = true; const d = A.dur(); A.seek(frac(e) * d); if (ended) A.play(); tick(); };
+  bar.addEventListener('pointerdown', e => { if (!A?.dur() || o.locked) return; seeking = true; bar.setPointerCapture(e.pointerId); box.classList.add('seeking'); setBar(frac(e)); });
+  const endSeek = e => { if (!seeking) return; seeking = false; box.classList.remove('seeking'); tip.hidden = true; const d = A.dur(), t = frac(e) * d; A.seek(t); if (ended) A.play(); tick(); o.onAction?.('seek', t); };
   bar.addEventListener('pointerup', endSeek); bar.addEventListener('pointercancel', () => { seeking = false; box.classList.remove('seeking'); });
 
   // vezérlők elrejtése, ha nem mozog az egér
@@ -256,6 +258,13 @@ export function mount(box, o) {
       document.body.classList.remove('vp-lock');
       A?.destroy?.(); box.innerHTML = '';
     },
-    pause() { A?.pause(); }
+    pause() { A?.pause(); },
+    play() { A?.play(); },
+    seek(t) { A?.seek(t); tick(); },
+    time: () => A?.time() || 0,
+    dur: () => A?.dur() || 0,
+    playing: () => playing,
+    ready: () => !!A,
+    lock(v) { o.locked = v; box.classList.toggle('locked', !!v); }
   };
 }
