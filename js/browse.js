@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID } from './core.js?v=202611172346';
-import { stageHtml, confirmBox } from './ui.js?v=202611172346';
-import * as Player from './player.js?v=202611172346';
-import * as Party from './party.js?v=202611172346';
-import * as VP from './vplayer.js?v=202611172346';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611172346';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID } from './core.js?v=202611172357';
+import { stageHtml, confirmBox } from './ui.js?v=202611172357';
+import * as Player from './player.js?v=202611172357';
+import * as Party from './party.js?v=202611172357';
+import * as VP from './vplayer.js?v=202611172357';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611172357';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -251,13 +251,13 @@ export const GAMES = [
   { id: 'nyomas', name: 'Nyomásmester', icon: '🎛️', desc: 'Állítsd meg a mutatót a zöld zónában – a PLC rád bízta a szivattyút.', c: '#6cc6ff' },
   { id: 'vizagyu', name: 'Vízágyú', icon: '💦', desc: 'Kaktuszok és tűzgolyók zúdulnak a kertre. Célozz a vízágyúval!', c: '#ff7a6e' },
   { id: 'csepp', name: 'Csepp Futam', icon: '💧', desc: 'Repülj át a csövek között egy bátor vízcseppel – egy ütközés és vége!', c: '#e8b656' },
-  { id: 'torony', name: 'Víztorony', icon: '🗼', desc: 'Mássz fel a víztorony tetejére az Arany Locsolófejért – egy rossz ugrás, és zuhansz!', c: '#b48cff', sponsor: 'A Zerosites támogatásával' }
+  { id: 'viztorony', name: 'Víztorony', icon: '🗼', unit: 'm', desc: 'Mássz fel a víztorony tetejére az Arany Locsolófejért – egy rossz ugrás, és zuhansz!', c: '#b48cff', sponsor: 'A Zerosites támogatásával' }
 ];
 const best = id => { try { return +localStorage.getItem('hgws_best_' + id) || 0; } catch (_) { return 0; } };
 function arcadeRow() {
   return `<section class="row arcrow"><div class="rowh"><h2><i class="ic ic-gamepad-2"></i> HGWS Arcade</h2><a href="#/arcade">Mind ›</a></div>
     <div class="agrid">${GAMES.map((g, i) => `<a class="acard" href="#/arcade/${g.id}" style="--c:${g.c}"><span class="an">${String(i + 1).padStart(2, '0')}</span><span class="ai">${g.icon}</span>
-      <b>${esc(g.name)}</b>${g.sponsor ? `<span class="aspon">${esc(g.sponsor)}</span>` : ''}<small>${esc(g.desc)}</small><span class="af"><em>REKORD: ${best(g.id).toLocaleString('hu-HU')}</em><i>Játék <i class="ic ic-play"></i></i></span></a>`).join('')}</div></section>`;
+      <b>${esc(g.name)}</b>${g.sponsor ? `<span class="aspon">${esc(g.sponsor)}</span>` : ''}<small>${esc(g.desc)}</small><span class="af"><em>REKORD: ${best(g.id).toLocaleString('hu-HU')}${g.unit ? ' ' + g.unit : ''}</em><i>Játék <i class="ic ic-play"></i></i></span></a>`).join('')}</div></section>`;
 }
 export function arcade(id) {
   cleanup();
@@ -280,29 +280,31 @@ export function weekKey(d = new Date()) {
 }
 const lbCol = lb => FB.collection(db, 'leaderboards', lb, 'scores');
 async function topOf(lb, n = 10) {
-  try { const s = await FB.getDocs(FB.query(lbCol(lb), FB.orderBy('best', 'desc'), FB.limit(n))); return s.docs.map(d => ({ uid: d.id, score: d.data().best })); } catch (_) { return []; }
+  try { const s = await FB.getDocs(FB.query(lbCol(lb), FB.orderBy('best', 'desc'), FB.limit(n * 3)));
+    return s.docs.map(d => ({ uid: d.id, score: d.data().best, wins: d.data().wins || 0 })).sort((a, b) => b.score - a.score || b.wins - a.wins).slice(0, n); } catch (_) { return []; }
 }
 async function sendBoards(win) {
   const wk = weekKey(), boards = {};
   await Promise.all(GAMES.map(async g => {
     const [all, week] = await Promise.all([topOf(g.id), topOf(g.id + '_' + wk)]);
-    const fmt = l => l.map(r => ({ name: C.U(r.uid).name, score: r.score, me: r.uid === C.uid() }));
+    const fmt = l => l.map(r => ({ name: C.U(r.uid).name, score: r.score, wins: r.wins, me: r.uid === C.uid() }));
     boards[g.id] = { all: fmt(all), week: fmt(week) };
   }));
   win?.postMessage({ hgws: 'lb', boards, week: wk.replace('-W', '. év ') + '. hét', guest: guest() }, location.origin);
 }
-async function saveScore(game, score) {
+async function saveScore(game, score, win) {
   if (guest() || !GAMES.some(g => g.id === game) || !(score > 0)) return;
   const me = C.uid(), sc = Math.floor(score);
   for (const lb of [game, game + '_' + weekKey()]) {
     const ref = FB.doc(db, 'leaderboards', lb, 'scores', me);
-    try { const s = await FB.getDoc(ref); if (!s.exists() || sc > (s.data().best || 0)) await FB.setDoc(ref, { best: sc, at: FB.serverTimestamp() }); } catch (e) { console.warn('ranglista', e); }
+    try { const s = await FB.getDoc(ref), o = s.data() || {}, ob = o.best || 0;
+      if (sc > ob || win) await FB.setDoc(ref, { best: Math.max(sc, ob), at: FB.serverTimestamp(), ...(win || o.wins ? { wins: (o.wins || 0) + (win ? 1 : 0) } : {}) }); } catch (e) { console.warn('ranglista', e); }
   }
 }
 addEventListener('message', async e => {
   if (e.origin !== location.origin || !e.data?.hgws) return;
   const fr = $('.arcframe'); if (!fr || e.source !== fr.contentWindow) return;
-  if (e.data.hgws === 'score') { await saveScore(e.data.game, e.data.score); sendBoards(fr.contentWindow); }
+  if (e.data.hgws === 'score') { await saveScore(e.data.game, e.data.score, !!e.data.win); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbreq') sendBoards(fr.contentWindow);
 });
 /* heti bajnok: az előző hét játékonkénti győztesei megkapják az „Arcade-bajnok” taget.
