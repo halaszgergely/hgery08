@@ -3,11 +3,13 @@ rules_version = '2';
 // HGWS – Firestore biztonsági szabályok
 // Másold be: Firebase Console → Firestore Database → Rules → Publish
 //
-// Szerepkörök (users/{uid}.role):  admin  >  moderator  >  user
-//   admin      – mindent kezel: filmek, csatornák, szerepkörök, tiltás
-//   moderator  – üzeneteket töröl a csatornákban, usereket némít / kitilt
-//   user       – csevegés, csoportok, filmnézés, értékelés
-//   vendég     – Firebase névtelen (Anonymous) belépés: csak filmnézés, olvasás – írni, értékelni nem tud
+// Rangok (users/{uid}.role) – a jogokat a „roles” gyűjtemény adja, ha nincs dokumentum, az alábbi alapértékek:
+//   owner       – 👑 TULAJ: be van égetve (ownerId), mindent tud, őt senki nem tilthatja, némíthatja, nem veheti el a rangját
+//   admin       – minden jog; rangot csak kérelmezhet (a tulaj hagyja jóvá), admint csak a tulaj adhat
+//   szerkeszto  – moderátori jogok + film/zene beküldése (admin hagyja jóvá)
+//   moderator   – némítás, tiltás (alacsonyabb rangúaknál), üzenettörlés, tagek, ötletek megválaszolása
+//   user        – csevegés, filmnézés, értékelés, ötletek beküldése
+//   vendég      – Firebase névtelen (Anonymous) belépés: csak filmnézés, olvasás
 service cloud.firestore {
   match /databases/{db}/documents {
 
@@ -17,11 +19,36 @@ service cloud.firestore {
     function hasProfile() { return exists(profilePath()); }
     function me() { return get(profilePath()).data; }
     function active() { return verified() && hasProfile() && me().get('banned', false) != true; }
-    function isAdmin() { return active() && me().role == 'admin'; }
-    function isMod() { return active() && me().role in ['admin', 'moderator']; }
     function notMuted() { return me().get('mutedUntil', null) == null || me().mutedUntil < request.time; }
     function canPost() { return active() && notMuted(); }
     function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+
+    // ---------- tulaj és jogosultságok ----------
+    function ownerId() { return 'bzKz3gAS55hLmf3pru7Ljw0NETN2'; }
+    function isOwner() { return signedIn() && request.auth.uid == ownerId(); }
+    function defaultPerms() {
+      return {
+        'admin': {'moderate': true, 'deleteMessages': true, 'announce': true, 'manageTags': true, 'tickets': true,
+                  'submitMedia': true, 'publishMedia': true, 'manageChannels': true, 'assignRoles': true},
+        'szerkeszto': {'moderate': true, 'deleteMessages': true, 'announce': true, 'manageTags': true, 'tickets': true, 'submitMedia': true},
+        'moderator': {'moderate': true, 'deleteMessages': true, 'announce': true, 'manageTags': true, 'tickets': true},
+        'user': {}
+      };
+    }
+    function defaultRanks() { return {'owner': 100, 'admin': 80, 'szerkeszto': 60, 'moderator': 40, 'user': 10}; }
+    function rolePath(r) { return /databases/$(db)/documents/roles/$(r); }
+    function roleExists(r) { return r in defaultRanks() || exists(rolePath(r)); }
+    function rankOf(r) { return r != 'owner' && exists(rolePath(r)) ? get(rolePath(r)).data.rank : defaultRanks().get(r, 0); }
+    function myRole() { return me().get('role', 'user'); }
+    function myRank() { return isOwner() ? 1000 : rankOf(myRole()); }
+    function userRank(uid) {
+      return uid == ownerId() ? 1000 : rankOf(get(/databases/$(db)/documents/users/$(uid)).data.get('role', 'user'));
+    }
+    function perm(p) {
+      return isOwner() || (active() && (exists(rolePath(myRole()))
+        ? get(rolePath(myRole())).data.get('perms', {}).get(p, false) == true
+        : defaultPerms().get(myRole(), {}).get(p, false) == true));
+    }
 
     function validName(n) { return n is string && n.size() >= 2 && n.size() <= 32; }
 
@@ -39,11 +66,8 @@ service cloud.firestore {
         || s.matches('(.*[^a-z]|)h[^a-z]+' + '[g69]' + sep + E + sep + 'r' + sep + '[g69]' + sep + E + sep + 'l' + sep + '[yií1].*')
         || s.matches('.*h' + sep + A + sep + 'l' + sep + A + sep + 's' + sep + 'z[^a-z]+[g69]([^a-z].*|)');
     }
-    function ownerUid() {
-      return exists(/databases/$(db)/documents/meta/owner) ? get(/databases/$(db)/documents/meta/owner).data.uid : '';
-    }
-    // a név akkor jó, ha nem foglalt – vagy ha a tulajdonos fiókjáról van szó (amíg nincs tulajdonos, szabad)
-    function nameAllowed(uid, n) { return !reservedName(n) || !exists(/databases/$(db)/documents/meta/owner) || uid == ownerUid(); }
+    // a név akkor jó, ha nem foglalt – vagy ha a tulaj fiókjáról van szó
+    function nameAllowed(uid, n) { return !reservedName(n) || uid == ownerId(); }
 
     // új üzenet formai ellenőrzése
     function validMsg() {
@@ -51,15 +75,22 @@ service cloud.firestore {
       return d.uid == request.auth.uid
         && d.createdAt == request.time
         && d.text is string && d.text.size() <= 4000
-        && d.keys().hasOnly(['uid', 'text', 'createdAt', 'film', 'track', 'replyTo', 'reactions'])
-        && (d.text.size() > 0 || d.get('film', null) is string || d.get('track', null) is string);
+        && d.keys().hasOnly(['uid', 'text', 'createdAt', 'film', 'track', 'replyTo', 'reactions', 'poll'])
+        && (d.text.size() > 0 || d.get('film', null) is string || d.get('track', null) is string)
+        && (!('poll' in d) || (d.poll.q is string && d.poll.q.size() <= 200 && d.poll.opts is list && d.poll.opts.size() >= 2 && d.poll.opts.size() <= 6));
     }
     // saját üzenet szerkesztése vagy bárki reagál
     function msgUpdate() {
       return (canPost() && resource.data.uid == request.auth.uid
               && changed().hasOnly(['text', 'editedAt'])
               && request.resource.data.text is string && request.resource.data.text.size() <= 4000)
-          || (active() && changed().hasOnly(['reactions']));
+          || (active() && changed().hasOnly(['reactions']))
+          // szavazás: mindenki csak a saját szavazatát állíthatja
+          || (canPost() && 'poll' in resource.data && changed().hasOnly(['pv'])
+            && request.resource.data.pv.diff(resource.data.get('pv', {})).affectedKeys().hasOnly([request.auth.uid])
+            && (!(request.auth.uid in request.resource.data.pv)
+              || (request.resource.data.pv[request.auth.uid] is int && request.resource.data.pv[request.auth.uid] >= 0
+                && request.resource.data.pv[request.auth.uid] < resource.data.poll.opts.size())));
     }
 
     // ---------- felhasználók ----------
@@ -69,72 +100,233 @@ service cloud.firestore {
 
       allow create: if signedIn() && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['name', 'nameLower', 'color', 'role', 'banned', 'createdAt', 'lastSeen', 'photoURL', 'bio'])
-        && request.resource.data.role == 'user'
+        && (request.resource.data.role == 'user' || (uid == ownerId() && request.resource.data.role == 'owner'))
         && request.resource.data.banned == false
         && validName(request.resource.data.name)
         && nameAllowed(uid, request.resource.data.name);
 
-      allow update: if
-        // saját profil
-        (signedIn() && request.auth.uid == uid
-          && changed().hasOnly(['name', 'nameLower', 'bio', 'color', 'lastSeen', 'photoURL'])
+      // A TULAJ profilját csak ő maga módosíthatja – senki nem tilthatja, némíthatja, nem veheti el a rangját.
+      allow update: if (uid == ownerId() && isOwner()
+          && changed().hasOnly(['name', 'nameLower', 'bio', 'color', 'lastSeen', 'photoURL', 'role', 'tags', 'banned', 'mutedUntil'])
+          && (!('role' in changed()) || request.resource.data.role == 'owner') && request.resource.data.get('banned', false) == false
           && validName(request.resource.data.name)
-          && (!('name' in changed()) || nameAllowed(uid, request.resource.data.name))
           && request.resource.data.get('bio', '').size() <= 300)
-        // az első admin (tulajdonos) igénylése – csak amíg nincs tulajdonos
-        || (verified() && request.auth.uid == uid
-          && changed().hasOnly(['role']) && request.resource.data.role == 'admin'
-          && !exists(/databases/$(db)/documents/meta/owner)
-          && getAfter(/databases/$(db)/documents/meta/owner).data.uid == request.auth.uid)
-        // admin bármit állíthat (szerepkör, tiltás…)
-        || (isAdmin() && request.resource.data.role in ['admin', 'moderator', 'user']
-          && (!('name' in changed()) || (validName(request.resource.data.name) && nameAllowed(uid, request.resource.data.name))))
-        // moderátor csak sima usert némíthat / tilthat ki
-        || (isMod() && resource.data.role == 'user' && request.auth.uid != uid
-          && changed().hasOnly(['banned', 'mutedUntil']))
-        // tagek (Discord-rangszerű címkék) kiosztása: moderátor és admin bárkinek
-        || (isMod() && changed().hasOnly(['tags'])
-          && request.resource.data.tags is list && request.resource.data.tags.size() <= 10);
+        || (uid != ownerId() && (
+          // saját profil
+          (signedIn() && request.auth.uid == uid
+            && changed().hasOnly(['name', 'nameLower', 'bio', 'color', 'lastSeen', 'photoURL'])
+            && validName(request.resource.data.name)
+            && (!('name' in changed()) || nameAllowed(uid, request.resource.data.name))
+            && request.resource.data.get('bio', '').size() <= 300)
+          // rangot közvetlenül CSAK a tulaj adhat (a többiek kérelmet küldenek: roleRequests)
+          || (isOwner() && request.resource.data.get('role', 'user') != 'owner' && roleExists(request.resource.data.get('role', 'user'))
+            && (!('name' in changed()) || (validName(request.resource.data.name) && nameAllowed(uid, request.resource.data.name))))
+          // moderálás: némítás, tiltás, átnevezés – csak nála alacsonyabb rangúnál
+          || (perm('moderate') && request.auth.uid != uid && rankOf(resource.data.get('role', 'user')) < myRank()
+            && changed().hasOnly(['banned', 'mutedUntil', 'name', 'nameLower'])
+            && (!('name' in changed()) || (validName(request.resource.data.name) && nameAllowed(uid, request.resource.data.name))))
+          // tagek kiosztása
+          || (perm('manageTags') && changed().hasOnly(['tags'])
+            && request.resource.data.tags is list && request.resource.data.tags.size() <= 10)
+        ));
 
-      allow delete: if isAdmin();
+      allow delete: if isOwner() && uid != ownerId();
 
       // saját olvasottsági jelölők stb.
       match /private/{doc} {
         allow read, write: if signedIn() && request.auth.uid == uid;
+      }
+      // értesítések: a cselekvő tag írja a címzettnek, csak a címzett olvashatja / jelölheti olvasottnak / törölheti
+      match /notifs/{nid} {
+        allow read, delete: if signedIn() && request.auth.uid == uid;
+        allow update: if signedIn() && request.auth.uid == uid && changed().hasOnly(['read']);
+        allow create: if (active() || (signedIn() && request.auth.uid == uid))
+          && request.resource.data.keys().hasOnly(['type', 'text', 'link', 'by', 'at', 'read'])
+          && request.resource.data.by == request.auth.uid
+          && request.resource.data.read == false
+          && request.resource.data.at == request.time
+          && request.resource.data.text is string && request.resource.data.text.size() <= 200
+          && request.resource.data.link is string && request.resource.data.link.size() <= 200
+          && request.resource.data.type in ['mention', 'idea', 'approve', 'reject', 'role', 'tag', 'premiere', 'party', 'vote', 'badge']
+          && (request.resource.data.type != 'badge' || request.auth.uid == uid);   // kitüntetésről csak saját magának írhat
+      }
+    }
+
+    // ---------- rangok (a tulaj szerkeszti) ----------
+    match /roles/{rid} {
+      allow read: if signedIn();
+      allow create, update: if isOwner() && rid != 'owner'
+        && request.resource.data.keys().hasOnly(['name', 'color', 'rank', 'perms'])
+        && request.resource.data.name is string && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 24
+        && request.resource.data.color is string && request.resource.data.color.matches('^#[0-9a-fA-F]{6}$')
+        && request.resource.data.rank is int && request.resource.data.rank >= 1 && request.resource.data.rank <= 99
+        && request.resource.data.perms is map;
+      allow delete: if isOwner();
+    }
+
+    // ---------- rangkérelmek: admin kéri, a tulaj hagyja jóvá ----------
+    match /roleRequests/{id} {
+      allow read: if isOwner() || (signedIn() && resource.data.by == request.auth.uid);
+      allow create: if perm('assignRoles')
+        && request.resource.data.keys().hasOnly(['target', 'role', 'prev', 'by', 'at', 'status'])
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.at == request.time
+        && request.resource.data.role != 'owner' && request.resource.data.role != 'admin'
+        && roleExists(request.resource.data.role)
+        && rankOf(request.resource.data.role) < myRank()
+        && request.resource.data.target != ownerId() && request.resource.data.target != request.auth.uid
+        && userRank(request.resource.data.target) < myRank();
+      allow update: if isOwner() && changed().hasOnly(['status', 'reviewedAt']);
+      allow delete: if isOwner() || (signedIn() && resource.data.by == request.auth.uid && resource.data.status == 'pending');
+    }
+
+    // ---------- film- és zenebeküldések: szerkesztő küldi, admin hagyja jóvá ----------
+    match /submissions/{id} {
+      allow read: if perm('publishMedia') || (signedIn() && resource.data.by == request.auth.uid);
+      allow create: if perm('submitMedia')
+        && request.resource.data.keys().hasOnly(['type', 'action', 'targetId', 'title', 'data', 'src', 'by', 'at', 'status'])
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.at == request.time
+        && request.resource.data.type in ['film', 'music']
+        && request.resource.data.action in ['create', 'update', 'delete'];
+      allow update: if perm('publishMedia') && changed().hasOnly(['status', 'reviewedBy', 'reviewedAt', 'note'])
+        && request.resource.data.status in ['approved', 'rejected'];
+      allow delete: if perm('publishMedia') || (signedIn() && resource.data.by == request.auth.uid && resource.data.status == 'pending');
+    }
+
+    // ---------- ötletek / ticketek: tag beküldi, moderátortól felfelé válaszolnak ----------
+    match /ideas/{id} {
+      allow read: if perm('tickets') || (signedIn() && resource.data.uid == request.auth.uid) || (active() && resource.data.get('public', false) == true);
+      allow create: if canPost()
+        && request.resource.data.keys().hasOnly(['uid', 'title', 'text', 'category', 'status', 'replies', 'public', 'votes', 'createdAt', 'updatedAt'])
+        && request.resource.data.get('public', false) is bool && request.resource.data.get('votes', []) == []
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'nyitott' && request.resource.data.replies == 0
+        && request.resource.data.title is string && request.resource.data.title.size() >= 3 && request.resource.data.title.size() <= 100
+        && request.resource.data.text is string && request.resource.data.text.size() <= 2000
+        && request.resource.data.category in ['otlet', 'hiba', 'kerdes', 'egyeb']
+        && request.resource.data.createdAt == request.time;
+      allow update: if (perm('tickets')
+          && changed().hasOnly(['status', 'updatedAt', 'replies', 'lastReplyAt', 'lastReplyBy', 'public'])
+          && request.resource.data.status in ['nyitott', 'folyamatban', 'kesz', 'elutasitva'])
+        || (canPost() && resource.data.uid == request.auth.uid
+          && changed().hasOnly(['updatedAt', 'replies', 'lastReplyAt', 'lastReplyBy'])
+          && request.resource.data.replies == resource.data.replies + 1)
+        // szavazás (👍) a nyilvános ötletekre: mindenki csak a saját szavazatát teszi be / veszi ki
+        || (active() && resource.data.get('public', false) == true && changed().hasOnly(['votes'])
+          && request.resource.data.votes is list && request.resource.data.votes.size() <= 5000
+          && request.resource.data.votes.toSet().difference(resource.data.get('votes', []).toSet())
+              .union(resource.data.get('votes', []).toSet().difference(request.resource.data.votes.toSet())).hasOnly([request.auth.uid]));
+      allow delete: if perm('tickets') || (signedIn() && resource.data.uid == request.auth.uid);
+
+      match /replies/{rid} {
+        function ticket() { return get(/databases/$(db)/documents/ideas/$(id)).data; }
+        allow read: if perm('tickets') || (signedIn() && ticket().uid == request.auth.uid) || (active() && ticket().get('public', false) == true);
+        allow create: if canPost() && (perm('tickets') || ticket().uid == request.auth.uid)
+          && request.resource.data.keys().hasOnly(['uid', 'text', 'createdAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() >= 1 && request.resource.data.text.size() <= 2000
+          && request.resource.data.createdAt == request.time;
+        allow delete: if perm('tickets');
       }
     }
 
     // tagek: szöveg + szín, a moderátorok és adminok kezelik, mindenki (vendég is) látja
     match /tags/{tid} {
       allow read: if signedIn();
-      allow create, update: if isMod()
+      allow create, update: if perm('manageTags')
         && request.resource.data.keys().hasOnly(['name', 'color', 'order', 'createdAt'])
         && request.resource.data.name is string && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 24
         && request.resource.data.color is string && request.resource.data.color.matches('^#[0-9a-fA-F]{6}$');
-      allow delete: if isMod();
+      allow delete: if perm('manageTags');
+    }
+
+    // ---------- napló (audit log): bárki írhat saját nevében, csak a tulaj és az adminok olvashatják, senki nem törölheti ----------
+    match /audit/{id} {
+      allow read: if isOwner() || perm('assignRoles');
+      allow create: if active()
+        && request.resource.data.keys().hasOnly(['by', 'action', 'target', 'detail', 'at'])
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.at == request.time
+        && request.resource.data.action is string && request.resource.data.action.size() <= 40
+        && request.resource.data.target is string && request.resource.data.target.size() <= 120
+        && request.resource.data.detail is string && request.resource.data.detail.size() <= 300;
+      allow update, delete: if false;
+    }
+
+    // ---------- megtekintések: filmenként egy számláló, csak eggyel nőhet ----------
+    match /views/{vid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.keys().hasOnly(['n']) && request.resource.data.n == 1;
+      allow update: if signedIn() && changed().hasOnly(['n']) && request.resource.data.n == resource.data.n + 1;
+    }
+
+    // ---------- Arcade ranglista: mindenki csak a saját rekordját írhatja, és csak felfelé ----------
+    match /leaderboards/{lb}/scores/{uid} {
+      allow read: if signedIn();
+      allow create: if active() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['best', 'at'])
+        && request.resource.data.best is int && request.resource.data.best > 0 && request.resource.data.best <= 100000000
+        && request.resource.data.at == request.time;
+      allow update: if active() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['best', 'at'])
+        && request.resource.data.best is int && request.resource.data.best > resource.data.best && request.resource.data.best <= 100000000
+        && request.resource.data.at == request.time;
+      allow delete: if perm('moderate');
+    }
+
+    // ---------- közös nézés ----------
+    match /parties/{pid} {
+      allow read: if signedIn();
+      allow create: if canPost() && request.resource.data.host == request.auth.uid
+        && request.resource.data.keys().hasOnly(['host', 'vid', 'state', 't', 'at', 'createdAt', 'members'])
+        && request.resource.data.state in ['play', 'pause'];
+      allow update: if (signedIn() && resource.data.host == request.auth.uid
+          && changed().hasOnly(['state', 't', 'at', 'members']) && request.resource.data.state in ['play', 'pause'])
+        || (signedIn() && changed().hasOnly(['members'])
+          && request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid]));
+      allow delete: if (signedIn() && resource.data.host == request.auth.uid) || perm('deleteMessages');
+      match /msgs/{mid} {
+        allow read: if signedIn();
+        allow create: if canPost() && request.resource.data.keys().hasOnly(['uid', 'text', 'createdAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() >= 1 && request.resource.data.text.size() <= 500
+          && request.resource.data.createdAt == request.time;
+        allow delete: if (signedIn() && resource.data.uid == request.auth.uid) || perm('deleteMessages');
+      }
+    }
+
+    // ---------- értékelések gyűjteménycsoportként (statisztika, legjobbra értékelt, profil) ----------
+    match /{path=**}/ratings/{rid} {
+      allow read: if signedIn();
+    }
+
+    // Arcade heti bajnok jelölő
+    match /meta/arcade {
+      allow read: if signedIn();
+      allow write: if perm('manageTags');
     }
 
     // tulajdonos jelölő (az első admin igénylésekor jön létre)
     match /meta/owner {
       allow read: if true;
-      allow create: if verified()
-        && request.resource.data.uid == request.auth.uid
-        && getAfter(profilePath()).data.role == 'admin';
-      allow update, delete: if false;
+      allow create, update, delete: if false;
     }
 
     // ---------- csatornák (Discord-szerű üzenőfalak) ----------
     match /channels/{cid} {
       allow read: if active();
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin() || (canPost() && changed().hasOnly(['lastMessageAt']));
+      allow create, delete: if perm('manageChannels');
+      allow update: if perm('manageChannels') || (canPost() && changed().hasOnly(['lastMessageAt']));
 
       match /messages/{mid} {
         allow read: if active();
         allow create: if canPost() && validMsg()
-          && (get(/databases/$(db)/documents/channels/$(cid)).data.get('type', 'text') != 'announce' || isMod());
+          && (get(/databases/$(db)/documents/channels/$(cid)).data.get('type', 'text') != 'announce' || perm('announce'));
         allow update: if msgUpdate();
-        allow delete: if (active() && resource.data.uid == request.auth.uid) || isMod();
+        allow delete: if (active() && resource.data.uid == request.auth.uid) || (perm('deleteMessages') && resource.data.uid != ownerId());
       }
     }
 
@@ -178,14 +370,14 @@ service cloud.firestore {
     // A film adatai (cím, poszter, állapot) nyilvánosak – a főoldal ezekből mutatja az előzetest.
     match /videos/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if perm('publishMedia');
 
       // hozzászólások a filmekhez (a vendég olvashatja, de nem írhat)
       match /comments/{cid} {
         allow read: if signedIn();
         allow create: if canPost() && validMsg();
         allow update: if msgUpdate();
-        allow delete: if (active() && resource.data.uid == request.auth.uid) || isMod();
+        allow delete: if (active() && resource.data.uid == request.auth.uid) || (perm('deleteMessages') && resource.data.uid != ownerId());
       }
 
       // csillagos értékelés: dokumentum-azonosító = a tag uid-ja, így mindenki csak egyszer értékelhet
@@ -196,18 +388,18 @@ service cloud.firestore {
           && request.resource.data.stars is int
           && request.resource.data.stars >= 1 && request.resource.data.stars <= 5
           && request.resource.data.at == request.time;
-        allow delete: if (active() && rid == request.auth.uid) || isMod();
+        allow delete: if (active() && rid == request.auth.uid) || (perm('deleteMessages') && rid != ownerId());
       }
     }
     // Zenék: belépett tagok és vendégek hallgathatják, csak admin kezeli.
     match /music/{id} {
       allow read: if signedIn();
-      allow write: if isAdmin();
+      allow write: if perm('publishMedia');
     }
     // A videó forrása csak belépett tagoknak és vendégeknek látszik (a lejátszóhoz kell).
     match /videoSources/{id} {
-      allow read: if signedIn();
-      allow write: if isAdmin();
+      allow read: if perm('publishMedia') || signedIn();
+      allow write: if perm('publishMedia');
     }
   }
 }

@@ -1,6 +1,6 @@
 // HGWS – közös Firebase-indítás és segédfüggvények
-import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611162013';
-import * as FB from './firebase.js?v=202611162013';
+import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611170737';
+import * as FB from './firebase.js?v=202611170737';
 
 export { FB, notConfigured };
 
@@ -20,11 +20,41 @@ export const $ = (s, el = document) => el.querySelector(s);
 export const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-export const ROLES = {
-  admin: { label: 'Admin', color: '#e8b656', rank: 3 },
-  moderator: { label: 'Moderátor', color: '#6cc6ff', rank: 2 },
-  user: { label: 'Tag', color: '#c9c3b5', rank: 1 }
+/* ---------- rangok és jogosultságok ----------
+   A tulaj fiókja be van égetve (a Firestore-szabályokba is): őt senki nem tilthatja, némíthatja, nem veheti el a rangját.
+   A többi rang adatai (név, szín, szint, jogok) a Firestore „roles” gyűjteményéből jönnek – a tulaj szerkeszti őket a Kezelés → Rangok oldalon.
+   Ha egy rangnak még nincs dokumentuma, az alábbi alapértékek érvényesek (a szabályokban ugyanezek vannak). */
+export const OWNER_UID = 'bzKz3gAS55hLmf3pru7Ljw0NETN2';
+export const PERMS = [
+  ['moderate', 'Némítás, kitiltás, átnevezés', 'csak az alacsonyabb rangúaknál'],
+  ['deleteMessages', 'Üzenetek és hozzászólások törlése', 'csatornákban és a filmeknél'],
+  ['announce', 'Írás a bejelentés-csatornákba', ''],
+  ['manageTags', 'Tagek létrehozása és kiosztása', ''],
+  ['tickets', 'Ötletek (ticketek) megválaszolása', 'státusz állítása is'],
+  ['submitMedia', 'Film és zene beküldése', 'egy admin hagyja jóvá'],
+  ['publishMedia', 'Filmek, zenék közvetlen kezelése', 'és a beküldések jóváhagyása'],
+  ['manageChannels', 'Csatornák kezelése', ''],
+  ['assignRoles', 'Rangok kiosztásának kérelmezése', 'alacsonyabb rangokra, a tulaj hagyja jóvá']
+];
+const ALL = Object.fromEntries(PERMS.map(p => [p[0], true]));
+const MOD = { moderate: true, deleteMessages: true, announce: true, manageTags: true, tickets: true };
+export const SYSTEM_ROLES = ['owner', 'admin', 'szerkeszto', 'moderator', 'user'];
+export const DEFAULT_ROLES = {
+  owner: { label: 'Tulaj', color: '#ff7847', rank: 100, perms: ALL },
+  admin: { label: 'Admin', color: '#e8b656', rank: 80, perms: ALL },
+  szerkeszto: { label: 'Szerkesztő', color: '#c79bff', rank: 60, perms: { ...MOD, submitMedia: true } },
+  moderator: { label: 'Moderátor', color: '#6cc6ff', rank: 40, perms: MOD },
+  user: { label: 'Tag', color: '#c9c3b5', rank: 10, perms: {} }
 };
+export const ROLES = JSON.parse(JSON.stringify(DEFAULT_ROLES));
+export const roleOf = r => ROLES[r] || ROLES.user;
+/* a Firestore „roles” gyűjtemény alkalmazása (alapértékek + egyedi rangok) */
+export function applyRoles(docs) {
+  Object.keys(ROLES).forEach(k => delete ROLES[k]);
+  Object.assign(ROLES, JSON.parse(JSON.stringify(DEFAULT_ROLES)));
+  docs.forEach(d => { if (d.id === 'owner') return; ROLES[d.id] = { ...(ROLES[d.id] || {}), label: d.name || ROLES[d.id]?.label || d.id, color: d.color || '#c9c3b5', rank: d.rank ?? 10, perms: d.perms || {} }; });
+}
+export const rolesSorted = () => Object.entries(ROLES).sort((a, b) => b[1].rank - a[1].rank);
 export const COLORS = ['#e8b656', '#6cc6ff', '#5ee08a', '#ff7a6e', '#c79bff', '#ffa94d', '#4dd6c7', '#ff8fc7'];
 export const pickColor = s => COLORS[[...String(s)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % COLORS.length];
 
@@ -34,8 +64,11 @@ export function initials(name) {
 }
 export function avatar(u, size = 40) {
   const name = u?.name || '?', color = u?.color || pickColor(name);
+  // második szín a névből (mindig eltér az elsőtől) – egyedi színátmenet minden tagnak
+  const h = [...String(u?.id || name)].reduce((a, c) => (a * 33 + c.charCodeAt(0)) >>> 0, 5381);
+  let c2 = COLORS[h % COLORS.length]; if (c2 === color) c2 = COLORS[(h + 3) % COLORS.length];
   const img = u?.photoURL ? `<img src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : '';
-  return `<span class="av" style="--s:${size}px;--c:${color}">${esc(initials(name))}${img}</span>`;
+  return `<span class="av" style="--s:${size}px;--c:${color};--c2:${c2}">${esc(initials(name))}${img}</span>`;
 }
 
 export const toDate = t => t?.toDate ? t.toDate() : t instanceof Date ? t : t ? new Date(t) : null;
@@ -131,4 +164,21 @@ export function blip() {
     g.gain.setValueAtTime(.08, t); g.gain.exponentialRampToValueAtTime(.0001, t + .25);
     o.connect(g).connect(ac.destination); o.start(t); o.stop(t + .26);
   } catch (_) {}
+}
+
+/* ---------- értesítések: users/{uid}/notifs ----------
+   type: mention | idea | approve | role | tag | premiere | party
+   Mindig a cselekvő tag írja a címzettnek (szerver nélkül). Saját magának nem küld. */
+export function notify(to, type, text, link = '') {
+  const me = auth?.currentUser?.uid;
+  if (!to || !me || (to === me && type !== 'premiere' && type !== 'badge')) return Promise.resolve();
+  return FB.addDoc(FB.collection(db, 'users', to, 'notifs'), { type, text: String(text).slice(0, 200), link: String(link).slice(0, 200), by: me, at: FB.serverTimestamp(), read: false })
+    .catch(e => console.warn('értesítés', e));
+}
+
+/* ---------- napló (audit log): ki mit csinált a kezelőfelületen ---------- */
+export function audit(action, target = '', detail = '') {
+  const me = auth?.currentUser?.uid; if (!me) return Promise.resolve();
+  return FB.addDoc(FB.collection(db, 'audit'), { by: me, action, target: String(target).slice(0, 120), detail: String(detail).slice(0, 300), at: FB.serverTimestamp() })
+    .catch(e => console.warn('napló', e));
 }

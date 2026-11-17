@@ -1,8 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText } from './core.js?v=202611162013';
-import { stageHtml, confirmBox } from './ui.js?v=202611162013';
-import * as Player from './player.js?v=202611162013';
-import * as VP from './vplayer.js?v=202611162013';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID } from './core.js?v=202611170737';
+import { stageHtml, confirmBox } from './ui.js?v=202611170737';
+import * as Player from './player.js?v=202611170737';
+import * as Party from './party.js?v=202611170737';
+import * as VP from './vplayer.js?v=202611170737';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611170737';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -15,9 +17,9 @@ const inList = id => S().myList.includes(id);
 const img = v => v.banner || v.poster || '';
 const tracks = () => S().music.filter(t => t.visible !== false);
 const cov = t => t.cover ? `background-image:url('${esc(t.cover)}')` : '';
-let unsubs = [], heroTimer = null, countTimer = null, vp = null;
+let unsubs = [], heroTimer = null, countTimer = null, vp = null, ambStop = null, dTimer = null;
 const guest = () => !!S().guest;
-function cleanup() { unsubs.forEach(u => u()); unsubs = []; clearTimeout(heroTimer); clearInterval(countTimer); stopTrack(); vp?.destroy(); vp = null; }
+function cleanup() { unsubs.forEach(u => u()); unsubs = []; clearTimeout(heroTimer); clearInterval(countTimer); stopTrack(); vp?.destroy(); vp = null; ambStop?.(); ambStop = null; }
 
 /* ===================== kártyák, sorok ===================== */
 function badge(v) {
@@ -31,17 +33,62 @@ function meta(v) {
 }
 const progOf = id => { const p = S().progress?.[id]; return p && p.d > 0 && p.t > 15 && p.t < p.d * .95 ? p : null; };
 const leftLabel = p => { const m = Math.max(1, Math.round((p.d - p.t) / 60)); return m >= 60 ? `Még ${Math.floor(m / 60)} ó ${m % 60} p` : `Még ${m} perc`; };
+/* ---------- értékelések összesítése (csempék jelvénye + „Legjobbra értékelt” sor) ---------- */
+const RT = { avg: {}, n: {}, at: 0, busy: false };
+function loadRatings() {
+  if (RT.busy || Date.now() - RT.at < 15000) return;
+  RT.busy = true;
+  FB.getDocs(FB.collectionGroup(db, 'ratings')).then(s => {
+    const sum = {}, n = {};
+    s.docs.forEach(d => { const vid = d.ref.parent.parent?.id, x = d.data().stars; if (!vid || !(x >= 1 && x <= 5)) return; sum[vid] = (sum[vid] || 0) + x; n[vid] = (n[vid] || 0) + 1; });
+    RT.avg = Object.fromEntries(Object.keys(sum).map(k => [k, sum[k] / n[k]])); RT.n = n; RT.at = Date.now();
+    // jelvények a már kirajzolt csempékre, és a „Legjobbra értékelt” sor beszúrása újrarajzolás nélkül
+    $$('.tile[data-film]').forEach(t => { const a = RT.avg[t.dataset.film], b = t.querySelector('.trate');
+      if (a && !b) t.querySelector('.im')?.insertAdjacentHTML('afterend', `<span class="trate">★ ${a.toFixed(1).replace('.', ',')}</span>`); else if (a && b) b.textContent = '★ ' + a.toFixed(1).replace('.', ','); });
+    const anchor = $('.rows .cstrip');
+    if (S().route?.view === 'home' && anchor && topRated().length >= 2) {
+      $('.rows .toprated')?.remove();
+      anchor.insertAdjacentHTML('beforebegin', `<div class="toprated">${row('Legjobbra értékelt', topRated(), '')}</div>`);
+      wireRows($('.rows .toprated'));
+    }
+  }).catch(() => {}).finally(() => RT.busy = false);
+}
+const topRated = () => vis().filter(v => RT.avg[v.id] && !v.soon).sort((a, b) => RT.avg[b.id] - RT.avg[a.id] || (RT.n[b.id] || 0) - (RT.n[a.id] || 0)).slice(0, 10);
+
+/* ---------- nézettség: filmenként egyszer számol egy munkamenetben ---------- */
+function countView(id) {
+  try { const k = 'hgws_viewed_' + id; if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1'); } catch (_) {}
+  FB.setDoc(FB.doc(db, 'views', id), { n: FB.increment(1) }, { merge: true }).catch(() => {});
+}
+
+/* ---------- premier-értesítő: „Szólj, ha kijön” ---------- */
+const alerting = id => (S().alerts || []).includes(id);
+function alertBtn(v) {
+  if (guest() || !v.soon) return '';
+  return `<button class="pbtn ${alerting(v.id) ? 'gold' : 'info'}" data-alert="${esc(v.id)}"><i class="ic ic-${alerting(v.id) ? 'bell' : 'bell-off'}"></i>${alerting(v.id) ? 'Szólunk, ha kijön' : 'Szólj, ha kijön'}</button>`;
+}
+async function toggleAlert(id, btn) {
+  const on = alerting(id);
+  try {
+    await FB.setDoc(FB.doc(db, 'users', C.uid(), 'private', 'alerts'), { ids: on ? FB.arrayRemove(id) : FB.arrayUnion(id) }, { merge: true });
+    S().alerts = on ? S().alerts.filter(x => x !== id) : [...(S().alerts || []), id];
+    toast(on ? 'Értesítő kikapcsolva' : '🔔 Szólunk, amint megjelenik!');
+    if (btn) btn.outerHTML = alertBtn(film(id));
+  } catch (e) { toast(errText(e), true); }
+}
+
 export function tile(v, top, cont) {
   const pr = cont ? progOf(v.id) : null;
   return `<div class="tile${top ? ' top' : ''}${pr ? ' cont' : ''}" tabindex="0" data-film="${esc(v.id)}">
     ${top ? `<span class="num">${top}</span>` : ''}
-    <div class="im" style="background-image:url('${esc(v.poster || img(v))}')">${pr ? `<span class="left">${leftLabel(pr)}</span>` : badge(v)}${pr ? '' : '<img class="logo" src="img/logo.webp" alt="">'}${pr ? `<div class="prog"><i style="width:${Math.round(pr.t / pr.d * 100)}%"></i></div>` : ''}</div>
+    <div class="im${bgOf(v.poster || img(v), v.id + v.title).cls}" style="${esc(bgOf(v.poster || img(v), v.id + v.title).style)}">${pr ? `<span class="left">${leftLabel(pr)}</span>` : badge(v)}${pr ? '' : '<img class="logo" src="img/logo.webp" alt="">'}${pr ? `<div class="prog"><i style="width:${Math.round(pr.t / pr.d * 100)}%"></i></div>` : ''}</div>
+    ${RT.avg[v.id] ? `<span class="trate">★ ${RT.avg[v.id].toFixed(1).replace('.', ',')}</span>` : ''}
     ${top ? '' : `<div class="tt">${esc(v.title)}</div>`}
     <div class="ov"><h4>${esc(v.title)}</h4><div class="b">
-      <button class="rnd pl" data-play="${esc(v.id)}" title="${v.soon ? 'Részletek' : 'Lejátszás'}">${v.soon ? '🔔' : '▶'}</button>
-      <button class="rnd${inList(v.id) ? ' on' : ''}" data-mylist="${esc(v.id)}" title="Saját lista">${inList(v.id) ? '✓' : '＋'}</button>
-      <button class="rnd" data-share="${esc(v.id)}" title="Megosztás">📤</button><span style="flex:1"></span>
-      <button class="rnd" data-info="${esc(v.id)}" title="Részletek">⌄</button></div>
+      <button class="rnd pl" data-play="${esc(v.id)}" title="${v.soon ? 'Részletek' : 'Lejátszás'}">${v.soon ? '<i class="ic ic-bell"></i>' : '<i class="ic ic-play"></i>'}</button>
+      <button class="rnd${inList(v.id) ? ' on' : ''}" data-mylist="${esc(v.id)}" title="Saját lista">${inList(v.id) ? '<i class="ic ic-check"></i>' : '<i class="ic ic-plus"></i>'}</button>
+      <button class="rnd" data-share="${esc(v.id)}" title="Megosztás"><i class="ic ic-share-2"></i></button><span style="flex:1"></span>
+      <button class="rnd" data-info="${esc(v.id)}" title="Részletek"><i class="ic ic-chevron-down"></i></button></div>
       <div class="m">${meta(v)}</div></div>
   </div>`;
 }
@@ -67,19 +114,19 @@ export const PARTNERS = [
 export const CONTACT = 'info@hgery08.hu';
 function footHtml() {
   return `<footer class="sitefoot"><div class="fl"><img src="img/logo.webp" alt=""><div><b>HGWS Studios</b><small>Halász Gergely Watering Solutions</small></div></div>
-    <div class="fc"><h4>Partneroldalak</h4>${PARTNERS.map(p => `<a href="${p.url}" target="_blank" rel="noopener">🤝 ${esc(p.name)} <small>${esc(p.host)} ↗</small></a>`).join('')}</div>
-    <div class="fc"><h4>Kapcsolat</h4><a href="mailto:${CONTACT}">✉️ ${CONTACT}</a><a href="#/kapcsolat">📇 Kapcsolat oldal</a></div>
-    <div class="fc"><h4>Szórakozás</h4><a href="#/arcade">🎮 HGWS Arcade</a><a href="miert_igyal.html">🍻 Ma miért igyál?</a></div>
+    <div class="fc"><h4>Partneroldalak</h4>${PARTNERS.map(p => `<a href="${p.url}" target="_blank" rel="noopener"><i class="ic ic-handshake"></i> ${esc(p.name)} <small>${esc(p.host)} ↗</small></a>`).join('')}</div>
+    <div class="fc"><h4>Kapcsolat</h4><a href="mailto:${CONTACT}"><i class="ic ic-mail"></i> ${CONTACT}</a><a href="#/kapcsolat"><i class="ic ic-contact"></i> Kapcsolat oldal</a></div>
+    <div class="fc"><h4>Szórakozás</h4><a href="#/arcade"><i class="ic ic-gamepad-2"></i> HGWS Arcade</a><a href="miert_igyal.html"><i class="ic ic-beer"></i> Ma miért igyál?</a></div>
     <div class="fslogan">VÍZ. ERŐ. TECHNIKA. ÉLETFORMA.</div>
     <div class="fcopy">© ${new Date().getFullYear()} Halász Gergely Watering Solutions Kft. · HGWS Studios</div></footer>`;
 }
 
 /* ===================== kapcsolat ===================== */
 function contactStrip() {
-  return `<section class="cstrip"><div class="ci"><span class="cic">✉️</span><div><div class="eyebrow">// KAPCSOLAT</div><h3>Írj nekünk!</h3>
+  return `<section class="cstrip"><div class="ci"><span class="cic"><i class="ic ic-mail"></i></span><div><div class="eyebrow">// KAPCSOLAT</div><h3>Írj nekünk!</h3>
     <p>Kérdésed, ötleted vagy üzleti ajánlatod van? A HGWS Studios várja a leveled.</p></div></div>
-    <div class="cbtns"><a class="pbtn play" href="mailto:${CONTACT}"><i>✉️</i>${CONTACT}</a><button class="pbtn info" data-copymail><i>📋</i>Másolás</button>
-    ${PARTNERS.map(p => `<a class="pbtn info" href="${p.url}" target="_blank" rel="noopener"><i>🤝</i>${esc(p.name)}</a>`).join('')}</div></section>`;
+    <div class="cbtns"><a class="pbtn play" href="mailto:${CONTACT}"><i class="ic ic-mail"></i>${CONTACT}</a><button class="pbtn info" data-copymail><i class="ic ic-copy"></i>Másolás</button>
+    ${PARTNERS.map(p => `<a class="pbtn info" href="${p.url}" target="_blank" rel="noopener"><i class="ic ic-handshake"></i>${esc(p.name)}</a>`).join('')}</div></section>`;
 }
 export function contact() {
   cleanup();
@@ -87,24 +134,34 @@ export function contact() {
   $('#page').innerHTML = `<div class="pg cpage"><div class="eyebrow">// HGWS STUDIOS</div><h1 class="gold">Kapcsolat</h1>
     <p class="lead">Kérdésed, ötleted, együttműködési vagy üzleti ajánlatod van? Írj bátran, válaszolunk.</p>
     <div class="cgrid" style="--n:${PARTNERS.length}">
-      <a class="ccard big" href="mailto:${CONTACT}"><span class="ico">✉️</span><small>E-MAIL</small><b>${CONTACT}</b><em>Kattints a levélíráshoz</em></a>
-      <button class="ccard" data-copymail><span class="ico">📋</span><small>CÍM MÁSOLÁSA</small><b>Vágólapra</b><em>Ha a saját leveleződből írnál</em></button>
-      ${PARTNERS.map(p => `<a class="ccard" href="${p.url}" target="_blank" rel="noopener"><span class="ico">🤝</span><small>PARTNEROLDAL</small><b>${esc(p.name)}</b><em>${esc(p.host)} ↗</em></a>`).join('')}
+      <a class="ccard big" href="mailto:${CONTACT}"><span class="ico"><i class="ic ic-mail"></i></span><small>E-MAIL</small><b>${CONTACT}</b><em>Kattints a levélíráshoz</em></a>
+      <button class="ccard" data-copymail><span class="ico"><i class="ic ic-copy"></i></span><small>CÍM MÁSOLÁSA</small><b>Vágólapra</b><em>Ha a saját leveleződből írnál</em></button>
+      ${PARTNERS.map(p => `<a class="ccard" href="${p.url}" target="_blank" rel="noopener"><span class="ico"><i class="ic ic-handshake"></i></span><small>PARTNEROLDAL</small><b>${esc(p.name)}</b><em>${esc(p.host)} ↗</em></a>`).join('')}
     </div>
     <div class="cinfo"><div><small>CÉG</small><b>Halász Gergely Watering Solutions Kft.</b></div><div><small>STÚDIÓ</small><b>HGWS Studios</b></div><div><small>WEBOLDAL</small><b>hgery08.hu</b></div></div>
   </div>${footHtml()}`;
 }
 
+/* ===================== 404 – nem létező oldal ===================== */
+export function notFound() {
+  cleanup();
+  document.title = 'Nincs ilyen oldal · HGWS';
+  $('#page').innerHTML = `<section class="nf"><div><span class="cactus" aria-hidden="true">🌵</span><div class="code">404</div>
+    <h1>Szikkadt Szilárd kiszárította ezt az oldalt</h1>
+    <p>Amit keresel, nincs itt – talán elírás, vagy a link már nem él. A kert többi része szerencsére még zöld.</p>
+    <div class="hbtns"><a class="pbtn play" href="#/">${I('house')}Vissza a főoldalra</a><a class="pbtn info" href="#/tar">${I('clapperboard')}Filmtár</a></div></div></section>${footHtml()}`;
+}
+
 /* ===================== kezdőlap ===================== */
 export function home() {
-  cleanup();
+  cleanup(); loadRatings();
   const list = vis(), page = $('#page');
   document.title = 'HGWS';
   if (!list.length) {
     page.innerHTML = `<div class="homeowner"><div class="ownerslot"></div></div><section class="hero"><div class="bg" style="background-image:url(img/logo.webp);background-size:min(60vh,70vw);background-position:75% 45%;background-repeat:no-repeat"></div>
       <div class="in"><div class="orig"><img src="img/logo.webp" alt=""><span><b>HGWS</b> STUDIOS</span></div><h1>Hamarosan</h1>
       <p class="d">Az első HGWS-filmek az utómunka utolsó fázisában vannak. Addig csatlakozz a közösséghez!</p>
-      <div class="hbtns">${guest() ? '' : '<a class="pbtn play" href="#/chat"><i>💬</i>Közösség</a>'}${C.isAdmin() ? '<a class="pbtn info" href="#/admin/filmek"><i>🎞️</i>Filmek kezelése</a>' : ''}</div></div></section>${footHtml()}`;
+      <div class="hbtns">${guest() ? '' : '<a class="pbtn play" href="#/chat"><i class="ic ic-message-circle"></i>Közösség</a>'}${C.can('publishMedia') || C.can('submitMedia') ? '<a class="pbtn info" href="#/admin/filmek"><i class="ic ic-film"></i>Filmek kezelése</a>' : ''}</div></div></section>${footHtml()}`;
     C.renderOwnerBar(); return;
   }
   const f = list.find(v => v.featured) || list.find(v => !v.soon) || list[0];
@@ -115,11 +172,10 @@ export function home() {
   const contList = Object.entries(S().progress || {}).filter(([id]) => film(id) && progOf(id) && !film(id).soon && film(id).visible !== false)
     .sort((a, b) => (toDate(b[1].at) || 0) - (toDate(a[1].at) || 0)).map(([id]) => film(id));
   page.innerHTML = `<div class="homeowner"><div class="ownerslot"></div></div>${heroHtml(f)}<div class="rows">
-    <div class="pills"><a href="#/" class="on">Kezdőlap</a>${kinds.map(k => `<a href="#/tar/${encodeURIComponent(k)}">${esc(PLURAL[k] || k)}</a>`).join('')}${tracks().length ? '<a href="#/zene">Zene</a>' : ''}<a href="#/arcade">Arcade</a>${guest() ? '' : '<a href="#/chat">Közösség</a>'}</div>
-    ${tickerHtml()}
-    ${row('Folytatás', contList, '', false, true)}
+    ${row('Folytasd a nézést', contList, '', false, true)}
     ${row(my.length ? 'Saját listám' : '', my, '#/lista')}
     ${row('Most megnézhető', released, '#/tar')}
+    ${topRated().length >= 2 ? `<div class="toprated">${row('Legjobbra értékelt', topRated(), '')}</div>` : ''}
     ${contactStrip()}
     ${musicRow()}
     ${arcadeRow()}
@@ -127,22 +183,25 @@ export function home() {
     ${row('Hamarosan a HGWS-nél', soon, '#/tar')}
     ${list.length >= 2 ? row('Top a HGWS-en', list.slice(0, 10), '', true) : ''}
     ${kinds.length > 1 ? kinds.map(k => row(PLURAL[k] || k, list.filter(v => (v.kind || 'Film') === k), '#/tar/' + encodeURIComponent(k))).join('') : ''}
+    ${tickerHtml()}
   </div>${footHtml()}`;
   C.renderOwnerBar();
-  wireRows(page); heroWire(f); Player.refreshMarks();
+  wireRows(page); heroWire(f); Player.refreshMarks(); applyTint($('#hero'), img(f));
 }
 function heroHtml(v) {
   const future = v.soon && v.premiere && new Date(v.premiere + 'T00:00:00') > new Date();
-  return `<section class="hero" id="hero"><div class="bg" style="background-image:url('${esc(img(v))}')"></div><div class="vid" id="hvid"></div>
+  const bg = bgOf(img(v), v.id + v.title), pr = !v.soon && v.hasVideo ? progOf(v.id) : null;
+  return `<section class="hero" id="hero"><div class="bg${bg.cls}" style="${esc(bg.style)}"></div><div class="vid" id="hvid"></div>
     <div class="in"><div class="orig"><img src="img/logo.webp" alt=""><span><b>HGWS</b> ${esc((v.kind || 'Film').toUpperCase())}</span></div>
       <h1>${esc(v.title)}</h1>${v.en ? `<div class="en">${esc(v.en)}</div>` : ''}
       <div class="hmeta">${v.soon ? `<span class="soonb">${v.premiere ? 'PREMIER: ' + esc(huDate(v.premiere).toUpperCase()) : 'HAMAROSAN'}</span>` : isNew(v) ? '<span class="new">ÚJ</span>' : ''}${[v.year, v.len].filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('')}${v.genre ? `<span class="box">${esc(v.genre)}</span>` : ''}</div>
       ${future ? '<div class="count" id="count"></div>' : ''}
       ${v.desc ? `<p class="d">${esc(v.desc)}</p>` : ''}
-      <div class="hbtns">${!v.soon && v.hasVideo ? `<a class="pbtn play" href="#/nez/${esc(v.id)}"><i>▶</i>Lejátszás</a>` : v.soon ? `<button class="pbtn gold" data-mylist="${esc(v.id)}"><i>${inList(v.id) ? '✓' : '🔔'}</i>${inList(v.id) ? 'A listádon' : 'Emlékeztess'}</button>` : ''}
-        <button class="pbtn info" data-info="${esc(v.id)}"><i>ⓘ</i>További infók</button></div>
+      <div class="hbtns">${!v.soon && v.hasVideo ? `<a class="pbtn play" href="#/nez/${esc(v.id)}"><i class="ic ic-play"></i>${pr ? 'Folytatás' : 'Lejátszás'}</a>` : v.soon ? `<button class="pbtn gold" data-mylist="${esc(v.id)}"><i class="ic ic-${inList(v.id) ? 'check' : 'bell'}"></i>${inList(v.id) ? 'A listádon' : 'Emlékeztess'}</button>` : ''}
+        <button class="pbtn info" data-info="${esc(v.id)}"><i class="ic ic-info"></i>További infók</button></div>
+      ${pr ? `<div class="cont">${leftLabel(pr)}<span><i style="width:${Math.round(pr.t / pr.d * 100)}%"></i></span></div>` : ''}
     </div>
-    <div class="hside"><button class="rnd" id="hmute" hidden title="Hang">🔇</button><span class="agebar">${esc(v.soon ? (v.status || 'Gyártásban') : (v.genre || v.kind || 'HGWS'))}</span></div></section>`;
+    <div class="hside"><button class="rnd" id="hmute" hidden title="Hang">${I('volume-x')}</button><span class="agebar">${esc(v.soon ? (v.status || 'Gyártásban') : (v.genre || v.kind || 'HGWS'))}</span></div></section>`;
 }
 async function heroWire(v) {
   const c = $('#count');
@@ -160,7 +219,7 @@ async function heroWire(v) {
     box.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${esc(src.youtube)}?autoplay=1&mute=1&controls=0&loop=1&playlist=${esc(src.youtube)}&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&enablejsapi=1" allow="autoplay; encrypted-media" tabindex="-1" title=""></iframe>`;
     setTimeout(() => box.classList.add('on'), 1800);
     const mb = $('#hmute'); mb.hidden = false; let muted = true;
-    mb.onclick = () => { muted = !muted; box.querySelector('iframe')?.contentWindow.postMessage(JSON.stringify({ event: 'command', func: muted ? 'mute' : 'unMute', args: [] }), '*'); mb.textContent = muted ? '🔇' : '🔊'; };
+    mb.onclick = () => { muted = !muted; box.querySelector('iframe')?.contentWindow.postMessage(JSON.stringify({ event: 'command', func: muted ? 'mute' : 'unMute', args: [] }), '*'); mb.innerHTML = muted ? '<i class="ic ic-volume-x"></i>' : '<i class="ic ic-volume-2"></i>'; };
   }, 2500);
 }
 function commHtml(online) {
@@ -168,12 +227,12 @@ function commHtml(online) {
   return `<section class="comm" id="comm"><div class="txt"><div class="eyebrow">// HGWS KÖZÖSSÉG</div><h3 class="gold">Beszéljétek meg!</h3>
     <p>${online.length ? `<b style="color:var(--green)">● ${online.length} tag online</b> most. ` : ''}Csatornák, privát üzenetek, csoportok – oszd meg a filmeket a haverokkal.${unread ? ` <b style="color:var(--red)">${unread} olvasatlan beszélgetésed van.</b>` : ''}</p>
     <div class="stack">${online.slice(0, 7).map(u => `<span data-u="${esc(u.id)}" title="${esc(u.name)}">${avatar(u, 40)}</span>`).join('')}${online.length > 7 ? `<span class="more">+${online.length - 7}</span>` : ''}</div></div>
-    <div style="display:flex;gap:.6rem;flex-wrap:wrap"><a class="pbtn play" href="#/chat"><i>💬</i>Csatlakozom</a><a class="pbtn info" href="#/dm"><i>✉️</i>Üzenetek</a></div></section>`;
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap"><a class="pbtn play" href="#/chat"><i class="ic ic-message-circle"></i>Csatlakozom</a><a class="pbtn info" href="#/dm"><i class="ic ic-mail"></i>Üzenetek</a></div></section>`;
 }
 function guestHtml() {
   return `<section class="comm" id="comm"><div class="txt"><div class="eyebrow">// VENDÉGKÉNT NÉZEL</div><h3 class="gold">Csatlakozz a HGWS közösséghez!</h3>
     <p>Regisztrálj, és értékelheted a filmeket, hozzászólhatsz, csevegsz a többiekkel és megoszthatod a kedvenceidet.</p></div>
-    <div style="display:flex;gap:.6rem;flex-wrap:wrap"><button class="pbtn play" data-guestreg><i>✨</i>Regisztráció</button><button class="pbtn info" data-guestlogin><i>🔑</i>Belépés</button></div></section>`;
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap"><button class="pbtn play" data-guestreg><i class="ic ic-sparkles"></i>Regisztráció</button><button class="pbtn info" data-guestlogin><i class="ic ic-key-round"></i>Belépés</button></div></section>`;
 }
 export function updateComm() {
   const el = $('#comm'); if (!el || guest()) return;
@@ -195,9 +254,9 @@ export const GAMES = [
 ];
 const best = id => { try { return +localStorage.getItem('hgws_best_' + id) || 0; } catch (_) { return 0; } };
 function arcadeRow() {
-  return `<section class="row arcrow"><div class="rowh"><h2>🎮 HGWS Arcade</h2><a href="#/arcade">Mind ›</a></div>
+  return `<section class="row arcrow"><div class="rowh"><h2><i class="ic ic-gamepad-2"></i> HGWS Arcade</h2><a href="#/arcade">Mind ›</a></div>
     <div class="agrid">${GAMES.map((g, i) => `<a class="acard" href="#/arcade/${g.id}" style="--c:${g.c}"><span class="an">0${i + 1}</span><span class="ai">${g.icon}</span>
-      <b>${esc(g.name)}</b><small>${esc(g.desc)}</small><span class="af"><em>REKORD: ${best(g.id).toLocaleString('hu-HU')}</em><i>JÁTÉK ▶</i></span></a>`).join('')}</div></section>`;
+      <b>${esc(g.name)}</b><small>${esc(g.desc)}</small><span class="af"><em>REKORD: ${best(g.id).toLocaleString('hu-HU')}</em><i>Játék <i class="ic ic-play"></i></i></span></a>`).join('')}</div></section>`;
 }
 export function arcade(id) {
   cleanup();
@@ -206,15 +265,74 @@ export function arcade(id) {
   $('#page').innerHTML = `<iframe class="arcframe" src="arcade.html${g ? '#play=' + g.id : ''}" title="HGWS Arcade" allow="autoplay; fullscreen"></iframe>`;
   const f = $('.arcframe');
   f.addEventListener('load', () => { try { f.contentWindow.focus(); } catch (_) {} });
+  awardChampions();
+}
+
+/* ---------- Arcade online ranglista ----------
+   leaderboards/{játék}/scores/{uid}          – mindenkori rekord
+   leaderboards/{játék}_{év-hét}/scores/{uid} – heti rekord */
+export function weekKey(d = new Date()) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - day);
+  const y = t.getUTCFullYear(), w = Math.ceil(((t - Date.UTC(y, 0, 1)) / 864e5 + 1) / 7);
+  return y + '-W' + String(w).padStart(2, '0');
+}
+const lbCol = lb => FB.collection(db, 'leaderboards', lb, 'scores');
+async function topOf(lb, n = 10) {
+  try { const s = await FB.getDocs(FB.query(lbCol(lb), FB.orderBy('best', 'desc'), FB.limit(n))); return s.docs.map(d => ({ uid: d.id, score: d.data().best })); } catch (_) { return []; }
+}
+async function sendBoards(win) {
+  const wk = weekKey(), boards = {};
+  await Promise.all(GAMES.map(async g => {
+    const [all, week] = await Promise.all([topOf(g.id), topOf(g.id + '_' + wk)]);
+    const fmt = l => l.map(r => ({ name: C.U(r.uid).name, score: r.score, me: r.uid === C.uid() }));
+    boards[g.id] = { all: fmt(all), week: fmt(week) };
+  }));
+  win?.postMessage({ hgws: 'lb', boards, week: wk.replace('-W', '. év ') + '. hét', guest: guest() }, location.origin);
+}
+async function saveScore(game, score) {
+  if (guest() || !GAMES.some(g => g.id === game) || !(score > 0)) return;
+  const me = C.uid(), sc = Math.floor(score);
+  for (const lb of [game, game + '_' + weekKey()]) {
+    const ref = FB.doc(db, 'leaderboards', lb, 'scores', me);
+    try { const s = await FB.getDoc(ref); if (!s.exists() || sc > (s.data().best || 0)) await FB.setDoc(ref, { best: sc, at: FB.serverTimestamp() }); } catch (e) { console.warn('ranglista', e); }
+  }
+}
+addEventListener('message', async e => {
+  if (e.origin !== location.origin || !e.data?.hgws) return;
+  const fr = $('.arcframe'); if (!fr || e.source !== fr.contentWindow) return;
+  if (e.data.hgws === 'score') { await saveScore(e.data.game, e.data.score); sendBoards(fr.contentWindow); }
+  if (e.data.hgws === 'lbreq') sendBoards(fr.contentWindow);
+});
+/* heti bajnok: az előző hét játékonkénti győztesei megkapják az „Arcade-bajnok” taget.
+   Szerver nincs, ezért az első tagkezelő (moderátor+) végzi el, aki a hét után megnyitja az Arcade-ot. */
+async function awardChampions() {
+  if (!C.can('manageTags')) return;
+  const tag = S().tags.find(t => t.name === 'Arcade-bajnok'); if (!tag) return;
+  const prev = weekKey(new Date(Date.now() - 7 * 864e5)), meta = FB.doc(db, 'meta', 'arcade');
+  try {
+    const m = await FB.getDoc(meta); if (m.data()?.awarded === prev) return;
+    const winners = [...new Set((await Promise.all(GAMES.map(g => topOf(g.id + '_' + prev, 1)))).flat().map(r => r.uid))]
+      .filter(u => S().users.has(u) && (u !== OWNER_UID || C.isOwner()));
+    const bt = FB.writeBatch(db);
+    [...S().users.values()].filter(u => (u.tags || []).includes(tag.id) && !winners.includes(u.id) && (u.id !== OWNER_UID || C.isOwner()))
+      .forEach(u => bt.update(FB.doc(db, 'users', u.id), { tags: FB.arrayRemove(tag.id) }));
+    winners.filter(u => !(S().users.get(u).tags || []).includes(tag.id) && (S().users.get(u).tags || []).length < 10)
+      .forEach(u => bt.update(FB.doc(db, 'users', u), { tags: FB.arrayUnion(tag.id) }));
+    bt.set(meta, { awarded: prev, winners, at: FB.serverTimestamp() });
+    await bt.commit();
+    winners.forEach(u => notify(u, 'tag', `🏆 Te lettél a hét Arcade-bajnoka (${prev})! Megkaptad az „Arcade-bajnok” taget.`, '#/arcade'));
+    if (winners.length) audit('arcade.champion', winners.map(u => C.U(u).name).join(', '), prev);
+  } catch (e) { console.warn('arcade-bajnok', e); }
 }
 
 /* ===================== zene ===================== */
 function sq(t) {
-  return `<div class="sq" data-track="${esc(t.id)}"><div class="cv" style="${cov(t)}"><button tabindex="-1" aria-label="Lejátszás">▶</button></div><b>${esc(t.title)}</b><small>${esc(t.artist || 'HGWS')}</small></div>`;
+  return `<div class="sq" data-track="${esc(t.id)}"><div class="cv" style="${cov(t)}"><button tabindex="-1" aria-label="Lejátszás"><i class="ic ic-play"></i></button></div><b>${esc(t.title)}</b><small>${esc(t.artist || 'HGWS')}</small></div>`;
 }
 function musicRow() {
   const l = tracks(); if (!l.length) return '';
-  return `<section class="row"><div class="rowh"><h2>🎵 Zenék</h2><a href="#/zene">Mind ›</a></div>
+  return `<section class="row"><div class="rowh"><h2><i class="ic ic-music"></i> Zenék</h2><a href="#/zene">Mind ›</a></div>
     <div class="track"><button class="arr l" hidden aria-label="Vissza">‹</button><div class="strip">${l.map(sq).join('')}</div><button class="arr r" aria-label="Tovább">›</button></div></section>`;
 }
 export function music() {
@@ -222,15 +340,16 @@ export function music() {
   const l = tracks();
   document.title = 'Zene · HGWS';
   $('#page').innerHTML = `<div class="mhero"><div class="art"></div><div><div class="eyebrow">// HGWS RECORDS</div><h1 class="gold">Zene</h1><p>${l.length} szám · HGWS Studios</p></div></div>
-    <div class="tracks">${l.length ? `<div class="acts"><button class="bigplay" data-playall title="Összes lejátszása">▶</button><span class="hint">Lejátszás közben nyugodtan lapozz tovább – a zene szól.</span></div>
+    <div class="tracks">${l.length ? `<div class="acts"><button class="bigplay" data-playall title="Összes lejátszása"><i class="ic ic-play"></i></button><span class="hint">Lejátszás közben nyugodtan lapozz tovább – a zene szól.</span></div>
       ${l.map((t, i) => `<div class="trow" data-track="${esc(t.id)}"><span class="n">${i + 1}</span><span class="pc" style="${cov(t)}"></span><div style="min-width:0"><b>${esc(t.title)}</b><small>${esc(t.artist || 'HGWS')}</small></div>
-        <div class="ta"><button data-trackshare="${esc(t.id)}" title="Megosztás">📤</button></div></div>`).join('')}`
-      : `<div class="noresult"><div class="big">🎵</div>Még nincs zene feltöltve.${C.isAdmin() ? '<br><br><a class="pbtn info" href="#/admin/zene">Zenék kezelése</a>' : ''}</div>`}</div>`;
+        <div class="ta"><button data-trackshare="${esc(t.id)}" title="Megosztás"><i class="ic ic-share-2"></i></button></div></div>`).join('')}`
+      : `<div class="noresult"><div class="big"><i class="ic ic-music"></i></div>Még nincs zene feltöltve.${C.can('publishMedia') || C.can('submitMedia') ? '<br><br><a class="pbtn info" href="#/admin/zene">Zenék kezelése</a>' : ''}</div>`}</div>`;
   Player.refreshMarks();
 }
 
 /* ===================== filmtár, lista, keresés ===================== */
 export function tar(kind) {
+  loadRatings();
   cleanup();
   const list = vis(), kinds = [...new Set(list.map(v => v.kind || 'Film'))];
   const k = kind ? decodeURIComponent(kind) : 'all', st = S().tarStatus || 'all';
@@ -238,8 +357,8 @@ export function tar(kind) {
   document.title = 'Filmtár · HGWS';
   $('#page').innerHTML = `<div class="pg"><div class="eyebrow">// HGWS STUDIOS</div><h1 class="gold">${k === 'all' ? 'Filmtár' : esc(PLURAL[k] || k)}</h1>
     <div class="chipsrow"><button data-k="all" class="${k === 'all' ? 'on' : ''}">Minden</button>${kinds.map(x => `<button data-k="${esc(x)}" class="${k === x ? 'on' : ''}">${esc(PLURAL[x] || x)}</button>`).join('')}
-      <span style="width:1px;background:var(--line2);margin:0 .3rem"></span><button data-s="ready" class="${st === 'ready' ? 'on' : ''}">▶ Megnézhető</button><button data-s="soon" class="${st === 'soon' ? 'on' : ''}">🔔 Hamarosan</button></div>
-    ${shown.length ? `<div class="grid">${shown.map(v => tile(v)).join('')}</div>` : '<div class="noresult"><div class="big">🎬</div>Nincs ilyen cím.</div>'}</div>${footHtml()}`;
+      <span style="width:1px;background:var(--line2);margin:0 .3rem"></span><button data-s="ready" class="${st === 'ready' ? 'on' : ''}"><i class="ic ic-play"></i> Megnézhető</button><button data-s="soon" class="${st === 'soon' ? 'on' : ''}"><i class="ic ic-bell"></i> Hamarosan</button></div>
+    ${shown.length ? `<div class="grid">${shown.map(v => tile(v)).join('')}</div>` : '<div class="noresult"><div class="big"><i class="ic ic-clapperboard"></i></div>Nincs ilyen cím.</div>'}</div>${footHtml()}`;
   $$('[data-k]').forEach(b => b.onclick = () => location.hash = b.dataset.k === 'all' ? '#/tar' : '#/tar/' + encodeURIComponent(b.dataset.k));
   $$('[data-s]').forEach(b => b.onclick = () => { S().tarStatus = S().tarStatus === b.dataset.s ? 'all' : b.dataset.s; tar(kind); });
 }
@@ -248,7 +367,7 @@ export function myList() {
   const list = S().myList.map(film).filter(v => v && v.visible !== false);
   document.title = 'Saját lista · HGWS';
   $('#page').innerHTML = `<div class="pg"><h1 class="gold">Saját listám</h1><p class="lead">Amit elmentettél későbbre – vagy amire várod a premiert.</p>
-    ${list.length ? `<div class="grid">${list.map(v => tile(v)).join('')}</div>` : `<div class="noresult"><div class="big">＋</div>Még üres a listád. A filmeknél a <b>＋</b> gombbal tudsz hozzáadni.<br><br><a class="pbtn info" href="#/tar">Filmtár</a></div>`}</div>`;
+    ${list.length ? `<div class="grid">${list.map(v => tile(v)).join('')}</div>` : `<div class="noresult"><div class="big"><i class="ic ic-plus"></i></div>Még üres a listád. A filmeknél a <b><i class="ic ic-plus"></i></b> gombbal tudsz hozzáadni.<br><br><a class="pbtn info" href="#/tar">Filmtár</a></div>`}</div>`;
 }
 export function search(q = '') {
   cleanup();
@@ -259,7 +378,7 @@ export function search(q = '') {
   document.title = 'Keresés · HGWS';
   const had = document.activeElement?.id;
   $('#page').innerHTML = `<div class="pg"><h1 class="gold">Keresés</h1><div class="bigsearch"><input id="bq" type="search" placeholder="Címek, műfajok, évek…" value="${esc(q)}" autocomplete="off"></div>
-    ${res.length ? `<p class="lead" style="margin-top:1.2rem">${nq ? `Találatok erre: „${esc(q)}”` : 'Minden cím'}</p><div class="grid">${res.map(v => tile(v)).join('')}</div>` : `<div class="noresult"><div class="big">🔍</div>Nincs találat erre: „${esc(q)}”.</div>`}</div>`;
+    ${res.length ? `<p class="lead" style="margin-top:1.2rem">${nq ? `Találatok erre: „${esc(q)}”` : 'Minden cím'}</p><div class="grid">${res.map(v => tile(v)).join('')}</div>` : `<div class="noresult"><div class="big"><i class="ic ic-search"></i></div>Nincs találat erre: „${esc(q)}”.</div>`}</div>`;
   const i = $('#bq');
   i.oninput = () => history.replaceState(null, '', '#/kereses/' + encodeURIComponent(i.value)) || search(i.value ? encodeURIComponent(i.value) : '');
   if (had === 'bq' || had === 'sInp' || !q) { if (had !== 'sInp') { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }
@@ -269,32 +388,56 @@ export function search(q = '') {
 let dlgUnsub = null;
 export function detail(id) {
   const v = film(id); if (!v) return;
-  closeDetail();
+  const prev = $('#dmodal'), back = prev?._back;
+  if (prev) closeDetail(true); else closeDetail();
   const el = document.createElement('div'); el.className = 'dmodal'; el.id = 'dmodal';
-  const similar = vis().filter(x => x.id !== v.id).sort((a, b) => ((b.kind === v.kind) - (a.kind === v.kind))).slice(0, 6);
+  // hasonló címek: azonos típus és műfaj előre
+  const score = x => (x.kind === v.kind) * 2 + (!!v.genre && x.genre === v.genre) * 3 + (!x.soon) * .5;
+  const similar = vis().filter(x => x.id !== v.id).sort((a, b) => score(b) - score(a)).slice(0, 6);
+  const bg = bgOf(img(v), v.id + v.title);
   el.innerHTML = `<div class="dlg" role="dialog" aria-modal="true">
-    <div class="dtop" style="background-image:url('${esc(img(v))}')"><button class="x" data-close aria-label="Bezárás">✕</button>
+    <div class="dtop${bg.cls}" style="${esc(bg.style)}"><div class="tv" id="dtv"></div><button class="x" data-close aria-label="Bezárás"><i class="ic ic-x"></i></button><button class="rnd dmute" id="dmute" hidden title="Hang">${I('volume-x')}</button>
       <div class="c"><div class="orig"><img src="img/logo.webp" alt=""><span><b>HGWS</b> ${esc((v.kind || 'Film').toUpperCase())}</span></div><h2>${esc(v.title)}</h2>
-        <div class="hbtns">${!v.soon && v.hasVideo ? `<a class="pbtn play" href="#/nez/${esc(v.id)}"><i>▶</i>Lejátszás</a>` : `<span class="pbtn gold" style="cursor:default"><i>🔔</i>${v.premiere ? esc(huDate(v.premiere)) : 'Hamarosan'}</span>`}
-          <button class="rnd${inList(v.id) ? ' on' : ''}" data-mylist="${esc(v.id)}" title="Saját lista">${inList(v.id) ? '✓' : '＋'}</button>
-          <button class="rnd" data-share="${esc(v.id)}" title="Megosztás">📤</button></div></div></div>
+        <div class="hbtns">${!v.soon && v.hasVideo ? `<a class="pbtn play" href="#/nez/${esc(v.id)}"><i class="ic ic-play"></i>Lejátszás</a>${guest() ? '' : `<button class="pbtn info" data-party="${esc(v.id)}"><i class="ic ic-popcorn"></i>Közös nézés</button>`}` : `<span class="pbtn gold" style="cursor:default"><i class="ic ic-calendar"></i>${v.premiere ? esc(huDate(v.premiere)) : 'Hamarosan'}</span>${alertBtn(v)}`}
+          <button class="rnd${inList(v.id) ? ' on' : ''}" data-mylist="${esc(v.id)}" title="Saját lista">${inList(v.id) ? '<i class="ic ic-check"></i>' : '<i class="ic ic-plus"></i>'}</button>
+          <button class="rnd" data-share="${esc(v.id)}" title="Megosztás"><i class="ic ic-share-2"></i></button></div></div></div>
     <div class="dbody">
       <div><div class="hmeta" style="margin:0 0 .8rem">${v.soon ? `<span class="soonb">${esc((v.status || 'Hamarosan').toUpperCase())}</span>` : isNew(v) ? '<span class="new">ÚJ</span>' : ''}${[v.year, v.len].filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('')}${v.genre ? `<span class="box">${esc(v.genre)}</span>` : ''}</div>
         ${v.en ? `<p style="font-style:italic;color:#bfb8a9;margin-bottom:.6rem">${esc(v.en)}</p>` : ''}<p class="desc">${esc(v.desc || '')}</p></div>
-      <div class="side2"><div><b>Típus:</b> ${esc(v.kind || 'Film')}</div>${v.genre ? `<div><b>Műfaj:</b> ${esc(v.genre)}</div>` : ''}${v.premiere ? `<div><b>Premier:</b> ${esc(huDate(v.premiere))}</div>` : ''}<div><b>Stúdió:</b> HGWS Studios</div></div>
+      <div class="side2"><div><b>Típus:</b> ${esc(v.kind || 'Film')}</div>${v.genre ? `<div><b>Műfaj:</b> ${esc(v.genre)}</div>` : ''}${v.premiere ? `<div><b>Premier:</b> ${esc(huDate(v.premiere))}</div>` : ''}<div><b>Stúdió:</b> HGWS Studios</div>
+        <div class="dfacts">${RT.avg[v.id] ? `<span>${I('star')} ${RT.avg[v.id].toFixed(1).replace('.', ',')} · ${RT.n[v.id]} értékelés</span>` : ''}${progOf(v.id) ? `<span class="g">${I('history')} ${leftLabel(progOf(v.id))}</span>` : ''}${inList(v.id) ? `<span>${I('check')} A listádon</span>` : ''}</div></div>
       ${v.soon ? `<div class="stagebox"><h4>GYÁRTÁSI ÁLLAPOT</h4>${stageHtml(v.stage ?? 0)}</div>` : ''}
       <div class="sect"><h3>Értékelések és hozzászólások</h3><div class="cmts" id="cmts"></div></div>
-      ${similar.length ? `<div class="sect"><h3>További HGWS-címek</h3><div class="grid" style="margin-top:0">${similar.map(x => tile(x)).join('')}</div></div>` : ''}
+      ${similar.length ? `<div class="sect"><h3>Hasonló címek</h3><div class="simg">${similar.map(x => { const b = bgOf(x.poster || img(x), x.id + x.title);
+        return `<button class="sim" data-info="${esc(x.id)}"><div class="ph${b.cls}" style="${esc(b.style)}"></div><div><b>${esc(x.title)}</b><small>${esc([x.kind || 'Film', x.year, x.soon ? 'Hamarosan' : RT.avg[x.id] ? '★ ' + RT.avg[x.id].toFixed(1).replace('.', ',') : ''].filter(Boolean).join(' · '))}</small></div></button>`; }).join('')}</div></div>` : ''}
     </div></div>`;
   document.body.appendChild(el); document.body.style.overflow = 'hidden';
   el.addEventListener('click', e => { if (e.target === el || e.target.closest('[data-close]')) closeDetail(); });
   el._key = e => { if (e.key === 'Escape' && document.body.lastElementChild === el) closeDetail(); };
   addEventListener('keydown', el._key);
   dlgUnsub = social($('#cmts', el), v.id);
-  if (!location.hash.startsWith('#/film/')) { el._back = location.hash || '#/'; history.pushState(null, '', '#/film/' + v.id); }
+  applyTint(el, img(v));
+  dTrailer(v, el);
+  if (prev) { el._back = back; history.replaceState(null, '', '#/film/' + v.id); }   // részletekből másik címre: nem halmozzuk az előzményeket
+  else if (!location.hash.startsWith('#/film/')) { el._back = location.hash || '#/'; history.pushState(null, '', '#/film/' + v.id); }
+}
+/* részleteknél hang nélkül induló előzetes (YouTube), mint a mozis oldalakon */
+async function dTrailer(v, el) {
+  clearTimeout(dTimer);
+  if (v.soon || !v.hasVideo || matchMedia('(prefers-reduced-motion: reduce)').matches || innerWidth < 640) return;
+  let src = {}; try { src = (await FB.getDoc(FB.doc(db, 'videoSources', v.id))).data() || {}; } catch (_) { return; }
+  const yt = src.youtube || v.trailer; if (!yt || !el.isConnected) return;
+  dTimer = setTimeout(() => {
+    const box = $('#dtv', el); if (!box) return;
+    box.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${esc(yt)}?autoplay=1&mute=1&controls=0&loop=1&playlist=${esc(yt)}&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&enablejsapi=1&start=20" allow="autoplay; encrypted-media" tabindex="-1" title=""></iframe>`;
+    setTimeout(() => box.classList.add('on'), 1800);
+    const mb = $('#dmute', el); mb.hidden = false; let muted = true;
+    mb.onclick = () => { muted = !muted; box.querySelector('iframe')?.contentWindow.postMessage(JSON.stringify({ event: 'command', func: muted ? 'mute' : 'unMute', args: [] }), '*'); mb.innerHTML = I(muted ? 'volume-x' : 'volume-2'); };
+  }, 1400);
 }
 export function closeDetail(fromRoute) {
   const el = $('#dmodal'); if (!el) return;
+  clearTimeout(dTimer);
   removeEventListener('keydown', el._key); dlgUnsub && dlgUnsub(); dlgUnsub = null;
   el.remove(); document.body.style.overflow = '';
   if (!fromRoute && location.hash.startsWith('#/film/')) { if (el._back) history.back(); else history.replaceState(null, '', '#/'); }
@@ -305,18 +448,19 @@ export const detailOpen = () => !!$('#dmodal');
 export async function watch(id) {
   cleanup();
   const v = film(id);
-  if (!v) { $('#page').innerHTML = '<div class="pg"><div class="noresult"><div class="big">🎬</div>Ez a film nem található.</div></div>'; return; }
+  if (!v) { $('#page').innerHTML = '<div class="pg"><div class="noresult"><div class="big"><i class="ic ic-clapperboard"></i></div>Ez a film nem található.</div></div>'; return; }
   document.title = v.title + ' · HGWS';
   const more = vis().filter(x => x.id !== v.id);
   const next = more.find(x => !x.soon && x.hasVideo);
-  $('#page').innerHTML = `<div class="watch"><div class="wframe" id="wf"><div class="psoon" style="background-image:url('${esc(img(v))}')"><div><div class="spin" style="margin:0 auto"></div></div></div></div><a class="wback" href="#/">‹ Vissza</a>
+  $('#page').innerHTML = `<div class="watch" id="watch"><div class="ambw" id="ambw"><div class="wframe" id="wf"><div class="psoon" style="background-image:url('${esc(img(v))}')"><div><div class="spin" style="margin:0 auto"></div></div></div></div></div><a class="wback" href="#/">${I('arrow-left')} Vissza</a>
     <div class="winfo"><div class="orig"><img src="img/logo.webp" alt=""><span><b>HGWS</b> ${esc((v.kind || 'Film').toUpperCase())}</span></div><h1>${esc(v.title)}</h1>
       <div class="wrow"><div><div class="hmeta" style="margin-top:.4rem">${[v.year, v.len].filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('')}${v.genre ? `<span class="box">${esc(v.genre)}</span>` : ''}<span class="ravgmini" id="wavg"></span></div>
         <p style="margin-top:.9rem;line-height:1.65;color:#e2dccf">${esc(v.desc || '')}</p>
-        <div class="hbtns"><button class="pbtn info" data-mylist="${esc(v.id)}"><i>${inList(v.id) ? '✓' : '＋'}</i>Saját lista</button><button class="pbtn info" data-share="${esc(v.id)}"><i>📤</i>Megosztás</button></div>
+        <div class="hbtns"><button class="pbtn info" data-mylist="${esc(v.id)}"><i class="ic ic-${inList(v.id) ? 'check' : 'plus'}"></i>Saját lista</button><button class="pbtn info" data-share="${esc(v.id)}"><i class="ic ic-share-2"></i>Megosztás</button>${!v.soon && v.hasVideo && !guest() ? `<button class="pbtn info" data-party="${esc(v.id)}"><i class="ic ic-popcorn"></i>Közös nézés</button>` : ''}${alertBtn(v)}</div>
         <div class="sect" style="margin-top:2rem"><h3 style="font-size:1.3rem;font-weight:700;margin-bottom:.8rem">Értékelések és hozzászólások</h3><div class="cmts" id="cmts"></div></div></div>
       <div>${more.length ? `<h3 style="font-size:1.1rem;font-weight:700;margin-bottom:.8rem">Következő</h3><div class="grid" style="margin-top:0;grid-template-columns:1fr">${more.slice(0, 4).map(x => tile(x)).join('')}</div>` : ''}</div></div></div></div>`;
   unsubs.push(social($('#cmts'), v.id, $('#wavg')));
+  applyTint($('#watch'), img(v));
   let src = {};
   if (!v.soon) { try { src = (await FB.getDoc(FB.doc(db, 'videoSources', v.id))).data() || {}; } catch (_) {} }
   const wf = $('#wf'); if (!wf || location.hash !== '#/nez/' + id) return;
@@ -324,11 +468,13 @@ export async function watch(id) {
   if (!v.soon && (src.youtube || src.mp4)) {
     stopTrack(); track.id = v.id;
     vp = VP.mount(wf, {
-      youtube: src.mp4 ? '' : src.youtube, mp4: src.mp4 || '', poster: img(v), title: v.title, start,
+      youtube: src.mp4 ? '' : src.youtube, mp4: src.mp4 || '', vtt: src.vtt || '', poster: img(v), title: v.title, start,
       onTime: note, onPause: flush, onEnd: flush,
       next: next ? { title: next.title, href: '#/nez/' + next.id, poster: next.poster || img(next) } : null
     });
     wf.focus({ preventScroll: true });
+    countView(v.id);
+    ambStop = ambilight($('#ambw'), { img: src.youtube && !src.mp4 ? `https://i.ytimg.com/vi/${src.youtube}/hqdefault.jpg` : img(v) });
   }
   else wf.innerHTML = `<div class="psoon" style="background-image:url('${esc(img(v))}')"><div><b>HAMAROSAN</b><span>${v.premiere ? 'Premier: ' + esc(huDate(v.premiere)) : 'A videó még nem érhető el.'}</span>${v.soon ? stageHtml(v.stage ?? 0) : ''}</div></div>`;
 }
@@ -391,8 +537,8 @@ function social(box, vid, avgEl) {
 function comments(box, vid, ratings = () => ({})) {
   const me = C.S.me, uid = C.uid();
   const mu = toDate(me?.mutedUntil) > new Date();
-  box.innerHTML = `${guest() ? `<div class="cnote guestnote">👀 Vendégként csak nézni tudsz. <button class="link" data-guestreg>Regisztrálj</button> vagy <button class="link" data-guestlogin>lépj be</button>, hogy hozzászólhass és értékelhess.</div>`
-    : mu ? `<div class="cnote">🔇 Némítva vagy eddig: ${timeLabel(me.mutedUntil)}</div>` : `<div class="cform">${avatar(me, 40)}<div class="cb"><textarea maxlength="1500" placeholder="Mit gondolsz róla?"></textarea><div><button class="btn primary sm" data-send disabled>Küldés</button></div></div></div>`}<div data-list></div>`;
+  box.innerHTML = `${guest() ? `<div class="cnote guestnote"><i class="ic ic-eye"></i> Vendégként csak nézni tudsz. <button class="link" data-guestreg>Regisztrálj</button> vagy <button class="link" data-guestlogin>lépj be</button>, hogy hozzászólhass és értékelhess.</div>`
+    : mu ? `<div class="cnote"><i class="ic ic-volume-x"></i> Némítva vagy eddig: ${timeLabel(me.mutedUntil)}</div>` : `<div class="cform">${avatar(me, 40)}<div class="cb"><textarea maxlength="1500" placeholder="Mit gondolsz róla?"></textarea><div><button class="btn primary sm" data-send disabled>Küldés</button></div></div></div>`}<div data-list></div>`;
   const ta = $('textarea', box), send = $('[data-send]', box), list = $('[data-list]', box);
   const col = FB.collection(db, 'videos', vid, 'comments');
   if (ta) {
@@ -407,8 +553,8 @@ function comments(box, vid, ratings = () => ({})) {
     if (failed) { list.innerHTML = `<p class="hint">${esc(failed)}</p>`; return; }
     const R = ratings();
     list.innerHTML = items.length ? items.map(c => { const u = C.U(c.uid), likes = c.reactions?.['👍'] || [], r = R[c.uid];
-      return `<div class="cmt" data-c="${esc(c.id)}">${`<span data-u="${esc(u.id)}" style="cursor:pointer">${avatar(u, 40)}</span>`}<div class="cc"><div class="ch"><b data-u="${esc(u.id)}" style="color:${u.role && u.role !== 'user' ? ROLES[u.role].color : 'inherit'}">${esc(u.name)}</b>${C.tagPills(u)}${r ? starRow(r, 'sm') : ''}<time>${timeLabel(c.createdAt)}</time></div>
-        <div class="ct">${esc(c.text)}</div><div class="ca"><button data-like class="${likes.includes(uid) ? 'me' : ''}">👍 ${likes.length || ''}</button>${!guest() && (c.uid === uid || C.isMod()) ? '<button data-del>Törlés</button>' : ''}</div></div></div>`; }).join('')
+      return `<div class="cmt" data-c="${esc(c.id)}">${`<span data-u="${esc(u.id)}" style="cursor:pointer">${avatar(u, 40)}</span>`}<div class="cc"><div class="ch"><b data-u="${esc(u.id)}" style="color:${u.role && u.role !== 'user' && ROLES[u.role] ? ROLES[u.role].color : 'inherit'}">${esc(u.name)}</b>${C.tagPills(u)}${r ? starRow(r, 'sm') : ''}<time>${timeLabel(c.createdAt)}</time></div>
+        <div class="ct">${esc(c.text)}</div><div class="ca"><button data-like class="${likes.includes(uid) ? 'me' : ''}"><i class="ic ic-thumbs-up"></i> ${likes.length || ''}</button>${!guest() && (c.uid === uid || C.can('deleteMessages')) ? '<button data-del>Törlés</button>' : ''}</div></div></div>`; }).join('')
       : `<p class="hint">Még senki nem szólt hozzá.${guest() ? '' : ' Légy te az első!'}</p>`;
   };
   const un = FB.onSnapshot(FB.query(col, FB.orderBy('createdAt', 'desc'), FB.limit(100)), s => {
@@ -436,13 +582,15 @@ export async function toggleList(id) {
 }
 export function listChanged() {
   $$('[data-mylist]').forEach(b => { const on = inList(b.dataset.mylist);
-    if (b.classList.contains('rnd')) { b.classList.toggle('on', on); b.textContent = on ? '✓' : '＋'; }
-    else { const i = b.querySelector('i'); if (i) i.textContent = on ? '✓' : (b.classList.contains('gold') ? '🔔' : '＋'); if (b.classList.contains('gold')) b.lastChild.textContent = on ? 'A listádon' : 'Emlékeztess'; } });
+    if (b.classList.contains('rnd')) { b.classList.toggle('on', on); b.innerHTML = on ? '<i class="ic ic-check"></i>' : '<i class="ic ic-plus"></i>'; }
+    else { const i = b.querySelector('i'); if (i) i.className = 'ic ic-' + (on ? 'check' : b.classList.contains('gold') ? 'bell' : 'plus'); if (b.classList.contains('gold')) b.lastChild.textContent = on ? 'A listádon' : 'Emlékeztess'; } });
 }
 
 /* ===================== kattintások ===================== */
 export function onClick(e) {
   const t = e.target;
+  const al = t.closest('[data-alert]'); if (al) { e.preventDefault(); toggleAlert(al.dataset.alert, al); return true; }
+  const pa = t.closest('[data-party]'); if (pa) { e.preventDefault(); Party.create(pa.dataset.party); return true; }
   if (t.closest('[data-copymail]')) { e.preventDefault(); navigator.clipboard?.writeText(CONTACT).then(() => toast('E-mail-cím kimásolva ✓'), () => toast(CONTACT)); return true; }
   if (t.closest('[data-guestreg]')) { e.preventDefault(); C.guestLeave('reg'); return true; }
   if (t.closest('[data-guestlogin]')) { e.preventDefault(); C.guestLeave('login'); return true; }

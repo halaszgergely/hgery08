@@ -1,0 +1,321 @@
+/* HGWS – egységes arculat (2026. nov.): 2 betűtípus, 3 gombtípus, vonalas ikonok, üveg, mozgás, vízcsepp-elemek.
+   Utolsóként töltődik be, a korábbi stílusokat írja felül. */
+
+/* ---------- betűk: Cinzel csak a nagy címekben, minden más Inter ---------- */
+:root{--body:var(--text);--mono:var(--text);--ease:cubic-bezier(.2,.8,.2,1);--tint:232,182,86}
+.stile b,.pst b,.hbr b,.count b,.lbv,time,.tbdg,.tile .left{font-variant-numeric:tabular-nums}
+.eyebrow{font-weight:600;letter-spacing:.26em;font-size:.68rem;color:#7fbfee}
+.field label,.lbl{font-weight:600;letter-spacing:.16em;font-size:.68rem}
+.tsearch kbd{font-family:var(--text);font-weight:600}
+.orig{letter-spacing:.3em;font-weight:600;font-size:.72rem}
+.tile.top .num{font-family:var(--head);font-weight:900;letter-spacing:-.02em}
+.acard b{font-family:var(--text);font-weight:800;letter-spacing:0;font-size:1.08rem}
+.zero .zs{letter-spacing:.3em}
+
+/* ---------- gombok: 1) elsődleges (arany) 2) másodlagos (üveg) 3) szöveges ---------- */
+.btn,.pbtn{font-family:var(--text);text-transform:none;letter-spacing:0;font-weight:600;border-radius:12px;gap:.55rem;line-height:1.1;
+  transition:transform .15s var(--ease),box-shadow .25s,background .2s,border-color .2s,color .2s,filter .2s;position:relative;overflow:hidden;isolation:isolate}
+.btn{padding:.72rem 1.15rem;font-size:.92rem}
+.btn.sm{padding:.48rem .8rem;font-size:.82rem;letter-spacing:0;border-radius:10px;gap:.4rem}
+.pbtn{padding:.82rem 1.5rem .82rem 1.3rem;font-size:1rem}
+.btn .ic,.pbtn .ic{width:1.15em;height:1.15em;font-size:1em}
+.pbtn i{font-size:1em}
+.btn.primary,.btn.goldb,.pbtn.play,.pbtn.gold,.atabs a.on{color:#1d1204;border:0;
+  background:linear-gradient(180deg,#ffe8ad 0%,#f0c46a 45%,#d9a043 100%);
+  box-shadow:0 10px 28px -10px rgba(232,182,86,.7),inset 0 1px 0 rgba(255,255,255,.65),inset 0 -1px 0 rgba(120,70,10,.25)}
+.btn.primary:hover,.btn.goldb:hover,.pbtn.play:hover,.pbtn.gold:hover{filter:brightness(1.06);box-shadow:0 14px 34px -10px rgba(232,182,86,.85),inset 0 1px 0 rgba(255,255,255,.65)}
+.btn.plain,.btn.ghost,.pbtn.info,.chipsrow button,.pills a{color:#f1ece2;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);
+  -webkit-backdrop-filter:blur(14px) saturate(140%);backdrop-filter:blur(14px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.btn.plain:hover,.btn.ghost:hover,.pbtn.info:hover,.chipsrow button:hover,.pills a:hover{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.24);color:#fff}
+.chipsrow button.on,.pills a.on{background:#f4efe4;color:#0b0d12;border-color:#f4efe4}
+.btn.text{background:none;border:0;color:var(--gold2);padding-inline:.35rem;box-shadow:none}
+.btn.text:hover{color:var(--gold1);text-decoration:underline;text-underline-offset:4px}
+.btn.danger{border-radius:12px}
+.btn:active,.pbtn:active{transform:scale(.97)}
+.btn:focus-visible,.pbtn:focus-visible,.rnd:focus-visible,.tile:focus-visible,a:focus-visible,button:focus-visible{outline:2px solid rgba(var(--tint),.85);outline-offset:2px}
+.rnd{background:rgba(14,18,28,.55);border:1.5px solid rgba(255,255,255,.35);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.rnd .ic{width:1.05em;height:1.05em}
+.tile .ov .b .rnd.pl{background:linear-gradient(180deg,#ffe8ad,#e8b656);border-color:transparent;color:#1d1204}
+.atabs a{display:inline-flex;align-items:center;gap:.45rem;border-radius:12px;background:rgba(255,255,255,.04)}
+.atabs a:hover{background:rgba(255,255,255,.09);color:#fff}
+.acard .af i{display:inline-flex;align-items:center;gap:.35rem;letter-spacing:0;font-weight:700;color:#1d1204;background:linear-gradient(180deg,#ffe8ad,#e8b656);padding:.38rem .75rem;border-radius:10px}
+.acard .af i .ic{width:.95em;height:.95em}
+.ibtn .ic{width:1.15rem;height:1.15rem}
+
+/* ---------- ikonok a menükben ---------- */
+.anav i{filter:none!important;width:22px;opacity:.72;transition:opacity .2s,color .2s,transform .2s}
+.anav .ic{width:21px;height:21px;font-size:inherit}
+.anav a:hover i,.anav button:hover i{opacity:1}
+.anav a.on i{opacity:1;color:var(--gold2)}
+.anav a.on{background:linear-gradient(90deg,rgba(232,182,86,.12),rgba(255,255,255,.04));color:#fff}
+.ticon .ic{width:20px;height:20px}
+.tsearch .ticon .ic{width:18px;height:18px;opacity:.75}
+.tabbar a i{filter:none!important}
+.tabbar .ic{width:22px;height:22px}
+.tabbar a.on{color:var(--gold1)}
+.tabbar a.on i{color:var(--gold2)}
+.mhead .hash .ic,.lic .ic,.nic .ic,.icat .ic{width:1.1em;height:1.1em}
+.tg .ic{width:1.05em;height:1.05em;vertical-align:-.22em}
+.ccard .ico,.cstrip .cic{display:grid;place-items:center;width:52px;height:52px;border-radius:16px;font-size:1.4rem;color:var(--gold2);
+  background:linear-gradient(160deg,rgba(232,182,86,.2),rgba(232,182,86,.04));border:1px solid rgba(232,182,86,.3);filter:none}
+.cstrip .cic{width:58px;height:58px;flex:none}
+.odot{display:inline-block;width:.55em;height:.55em;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(94,224,138,.18);margin-right:.4em;vertical-align:.08em}
+.bigsearch::before{content:"";width:20px;height:20px;background:currentColor;-webkit-mask:var(--i) center/contain no-repeat;mask:var(--i) center/contain no-repeat;
+  --i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m21 21-4.34-4.34'/%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3C/svg%3E")}
+
+/* ---------- üveg fejléc: görgetésre homályos ---------- */
+.topnav{background:linear-gradient(180deg,rgba(4,6,11,.7),rgba(4,6,11,0));border-bottom:1px solid transparent;transition:left .25s ease,background .35s,border-color .35s,box-shadow .35s}
+.topnav.solid,body.chatmode .topnav{background:rgba(6,9,16,.58);-webkit-backdrop-filter:blur(20px) saturate(170%);backdrop-filter:blur(20px) saturate(170%);
+  border-bottom-color:rgba(255,255,255,.07);box-shadow:0 10px 30px -18px rgba(0,0,0,.9)}
+.tsearch{transition:border-color .2s,background .2s,box-shadow .2s}
+.tsearch:hover{background:rgba(18,22,32,.75)!important}
+
+/* ---------- avatar: egyedi színátmenet ---------- */
+.av{color:#fff;font-family:var(--text);font-weight:700;letter-spacing:0;text-shadow:0 1px 2px rgba(0,0,0,.35);
+  background:radial-gradient(circle at 30% 22%,rgba(255,255,255,.4),transparent 46%),linear-gradient(140deg,var(--c),var(--c2,var(--c)));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}
+
+/* ---------- kiemelt film ---------- */
+.hero .bg.art{background:var(--art);animation:kb 30s ease-in-out infinite alternate}
+.hero .bg.art::after,.dtop.art::before{content:"";position:absolute;right:8%;top:50%;width:min(46vh,40vw);aspect-ratio:1;transform:translateY(-55%);
+  background:url(../img/logo.webp) center/contain no-repeat;opacity:.16;filter:blur(.5px) drop-shadow(0 30px 60px rgba(0,0,0,.6))}
+.hero::before{background:linear-gradient(77deg,rgba(5,7,12,.94) 0%,rgba(5,7,12,.6) 34%,rgba(5,7,12,0) 64%),linear-gradient(0deg,#05070c 0%,rgba(5,7,12,.4) 24%,rgba(5,7,12,0) 48%),
+  radial-gradient(80% 60% at 20% 100%,rgba(var(--tint),.16),transparent 70%)}
+.hero .cont{display:block;margin-top:.9rem;font-size:.86rem;color:#e6dfd0;max-width:22rem}
+.hero .cont span{display:block;height:4px;border-radius:4px;background:rgba(255,255,255,.18);margin-top:.4rem;overflow:hidden}
+.hero .cont span i{display:block;height:100%;background:linear-gradient(90deg,var(--gold2),var(--water))}
+.rows{margin-top:-5rem}
+
+/* ---------- HGWS szalag: vékony, halk, a lábléc fölött ---------- */
+.ticker{transform:none;border-block:1px solid rgba(255,255,255,.06);background:linear-gradient(90deg,#05070c,rgba(232,182,86,.05),#05070c);padding:.55rem 0;margin:1rem 0 0;opacity:.85;
+  -webkit-mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.tk{font-family:var(--text);font-weight:600;font-size:.72rem;letter-spacing:.42em;gap:2.2rem;animation-duration:60s}
+.tk span{background:none;color:#9b9180;-webkit-text-fill-color:currentColor;padding:0}
+.tk b{color:rgba(232,182,86,.55);font-size:.6em}
+
+/* ---------- üres állapotok ---------- */
+.big:has(.ic),.noresult .big,.empty .big,.full .big,.ne>.ic{display:grid;place-items:center;width:84px;height:84px;margin:0 auto .9rem;border-radius:50%;font-size:2rem;color:var(--gold2);
+  background:radial-gradient(circle at 50% 30%,rgba(232,182,86,.22),rgba(232,182,86,.04) 70%);border:1px solid rgba(232,182,86,.28);
+  box-shadow:0 0 0 8px rgba(232,182,86,.04),0 18px 40px -16px rgba(232,182,86,.4)}
+.big .ic{width:36px;height:36px}
+.welcome .big{color:#fff;background:linear-gradient(160deg,#2f8fe0,#13406e);border:0}
+.noresult{max-width:30rem;margin-inline:auto;line-height:1.6}
+.empty{border-style:solid;border-color:rgba(255,255,255,.07);background:radial-gradient(60% 80% at 50% 0%,rgba(232,182,86,.06),transparent 70%),rgba(255,255,255,.015)}
+.estate{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.35rem;padding:1.4rem 1rem;color:var(--muted);font-size:.9rem}
+.estate .ic{width:28px;height:28px;color:rgba(232,182,86,.65);margin-bottom:.3rem}
+.estate b{color:var(--ink2);font-weight:600}
+.ne>.ic{width:64px;height:64px;padding:16px;font-size:1rem}
+
+/* ---------- oldalsáv: összecsukható online lista ---------- */
+.aoh{display:flex;align-items:center;gap:.5rem;width:100%;cursor:pointer;font-weight:600;letter-spacing:.24em;font-size:.66rem;border-radius:8px;padding:.35rem .85rem .55rem}
+.aoh:hover{color:#cfd6df}
+.aoh .ic{margin-left:auto;width:14px;height:14px;transition:transform .25s var(--ease)}
+.aonline.min .aoh .ic{transform:rotate(-90deg)}
+.aoh b{border:0;background:rgba(94,224,138,.14);color:var(--green);border-radius:6px;padding:.05rem .45rem;font-weight:700}
+.aonline.min #onList{display:flex;flex-wrap:wrap;gap:.35rem;padding:0 .7rem;overflow:hidden;max-height:84px}
+.aonline.min .onu{width:auto;padding:0}
+.aonline.min .onu b{display:none}
+#onList{overflow-y:auto;scrollbar-width:thin}
+
+/* ---------- görgetősáv ---------- */
+html{scrollbar-color:rgba(232,182,86,.28) transparent;scrollbar-width:thin}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(232,182,86,.35),rgba(108,198,255,.25));border-radius:10px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,rgba(232,182,86,.6),rgba(108,198,255,.45));background-clip:padding-box}
+
+/* ---------- betöltés: csillogó helykitöltők ---------- */
+.skel{position:relative;overflow:hidden;background:rgba(255,255,255,.05);border-radius:12px;color:transparent!important}
+.skel::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);animation:shim 1.4s infinite}
+@keyframes shim{to{transform:translateX(100%)}}
+.skl{display:flex;flex-direction:column;gap:.55rem}
+.skl .skel{height:14px}
+.skl .skel:nth-child(2n){width:78%}.skl .skel:nth-child(3n){width:62%}
+.sktiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:1rem;margin-top:1.6rem}
+.sktiles .skel{aspect-ratio:16/9}
+
+/* ---------- vízcsepp betöltő (minden .spin) ---------- */
+.spin{width:22px;height:22px;border:0;border-radius:0 50% 50% 50%;transform:rotate(45deg);margin:1rem auto;
+  background:linear-gradient(135deg,#bfe8ff,var(--water) 55%,var(--water2));box-shadow:0 0 18px rgba(108,198,255,.45);animation:drip 1.1s var(--ease) infinite}
+@keyframes drip{0%{transform:translateY(-10px) rotate(45deg) scale(.6);opacity:0}35%{opacity:1}70%{transform:translateY(6px) rotate(45deg) scale(1)}100%{transform:translateY(8px) rotate(45deg) scale(.2,.2);opacity:0}}
+
+/* ---------- indítókép: csepp esik, hullámot vet, előjön a logó ---------- */
+#boot{position:fixed;inset:0;z-index:500;display:grid;place-items:center;background:radial-gradient(60% 50% at 50% 55%,#0b1527,#04070e 70%);transition:opacity .5s,visibility .5s}
+#boot.out{opacity:0;visibility:hidden}
+#boot img{width:min(150px,34vw);opacity:0;animation:bootlogo .8s .75s var(--ease) both;filter:drop-shadow(0 12px 40px rgba(232,182,86,.35))}
+#boot::before{content:"";position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:0 50% 50% 50%;
+  background:linear-gradient(135deg,#fff3c4,#e8b656 55%,#a8702a);box-shadow:0 0 22px rgba(232,182,86,.7);animation:bootdrop .75s cubic-bezier(.5,0,.9,.5) both}
+#boot::after{content:"";position:absolute;left:50%;top:50%;width:260px;height:260px;margin:-130px 0 0 -130px;border-radius:50%;border:2px solid rgba(232,182,86,.55);
+  box-shadow:0 0 0 18px rgba(232,182,86,.06),0 0 0 44px rgba(108,198,255,.04);animation:bootring 1.4s .7s var(--ease) both}
+@keyframes bootdrop{from{transform:translateY(-42vh) rotate(45deg) scale(.7);opacity:0}20%{opacity:1}to{transform:translateY(0) rotate(45deg) scale(1);opacity:1}}
+@keyframes bootring{from{transform:scale(.05);opacity:1}to{transform:scale(1.6);opacity:0}}
+@keyframes bootlogo{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
+#boot.go::before{opacity:0}
+
+/* ---------- kattintás: vízfodrozódás ---------- */
+.rip{position:absolute;z-index:-1;border-radius:50%;pointer-events:none;width:12px;height:12px;margin:-6px 0 0 -6px;
+  background:radial-gradient(circle,rgba(255,255,255,.4),rgba(255,255,255,.12) 45%,transparent 70%);animation:rip .65s var(--ease) forwards}
+@keyframes rip{to{transform:scale(var(--k,22));opacity:0}}
+
+/* ---------- oldalváltás ---------- */
+#page.pgin>*:not(.hero):not(.watch){animation:pgIn .45s var(--ease) both}
+#page.pgin>.hero .in{animation:heroIn 1s var(--ease) both}
+@keyframes pgIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#page.pgin>*,.rip,#boot::before,#boot::after{animation:none!important}}
+
+/* ---------- csempék ---------- */
+.tile .im{transition:box-shadow .35s,filter .35s}
+.tile .im::before{content:"";position:absolute;inset:0;z-index:1;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);pointer-events:none;transition:box-shadow .3s}
+@media (hover:hover){.tile:hover .im::before{box-shadow:inset 0 0 0 1.5px rgba(232,182,86,.55)}}
+.tile .im.art{background:var(--art)}
+.tile .im.art::after{background:linear-gradient(0deg,rgba(5,7,12,.85),rgba(5,7,12,0) 55%),linear-gradient(rgba(8,12,22,.5),rgba(8,12,22,.5)),url(../img/logo.webp) 50% 40%/28% no-repeat;opacity:1}
+.tile .im.art{background-blend-mode:normal}
+.tile.top .im.art::after{background-size:auto,auto,52%}
+.tile:has(.trate) .logo,.tile .im.art .logo{display:none}
+.prr .ph.art{background:var(--art)}
+.seg a.on{background:#f4efe4;color:#0b0d12}
+.rowh h2{font-weight:700;letter-spacing:-.01em}
+.rowh h2 .ic{color:var(--gold2);margin-right:.35rem}
+
+/* ---------- animált grafikonok + buborék ---------- */
+.hbt i{transform-origin:left;animation:growX 1s var(--ease) both}
+.col i{transform-origin:bottom;animation:growY .9s var(--ease) both}
+.col:nth-child(3n) i{animation-delay:.05s}.col:nth-child(3n+1) i{animation-delay:.1s}
+@keyframes growX{from{transform:scaleX(0)}}
+@keyframes growY{from{transform:scaleY(0)}}
+.ctip{position:fixed;z-index:400;pointer-events:none;padding:.45rem .65rem;border-radius:10px;font-size:.8rem;font-weight:600;white-space:nowrap;
+  background:rgba(12,18,32,.92);border:1px solid rgba(255,255,255,.12);box-shadow:0 12px 30px rgba(0,0,0,.5);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  transform:translate(-50%,calc(-100% - 12px));opacity:0;transition:opacity .12s}
+.ctip.on{opacity:1}
+.stile{transition:transform .2s var(--ease),border-color .2s}
+.stile:hover{transform:translateY(-3px);border-color:rgba(232,182,86,.35)}
+
+/* ---------- ambilight + filmenkénti színárnyalat ---------- */
+.ambw{position:relative;isolation:isolate}
+.amb{position:absolute;inset:-4% -3%;z-index:-1;pointer-events:none;filter:blur(70px) saturate(1.6);opacity:.55;transform:scale(1.04);transition:opacity 1.2s}
+.amb canvas,.amb div{width:100%;height:100%;display:block;background:center/cover}
+.amb.img div{animation:breathe 8s ease-in-out infinite alternate}
+@keyframes breathe{from{opacity:.75;transform:scale(1)}to{opacity:1;transform:scale(1.06)}}
+.watch{background:radial-gradient(70% 60% at 50% 20%,rgba(var(--tint),.12),transparent 70%),#000;overflow-x:clip}
+.winfo{background:linear-gradient(180deg,transparent,#05070c 260px)}
+.party .ambw>.amb{inset:-10% -6%;opacity:.5}
+.watch .ambw>.amb{top:calc(var(--nav) - 2%)}
+
+/* ---------- moziszerű részletek ---------- */
+.dmodal .dlg{background:radial-gradient(90% 50% at 50% 0%,rgba(var(--tint),.16),transparent 70%),#0b0f19;border:1px solid rgba(var(--tint),.18)}
+.dtop{overflow:hidden;isolation:isolate}
+.dtop .tv{position:absolute;inset:0;z-index:0;opacity:0;transition:opacity 1.2s;pointer-events:none;overflow:hidden}
+.dtop .tv.on{opacity:1}
+.dtop .tv iframe{position:absolute;left:50%;top:50%;width:177.78%;height:100%;min-width:100%;min-height:56.25vw;transform:translate(-50%,-50%) scale(1.2);border:0}
+.dtop::after{z-index:1}
+.dtop .c{z-index:2}
+.dtop .dmute{position:absolute;right:1rem;bottom:1.2rem;z-index:3}
+.dtop.art{background:var(--art)}
+.dtop.art::before{z-index:0;right:6%;width:min(36vh,30%)}
+.dfacts{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.8rem}
+.dfacts span{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .65rem;border-radius:999px;font-size:.8rem;font-weight:600;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#ddd6c8}
+.dfacts span.g{color:var(--green);border-color:rgba(94,224,138,.3)}
+.dfacts .ic{width:1em;height:1em;color:rgba(var(--tint),1)}
+.simg{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.8rem}
+.sim{position:relative;display:block;border-radius:12px;overflow:hidden;text-decoration:none;color:var(--ink);background:#0d1424;border:1px solid rgba(255,255,255,.07);transition:transform .25s var(--ease),border-color .25s;cursor:pointer;text-align:left;width:100%}
+.sim:hover{transform:translateY(-3px);border-color:rgba(var(--tint),.5)}
+.sim .ph{aspect-ratio:16/9;background:#111 center/cover}
+.sim .ph.art{background:var(--art)}
+.sim div:last-child{padding:.6rem .7rem}
+.sim b{display:block;font-size:.92rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sim small{color:var(--muted);font-size:.76rem}
+
+/* ---------- gyorskereső (Ctrl+K) ---------- */
+.cmdk{position:fixed;inset:0;z-index:260;display:flex;justify-content:center;align-items:flex-start;padding:12vh 1rem 1rem;background:rgba(2,4,9,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:fadeUp .18s ease both}
+.cmdk .box{width:min(640px,100%);max-height:72vh;display:flex;flex-direction:column;border-radius:20px;overflow:hidden;
+  background:linear-gradient(180deg,rgba(18,26,44,.96),rgba(9,13,22,.97));border:1px solid rgba(255,255,255,.12);box-shadow:0 40px 100px -20px rgba(0,0,0,.9),0 0 0 1px rgba(232,182,86,.08);animation:pop .22s var(--ease) both}
+.cmdk .in{display:flex;align-items:center;gap:.7rem;padding:1rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.07)}
+.cmdk .in .ic{width:20px;height:20px;color:var(--gold2)}
+.cmdk input{flex:1;background:none;border:0;outline:none;font-size:1.1rem;box-shadow:none!important}
+.cmdk kbd{font:600 .7rem/1 var(--text);padding:.3rem .45rem;border-radius:6px;border:1px solid rgba(255,255,255,.18);color:#9aa3ad}
+.cmdk .res{overflow-y:auto;padding:.4rem}
+.cmdk h6{font-size:.64rem;letter-spacing:.24em;color:var(--muted);font-weight:700;padding:.75rem .7rem .35rem}
+.cmdk .it{display:flex;align-items:center;gap:.8rem;width:100%;padding:.55rem .7rem;border-radius:12px;text-align:left;color:var(--ink);text-decoration:none}
+.cmdk .it.on{background:rgba(232,182,86,.12);box-shadow:inset 0 0 0 1px rgba(232,182,86,.25)}
+.cmdk .it .th{width:64px;aspect-ratio:16/9;border-radius:7px;background:#111 center/cover;flex:none}
+.cmdk .it .th.art{background:var(--art)}
+.cmdk .it .th.sq{width:38px;aspect-ratio:1}
+.cmdk .it .gi{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.06);flex:none;color:var(--gold2)}
+.cmdk .it .gi .ic{width:19px;height:19px}
+.cmdk .it b{display:block;font-weight:600;font-size:.95rem}
+.cmdk .it small{color:var(--muted);font-size:.78rem}
+.cmdk .it .go{margin-left:auto;opacity:0;color:var(--gold2)}
+.cmdk .it.on .go{opacity:1}
+.cmdk .it mark{background:none;color:var(--gold1);font-weight:800}
+.cmdk .ft{display:flex;gap:1rem;padding:.6rem 1rem;border-top:1px solid rgba(255,255,255,.07);font-size:.75rem;color:var(--muted)}
+.cmdk .ft span{display:inline-flex;align-items:center;gap:.35rem}
+.cmdk .none{padding:2.2rem 1rem;text-align:center;color:var(--muted)}
+@media (max-width:640px){.cmdk{padding-top:4vh}.cmdk .ft{display:none}}
+
+/* ---------- kitüntetések ---------- */
+.pbox{margin-top:1rem;padding:1.2rem;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid var(--line2)}
+.pbox h3,.pcols h3{display:flex;align-items:center;gap:.45rem;font-size:1rem;font-weight:700;margin-bottom:.9rem}
+.pbox h3 .ic,.pcols h3 .ic{color:var(--gold2)}
+.pach{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.7rem}
+.ach{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:.35rem;padding:1rem .7rem .9rem;border-radius:16px;
+  background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);transition:transform .25s var(--ease),border-color .25s}
+.ach .bd{display:grid;place-items:center;width:58px;height:58px;border-radius:50%;color:#5b616c;background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.14)}
+.ach .bd .ic{width:26px;height:26px}
+.ach b{font-size:.86rem;font-weight:700;color:#8b8f97}
+.ach small{font-size:.74rem;color:#6d727b;line-height:1.35}
+.ach.on{border-color:color-mix(in srgb,var(--c) 40%,transparent);background:radial-gradient(90% 70% at 50% 0%,color-mix(in srgb,var(--c) 16%,transparent),transparent 70%),rgba(255,255,255,.03)}
+.ach.on .bd{color:#1d1204;border:0;background:radial-gradient(circle at 32% 25%,rgba(255,255,255,.75),transparent 40%),linear-gradient(150deg,color-mix(in srgb,var(--c) 70%,#fff),var(--c) 55%,color-mix(in srgb,var(--c) 60%,#000));
+  box-shadow:0 10px 26px -8px color-mix(in srgb,var(--c) 70%,transparent),inset 0 -2px 0 rgba(0,0,0,.2)}
+.ach.on b{color:var(--ink)}.ach.on small{color:var(--muted)}
+.ach.on:hover{transform:translateY(-3px)}
+.ach.on .bd::after{content:"";position:absolute;inset:0;border-radius:50%;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.55) 50%,transparent 65%);background-size:250% 100%;animation:shine 3.5s ease-in-out infinite}
+.ach .bd{position:relative;overflow:hidden}
+@keyframes shine{0%,60%{background-position:150% 0}100%{background-position:-60% 0}}
+.ach.new{animation:achpop .9s var(--ease) both}
+@keyframes achpop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:none}}
+.achcount{font-size:.8rem;color:var(--muted);font-weight:600;margin-left:.4rem}
+.achtoast{position:fixed;left:50%;top:calc(var(--nav) + 1rem);z-index:320;display:flex;align-items:center;gap:.9rem;padding:.8rem 1.2rem .8rem .8rem;border-radius:18px;
+  background:linear-gradient(120deg,rgba(40,30,10,.95),rgba(12,18,32,.96));border:1px solid rgba(232,182,86,.5);box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 40px rgba(232,182,86,.2);
+  transform:translateX(-50%);animation:achin .6s var(--ease) both;cursor:pointer}
+.achtoast.out{animation:achout .4s ease forwards}
+.achtoast .ach{padding:0;border:0;background:none}
+.achtoast small{display:block;font-size:.66rem;letter-spacing:.22em;color:var(--gold2);font-weight:700}
+.achtoast b{font-size:1rem}
+@keyframes achin{from{opacity:0;transform:translate(-50%,-20px) scale(.9)}}
+@keyframes achout{to{opacity:0;transform:translate(-50%,-14px)}}
+
+/* ---------- 404 ---------- */
+.nf{min-height:calc(100vh - 2rem);display:grid;place-items:center;text-align:center;padding:calc(var(--nav) + 2rem) var(--pad) 3rem;
+  background:radial-gradient(50% 40% at 50% 45%,rgba(232,182,86,.08),transparent 70%)}
+.nf .code{font-family:var(--head);font-weight:900;font-size:clamp(5rem,20vw,11rem);line-height:1;padding-top:.12em;letter-spacing:.04em;
+  background:linear-gradient(180deg,#fff7d6,var(--gold2) 55%,var(--gold3));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 20px 50px rgba(232,182,86,.25))}
+.nf .cactus{font-size:3.4rem;display:inline-block;animation:sway 3s ease-in-out infinite;transform-origin:bottom}
+@keyframes sway{50%{transform:rotate(6deg)}}
+.nf h1{font-family:var(--head);font-weight:900;font-size:clamp(1.3rem,3vw,1.9rem);margin-top:.8rem;color:var(--gold1);padding-top:.1em}
+.nf p{color:var(--muted);margin:.6rem auto 0;max-width:30rem;line-height:1.6}
+.nf .hbtns{justify-content:center}
+
+/* ---------- PWA telepítés ---------- */
+.instb{display:none}
+.caninstall .instb{display:flex}
+
+/* ---------- mobil finomítások ---------- */
+@media (max-width:860px){
+  .tabbar{background:rgba(6,9,16,.72);-webkit-backdrop-filter:blur(20px) saturate(170%);backdrop-filter:blur(20px) saturate(170%);border-top:1px solid rgba(255,255,255,.08)}
+  .tabbar a{font-size:.64rem;padding:.25rem 0}
+  .tabbar a.on::before{content:"";position:absolute;top:-.36rem;left:30%;right:30%;height:2px;border-radius:0 0 3px 3px;background:var(--gold2)}
+  .pbtn{padding:.75rem 1.2rem;font-size:.95rem}
+  .rows{margin-top:0}
+}
+.tile.cont .trate{display:none}
+.tile .left{background:rgba(5,7,12,.78);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.1)}
+
+/* ---------- felirat (CC) ---------- */
+.vp-row .vp-cc{position:relative}
+.vp-row .vp-cc svg{width:24px;height:24px}
+.vp-row .vp-cc.on{color:var(--gold2)}
+.vp-row .vp-cc.on::after{content:"";position:absolute;left:10px;right:10px;bottom:5px;height:2px;border-radius:2px;background:var(--gold2)}
+.vp-sub{position:absolute;left:50%;bottom:6%;z-index:4;transform:translateX(-50%);width:max-content;max-width:86%;text-align:center;pointer-events:none;line-height:1.5;transition:bottom .3s cubic-bezier(.2,.8,.2,1)}
+.vp-sub span{display:inline;padding:.12em .45em;border-radius:6px;box-decoration-break:clone;-webkit-box-decoration-break:clone;background:rgba(5,7,12,.74);color:#fff;
+  font:500 clamp(.95rem,2.1vw,1.5rem)/1.5 Inter,system-ui,sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.vp:not(.idle) .vp-sub,.vp.paused .vp-sub{bottom:calc(6% + 84px)}
+.vp.isfs .vp-sub span,.vp.vp-pseudo .vp-sub span{font-size:clamp(1.2rem,2.6vw,2.2rem)}

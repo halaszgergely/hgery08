@@ -1,5 +1,5 @@
 // HGWS – zenelejátszó (lapozás közben is szól tovább)
-import { $, esc, toast } from './core.js?v=202611162013';
+import { $, esc, toast } from './core.js?v=202611170737';
 
 const audio = new Audio();
 audio.preload = 'metadata';
@@ -12,9 +12,9 @@ export function init(tracksFn) {
   const bar = $('#pbar');
   bar.innerHTML = `<div class="prog2"><i id="pProg"></i></div>
     <div class="pl"><span class="pc" id="pCover"></span><div class="pt"><b id="pTitle"></b><small id="pArtist"></small></div></div>
-    <div class="pm"><div class="pctl"><button id="pShuf" title="Keverés">🔀</button><button id="pPrev" title="Előző">⏮</button><button id="pPlay" class="pp" title="Lejátszás">▶</button><button id="pNext" title="Következő">⏭</button><button id="pRep" title="Ismétlés">🔁</button></div>
+    <div class="pm"><div class="pctl"><button id="pShuf" title="Keverés"><i class="ic ic-shuffle"></i></button><button id="pPrev" title="Előző"><i class="ic ic-skip-back"></i></button><button id="pPlay" class="pp" title="Lejátszás"><i class="ic ic-play"></i></button><button id="pNext" title="Következő"><i class="ic ic-skip-forward"></i></button><button id="pRep" title="Ismétlés"><i class="ic ic-repeat"></i></button></div>
       <div class="pseek"><span id="pCur">0:00</span><input type="range" id="pSeek" min="0" max="1000" value="0" aria-label="Pozíció"><span id="pDur">0:00</span></div></div>
-    <div class="pr"><span>🔊</span><input type="range" id="pVol" min="0" max="1" step="0.01" value="${audio.volume}" aria-label="Hangerő"><button id="pClose" title="Bezárás">✕</button></div>`;
+    <div class="pr"><span><i class="ic ic-volume-2"></i></span><input type="range" id="pVol" min="0" max="1" step="0.01" value="${audio.volume}" aria-label="Hangerő"><button id="pClose" title="Bezárás"><i class="ic ic-x"></i></button></div>`;
   $('#pPlay').onclick = toggle;
   $('#pNext').onclick = () => next(true);
   $('#pPrev').onclick = prev;
@@ -43,7 +43,7 @@ export function init(tracksFn) {
 
 function paint() {
   const playing = !audio.paused;
-  $('#pPlay').textContent = playing ? '⏸' : '▶';
+  $('#pPlay').innerHTML = playing ? '<i class="ic ic-pause"></i>' : '<i class="ic ic-play"></i>';
   document.body.classList.toggle('playing', playing);
   mark();
 }
