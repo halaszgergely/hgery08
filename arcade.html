@@ -254,6 +254,8 @@ footer .fs{font-family:var(--head);font-weight:900;font-size:clamp(1.1rem,3.6vw,
 footer p{margin-top:.8rem;color:#5f5a4f;font-size:.78rem;letter-spacing:.18em}
 
 /* ---------- game modal ---------- */
+#ext{position:fixed;inset:0;z-index:45;background:#07070a}#ext[hidden]{display:none}#extf{width:100%;height:100%;border:0;display:block}
+#extX{position:absolute;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));width:34px;height:34px;border-radius:50%;background:rgba(4,7,14,.75);border:1px solid var(--line);color:var(--gold2);font-size:.95rem;opacity:.7}#extX:hover{opacity:1}
 #game{position:fixed;inset:0;z-index:40;display:none;background:#060a12;touch-action:none;overscroll-behavior:contain}
 #game.open{display:block;animation:fade .3s ease}
 #gc{position:absolute;inset:0;width:100%;height:100%}
@@ -331,13 +333,14 @@ body.embed .scroll{display:none}
   <div class="wrap">
     <div class="eyebrow reveal">// HGWS ARCADE</div>
     <h2 class="reveal">Szünet a filmek között?</h2>
-    <p class="lead reveal">Öt minijáték a HGWS-univerzumból. Rekordokat a böngésződ megjegyzi – döntsd meg a sajátodat.</p>
+    <p class="lead reveal">Hat játék a HGWS-univerzumból. Rekordokat a böngésződ megjegyzi – döntsd meg a sajátodat.</p>
     <div class="games" id="games"></div>
     <div class="lbw" id="lbw" hidden><div class="lbh"><h3>🏆 Ranglista</h3><div class="lbt"><button data-lbt="week" class="on">E heti</button><button data-lbt="all">Mindenkori</button></div></div>
       <p class="lbn" id="lbn"></p><div class="lbg" id="lbg"></div></div>
   </div>
 </section>
 <div class="afoot"><div class="fs">VÍZ. ERŐ. TECHNIKA. ÉLETFORMA.</div><p>© <span id="yr">2026</span> HALÁSZ GERGELY WATERING SOLUTIONS KFT.</p></div>
+<div id="ext" hidden><iframe id="extf" title="Zero Space Demo" allow="autoplay; fullscreen" src="about:blank"></iframe><button id="extX" aria-label="Bezárás">✕</button></div>
 <div id="game" role="dialog" aria-label="Minijáték">
   <canvas id="gc"></canvas>
   <div class="ghud">
@@ -623,6 +626,7 @@ function gsize() { G.d = Math.min(devicePixelRatio || 1, 2); G.W = gc.width = in
 addEventListener('resize', () => { if (gEl.classList.contains('open')) gsize(); });
 
 function openGame(game) {
+  if (game.ext) return openExt(game);
   G.game = game; gEl.classList.add('open'); document.body.classList.add('locked'); gsize();
   $('#pTitle').textContent = game.name; $('#pDesc').textContent = game.desc; $('#pHow').textContent = game.how;
   $('#pSpon').hidden = !game.sponsor; $('#pSpon').textContent = game.sponsor || ''; $('#gQuit').hidden = !game.quit;
@@ -1172,8 +1176,20 @@ const Torony = (() => {
   };
 })();
 
-const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Torony];
+const ZeroSpace = { id: 'zerospace', name: 'ZERO SPACE DEMO', ext: 'zerospace.html', tag: 'DEMO',
+  desc: 'Tervezd meg a saját űrhajódat modulról modulra, és vezesd csatába a végtelen űrben. Korai demó – az egyjátékos sandbox már elérhető.' };
+const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Torony, ZeroSpace];
+const EXT = $('#ext'), EXF = $('#extf');
+function openExt(gm) { EXF.src = gm.ext + '?v=' + Date.now().toString(36).slice(0, 5); EXT.hidden = false; document.body.classList.add('locked'); setTimeout(() => { try { EXF.focus(); } catch (_) {} }, 300); }
+function closeExt() { EXT.hidden = true; EXF.src = 'about:blank'; document.body.classList.remove('locked'); }
+$('#extX').onclick = closeExt;
 const ARTS = {
+  zerospace: (c, x, t) => { const W = c.width, H = c.height; x.fillStyle = '#07070a'; x.fillRect(0, 0, W, H);
+    for (let i = 0; i < 60; i++) { const sx = (i * 97.3 + t * (6 + i % 4 * 6)) % W, sy = (i * 53.7) % H; x.fillStyle = `rgba(230,224,208,${.25 + (i % 5) * .12})`; x.fillRect(W - sx, sy, i % 7 ? 1 : 2, i % 7 ? 1 : 2); }
+    const cx = W * .5 + Math.sin(t * .7) * 30, cy = H * .5 + Math.sin(t * 1.1) * 8; x.save(); x.translate(cx, cy);
+    x.fillStyle = '#33496b'; x.fillRect(-34, -8, 52, 16); x.fillStyle = '#17253f'; x.fillRect(-26, -16, 30, 32); x.fillStyle = '#b2382a'; x.fillRect(18, -5, 14, 10); x.fillStyle = '#c9a24a'; x.fillRect(-8, -3, 10, 6);
+    x.fillStyle = `rgba(95,176,200,${.6 + .4 * Math.sin(t * 20)})`; x.fillRect(-44 - Math.random() * 8, -5, 10, 10); x.restore();
+    x.fillStyle = '#e4614a'; for (let k = 0; k < 3; k++) { const bx = (t * 160 + k * 110) % (W + 40); x.fillRect(cx + 34 + bx, cy - 1, 8, 2); } },
   viztorony: (c, x, t) => { const W = c.width, H = c.height; const gr = x.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#251c3e'); gr.addColorStop(1, '#0a1a10'); x.fillStyle = gr; x.fillRect(0, 0, W, H);
     x.fillStyle = '#1c1712'; x.fillRect(0, 0, 26, H); x.fillRect(W - 26, 0, 26, H); x.fillStyle = 'rgba(232,182,86,.4)'; x.fillRect(25, 0, 2, H); x.fillRect(W - 27, 0, 2, H);
     const pl = [[60, 118, 70], [150, 88, 54], [222, 58, 48], [120, 30, 42]]; x.fillStyle = '#6b4a2a'; for (const [px, py, w] of pl) { x.fillRect(px, py, w, 8); } x.fillStyle = '#c8964a'; for (const [px, py, w] of pl) x.fillRect(px, py, w, 3);
@@ -1202,7 +1218,7 @@ function renderCards() {
   if (!wrap.children.length) {
     GAMES.forEach((gm, i) => {
       const el = document.createElement('article'); el.className = 'card reveal'; el.tabIndex = 0; el.setAttribute('role', 'button');
-      el.innerHTML = `<span class="tag">${String(i + 1).padStart(2, '0')}</span><div class="art"><canvas width="320" height="140"></canvas></div><h3>${gm.name}</h3>${gm.sponsor ? `<span class="spon">${gm.sponsor}</span>` : ''}<p>${gm.desc.split('.')[0]}.</p><div class="foot"><span class="best" data-id="${gm.id}"></span><span class="play">JÁTÉK ▶</span></div>`;
+      el.innerHTML = `<span class="tag">${String(i + 1).padStart(2, '0')}</span><div class="art"><canvas width="320" height="140"></canvas></div><h3>${gm.name}</h3>${gm.sponsor ? `<span class="spon">${gm.sponsor}</span>` : ''}<p>${gm.desc.split('.')[0]}.</p><div class="foot"><span class="best" data-id="${gm.id}"${gm.ext ? ' data-ext="1"' : ''}></span><span class="play">JÁTÉK ▶</span></div>`;
       el.addEventListener('click', () => openGame(gm)); el.addEventListener('keydown', e => { if (e.key === 'Enter') openGame(gm); });
       wrap.appendChild(el); io.observe(el);
     });
@@ -1211,7 +1227,7 @@ function renderCards() {
     (function anim(now) { requestAnimationFrame(anim); if (!vis || document.hidden || gEl.classList.contains('open')) return;
       arts.forEach((c, i) => ARTS[GAMES[i].id](c, c.getContext('2d'), now / 1000)); })(0);
   }
-  wrap.querySelectorAll('.best').forEach(b => { const v = store.get('best_' + b.dataset.id), gm = GAMES.find(x => x.id === b.dataset.id), w = store.get('wins_' + b.dataset.id); b.textContent = 'REKORD: ' + v.toLocaleString('hu-HU') + (gm.unit ? ' m' : '') + (w ? ' · 🏆×' + w : ''); });
+  wrap.querySelectorAll('.best').forEach(b => { if (b.dataset.ext) { b.textContent = 'DEMO'; return; } const v = store.get('best_' + b.dataset.id), gm = GAMES.find(x => x.id === b.dataset.id), w = store.get('wins_' + b.dataset.id); b.textContent = 'REKORD: ' + v.toLocaleString('hu-HU') + (gm.unit ? ' m' : '') + (w ? ' · 🏆×' + w : ''); });
 }
 renderCards();
 $('#yr').textContent = new Date().getFullYear();
@@ -1224,7 +1240,7 @@ function lbDraw() {
   if (!LB) return;
   $('#lbw').hidden = false;
   $('#lbn').textContent = LB.guest ? 'Vendégként is játszhatsz, de a ranglistára csak regisztrált tagok kerülnek fel.' : (lbt === 'week' ? `E heti verseny (${LB.week}) – a hét végén a játékonkénti győztesek megkapják az „Arcade-bajnok” taget! 🏆` : 'Minden idők legjobbjai.');
-  $('#lbg').innerHTML = GAMES.map(g => { const l = (LB.boards[g.id] || {})[lbt] || [];
+  $('#lbg').innerHTML = GAMES.filter(g => !g.ext).map(g => { const l = (LB.boards[g.id] || {})[lbt] || [];
     return `<div class="lbc${g.unit ? ' wide' : ''}"><h4>${g.icon || ''} ${g.name}</h4>${l.length ? l.map((r, i) => `<div class="lbr${r.me ? ' me' : ''}"><i>${['🥇', '🥈', '🥉'][i] || i + 1}</i><span>${r.name.replace(/[<>&"]/g, '')}</span><b>${r.wins ? `<em class="lbw2" title="Arany Locsolófej">🏆×${r.wins}</em>` : ''}${r.score.toLocaleString('hu-HU')}${g.unit ? ' m' : ''}</b></div>`).join('') : '<p class="lbe">Még senki – légy te az első!</p>'}</div>`; }).join('');
 }
 $('#lbw').addEventListener('click', e => { const b = e.target.closest('[data-lbt]'); if (!b) return; lbt = b.dataset.lbt; document.querySelectorAll('[data-lbt]').forEach(x => x.classList.toggle('on', x === b)); lbDraw(); });
