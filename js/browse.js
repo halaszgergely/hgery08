@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID } from './core.js?v=202611171028';
-import { stageHtml, confirmBox } from './ui.js?v=202611171028';
-import * as Player from './player.js?v=202611171028';
-import * as Party from './party.js?v=202611171028';
-import * as VP from './vplayer.js?v=202611171028';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611171028';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID } from './core.js?v=202611172322';
+import { stageHtml, confirmBox } from './ui.js?v=202611172322';
+import * as Player from './player.js?v=202611172322';
+import * as Party from './party.js?v=202611172322';
+import * as VP from './vplayer.js?v=202611172322';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611172322';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -250,13 +250,14 @@ export const GAMES = [
   { id: 'locsolo', name: 'Locsoló Mester', icon: '🌻', desc: 'Locsold meg a hervadó virágokat, mielőtt Szikkadt Szilárd kiszárítja a kertet!', c: '#5ee08a' },
   { id: 'nyomas', name: 'Nyomásmester', icon: '🎛️', desc: 'Állítsd meg a mutatót a zöld zónában – a PLC rád bízta a szivattyút.', c: '#6cc6ff' },
   { id: 'vizagyu', name: 'Vízágyú', icon: '💦', desc: 'Kaktuszok és tűzgolyók zúdulnak a kertre. Célozz a vízágyúval!', c: '#ff7a6e' },
-  { id: 'csepp', name: 'Csepp Futam', icon: '💧', desc: 'Repülj át a csövek között egy bátor vízcseppel – egy ütközés és vége!', c: '#e8b656' }
+  { id: 'csepp', name: 'Csepp Futam', icon: '💧', desc: 'Repülj át a csövek között egy bátor vízcseppel – egy ütközés és vége!', c: '#e8b656' },
+  { id: 'torony', name: 'Víztorony', icon: '🗼', desc: 'Mássz fel a víztorony tetejére az Arany Locsolófejért – egy rossz ugrás, és zuhansz!', c: '#b48cff', sponsor: 'A Zerosites támogatásával' }
 ];
 const best = id => { try { return +localStorage.getItem('hgws_best_' + id) || 0; } catch (_) { return 0; } };
 function arcadeRow() {
   return `<section class="row arcrow"><div class="rowh"><h2><i class="ic ic-gamepad-2"></i> HGWS Arcade</h2><a href="#/arcade">Mind ›</a></div>
-    <div class="agrid">${GAMES.map((g, i) => `<a class="acard" href="#/arcade/${g.id}" style="--c:${g.c}"><span class="an">0${i + 1}</span><span class="ai">${g.icon}</span>
-      <b>${esc(g.name)}</b><small>${esc(g.desc)}</small><span class="af"><em>REKORD: ${best(g.id).toLocaleString('hu-HU')}</em><i>Játék <i class="ic ic-play"></i></i></span></a>`).join('')}</div></section>`;
+    <div class="agrid">${GAMES.map((g, i) => `<a class="acard" href="#/arcade/${g.id}" style="--c:${g.c}"><span class="an">${String(i + 1).padStart(2, '0')}</span><span class="ai">${g.icon}</span>
+      <b>${esc(g.name)}</b>${g.sponsor ? `<span class="aspon">${esc(g.sponsor)}</span>` : ''}<small>${esc(g.desc)}</small><span class="af"><em>REKORD: ${best(g.id).toLocaleString('hu-HU')}</em><i>Játék <i class="ic ic-play"></i></i></span></a>`).join('')}</div></section>`;
 }
 export function arcade(id) {
   cleanup();
