@@ -264,15 +264,20 @@ service cloud.firestore {
     }
 
     // ---------- Arcade ranglista: mindenki csak a saját rekordját írhatja, és csak felfelé ----------
+    // wins: hányszor érte el a csúcsot (Víztorony) – egyszerre csak eggyel nőhet
     match /leaderboards/{lb}/scores/{uid} {
       allow read: if signedIn();
       allow create: if active() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['best', 'at'])
+        && request.resource.data.keys().hasOnly(['best', 'at', 'wins'])
         && request.resource.data.best is int && request.resource.data.best > 0 && request.resource.data.best <= 100000000
+        && request.resource.data.get('wins', 0) in [0, 1]
         && request.resource.data.at == request.time;
       allow update: if active() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['best', 'at'])
-        && request.resource.data.best is int && request.resource.data.best > resource.data.best && request.resource.data.best <= 100000000
+        && request.resource.data.keys().hasOnly(['best', 'at', 'wins'])
+        && request.resource.data.best is int && request.resource.data.best >= resource.data.best && request.resource.data.best <= 100000000
+        && request.resource.data.get('wins', 0) is int
+        && (request.resource.data.get('wins', 0) == resource.data.get('wins', 0) || request.resource.data.get('wins', 0) == resource.data.get('wins', 0) + 1)
+        && (request.resource.data.best > resource.data.best || request.resource.data.get('wins', 0) == resource.data.get('wins', 0) + 1)
         && request.resource.data.at == request.time;
       allow delete: if perm('moderate');
     }
