@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID } from './core.js?v=202611172357';
-import { stageHtml, confirmBox } from './ui.js?v=202611172357';
-import * as Player from './player.js?v=202611172357';
-import * as Party from './party.js?v=202611172357';
-import * as VP from './vplayer.js?v=202611172357';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611172357';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID } from './core.js?v=202611180007';
+import { stageHtml, confirmBox } from './ui.js?v=202611180007';
+import * as Player from './player.js?v=202611180007';
+import * as Party from './party.js?v=202611180007';
+import * as VP from './vplayer.js?v=202611180007';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611180007';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -253,16 +253,17 @@ export const GAMES = [
   { id: 'csepp', name: 'Csepp Futam', icon: '💧', desc: 'Repülj át a csövek között egy bátor vízcseppel – egy ütközés és vége!', c: '#e8b656' },
   { id: 'viztorony', name: 'Víztorony', icon: '🗼', unit: 'm', desc: 'Mássz fel a víztorony tetejére az Arany Locsolófejért – egy rossz ugrás, és zuhansz!', c: '#b48cff', sponsor: 'A Zerosites támogatásával' }
 ];
+const EXTRA = [{ id: 'zerospace', name: 'Zero Space Demo', icon: '🚀', desc: 'Építs űrhajót modulról modulra és vezesd csatába – korai demó, egyjátékos sandbox.', c: '#b2382a', demo: 1 }];
 const best = id => { try { return +localStorage.getItem('hgws_best_' + id) || 0; } catch (_) { return 0; } };
 function arcadeRow() {
   return `<section class="row arcrow"><div class="rowh"><h2><i class="ic ic-gamepad-2"></i> HGWS Arcade</h2><a href="#/arcade">Mind ›</a></div>
-    <div class="agrid">${GAMES.map((g, i) => `<a class="acard" href="#/arcade/${g.id}" style="--c:${g.c}"><span class="an">${String(i + 1).padStart(2, '0')}</span><span class="ai">${g.icon}</span>
-      <b>${esc(g.name)}</b>${g.sponsor ? `<span class="aspon">${esc(g.sponsor)}</span>` : ''}<small>${esc(g.desc)}</small><span class="af"><em>REKORD: ${best(g.id).toLocaleString('hu-HU')}${g.unit ? ' ' + g.unit : ''}</em><i>Játék <i class="ic ic-play"></i></i></span></a>`).join('')}</div></section>`;
+    <div class="agrid">${[...GAMES, ...EXTRA].map((g, i) => `<a class="acard" href="#/arcade/${g.id}" style="--c:${g.c}"><span class="an">${String(i + 1).padStart(2, '0')}</span><span class="ai">${g.icon}</span>
+      <b>${esc(g.name)}</b>${g.sponsor ? `<span class="aspon">${esc(g.sponsor)}</span>` : ''}<small>${esc(g.desc)}</small><span class="af"><em>${g.demo ? 'DEMO' : 'REKORD: ' + best(g.id).toLocaleString('hu-HU') + (g.unit ? ' ' + g.unit : '')}</em><i>Játék <i class="ic ic-play"></i></i></span></a>`).join('')}</div></section>`;
 }
 export function arcade(id) {
   cleanup();
   document.title = 'Arcade · HGWS';
-  const g = GAMES.find(x => x.id === id);
+  const g = [...GAMES, ...EXTRA].find(x => x.id === id);
   $('#page').innerHTML = `<iframe class="arcframe" src="arcade.html${new URL(import.meta.url).search}${g ? '#play=' + g.id : ''}" title="HGWS Arcade" allow="autoplay; fullscreen"></iframe>`;
   const f = $('.arcframe');
   f.addEventListener('load', () => { try { f.contentWindow.focus(); } catch (_) {} });
