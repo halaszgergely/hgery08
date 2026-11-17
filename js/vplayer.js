@@ -1,6 +1,6 @@
 // HGWS saját videólejátszó – YouTube-forrásnál a YouTube IFrame API-t vezérli saját gombokkal
 // (a YouTube felülete nem kattintható, így a videó linkje sem érhető el egy kattintással), MP4-nél sima <video>.
-import { esc } from './core.js?v=202611170644';
+import { esc } from './core.js?v=202611170737';
 
 let ytLoad = null;
 function loadYT() {
@@ -30,12 +30,13 @@ const ICON = {
   vol: '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>',
   mute: '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9zm18.7 0-1.4-1.4L17.6 10.3 14.9 7.6l-1.4 1.4 2.7 2.7-2.7 2.7 1.4 1.4 2.7-2.7 2.7 2.7 1.4-1.4-2.7-2.7z"/></svg>',
   fs: '<svg viewBox="0 0 24 24"><path d="M4 9V4h5v2H6v3zm11-5h5v5h-2V6h-3zM6 15v3h3v2H4v-5zm12 3v-3h2v5h-5v-2z"/></svg>',
+  cc: '<svg viewBox="0 0 24 24"><path d="M19 4H5a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3zm1 13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1zM10.6 10.2a1.8 1.8 0 0 0-1.3-.5 2 2 0 0 0-2 2.3 2 2 0 0 0 2 2.3 1.8 1.8 0 0 0 1.3-.5l1 1.2a3.5 3.5 0 0 1-2.4.9A3.6 3.6 0 0 1 5.5 12a3.6 3.6 0 0 1 3.7-3.9 3.5 3.5 0 0 1 2.4.9zm6.5 0a1.8 1.8 0 0 0-1.3-.5 2 2 0 0 0-2 2.3 2 2 0 0 0 2 2.3 1.8 1.8 0 0 0 1.3-.5l1 1.2a3.5 3.5 0 0 1-2.4.9A3.6 3.6 0 0 1 12 12a3.6 3.6 0 0 1 3.7-3.9 3.5 3.5 0 0 1 2.4.9z"/></svg>',
   fsx: '<svg viewBox="0 0 24 24"><path d="M9 4v5H4V7h3V4zm6 0h2v3h3v2h-5zM4 15h5v5H7v-3H4zm11 0h5v2h-3v3h-2z"/></svg>'
 };
 
 /**
  * Lejátszó beillesztése egy dobozba.
- * o: { youtube, mp4, poster, title, start, onTime(t, d), onPause(), onEnd(), next: { title, href, poster },
+ * o: { youtube, mp4, vtt (felirat .vtt/.srt az MP4-hez), poster, title, start, onTime(t, d), onPause(), onEnd(), next: { title, href, poster },
  *      locked (közös nézés vendégként: csak a házigazda irányít), onLocked(), onAction(kind, t) – a néző saját mozdulatai }
  * Visszaad: { destroy() }
  */
@@ -51,6 +52,7 @@ export function mount(box, o) {
     <button class="vp-big" aria-label="Lejátszás">${ICON.play}</button>
     <div class="vp-end" hidden><div><button class="vp-again"><i class="ic ic-refresh-cw"></i> Újra</button>${o.next ? `<a class="vp-next" href="${esc(o.next.href)}"><span class="ph" style="${o.next.poster ? `background-image:url('${esc(o.next.poster)}')` : ''}"></span><span><small>KÖVETKEZŐ</small><b>${esc(o.next.title)}</b></span></a>` : ''}</div></div>
     <div class="vp-err" hidden></div>
+    <div class="vp-sub" hidden aria-live="polite"></div>
     <div class="vp-top"><img src="img/logo.webp" alt=""><span>${esc(o.title || '')}</span></div>
     <div class="vp-ctl">
       <div class="vp-bar" role="slider" aria-label="Idősáv"><div class="vp-track"><i class="vp-buf"></i><i class="vp-fill"></i></div><i class="vp-knob"></i><span class="vp-tip" hidden></span></div>
@@ -61,12 +63,21 @@ export function mount(box, o) {
         <div class="vp-vol"><button data-k="mute" title="Némítás (M)">${ICON.vol}</button><input type="range" min="0" max="100" step="1" aria-label="Hangerő"></div>
         <span class="vp-time">0:00 / 0:00</span>
         <span class="vp-name">${esc(o.title || '')}</span>
+        <button data-k="cc" class="vp-cc" title="Felirat (C)" aria-pressed="false" hidden>${ICON.cc}</button>
         <button data-k="speed" class="vp-txt" title="Sebesség">1×</button>
         <button data-k="fs" title="Teljes képernyő (F)">${ICON.fs}</button>
       </div>
     </div>`;
   const q = s => box.querySelector(s);
   const media = q('.vp-media'), bar = q('.vp-bar'), tip = q('.vp-tip'), volR = q('.vp-vol input');
+  let subOn = false;
+  const subEl = q('.vp-sub');
+  function drawSub() {
+    const t = A?.el?.textTracks?.[0];
+    const txt = subOn && t?.activeCues ? [...t.activeCues].map(c => c.text.replace(/<[^>]+>/g, '')).join('\n').trim() : '';
+    subEl.hidden = !txt;
+    subEl.innerHTML = txt ? txt.split('\n').map(l => `<span>${esc(l)}</span>`).join('<br>') : '';
+  }
   let A = null, started = false, playing = false, ended = false, dead = false, poll = null, idleT = null, clickT = null, rateI = 0, seeking = false;
   let vol = store.get('hgws_vol', 80), muted = store.get('hgws_muted', false);
 
@@ -78,11 +89,14 @@ export function mount(box, o) {
     Object.assign(v, { src: o.mp4, playsInline: true, preload: 'auto', autoplay: auto, poster: o.poster || '' });
     v.setAttribute('playsinline', ''); v.setAttribute('controlsList', 'nodownload noplaybackrate'); v.disablePictureInPicture = true;
     media.appendChild(v);
+    if (o.vtt) { addTrack(v, o.vtt); v.textTracks[0] && (v.textTracks[0].oncuechange = drawSub); }
     A = {
       play: () => v.play().catch(() => state('paused')), pause: () => v.pause(), seek: t => { v.currentTime = t; },
       time: () => v.currentTime || 0, dur: () => isFinite(v.duration) ? v.duration : 0,
       buf: () => { const b = v.buffered, d = v.duration; return b.length && d ? b.end(b.length - 1) / d : 0; },
-      vol: x => { v.volume = x / 100; }, mute: m => { v.muted = m; }, rate: r => { v.playbackRate = r; }, el: v, destroy: () => { v.pause(); v.removeAttribute('src'); v.load(); }
+      vol: x => { v.volume = x / 100; }, mute: m => { v.muted = m; }, rate: r => { v.playbackRate = r; }, el: v,
+      // a sáv mindig „hidden” (a böngésző nem rajzolja), a szöveget a saját rétegünk mutatja a vezérlők fölött
+      cc: on => { const t = v.textTracks[0]; if (!t) return Promise.resolve(false); t.mode = 'hidden'; subOn = on; drawSub(); return Promise.resolve(true); }, destroy: () => { v.pause(); v.removeAttribute('src'); v.load(); }
     };
     if (o.start) v.addEventListener('loadedmetadata', () => { v.currentTime = o.start; }, { once: true });
     v.addEventListener('playing', () => state('playing'));
@@ -107,8 +121,10 @@ export function mount(box, o) {
             A = {
               play: () => p.playVideo(), pause: () => p.pauseVideo(), seek: t => p.seekTo(t, true),
               time: () => p.getCurrentTime?.() || 0, dur: () => p.getDuration?.() || 0, buf: () => p.getVideoLoadedFraction?.() || 0,
-              vol: x => p.setVolume(x), mute: m => m ? p.mute() : p.unMute(), rate: r => p.setPlaybackRate(r), destroy: () => { try { p.destroy(); } catch (_) {} }
+              vol: x => p.setVolume(x), mute: m => m ? p.mute() : p.unMute(), rate: r => p.setPlaybackRate(r), destroy: () => { try { p.destroy(); } catch (_) {} },
+              cc: on => ytCc(p, on)
             };
+            ytCc(p, false);
             q('.vp-spin').hidden = true;
             ready(); if (o.autoplay !== false) A.play();
           },
@@ -121,6 +137,7 @@ export function mount(box, o) {
 
   function ready() {
     A.vol(vol); A.mute(muted); volUi();
+    q('[data-k=cc]').hidden = !A.cc || (!!o.mp4 && !o.vtt);   // MP4-nél csak akkor van gomb, ha van feliratfájl
     poll = setInterval(tick, 250);
   }
 
@@ -177,6 +194,17 @@ export function mount(box, o) {
   const onFs = () => fsUi();
   document.addEventListener('fullscreenchange', onFs); document.addEventListener('webkitfullscreenchange', onFs);
 
+  /* ---------- felirat: alapból mindig KI, gombbal / C billentyűvel kapcsolható ---------- */
+  let ccOn = false;
+  async function toggleCc() {
+    if (!A?.cc || q('[data-k=cc]').hidden) return;
+    const want = !ccOn, b = q('[data-k=cc]');
+    ccOn = want; b.classList.toggle('on', want); b.setAttribute('aria-pressed', want);
+    const ok = await A.cc(want);
+    if (want && !ok) { ccOn = false; b.classList.remove('on'); b.setAttribute('aria-pressed', 'false'); flash('Ehhez a videóhoz nincs felirat'); return; }
+    flash(want ? 'Felirat: be' : 'Felirat: ki');
+  }
+
   let flashT;
   function flash(t) {
     let f = q('.vp-flash'); if (!f) { f = document.createElement('div'); f.className = 'vp-flash'; box.appendChild(f); }
@@ -192,6 +220,7 @@ export function mount(box, o) {
     else if (k === 'fwd') skip(10);
     else if (k === 'mute') toggleMute();
     else if (k === 'fs') fs();
+    else if (k === 'cc') toggleCc();
     else if (k === 'speed') { rateI = (rateI + 1) % RATES.length; A?.rate(RATES[rateI]); e.target.closest('button').textContent = String(RATES[rateI]).replace('.', ',') + '×'; flash('Sebesség: ' + String(RATES[rateI]).replace('.', ',') + '×'); }
     box.focus({ preventScroll: true });
   });
@@ -241,7 +270,7 @@ export function mount(box, o) {
     if (document.querySelector('.modal, #dmodal, .pop')) return;
     const k = e.key.toLowerCase();
     const map = { ' ': toggle, k: toggle, arrowleft: () => skip(-5), arrowright: () => skip(5), j: () => skip(-10), l: () => skip(10),
-      arrowup: () => { setVol(vol + 5); flash('Hang: ' + vol + '%'); }, arrowdown: () => { setVol(vol - 5); flash('Hang: ' + vol + '%'); }, m: toggleMute, f: fs };
+      arrowup: () => { setVol(vol + 5); flash('Hang: ' + vol + '%'); }, arrowdown: () => { setVol(vol - 5); flash('Hang: ' + vol + '%'); }, m: toggleMute, f: fs, c: toggleCc };
     if (k === 'escape' && box.classList.contains('vp-pseudo')) { fs(); return; }
     if (!map[k]) return;
     if (k.startsWith('arrow') && e.target.type === 'range') return;
@@ -267,4 +296,36 @@ export function mount(box, o) {
     ready: () => !!A,
     lock(v) { o.locked = v; box.classList.toggle('locked', !!v); }
   };
+}
+
+/* ---------- felirat segédek ---------- */
+// MP4: <track> – .vtt közvetlenül, .srt-t VTT-vé alakítjuk; a sáv „hidden”, tehát alapból nem látszik
+function addTrack(v, url) {
+  const t = document.createElement('track');
+  Object.assign(t, { kind: 'subtitles', srclang: 'hu', label: 'Magyar' });
+  v.appendChild(t);
+  const set = src => { t.src = src; t.track.mode = 'hidden'; };
+  if (/\.srt(\?|$)/i.test(url)) {
+    fetch(url).then(r => r.ok ? r.text() : Promise.reject()).then(txt => {
+      const vtt = 'WEBVTT\n\n' + txt.replace(/\r/g, '').replace(/^\uFEFF/, '').replace(/(\d\d:\d\d:\d\d),(\d\d\d)/g, '$1.$2');
+      set(URL.createObjectURL(new Blob([vtt], { type: 'text/vtt' })));
+    }).catch(() => {});
+  } else set(url);
+}
+// YouTube: a feliratmodul be-/kitöltése; ha be: a magyar sáv, ha nincs, az első elérhető
+function ytCc(p, on) {
+  try {
+    if (!on) { p.unloadModule('captions'); p.unloadModule('cc'); return Promise.resolve(true); }
+    p.loadModule('captions');
+    return new Promise(res => {
+      let n = 0;
+      const look = () => {
+        let l = []; try { l = p.getOption('captions', 'tracklist') || []; } catch (_) {}
+        if (l.length) { const t = l.find(x => /^hu/i.test(x.languageCode)) || l[0]; try { p.setOption('captions', 'track', t); } catch (_) {} return res(true); }
+        if (++n > 8) { try { p.unloadModule('captions'); } catch (_) {} return res(false); }
+        setTimeout(look, 250);
+      };
+      setTimeout(look, 300);
+    });
+  } catch (_) { return Promise.resolve(false); }
 }

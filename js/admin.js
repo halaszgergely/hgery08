@@ -1,7 +1,7 @@
 // HGWS – kezelőfelület: tagok és rangok, tagek, filmek, zenék, csatornák, jóváhagyások, rangok szerkesztése
-import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG } from './core.js?v=202611170644';
-import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611170644';
-import { githubRepo } from '../firebase-config.js?v=202611170644';
+import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG } from './core.js?v=202611170737';
+import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611170737';
+import { githubRepo } from '../firebase-config.js?v=202611170737';
 
 let C = null, current = null;
 export function init(ctx) { C = ctx; }
@@ -329,6 +329,7 @@ async function filmModal(f) {
     <div class="field"><label>Leírás</label><textarea class="inp" name="desc" rows="4" maxlength="1500">${esc(d.desc || '')}</textarea></div>
     <div class="field"><label>YouTube link <em>(a lejátszó a saját HGWS-felülettel játssza le)</em></label><input class="inp" name="yt" value="${esc(src.youtube ? 'https://youtu.be/' + src.youtube : '')}" placeholder="https://youtu.be/…  vagy  https://www.youtube.com/watch?v=…"><span class="hint" id="ytok"></span></div>
     <div class="field"><label>…vagy MP4 videó URL</label><input class="inp" name="mp4" value="${esc(src.mp4 || '')}" placeholder="videok/film.mp4"></div>
+    <div class="field"><label>Felirat az MP4-hez <em>(.vtt vagy .srt link – a nézők a CC gombbal kapcsolhatják be, alapból ki van kapcsolva; YouTube-nál a YouTube saját feliratát használja)</em></label><input class="inp" name="vtt" value="${esc(src.vtt || '')}" placeholder="feliratok/film.hu.vtt"></div>
     <div class="field"><label>Gyártási fázis</label><div class="stagepick" id="sp"></div></div>
     <div class="grid2"><div class="field"><label>Állapot felirat</label><input class="inp" name="status" maxlength="40" value="${esc(d.status || STAGES[stage].toUpperCase())}"></div><div></div></div>
     <div class="checks"><label class="chk"><input type="checkbox" name="rel" ${d.soon === false ? 'checked' : ''}> Megjelent – megnézhető</label>
@@ -356,21 +357,21 @@ async function filmModal(f) {
     const title = q('title').value.trim(); if (!title) return toast('Add meg a címet.', true);
     const ytRaw = q('yt').value.trim(), yt = ytId(ytRaw);
     if (ytRaw && !yt) return toast('A YouTube-link nem érvényes.', true);
-    const mp4 = q('mp4').value.trim();
+    const mp4 = q('mp4').value.trim(), vtt = q('vtt').value.trim();
     const data = { title, en: q('en').value.trim(), kind: q('kind').value.trim() || 'Film', year: q('year').value.trim(), len: q('len').value.trim(),
       genre: q('genre').value.trim(), premiere: q('premiere').value, desc: q('desc').value.trim(), status: q('status').value.trim().toUpperCase(), stage,
       soon: !q('rel').checked, featured: q('feat').checked, visible: q('vis').checked, hasVideo: !!(yt || mp4), poster: imgs.poster, banner: imgs.banner, updatedAt: FB.serverTimestamp() };
     const id = f ? f.id : (() => { let b = slug(title), s = b, n = 2; while (C.S.videos.some(x => x.id === s)) s = b + '-' + n++; return s; })();
     if (!C.can('publishMedia')) {
       const { updatedAt, ...clean } = data;
-      try { await submit({ type: 'film', action: f ? 'update' : 'create', targetId: id, title, data: clean, src: { youtube: yt, mp4 } }); el.close(); } catch (e) { toast(errText(e), true); }
+      try { await submit({ type: 'film', action: f ? 'update' : 'create', targetId: id, title, data: clean, src: { youtube: yt, mp4, vtt } }); el.close(); } catch (e) { toast(errText(e), true); }
       return;
     }
     if (!f) { data.order = Math.max(-10, ...C.S.videos.map(x => x.order || 0)) + 10; data.createdAt = FB.serverTimestamp(); }
     try {
       const b = FB.writeBatch(db);
       b.set(FB.doc(db, 'videos', id), data, { merge: true });
-      b.set(FB.doc(db, 'videoSources', id), { youtube: yt, mp4 });
+      b.set(FB.doc(db, 'videoSources', id), { youtube: yt, mp4, vtt });
       if (data.featured) C.S.videos.filter(x => x.featured && x.id !== id).forEach(x => b.update(FB.doc(db, 'videos', x.id), { featured: false }));
       await b.commit(); audit(f ? 'film.edit' : 'film.create', title); toast('Mentve ✓'); el.close();
     } catch (e) { toast(errText(e), true); }
@@ -558,7 +559,7 @@ async function approve(s, btn) {
         let id = s.targetId || slug(s.title);
         if (s.action === 'create') { const b = id; let n = 2; while (C.S.videos.some(x => x.id === id)) id = b + '-' + n++; d.order = Math.max(-10, ...C.S.videos.map(x => x.order || 0)) + 10; d.createdAt = t; }
         bt.set(FB.doc(db, 'videos', id), { ...d, updatedAt: t }, { merge: true });
-        bt.set(FB.doc(db, 'videoSources', id), { youtube: s.src?.youtube || '', mp4: s.src?.mp4 || '' });
+        bt.set(FB.doc(db, 'videoSources', id), { youtube: s.src?.youtube || '', mp4: s.src?.mp4 || '', vtt: s.src?.vtt || '' });
         if (d.featured) C.S.videos.filter(x => x.featured && x.id !== id).forEach(x => bt.update(FB.doc(db, 'videos', x.id), { featured: false }));
       }
     } else {
@@ -721,7 +722,7 @@ async function statsPage(v) {
     const st = { nyitott: ['Nyitott', '#6cc6ff'], folyamatban: ['Folyamatban', '#ffa94d'], kesz: ['Kész', '#5ee08a'], elutasitva: ['Elutasítva', '#ff7a6e'] };
     $('#stIdea').innerHTML = s.size ? hbars(Object.entries(st).map(([k, [l, c]]) => [l, s.docs.filter(d => d.data().status === k).length, c]), ' db') : '<div class="estate"><i class="ic ic-lightbulb"></i><b>Még nincs beküldött ötlet</b></div>';
   }).catch(() => { $('#stIdea').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
-  import('./browse.js?v=202611170644').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
+  import('./browse.js?v=202611170737').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
     .then(l => { $('#stArc').innerHTML = hbars(l, ' játékos'); });
 }
 const lbScores = g => FB.collection(db, 'leaderboards', g, 'scores');

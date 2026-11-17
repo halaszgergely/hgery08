@@ -308,3 +308,14 @@ html{scrollbar-color:rgba(232,182,86,.28) transparent;scrollbar-width:thin}
 }
 .tile.cont .trate{display:none}
 .tile .left{background:rgba(5,7,12,.78);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.1)}
+
+/* ---------- felirat (CC) ---------- */
+.vp-row .vp-cc{position:relative}
+.vp-row .vp-cc svg{width:24px;height:24px}
+.vp-row .vp-cc.on{color:var(--gold2)}
+.vp-row .vp-cc.on::after{content:"";position:absolute;left:10px;right:10px;bottom:5px;height:2px;border-radius:2px;background:var(--gold2)}
+.vp-sub{position:absolute;left:50%;bottom:6%;z-index:4;transform:translateX(-50%);width:max-content;max-width:86%;text-align:center;pointer-events:none;line-height:1.5;transition:bottom .3s cubic-bezier(.2,.8,.2,1)}
+.vp-sub span{display:inline;padding:.12em .45em;border-radius:6px;box-decoration-break:clone;-webkit-box-decoration-break:clone;background:rgba(5,7,12,.74);color:#fff;
+  font:500 clamp(.95rem,2.1vw,1.5rem)/1.5 Inter,system-ui,sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.vp:not(.idle) .vp-sub,.vp.paused .vp-sub{bottom:calc(6% + 84px)}
+.vp.isfs .vp-sub span,.vp.vp-pseudo .vp-sub span{font-size:clamp(1.2rem,2.6vw,2.2rem)}

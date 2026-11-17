@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID } from './core.js?v=202611170644';
-import { stageHtml, confirmBox } from './ui.js?v=202611170644';
-import * as Player from './player.js?v=202611170644';
-import * as Party from './party.js?v=202611170644';
-import * as VP from './vplayer.js?v=202611170644';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611170644';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID } from './core.js?v=202611170737';
+import { stageHtml, confirmBox } from './ui.js?v=202611170737';
+import * as Player from './player.js?v=202611170737';
+import * as Party from './party.js?v=202611170737';
+import * as VP from './vplayer.js?v=202611170737';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611170737';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -468,7 +468,7 @@ export async function watch(id) {
   if (!v.soon && (src.youtube || src.mp4)) {
     stopTrack(); track.id = v.id;
     vp = VP.mount(wf, {
-      youtube: src.mp4 ? '' : src.youtube, mp4: src.mp4 || '', poster: img(v), title: v.title, start,
+      youtube: src.mp4 ? '' : src.youtube, mp4: src.mp4 || '', vtt: src.vtt || '', poster: img(v), title: v.title, start,
       onTime: note, onPause: flush, onEnd: flush,
       next: next ? { title: next.title, href: '#/nez/' + next.id, poster: next.poster || img(next) } : null
     });

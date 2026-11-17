@@ -1,8 +1,8 @@
 // HGWS – közös nézés (watch party): a házigazda irányítja a lejátszást, mindenki más szinkronban nézi, mellette csevegés
-import { FB, db, $, $$, esc, avatar, timeLabel, toast, errText, notify, isOnline } from './core.js?v=202611170644';
-import { modal } from './ui.js?v=202611170644';
-import * as VP from './vplayer.js?v=202611170644';
-import { ambilight, applyTint } from './fx.js?v=202611170644';
+import { FB, db, $, $$, esc, avatar, timeLabel, toast, errText, notify, isOnline } from './core.js?v=202611170737';
+import { modal } from './ui.js?v=202611170737';
+import * as VP from './vplayer.js?v=202611170737';
+import { ambilight, applyTint } from './fx.js?v=202611170737';
 
 let C = null, gen = 0, cleanup = [];
 export function init(ctx) { C = ctx; }
@@ -59,7 +59,7 @@ export async function render(id) {
         <div class="pchat"><div class="pmsgs" id="pMsgs"></div>${C.S.guest ? '<div class="cnote"><i class="ic ic-eye"></i> Vendégként csak nézni tudsz.</div>' : '<div class="pin"><input class="inp" id="pTxt" maxlength="500" placeholder="Írj valamit…" autocomplete="off"><button class="ibtn send" id="pSend"><i class="ic ic-send-horizontal"></i></button></div>'}</div></aside></div>`;
     if (!src.youtube && !src.mp4) { $('#pf').innerHTML = '<div class="psoon"><div><b>A videó még nem érhető el</b></div></div>'; return; }
     vp = VP.mount($('#pf'), {
-      youtube: src.mp4 ? '' : src.youtube, mp4: src.mp4 || '', poster: f?.poster || '', title: f?.title || '', start: 0,
+      youtube: src.mp4 ? '' : src.youtube, mp4: src.mp4 || '', vtt: src.vtt || '', poster: f?.poster || '', title: f?.title || '', start: 0,
       locked: !isHost(), autoplay: false,
       onLocked: () => { joined = true; sync(true); },
       onAction: (kind, t) => { if (!isHost()) return; FB.updateDoc(ref, { state: kind === 'pause' ? 'pause' : (kind === 'seek' ? (vp.playing() ? 'play' : 'pause') : 'play'), t, at: FB.serverTimestamp() }).catch(e => toast(errText(e), true)); },
