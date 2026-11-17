@@ -1,6 +1,6 @@
 // HGWS – közös Firebase-indítás és segédfüggvények
-import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611170221';
-import * as FB from './firebase.js?v=202611170221';
+import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611170644';
+import * as FB from './firebase.js?v=202611170644';
 
 export { FB, notConfigured };
 
@@ -64,8 +64,11 @@ export function initials(name) {
 }
 export function avatar(u, size = 40) {
   const name = u?.name || '?', color = u?.color || pickColor(name);
+  // második szín a névből (mindig eltér az elsőtől) – egyedi színátmenet minden tagnak
+  const h = [...String(u?.id || name)].reduce((a, c) => (a * 33 + c.charCodeAt(0)) >>> 0, 5381);
+  let c2 = COLORS[h % COLORS.length]; if (c2 === color) c2 = COLORS[(h + 3) % COLORS.length];
   const img = u?.photoURL ? `<img src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : '';
-  return `<span class="av" style="--s:${size}px;--c:${color}">${esc(initials(name))}${img}</span>`;
+  return `<span class="av" style="--s:${size}px;--c:${color};--c2:${c2}">${esc(initials(name))}${img}</span>`;
 }
 
 export const toDate = t => t?.toDate ? t.toDate() : t instanceof Date ? t : t ? new Date(t) : null;
@@ -168,7 +171,7 @@ export function blip() {
    Mindig a cselekvő tag írja a címzettnek (szerver nélkül). Saját magának nem küld. */
 export function notify(to, type, text, link = '') {
   const me = auth?.currentUser?.uid;
-  if (!to || !me || (to === me && type !== 'premiere')) return Promise.resolve();
+  if (!to || !me || (to === me && type !== 'premiere' && type !== 'badge')) return Promise.resolve();
   return FB.addDoc(FB.collection(db, 'users', to, 'notifs'), { type, text: String(text).slice(0, 200), link: String(link).slice(0, 200), by: me, at: FB.serverTimestamp(), read: false })
     .catch(e => console.warn('értesítés', e));
 }

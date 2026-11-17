@@ -147,7 +147,8 @@ service cloud.firestore {
           && request.resource.data.at == request.time
           && request.resource.data.text is string && request.resource.data.text.size() <= 200
           && request.resource.data.link is string && request.resource.data.link.size() <= 200
-          && request.resource.data.type in ['mention', 'idea', 'approve', 'reject', 'role', 'tag', 'premiere', 'party', 'vote'];
+          && request.resource.data.type in ['mention', 'idea', 'approve', 'reject', 'role', 'tag', 'premiere', 'party', 'vote', 'badge']
+          && (request.resource.data.type != 'badge' || request.auth.uid == uid);   // kitüntetésről csak saját magának írhat
       }
     }
 

@@ -7,15 +7,35 @@
 <meta name="description" content="HGWS Studios – filmek, animék, zene és közösség.">
 <meta property="og:title" content="HGWS – Halász Gergely Watering Solutions">
 <meta property="og:description" content="HGWS Studios – filmek, animék, zene és közösség.">
-<meta property="og:image" content="https://hgery08.hu/img/logo.webp">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.hgery08.hu/">
+<meta property="og:site_name" content="HGWS Studios">
+<meta property="og:locale" content="hu_HU">
+<meta property="og:image" content="https://www.hgery08.hu/img/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="HGWS Studios – filmek, zene, közösség">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="HGWS – Halász Gergely Watering Solutions">
+<meta name="twitter:description" content="HGWS Studios – filmek, animék, zene és közösség.">
+<meta name="twitter:image" content="https://www.hgery08.hu/img/og.jpg">
 <meta name="theme-color" content="#05070c">
-<link rel="icon" type="image/png" href="img/icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HGWS">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600;700&family=Oswald:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/base.css?v=202611170221">
-<link rel="stylesheet" href="css/app.css?v=202611170221">
-<link rel="stylesheet" href="css/browse.css?v=202611170221">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css?v=202611170644">
+<link rel="stylesheet" href="css/app.css?v=202611170644">
+<link rel="stylesheet" href="css/browse.css?v=202611170644">
+<link rel="stylesheet" href="css/icons.css?v=202611170644">
+<link rel="stylesheet" href="css/theme.css?v=202611170644">
 </head>
 <body>
 <div id="boot"><img src="img/logo.webp" alt="HGWS"></div>
@@ -25,32 +45,32 @@
   <aside class="appnav" id="appnav">
     <a class="alogo" href="#/" aria-label="HGWS főoldal"><img src="img/logo.webp" alt=""><span>HGWS</span></a>
     <nav class="anav">
-      <a href="#/" data-nav="home" title="Főoldal"><i>🏠</i><span>Főoldal</span></a>
-      <a href="#/tar" data-nav="tar" title="Filmtár"><i>🎬</i><span>Filmtár</span></a>
-      <a href="#/zene" data-nav="zene" title="Zene"><i>🎵</i><span>Zene</span></a>
-      <a href="#/arcade" data-nav="arcade" title="Arcade"><i>🎮</i><span>Arcade</span></a>
-      <a href="#/kapcsolat" data-nav="kapcsolat" title="Kapcsolat"><i>✉️</i><span>Kapcsolat</span></a>
-      <a href="#/otletek" data-nav="otletek" id="navIdeas" title="Ötletek" hidden><i>💡</i><span>Ötletek</span></a>
-      <a href="#/chat" data-nav="chat" title="Közösség"><i>👥</i><span>Közösség</span></a>
-      <a href="#/dm" data-nav="dm" title="Üzenetek"><i>💬</i><span>Üzenetek</span><b class="nbdg" id="dmBadge" hidden></b></a>
-      <a href="#/lista" data-nav="lista" title="Saját lista"><i>＋</i><span>Saját lista</span></a>
-      <a href="#/admin/tagok" data-nav="admin" id="navAdmin" title="Kezelés" hidden><i>🛡️</i><span>Kezelés</span></a>
-      <button id="navSet" title="Beállítások"><i>⚙️</i><span>Beállítások</span></button>
+      <a href="#/" data-nav="home" title="Főoldal"><i class="ic ic-house"></i><span>Főoldal</span></a>
+      <a href="#/tar" data-nav="tar" title="Filmtár"><i class="ic ic-clapperboard"></i><span>Filmtár</span></a>
+      <a href="#/zene" data-nav="zene" title="Zene"><i class="ic ic-music"></i><span>Zene</span></a>
+      <a href="#/arcade" data-nav="arcade" title="Arcade"><i class="ic ic-gamepad-2"></i><span>Arcade</span></a>
+      <a href="#/kapcsolat" data-nav="kapcsolat" title="Kapcsolat"><i class="ic ic-mail"></i><span>Kapcsolat</span></a>
+      <a href="#/otletek" data-nav="otletek" id="navIdeas" title="Ötletek" hidden><i class="ic ic-lightbulb"></i><span>Ötletek</span></a>
+      <a href="#/chat" data-nav="chat" title="Közösség"><i class="ic ic-users"></i><span>Közösség</span></a>
+      <a href="#/dm" data-nav="dm" title="Üzenetek"><i class="ic ic-message-circle"></i><span>Üzenetek</span><b class="nbdg" id="dmBadge" hidden></b></a>
+      <a href="#/lista" data-nav="lista" title="Saját lista"><i class="ic ic-plus"></i><span>Saját lista</span></a>
+      <a href="#/admin/tagok" data-nav="admin" id="navAdmin" title="Kezelés" hidden><i class="ic ic-shield"></i><span>Kezelés</span></a>
+      <button id="navSet" title="Beállítások"><i class="ic ic-settings"></i><span>Beállítások</span></button>
     </nav>
-    <div class="aonline"><div class="aoh">ONLINE <b id="onCount">0</b></div><div id="onList"></div></div>
+    <div class="aonline" id="aonline"><button class="aoh" id="aoh" title="Online tagok – összecsukás">ONLINE <b id="onCount">0</b><i class="ic ic-chevron-down"></i></button><div id="onList"></div></div>
     <button class="ame" id="meMenu" title="Profil"></button>
   </aside>
   <div class="ascrim" id="ascrim"></div>
 
   <!-- felső sáv: keresés -->
   <header class="topnav" id="topnav">
-    <button class="ticon tham" id="hamBtn" aria-label="Menü">☰</button>
+    <button class="ticon tham" id="hamBtn" aria-label="Menü"><i class="ic ic-menu"></i></button>
     <a class="tlogo" href="#/" aria-label="HGWS"><img src="img/logo.webp" alt=""><span>HGWS</span></a>
     <div class="tright">
-      <label class="tsearch open" id="tsearch"><span class="ticon" id="sBtn">🔍</span><input id="sInp" type="search" placeholder="Keresés…" autocomplete="off"><kbd>/</kbd></label>
-      <button class="ticon" id="bellBtn" title="Értesítések" hidden>🔔<span class="tbdg" id="bellBadge" hidden></span></button>
-      <a class="ticon" href="#/dm" title="Üzenetek">💬<span class="tbdg" id="chatBadge" hidden></span></a>
-      <button class="ticon" id="outBtn" title="Kijelentkezés">⏻</button>
+      <label class="tsearch open" id="tsearch"><span class="ticon" id="sBtn"><i class="ic ic-search"></i></span><input id="sInp" type="search" placeholder="Keresés: filmek, zenék, tagok…" autocomplete="off"><kbd>Ctrl K</kbd></label>
+      <button class="ticon" id="bellBtn" title="Értesítések" hidden><i class="ic ic-bell"></i><span class="tbdg" id="bellBadge" hidden></span></button>
+      <a class="ticon" href="#/dm" title="Üzenetek"><i class="ic ic-message-circle"></i><span class="tbdg" id="chatBadge" hidden></span></a>
+      <button class="ticon" id="outBtn" title="Kijelentkezés"><i class="ic ic-power"></i></button>
     </div>
   </header>
 
@@ -60,17 +80,17 @@
   <!-- csevegés (Discord-szerű) -->
   <div id="chat" hidden>
     <aside class="side">
-      <div class="seg" id="seg"><a href="#/chat" data-seg="srv"># Csatornák</a><a href="#/dm" data-seg="dm">💬 Üzenetek<span class="tbdg" id="dmBadge2" hidden></span></a></div>
+      <div class="seg" id="seg"><a href="#/chat" data-seg="srv"># Csatornák</a><a href="#/dm" data-seg="dm"><i class="ic ic-message-circle"></i> Üzenetek<span class="tbdg" id="dmBadge2" hidden></span></a></div>
       <div class="shead" id="sHead"></div>
       <div class="sbody scroll" id="sBody"></div>
       <div class="mebar">
         <button class="who" id="meBtn" title="Profil és beállítások"></button>
-        <button class="ibtn" id="setBtn" title="Beállítások">⚙️</button>
+        <button class="ibtn" id="setBtn" title="Beállítások"><i class="ic ic-settings"></i></button>
       </div>
     </aside>
     <section class="main">
       <header class="mhead">
-        <button class="ibtn menu" id="menuBtn" aria-label="Csatornák">☰</button>
+        <button class="ibtn menu" id="menuBtn" aria-label="Csatornák"><i class="ic ic-menu"></i></button>
         <div class="ttl" id="mTitle"></div>
         <div class="topic" id="mTopic"></div>
         <div class="acts" id="mActs"></div>
@@ -87,16 +107,16 @@
 
   <!-- mobil alsó menü -->
   <nav class="tabbar" id="tabbar">
-    <a href="#/" data-nav="home"><i>🏠</i>Kezdőlap</a>
-    <a href="#/kereses" data-nav="kereses"><i>🔍</i>Keresés</a>
-    <a href="#/chat" data-nav="chat"><i>💬</i>Közösség<span class="tbdg" id="chatBadge2" hidden></span></a>
-    <a href="#/zene" data-nav="zene"><i>🎵</i>Zene</a>
-    <a href="#/lista" data-nav="lista"><i>＋</i>Listám</a>
+    <a href="#/" data-nav="home"><i class="ic ic-house"></i>Kezdőlap</a>
+    <a href="#/kereses" data-nav="kereses"><i class="ic ic-search"></i>Keresés</a>
+    <a href="#/chat" data-nav="chat"><i class="ic ic-message-circle"></i>Közösség<span class="tbdg" id="chatBadge2" hidden></span></a>
+    <a href="#/zene" data-nav="zene"><i class="ic ic-music"></i>Zene</a>
+    <a href="#/lista" data-nav="lista"><i class="ic ic-plus"></i>Listám</a>
   </nav>
   <div class="pbar" id="pbar" hidden></div>
 </div>
 
 <div id="toast"></div>
-<script type="module" src="js/app.js?v=202611170221"></script>
+<script type="module" src="js/app.js?v=202611170644"></script>
 </body>
 </html>

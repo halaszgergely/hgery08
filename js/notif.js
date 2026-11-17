@@ -1,9 +1,9 @@
 // HGWS – értesítések (csengő a felső sávban): megemlítés, ötlet-válasz, jóváhagyás, rang, tag, premier, közös nézés
-import { FB, db, $, esc, timeLabel, toDate, toast, blip } from './core.js?v=202611170221';
-import { popover, closePop } from './ui.js?v=202611170221';
+import { FB, db, $, esc, timeLabel, toDate, toast, blip } from './core.js?v=202611170644';
+import { popover, closePop } from './ui.js?v=202611170644';
 
 let C = null, list = [], first = true, open = false;
-export const ICON = { mention: '💬', idea: '💡', approve: '✅', reject: '✕', role: '👑', tag: '🏷️', premiere: '🎬', party: '🍿', vote: '👍' };
+export const ICON = { mention: 'message-circle', idea: 'lightbulb', approve: 'circle-check', reject: 'x', role: 'crown', tag: 'tag', premiere: 'clapperboard', party: 'popcorn', vote: 'thumbs-up', badge: 'award' };
 export function init(ctx) { C = ctx; }
 
 export function start() {
@@ -19,7 +19,7 @@ export function start() {
       blip();
       if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
         try { const x = new Notification('HGWS', { body: n.text, icon: 'img/icon.png', tag: 'hgws-' + n.id }); x.onclick = () => { focus(); go(n); x.close(); }; } catch (_) {}
-      } else toast((ICON[n.type] || '🔔') + ' ' + n.text);
+      } else if (n.type !== 'badge') toast(n.text);   // a kitüntetésnek saját felugró kártyája van
     }
     first = false; badge();
     if (open) draw();
@@ -47,8 +47,8 @@ function draw() {
   const box = pop?.querySelector('.npop'); if (!box) return;
   box.innerHTML = `<div class="nh"><b>Értesítések</b>${unread() ? '<button data-all>Mind olvasott</button>' : ''}${list.some(n => n.read) ? '<button data-clr>Olvasottak törlése</button>' : ''}</div>
     <div class="nl">${list.length ? list.map(n => { const u = n.by ? C.U(n.by) : null;
-      return `<button class="ni${n.read ? '' : ' un'}" data-n="${esc(n.id)}"><span class="nic">${ICON[n.type] || '🔔'}</span><span class="nt"><span>${esc(n.text)}</span><small>${u && n.by !== C.uid() ? esc(u.name) + ' · ' : ''}${timeLabel(n.at)}</small></span>${n.read ? '' : '<i class="nd"></i>'}</button>`; }).join('')
-      : '<div class="ne">🔕<br>Nincs értesítésed.</div>'}</div>`;
+      return `<button class="ni${n.read ? '' : ' un'}" data-n="${esc(n.id)}"><span class="nic"><i class="ic ic-${ICON[n.type] || 'bell'}"></i></span><span class="nt"><span>${esc(n.text)}</span><small>${u && n.by !== C.uid() ? esc(u.name) + ' · ' : ''}${timeLabel(n.at)}</small></span>${n.read ? '' : '<i class="nd"></i>'}</button>`; }).join('')
+      : '<div class="ne"><i class="ic ic-bell-off"></i><br>Nincs értesítésed.</div>'}</div>`;
   box.onclick = async e => {
     const it = e.target.closest('[data-n]');
     if (it) { const n = list.find(x => x.id === it.dataset.n); closePop(); open = false; if (n) go(n); return; }

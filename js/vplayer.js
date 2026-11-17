@@ -1,6 +1,6 @@
 // HGWS saját videólejátszó – YouTube-forrásnál a YouTube IFrame API-t vezérli saját gombokkal
 // (a YouTube felülete nem kattintható, így a videó linkje sem érhető el egy kattintással), MP4-nél sima <video>.
-import { esc } from './core.js?v=202611170221';
+import { esc } from './core.js?v=202611170644';
 
 let ytLoad = null;
 function loadYT() {
@@ -49,7 +49,7 @@ export function mount(box, o) {
     <div class="vp-cover" style="${o.poster ? `background-image:url('${esc(o.poster)}')` : ''}"></div>
     <div class="vp-spin" hidden><div class="spin"></div></div>
     <button class="vp-big" aria-label="Lejátszás">${ICON.play}</button>
-    <div class="vp-end" hidden><div><button class="vp-again">↻ Újra</button>${o.next ? `<a class="vp-next" href="${esc(o.next.href)}"><span class="ph" style="${o.next.poster ? `background-image:url('${esc(o.next.poster)}')` : ''}"></span><span><small>KÖVETKEZŐ</small><b>${esc(o.next.title)}</b></span></a>` : ''}</div></div>
+    <div class="vp-end" hidden><div><button class="vp-again"><i class="ic ic-refresh-cw"></i> Újra</button>${o.next ? `<a class="vp-next" href="${esc(o.next.href)}"><span class="ph" style="${o.next.poster ? `background-image:url('${esc(o.next.poster)}')` : ''}"></span><span><small>KÖVETKEZŐ</small><b>${esc(o.next.title)}</b></span></a>` : ''}</div></div>
     <div class="vp-err" hidden></div>
     <div class="vp-top"><img src="img/logo.webp" alt=""><span>${esc(o.title || '')}</span></div>
     <div class="vp-ctl">

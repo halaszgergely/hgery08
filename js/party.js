@@ -1,7 +1,8 @@
 // HGWS – közös nézés (watch party): a házigazda irányítja a lejátszást, mindenki más szinkronban nézi, mellette csevegés
-import { FB, db, $, $$, esc, avatar, timeLabel, toast, errText, notify, isOnline } from './core.js?v=202611170221';
-import { modal } from './ui.js?v=202611170221';
-import * as VP from './vplayer.js?v=202611170221';
+import { FB, db, $, $$, esc, avatar, timeLabel, toast, errText, notify, isOnline } from './core.js?v=202611170644';
+import { modal } from './ui.js?v=202611170644';
+import * as VP from './vplayer.js?v=202611170644';
+import { ambilight, applyTint } from './fx.js?v=202611170644';
 
 let C = null, gen = 0, cleanup = [];
 export function init(ctx) { C = ctx; }
@@ -50,12 +51,12 @@ export async function render(id) {
     let src = {};
     try { src = (await FB.getDoc(FB.doc(db, 'videoSources', p.vid))).data() || {}; } catch (_) {}
     if (my !== gen) return;
-    page.innerHTML = `<div class="party"><div class="pmain"><div class="pframe" id="pf"></div>
-        <div class="ptbar"><div><div class="eyebrow">// 🍿 KÖZÖS NÉZÉS</div><h1>${esc(f?.title || 'Film')}</h1>
+    page.innerHTML = `<div class="party"><div class="pmain"><div class="ambw" id="pamb"><div class="pframe" id="pf"></div></div>
+        <div class="ptbar"><div><div class="eyebrow">// KÖZÖS NÉZÉS</div><h1>${esc(f?.title || 'Film')}</h1>
           <small id="pHost"></small></div>
-          <div class="pbtns2"><button class="btn plain sm" id="pCopy">🔗 Link másolása</button>${C.S.guest ? '' : '<button class="btn plain sm" id="pInv">✉️ Meghívás</button>'}<button class="btn danger sm" id="pLeave">${isHost() ? 'Befejezés' : 'Kilépés'}</button></div></div></div>
+          <div class="pbtns2"><button class="btn plain sm" id="pCopy"><i class="ic ic-link"></i> Link másolása</button>${C.S.guest ? '' : '<button class="btn plain sm" id="pInv"><i class="ic ic-mail"></i> Meghívás</button>'}<button class="btn danger sm" id="pLeave">${isHost() ? 'Befejezés' : 'Kilépés'}</button></div></div></div>
       <aside class="pside"><div class="pmem"><h3>Nézők <span class="cnt" id="pCnt">0</span></h3><div id="pMem"></div></div>
-        <div class="pchat"><div class="pmsgs" id="pMsgs"></div>${C.S.guest ? '<div class="cnote">👀 Vendégként csak nézni tudsz.</div>' : '<div class="pin"><input class="inp" id="pTxt" maxlength="500" placeholder="Írj valamit…" autocomplete="off"><button class="ibtn send" id="pSend">➤</button></div>'}</div></aside></div>`;
+        <div class="pchat"><div class="pmsgs" id="pMsgs"></div>${C.S.guest ? '<div class="cnote"><i class="ic ic-eye"></i> Vendégként csak nézni tudsz.</div>' : '<div class="pin"><input class="inp" id="pTxt" maxlength="500" placeholder="Írj valamit…" autocomplete="off"><button class="ibtn send" id="pSend"><i class="ic ic-send-horizontal"></i></button></div>'}</div></aside></div>`;
     if (!src.youtube && !src.mp4) { $('#pf').innerHTML = '<div class="psoon"><div><b>A videó még nem érhető el</b></div></div>'; return; }
     vp = VP.mount($('#pf'), {
       youtube: src.mp4 ? '' : src.youtube, mp4: src.mp4 || '', poster: f?.poster || '', title: f?.title || '', start: 0,
@@ -65,6 +66,8 @@ export async function render(id) {
       onEnd: () => { if (isHost()) FB.updateDoc(ref, { state: 'pause', t: 0, at: FB.serverTimestamp() }).catch(() => {}); }
     });
     cleanup.push(() => vp?.destroy());
+    const poster = src.youtube && !src.mp4 ? `https://i.ytimg.com/vi/${src.youtube}/hqdefault.jpg` : (f?.poster || f?.banner || '');
+    cleanup.push(ambilight($('#pamb'), { img: poster })); applyTint($('.party'), f?.banner || f?.poster);
     $('#pCopy').onclick = () => navigator.clipboard?.writeText(location.href).then(() => toast('Link kimásolva – küldd el a barátaidnak! ✓'));
     $('#pInv')?.addEventListener('click', invite);
     $('#pLeave').onclick = async () => {
@@ -102,14 +105,14 @@ export async function render(id) {
     const now = nowS(), l = Object.entries(p.members || {}).filter(([, t]) => t?.toMillis && now - t.toMillis() < 45000).map(([u]) => u);
     const box = $('#pMem'); if (!box) return;
     $('#pCnt').textContent = l.length;
-    box.innerHTML = l.map(u => { const x = C.U(u); return `<span class="pmu" title="${esc(x.name)}">${avatar(x, 30)}${u === p.host ? '<i>👑</i>' : ''}</span>`; }).join('');
+    box.innerHTML = l.map(u => { const x = C.U(u); return `<span class="pmu" title="${esc(x.name)}">${avatar(x, 30)}${u === p.host ? '<i class="ic ic-crown"></i>' : ''}</span>`; }).join('');
     const h = C.U(p.host); $('#pHost').innerHTML = `Házigazda: <b>${esc(h.name)}</b>${isHost() ? ' (te irányítasz)' : ' – ő irányítja a lejátszást'}`;
   }
 
   function invite() {
     const l = [...C.S.users.values()].filter(u => u.id !== C.uid() && !u.banned).sort((a, b) => (isOnline(b) - isOnline(a)) || a.name.localeCompare(b.name, 'hu'));
-    const el = modal({ title: '✉️ Meghívás közös nézésre', body: `<p class="hint" style="margin-bottom:.8rem">Akit kiválasztasz, értesítést kap a csengőnél.</p>
-      <div class="invl">${l.map(u => `<label class="chk"><input type="checkbox" value="${esc(u.id)}"> ${avatar(u, 26)} <b>${esc(u.name)}</b>${isOnline(u) ? ' <small>🟢</small>' : ''}</label>`).join('')}</div>`,
+    const el = modal({ title: 'Meghívás közös nézésre', body: `<p class="hint" style="margin-bottom:.8rem">Akit kiválasztasz, értesítést kap a csengőnél.</p>
+      <div class="invl">${l.map(u => `<label class="chk"><input type="checkbox" value="${esc(u.id)}"> ${avatar(u, 26)} <b>${esc(u.name)}</b>${isOnline(u) ? ' <span class="odot"></span>' : ''}</label>`).join('')}</div>`,
       foot: '<button class="btn plain" data-x>Mégse</button><button class="btn goldb" data-ok>Meghívás</button>' });
     el.querySelector('[data-ok]').onclick = () => {
       const ids = $$('.invl input:checked', el).map(i => i.value);
@@ -120,11 +123,11 @@ export async function render(id) {
 
   cleanup.push(FB.onSnapshot(ref, s => {
     if (!here(id)) return stop();
-    if (!s.exists()) { stop(); page.innerHTML = `<div class="pg"><div class="noresult"><div class="big">🍿</div>Ez a közös nézés véget ért.<br><br><a class="pbtn play" href="#/tar"><i>🎬</i>Filmtár</a></div></div>`; return; }
+    if (!s.exists()) { stop(); page.innerHTML = `<div class="pg"><div class="noresult"><div class="big"><i class="ic ic-popcorn"></i></div>Ez a közös nézés véget ért.<br><br><a class="pbtn play" href="#/tar"><i class="ic ic-clapperboard"></i>Filmtár</a></div></div>`; return; }
     p = { id: s.id, ...s.data() };
     if (!built) build().then(() => { members(); sync(false); });
     else { vp?.lock(!isHost()); members(); sync(false); }
-  }, e => { page.innerHTML = `<div class="pg"><div class="noresult"><div class="big">🔒</div>${esc(errText(e))}</div></div>`; }));
+  }, e => { page.innerHTML = `<div class="pg"><div class="noresult"><div class="big"><i class="ic ic-lock"></i></div>${esc(errText(e))}</div></div>`; }));
 }
 /* elhagyjuk a közös nézést (másik oldalra navigáltunk) */
 export function leave() { gen++; stop(); }

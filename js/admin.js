@@ -1,7 +1,7 @@
 // HGWS – kezelőfelület: tagok és rangok, tagek, filmek, zenék, csatornák, jóváhagyások, rangok szerkesztése
-import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG } from './core.js?v=202611170221';
-import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611170221';
-import { githubRepo } from '../firebase-config.js?v=202611170221';
+import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG } from './core.js?v=202611170644';
+import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611170644';
+import { githubRepo } from '../firebase-config.js?v=202611170644';
 
 let C = null, current = null;
 export function init(ctx) { C = ctx; }
@@ -39,18 +39,18 @@ export function render(sub, again) {
     stat: C.isOwner() || C.can('publishMedia')
   };
   if (ok[sub]) return ({ tagok: members, cimkek: tagsPage, filmek: films, zene: music, csatornak: channels, jovahagyas: approvals, rangok: rolesPage, naplo: auditPage, stat: statsPage })[sub](v, again);
-  C.setTitle('🔒', 'Nincs jogosultság');
-  v.innerHTML = '<div class="full"><div><div class="big">🔒</div><h2>Ehhez nincs jogosultságod</h2></div></div>';
+  C.setTitle('<i class="ic ic-lock"></i>', 'Nincs jogosultság');
+  v.innerHTML = '<div class="full"><div><div class="big"><i class="ic ic-lock"></i></div><h2>Ehhez nincs jogosultságod</h2></div></div>';
 }
 
 function tabList() {
   const n = pendingCount();
-  return [['tagok', '🛡️ Tagok és rangok', C.can('moderate') || C.can('assignRoles') || C.isOwner()], ['cimkek', '🏷️ Tagek', C.can('manageTags')],
-    ['filmek', '🎞️ Filmek', C.can('publishMedia') || C.can('submitMedia')], ['zene', '🎵 Zenék', C.can('publishMedia') || C.can('submitMedia')],
-    ['csatornak', '⚙️ Csatornák', C.can('manageChannels')],
-    ['jovahagyas', `✅ Jóváhagyások${n ? ` <span class="cnt">${n}</span>` : ''}`, C.can('publishMedia') || C.isOwner() || C.can('submitMedia') || C.can('assignRoles')],
-    ['stat', '📊 Statisztika', C.isOwner() || C.can('publishMedia')], ['naplo', '📜 Napló', C.isOwner() || C.can('assignRoles')],
-    ['rangok', '👑 Rangok', C.isOwner()]].filter(x => x[2]);
+  return [['tagok', '<i class="ic ic-shield"></i> Tagok és rangok', C.can('moderate') || C.can('assignRoles') || C.isOwner()], ['cimkek', '<i class="ic ic-tag"></i> Tagek', C.can('manageTags')],
+    ['filmek', '<i class="ic ic-film"></i> Filmek', C.can('publishMedia') || C.can('submitMedia')], ['zene', '<i class="ic ic-music"></i> Zenék', C.can('publishMedia') || C.can('submitMedia')],
+    ['csatornak', '<i class="ic ic-settings"></i> Csatornák', C.can('manageChannels')],
+    ['jovahagyas', `<i class="ic ic-circle-check"></i> Jóváhagyások${n ? ` <span class="cnt">${n}</span>` : ''}`, C.can('publishMedia') || C.isOwner() || C.can('submitMedia') || C.can('assignRoles')],
+    ['stat', '<i class="ic ic-chart-column"></i> Statisztika', C.isOwner() || C.can('publishMedia')], ['naplo', '<i class="ic ic-scroll-text"></i> Napló', C.isOwner() || C.can('assignRoles')],
+    ['rangok', '<i class="ic ic-crown"></i> Rangok', C.isOwner()]].filter(x => x[2]);
 }
 function tabs() {
   return `<div class="atabs" style="margin:.6rem 0 1rem">${tabList().map(([k, l]) => `<a href="#/admin/${k}" class="${current === k ? 'on' : ''}">${l}</a>`).join('')}</div>`;
@@ -62,7 +62,7 @@ export function firstTab() { return tabList()[0]?.[0] || 'tagok'; }
 /* ================= TAGOK ÉS RANGOK ================= */
 let mq = '';
 function members(v, again) {
-  C.setTitle('🛡️', 'Tagok és rangok', C.isOwner() ? 'Rangok kiosztása, moderálás' : 'Moderálás');
+  C.setTitle('<i class="ic ic-shield"></i>', 'Tagok és rangok', C.isOwner() ? 'Rangok kiosztása, moderálás' : 'Moderálás');
   const me = C.uid();
   const list = [...C.S.users.values()].filter(u => !mq || u.name.toLowerCase().includes(mq))
     .sort((a, b) => C.rankOfUser(b) - C.rankOfUser(a) || a.name.localeCompare(b.name, 'hu'));
@@ -70,7 +70,7 @@ function members(v, again) {
   const reqOf = id => Q.reqs.find(r => r.target === id && r.status === 'pending');
   const reqRoles = rolesSorted().filter(([k, r]) => k !== 'owner' && k !== 'admin' && r.rank < C.myRank());
   v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div>${tabs()}<h1 class="gold">Tagok és rangok</h1>
-    <p class="lead">${C.isOwner() ? '👑 <b>Tulajként</b> bármilyen rangot közvetlenül kioszthatsz. Az adminok által kért rangokat a <a href="#/admin/jovahagyas">Jóváhagyások</a> fülön fogadhatod el.'
+    <p class="lead">${C.isOwner() ? '<i class="ic ic-crown"></i> <b>Tulajként</b> bármilyen rangot közvetlenül kioszthatsz. Az adminok által kért rangokat a <a href="#/admin/jovahagyas">Jóváhagyások</a> fülön fogadhatod el.'
       : C.can('assignRoles') ? 'A rangváltoztatás kérelemként megy a <b>tulajhoz</b>, ő hagyja jóvá. Admint csak a tulaj adhat.' : 'Az alacsonyabb rangú tagokat némíthatod vagy tilthatod ki.'}</p>
     <div class="search" style="margin:1.2rem 0 0;max-width:380px"><input type="search" id="aq" placeholder="Keresés név szerint…" value="${esc(mq)}"></div>
     <div class="atable">${list.map(u => {
@@ -81,16 +81,16 @@ function members(v, again) {
       let ctl;
       if (own || self || !lower) ctl = C.roleBadge(u) || '<span class="tg">TAG</span>';
       else if (C.isOwner()) ctl = `<select data-role="${esc(u.id)}">${rolesSorted().filter(([x]) => x !== 'owner').map(([x, r]) => `<option value="${x}" ${k === x ? 'selected' : ''}>${esc(r.label)}</option>`).join('')}</select>`;
-      else if (C.can('assignRoles')) ctl = rq ? `<span class="tg b" title="A tulaj jóváhagyására vár">⏳ KÉRVE: ${esc(roleOf(rq.role).label.toUpperCase())}</span><button class="btn plain sm" data-unreq="${esc(rq.id)}">Visszavonás</button>`
+      else if (C.can('assignRoles')) ctl = rq ? `<span class="tg b" title="A tulaj jóváhagyására vár"><i class="ic ic-hourglass"></i> KÉRVE: ${esc(roleOf(rq.role).label.toUpperCase())}</span><button class="btn plain sm" data-unreq="${esc(rq.id)}">Visszavonás</button>`
         : `<select data-req="${esc(u.id)}"><option value="${k}" selected>${esc(roleOf(k).label)}</option>${reqRoles.filter(([x]) => x !== k).map(([x, r]) => `<option value="${x}">→ ${esc(r.label)}</option>`).join('')}</select>`;
       else ctl = C.roleBadge(u) || '<span class="tg">TAG</span>';
       return `<div class="arow"><span class="avw">${avatar(u, 42)}<i class="on${isOnline(u) ? ' y' : ''}" style="border-color:#0d1830"></i></span>
         <div class="who"><b data-u="${esc(u.id)}" style="cursor:pointer;color:${k !== 'user' ? roleOf(k).color : 'inherit'}">${esc(u.name)}</b>${self ? ' <span class="hint">(te)</span>' : ''}
-          <small>${u.createdAt ? 'Tag ' + toDate(u.createdAt).toLocaleDateString('hu-HU') + ' óta' : ''}${u.lastSeen ? ' · ' + (isOnline(u) ? '🟢 online' : 'utoljára ' + timeLabel(u.lastSeen)) : ''}</small>
-          <div>${C.tagPills(u, 6)}${u.banned ? '<span class="tg red">⛔ KITILTVA</span>' : ''}${muted ? `<span class="tg red">🔇 NÉMÍTVA ${esc(timeLabel(u.mutedUntil))}-IG</span>` : ''}</div></div>
+          <small>${u.createdAt ? 'Tag ' + toDate(u.createdAt).toLocaleDateString('hu-HU') + ' óta' : ''}${u.lastSeen ? ' · ' + (isOnline(u) ? '<span class="odot"></span>online' : 'utoljára ' + timeLabel(u.lastSeen)) : ''}</small>
+          <div>${C.tagPills(u, 6)}${u.banned ? '<span class="tg red"><i class="ic ic-ban"></i> KITILTVA</span>' : ''}${muted ? `<span class="tg red"><i class="ic ic-volume-x"></i> NÉMÍTVA ${esc(timeLabel(u.mutedUntil))}-IG</span>` : ''}</div></div>
         <div class="ac">${ctl}
-          ${C.can('manageTags') && (!own || C.isOwner()) ? `<button class="btn plain sm" data-tagu="${esc(u.id)}">🏷️ Tagek</button>` : ''}
-          ${canMod ? `<button class="btn plain sm" data-mod="${esc(u.id)}">🛡️ Moderálás</button>` : ''}
+          ${C.can('manageTags') && (!own || C.isOwner()) ? `<button class="btn plain sm" data-tagu="${esc(u.id)}"><i class="ic ic-tag"></i> Tagek</button>` : ''}
+          ${canMod ? `<button class="btn plain sm" data-mod="${esc(u.id)}"><i class="ic ic-shield"></i> Moderálás</button>` : ''}
         </div></div>`;
     }).join('')}</div></div>`;
   const q = $('#aq'); q.oninput = () => { mq = q.value.toLowerCase(); members(v, true); };
@@ -128,14 +128,14 @@ export const TAG_PRESETS = [
 export const TAG_COLORS = ['#e8b656', '#ff5a4d', '#ff8fc7', '#c79bff', '#6c8cff', '#6cc6ff', '#4dd6c7', '#5ee08a', '#b6e35a', '#ffa94d', '#c9c3b5', '#8f8a7e'];
 const tagPill = t => `<span class="utag lg" style="--tc:${esc(t.color)}">${esc(t.name || 'Tag')}</span>`;
 function tagsPage(v) {
-  C.setTitle('🏷️', 'Tagek', 'Egyedi rangok: szöveg + szín');
+  C.setTitle('<i class="ic ic-tag"></i>', 'Tagek', 'Egyedi rangok: szöveg + szín');
   const tags = C.S.tags, count = id => [...C.S.users.values()].filter(u => (u.tags || []).includes(id)).length;
   v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div>${tabs()}<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap">
     <div><h1 class="gold">Tagek</h1><p class="lead">Discord-rangszerű címkék. A moderátorok és adminok hozhatnak létre és oszthatnak ki ilyeneket – a tag neve mellett jelenik meg a csevegésben, a hozzászólásoknál és a profilján.</p></div>
-    <div style="display:flex;gap:.5rem;flex-wrap:wrap">${TAG_PRESETS.some(([n]) => !tags.some(t => t.name === n)) ? '<button class="btn plain" id="presetTags">✨ HGWS ALAP TAGEK</button>' : ''}<button class="btn goldb" id="newTag">＋ ÚJ TAG</button></div></div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">${TAG_PRESETS.some(([n]) => !tags.some(t => t.name === n)) ? '<button class="btn plain" id="presetTags"><i class="ic ic-sparkles"></i> HGWS alap tagek</button>' : ''}<button class="btn goldb" id="newTag"><i class="ic ic-plus"></i> Új tag</button></div></div>
     <div class="atable" style="margin-top:1.2rem">${tags.length ? tags.map(t => `<div class="arow"><span style="width:14px;height:14px;border-radius:50%;background:${esc(t.color)};box-shadow:0 0 10px ${esc(t.color)}"></span>
       <div class="who">${tagPill(t)}<small>${count(t.id)} tagnál</small></div>
-      <div class="ac"><button class="btn plain sm" data-tedit="${esc(t.id)}">✏️ Szerkesztés</button><button class="btn danger sm" data-tdel="${esc(t.id)}">Törlés</button></div></div>`).join('')
+      <div class="ac"><button class="btn plain sm" data-tedit="${esc(t.id)}"><i class="ic ic-pencil"></i> Szerkesztés</button><button class="btn danger sm" data-tdel="${esc(t.id)}">Törlés</button></div></div>`).join('')
       : '<div class="empty">Még nincs egy tag sem. Hozd létre az elsőt az „Új tag” gombbal!</div>'}</div></div>`;
   $('#newTag').onclick = () => tagModal();
   const pt = $('#presetTags'); if (pt) pt.onclick = async () => {
@@ -164,7 +164,7 @@ export function tagModal(t) {
   const el = modal({ title: t ? 'Tag szerkesztése' : 'Új tag', body: `
     <div class="field"><label>Név <em>(max. 24 karakter)</em></label><input class="inp" name="n" maxlength="24" value="${esc(t?.name || '')}" placeholder="pl. Locsolómester, VIP, Tesztelő"></div>
     <div class="field"><label>Szín</label><div class="swatches">${TAG_COLORS.map(c => `<button type="button" data-c="${c}" class="${c === color ? 'on' : ''}" style="background:${c}"></button>`).join('')}
-      <label class="cpick" title="Egyéni szín"><input type="color" value="${esc(color)}">🎨</label></div></div>
+      <label class="cpick" title="Egyéni szín"><input type="color" value="${esc(color)}"><i class="ic ic-palette"></i></label></div></div>
     <div class="field"><label>Előnézet</label><div class="tprev"><b>Locsoló Laci</b> <span data-prev></span></div></div>`,
     foot: `<button class="btn plain" data-x>Mégse</button><button class="btn goldb" data-save>${t ? 'Mentés' : 'Létrehozás'}</button>` });
   const n = el.querySelector('[name=n]'), pick = el.querySelector('input[type=color]');
@@ -191,7 +191,7 @@ export function tagAssign(id) {
   const el = modal({ title: 'Tagek – ' + u.name, body: tags.length ? `<p class="hint" style="margin-bottom:.8rem">Kattints a tagekre a ki- és bekapcsoláshoz (max. 10).</p>
     <div class="tagpick">${tags.map(t => `<button type="button" class="${has.has(t.id) ? 'on' : ''}" data-t="${esc(t.id)}" style="--tc:${esc(t.color)}"><i></i>${esc(t.name)}</button>`).join('')}</div>`
     : `<div class="empty">Még nincs egy tag sem.</div>`,
-    foot: `<a class="btn plain l" href="#/admin/cimkek">🏷️ Tagek kezelése</a><button class="btn plain" data-x>Mégse</button>${tags.length ? '<button class="btn goldb" data-save>Mentés</button>' : ''}` });
+    foot: `<a class="btn plain l" href="#/admin/cimkek"><i class="ic ic-tag"></i> Tagek kezelése</a><button class="btn plain" data-x>Mégse</button>${tags.length ? '<button class="btn goldb" data-save>Mentés</button>' : ''}` });
   el.querySelector('.tagpick')?.addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (!b) return;
     if (!b.classList.contains('on') && $$('.tagpick .on', el).length >= 10) return toast('Legfeljebb 10 tag lehet egy tagon.', true);
     b.classList.toggle('on'); });
@@ -208,13 +208,13 @@ export function tagAssign(id) {
 export function modModal(id) {
   const u = C.U(id), muted = toDate(u.mutedUntil) > new Date();
   const el = modal({ title: 'Moderálás – ' + u.name, body: `
-    <div style="display:flex;align-items:center;gap:.9rem">${avatar(u, 52)}<div><b style="font-size:1.05rem">${esc(u.name)}</b><div class="hint">${esc(roleOf(C.roleKey(u)).label)}${u.banned ? ' · ⛔ kitiltva' : ''}${muted ? ' · 🔇 némítva ' + timeLabel(u.mutedUntil) + '-ig' : ''}</div></div></div>
+    <div style="display:flex;align-items:center;gap:.9rem">${avatar(u, 52)}<div><b style="font-size:1.05rem">${esc(u.name)}</b><div class="hint">${esc(roleOf(C.roleKey(u)).label)}${u.banned ? ' · <i class="ic ic-ban"></i> kitiltva' : ''}${muted ? ' · <i class="ic ic-volume-x"></i> némítva ' + timeLabel(u.mutedUntil) + '-ig' : ''}</div></div></div>
     ${C.can('moderate') ? `<div class="field"><label>Megjelenített név</label><div style="display:flex;gap:.5rem;flex-wrap:wrap"><input class="inp" name="nm" maxlength="32" value="${esc(u.name)}" style="flex:1;min-width:180px"><button class="btn plain sm" data-rn>Mentés</button><button class="btn danger sm" data-rst title="A nevet egy semleges „Tag-…” névre cseréli">Név törlése</button></div></div>` : ''}
     <div class="field"><label>Némítás <em>(nem írhat sehova, de olvashat)</em></label><div style="display:flex;gap:.4rem;flex-wrap:wrap">
       ${[['10 perc', 10], ['1 óra', 60], ['1 nap', 1440], ['1 hét', 10080]].map(([l, m]) => `<button class="btn plain sm" data-mute="${m}">${l}</button>`).join('')}
       ${muted ? '<button class="btn primary sm" data-mute="0">Némítás feloldása</button>' : ''}</div></div>
     <div class="field"><label>Kitiltás <em>(semmit nem lát a közösségből)</em></label><div>
-      ${u.banned ? '<button class="btn primary sm" data-ban="0">Kitiltás feloldása</button>' : '<button class="btn danger sm" data-ban="1">⛔ Kitiltás</button>'}</div></div>`,
+      ${u.banned ? '<button class="btn primary sm" data-ban="0">Kitiltás feloldása</button>' : '<button class="btn danger sm" data-ban="1"><i class="ic ic-ban"></i> Kitiltás</button>'}</div></div>`,
     foot: '<button class="btn plain" data-x>Bezárás</button>' });
   const ref = FB.doc(db, 'users', id);
   const setName = async name => {
@@ -248,14 +248,14 @@ export async function defaultChannels() {
 }
 
 function channels(v) {
-  C.setTitle('⚙️', 'Csatornák kezelése');
+  C.setTitle('<i class="ic ic-settings"></i>', 'Csatornák kezelése');
   const list = C.S.channels;
   v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div>${tabs()}<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap"><div><h1 class="gold">Csatornák</h1>
-    <p class="lead">A „Bejelentés” típusú csatornára csak adminok és moderátorok írhatnak.</p></div><button class="btn goldb" id="nc">+ ÚJ CSATORNA</button></div>
+    <p class="lead">A „Bejelentés” típusú csatornára csak adminok és moderátorok írhatnak.</p></div><button class="btn goldb" id="nc"><i class="ic ic-plus"></i> Új csatorna</button></div>
     ${list.length ? `<div class="atable">${list.map((c, i) => `<div class="arow"><div class="ord"><button data-up="${i}" ${i ? '' : 'disabled'}>▲</button><button data-dn="${i}" ${i < list.length - 1 ? '' : 'disabled'}>▼</button></div>
-      <div class="who"><b>${c.type === 'announce' ? '📢' : '#'} ${esc(c.name)}</b><small>${esc(c.category || '')}${c.topic ? ' · ' + esc(c.topic) : ''}</small></div>
+      <div class="who"><b>${c.type === 'announce' ? '<i class="ic ic-megaphone"></i>' : '#'} ${esc(c.name)}</b><small>${esc(c.category || '')}${c.topic ? ' · ' + esc(c.topic) : ''}</small></div>
       <div class="ac"><button class="btn plain sm" data-ed="${esc(c.id)}">Szerkesztés</button></div></div>`).join('')}</div>`
-    : `<div class="empty"><div class="big">#</div>Még nincs csatorna.<br><button class="btn primary" id="def">ALAP CSATORNÁK LÉTREHOZÁSA</button></div>`}</div>`;
+    : `<div class="empty"><div class="big">#</div>Még nincs csatorna.<br><button class="btn primary" id="def">Alap csatornák létrehozása</button></div>`}</div>`;
   $('#nc').onclick = () => channelModal();
   const d = $('#def'); if (d) d.onclick = () => defaultChannels().then(() => toast('Kész ✓')).catch(e => toast(errText(e), true));
   $$('[data-ed]', v).forEach(b => b.onclick = () => channelModal(list.find(c => c.id === b.dataset.ed)));
@@ -295,17 +295,17 @@ export function channelModal(c) {
 
 /* ================= FILMEK ================= */
 function films(v) {
-  C.setTitle('🎞️', 'Filmek kezelése', 'Ami itt szerepel, az látszik a filmtárban és a főoldalon');
+  C.setTitle('<i class="ic ic-film"></i>', 'Filmek kezelése', 'Ami itt szerepel, az látszik a filmtárban és a főoldalon');
   const list = C.S.videos, pub = C.can('publishMedia');
   v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div>${tabs()}<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap"><div><h1 class="gold">Filmek</h1>
-    <p class="lead">${pub ? 'A YouTube-linket a „Megjelent” bepipálása után mindenki látja, aki be van lépve. A főoldal csak a címet, a posztert és az állapotot mutatja.' : '✏️ <b>Szerkesztőként</b> az új filmek és a módosítások <b>jóváhagyásra</b> kerülnek egy adminhoz – csak utána jelennek meg.'}</p></div><button class="btn goldb" id="nf">+ ${pub ? 'ÚJ FILM' : 'FILM BEKÜLDÉSE'}</button></div>
+    <p class="lead">${pub ? 'A YouTube-linket a „Megjelent” bepipálása után mindenki látja, aki be van lépve. A főoldal csak a címet, a posztert és az állapotot mutatja.' : '<i class="ic ic-pencil"></i> <b>Szerkesztőként</b> az új filmek és a módosítások <b>jóváhagyásra</b> kerülnek egy adminhoz – csak utána jelennek meg.'}</p></div><button class="btn goldb" id="nf"><i class="ic ic-plus"></i> ${pub ? 'Új film' : 'Film beküldése'}</button></div>
     ${pub ? '' : mySubs('film')}
     ${list.length ? `<div class="atable">${list.map((x, i) => `<div class="arow" style="grid-template-columns:auto auto 1fr auto"><div class="ord">${pub ? `<button data-up="${i}" ${i ? '' : 'disabled'}>▲</button><button data-dn="${i}" ${i < list.length - 1 ? '' : 'disabled'}>▼</button>` : ''}</div>
       <div class="fthumb">${x.poster ? `<img src="${esc(x.poster)}" alt="" loading="lazy">` : ''}</div>
       <div class="who"><b>${esc(x.title)}</b><small>${esc([x.kind, x.year, x.genre].filter(Boolean).join(' · '))}</small>
-        <div>${x.featured ? '<span class="tg g">★ KIEMELT</span>' : ''}${x.soon === false ? '<span class="tg ok">MEGJELENT</span>' : `<span class="tg b">${esc((x.status || STAGES[x.stage ?? 0]).toUpperCase())}</span>`}${x.hasVideo ? '<span class="tg">▶ VIDEÓ</span>' : ''}${x.visible === false ? '<span class="tg">REJTETT</span>' : ''}</div></div>
+        <div>${x.featured ? '<span class="tg g"><i class="ic ic-star"></i> KIEMELT</span>' : ''}${x.soon === false ? '<span class="tg ok">MEGJELENT</span>' : `<span class="tg b">${esc((x.status || STAGES[x.stage ?? 0]).toUpperCase())}</span>`}${x.hasVideo ? '<span class="tg"><i class="ic ic-play"></i> VIDEÓ</span>' : ''}${x.visible === false ? '<span class="tg">REJTETT</span>' : ''}</div></div>
       <div class="ac"><button class="btn plain sm" data-ed="${esc(x.id)}">Szerkesztés</button></div></div>`).join('')}</div>`
-    : `<div class="empty"><div class="big">🎬</div>Még nincs film.${pub ? '<br><button class="btn primary" id="imp">A KORÁBBI FŐOLDALI CÍMEK ÁTHOZÁSA</button>' : ''}</div>`}</div>`;
+    : `<div class="empty"><div class="big"><i class="ic ic-clapperboard"></i></div>Még nincs film.${pub ? '<br><button class="btn primary" id="imp">A korábbi főoldali címek áthozása</button>' : ''}</div>`}</div>`;
   $('#nf').onclick = () => filmModal();
   const imp = $('#imp'); if (imp) imp.onclick = () => importFilms(imp);
   $$('[data-ed]', v).forEach(b => b.onclick = () => filmModal(list.find(x => x.id === b.dataset.ed)));
@@ -402,16 +402,16 @@ async function importFilms(btn) {
 
 /* ================= ZENÉK ================= */
 function music(v) {
-  C.setTitle('🎵', 'Zenék kezelése');
+  C.setTitle('<i class="ic ic-music"></i>', 'Zenék kezelése');
   const list = C.S.music, pub = C.can('publishMedia');
   v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div>${tabs()}<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap"><div><h1 class="gold">Zenék</h1>
-    <p class="lead">1. Töltsd fel az mp3-at a GitHubon a <b>zene</b> mappába (<a href="https://github.com/${githubRepo}/upload/main/zene" target="_blank" rel="noopener">feltöltés itt ↗</a> – behúzod, majd „Commit changes”).<br>2. Pár perc múlva itt az „Új zene” gombnál kiválaszthatod.</p></div><button class="btn goldb" id="nm">+ ${pub ? 'ÚJ ZENE' : 'ZENE BEKÜLDÉSE'}</button></div>
+    <p class="lead">1. Töltsd fel az mp3-at a GitHubon a <b>zene</b> mappába (<a href="https://github.com/${githubRepo}/upload/main/zene" target="_blank" rel="noopener">feltöltés itt ↗</a> – behúzod, majd „Commit changes”).<br>2. Pár perc múlva itt az „Új zene” gombnál kiválaszthatod.</p></div><button class="btn goldb" id="nm"><i class="ic ic-plus"></i> ${pub ? 'Új zene' : 'Zene beküldése'}</button></div>
     ${pub ? '' : mySubs('music')}
     ${list.length ? `<div class="atable">${list.map((t, i) => `<div class="arow" style="grid-template-columns:auto auto 1fr auto"><div class="ord">${pub ? `<button data-up="${i}" ${i ? '' : 'disabled'}>▲</button><button data-dn="${i}" ${i < list.length - 1 ? '' : 'disabled'}>▼</button>` : ''}</div>
       <span class="pc" style="width:52px;height:52px;${t.cover ? `background-image:url('${esc(t.cover)}')` : ''}"></span>
       <div class="who"><b>${esc(t.title)}</b><small>${esc(t.artist || 'HGWS')} · ${esc(t.src)}</small>${t.visible === false ? '<div><span class="tg">REJTETT</span></div>' : ''}</div>
       <div class="ac"><button class="btn plain sm" data-ed="${esc(t.id)}">Szerkesztés</button></div></div>`).join('')}</div>`
-    : '<div class="empty"><div class="big">🎵</div>Még nincs zene.</div>'}</div>`;
+    : '<div class="empty"><div class="big"><i class="ic ic-music"></i></div>Még nincs zene.</div>'}</div>`;
   $('#nm').onclick = () => musicModal();
   $$('[data-ed]', v).forEach(b => b.onclick = () => musicModal(list.find(x => x.id === b.dataset.ed)));
   $$('[data-up],[data-dn]', v).forEach(b => b.onclick = () => reorder('music', list, +(b.dataset.up ?? b.dataset.dn), b.dataset.up != null ? -1 : 1));
@@ -476,8 +476,8 @@ async function musicModal(t) {
 
 /* ================= BEKÜLDÉSEK ÉS JÓVÁHAGYÁSOK ================= */
 const ACT = { create: 'Új', update: 'Módosítás', delete: 'Törlés' };
-const TYPE = { film: '🎬 Film', music: '🎵 Zene' };
-const ST = { pending: ['⏳ JÓVÁHAGYÁSRA VÁR', 'b'], approved: ['✓ JÓVÁHAGYVA', 'ok'], rejected: ['✕ ELUTASÍTVA', 'red'] };
+const TYPE = { film: 'Film', music: 'Zene' };
+const ST = { pending: ['<i class="ic ic-hourglass"></i> JÓVÁHAGYÁSRA VÁR', 'b'], approved: ['<i class="ic ic-check"></i> JÓVÁHAGYVA', 'ok'], rejected: ['<i class="ic ic-x"></i> ELUTASÍTVA', 'red'] };
 /* szerkesztő: film/zene beküldése jóváhagyásra */
 async function submit(x) {
   await FB.addDoc(FB.collection(db, 'submissions'), { ...x, by: C.uid(), at: FB.serverTimestamp(), status: 'pending' });
@@ -493,7 +493,7 @@ function mySubs(type) {
     <b>${ACT[s.action] || ''}: ${esc(s.title || '')}</b><small>${timeLabel(s.at)}${s.note ? ' · „' + esc(s.note) + '”' : ''}</small></div>`).join('')}</div>`;
 }
 function approvals(v) {
-  C.setTitle('✅', 'Jóváhagyások');
+  C.setTitle('<i class="ic ic-circle-check"></i>', 'Jóváhagyások');
   const subs = Q.subs.filter(s => s.status === 'pending'), reqs = Q.reqs.filter(r => r.status === 'pending');
   const pub = C.can('publishMedia'), own = C.isOwner();
   const subRow = s => {
@@ -505,22 +505,22 @@ function approvals(v) {
         <h4>${esc(s.title || d.title || '')}</h4>
         ${s.action === 'delete' ? '<p class="hint">A szerkesztő ennek a törlését kéri.</p>' : s.type === 'film'
           ? `<p class="hint">${esc([d.kind, d.year, d.len, d.genre].filter(Boolean).join(' · '))}${d.soon === false ? ' · <b>MEGJELENT</b>' : ' · ' + esc(d.status || '')}</p>${d.desc ? `<p class="apdesc">${esc(d.desc)}</p>` : ''}
-             <p class="hint">${s.src?.youtube ? '▶ YouTube: ' + esc(s.src.youtube) : s.src?.mp4 ? '▶ MP4: ' + esc(s.src.mp4) : 'Nincs videó'}</p>`
+             <p class="hint">${s.src?.youtube ? '<i class="ic ic-play"></i> YouTube: ' + esc(s.src.youtube) : s.src?.mp4 ? '<i class="ic ic-play"></i> MP4: ' + esc(s.src.mp4) : 'Nincs videó'}</p>`
           : `<p class="hint">${esc(d.artist || 'HGWS')} · ${esc(d.src || '')}</p>${d.src ? `<audio controls preload="none" src="${esc(d.src)}" style="width:100%;max-width:360px;margin-top:.4rem"></audio>` : ''}`}
       </div></div>
-      ${pub ? `<div class="apf"><input class="inp" data-note="${esc(s.id)}" placeholder="Megjegyzés (nem kötelező)…" maxlength="200"><button class="btn danger sm" data-rej="${esc(s.id)}">Elutasítás</button><button class="btn goldb sm" data-ok="${esc(s.id)}">✓ Jóváhagyás</button></div>` : ''}</div>`;
+      ${pub ? `<div class="apf"><input class="inp" data-note="${esc(s.id)}" placeholder="Megjegyzés (nem kötelező)…" maxlength="200"><button class="btn danger sm" data-rej="${esc(s.id)}">Elutasítás</button><button class="btn goldb sm" data-ok="${esc(s.id)}"><i class="ic ic-check"></i> Jóváhagyás</button></div>` : ''}</div>`;
   };
   const reqRow = r => {
     const u = C.U(r.target), by = C.U(r.by);
-    return `<div class="apcard"><div class="aph"><span class="tg g">👑 RANGKÉRELEM</span><small>${avatar(by, 22)} <b>${esc(by.name)}</b> kérte · ${timeLabel(r.at)}</small></div>
+    return `<div class="apcard"><div class="aph"><span class="tg g"><i class="ic ic-crown"></i> RANGKÉRELEM</span><small>${avatar(by, 22)} <b>${esc(by.name)}</b> kérte · ${timeLabel(r.at)}</small></div>
       <div class="apb"><div style="display:flex;align-items:center;gap:.8rem">${avatar(u, 44)}<div><h4>${esc(u.name)}</h4>
         <p class="hint">${esc(roleOf(r.prev || 'user').label)} → <b style="color:${roleOf(r.role).color}">${esc(roleOf(r.role).label)}</b></p></div></div></div>
-      <div class="apf"><button class="btn danger sm" data-rrej="${esc(r.id)}">Elutasítás</button><button class="btn goldb sm" data-rok="${esc(r.id)}">✓ Jóváhagyás</button></div></div>`;
+      <div class="apf"><button class="btn danger sm" data-rrej="${esc(r.id)}">Elutasítás</button><button class="btn goldb sm" data-rok="${esc(r.id)}"><i class="ic ic-check"></i> Jóváhagyás</button></div></div>`;
   };
   v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div>${tabs()}<h1 class="gold">Jóváhagyások</h1>
     <p class="lead">${own ? 'Itt látod az adminok rangkérelmeit és a szerkesztők film- és zenebeküldéseit.' : pub ? 'A szerkesztők film- és zenebeküldései. Jóváhagyás után azonnal megjelennek az oldalon.' : 'A beküldéseid és kérelmeid állapota.'}</p>
-    ${own || reqs.length ? `<h2 class="aps">👑 Rangkérelmek <span class="cnt">${reqs.length}</span></h2>${reqs.length ? (own ? reqs.map(reqRow).join('') : reqs.map(r => `<div class="subrow"><span class="tg b">⏳ VÁR</span><b>${esc(C.U(r.target).name)} → ${esc(roleOf(r.role).label)}</b><small>${timeLabel(r.at)}</small></div>`).join('')) : '<div class="empty sm">Nincs függő rangkérelem.</div>'}` : ''}
-    ${pub || C.can('submitMedia') ? `<h2 class="aps">🎬 Film- és zenebeküldések <span class="cnt">${subs.length}</span></h2>${pub ? (subs.length ? subs.map(subRow).join('') : '<div class="empty sm">Nincs jóváhagyásra váró beküldés. ✨</div>') : mySubs('film') + mySubs('music') || '<div class="empty sm">Még nem küldtél be semmit.</div>'}` : ''}
+    ${own || reqs.length ? `<h2 class="aps"><i class="ic ic-crown"></i> Rangkérelmek <span class="cnt">${reqs.length}</span></h2>${reqs.length ? (own ? reqs.map(reqRow).join('') : reqs.map(r => `<div class="subrow"><span class="tg b"><i class="ic ic-hourglass"></i> VÁR</span><b>${esc(C.U(r.target).name)} → ${esc(roleOf(r.role).label)}</b><small>${timeLabel(r.at)}</small></div>`).join('')) : '<div class="empty sm">Nincs függő rangkérelem.</div>'}` : ''}
+    ${pub || C.can('submitMedia') ? `<h2 class="aps"><i class="ic ic-clapperboard"></i> Film- és zenebeküldések <span class="cnt">${subs.length}</span></h2>${pub ? (subs.length ? subs.map(subRow).join('') : '<div class="empty sm">Nincs jóváhagyásra váró beküldés.</div>') : mySubs('film') + mySubs('music') || '<div class="empty sm">Még nem küldtél be semmit.</div>'}` : ''}
   </div>`;
   $$('[data-ok]', v).forEach(b => b.onclick = () => approve(subs.find(s => s.id === b.dataset.ok), b));
   $$('[data-rej]', v).forEach(b => b.onclick = async () => {
@@ -574,16 +574,16 @@ async function approve(s, btn) {
 
 /* ================= RANGOK SZERKESZTÉSE (csak a tulaj) ================= */
 function rolesPage(v) {
-  C.setTitle('👑', 'Rangok', 'Rangok létrehozása és módosítása');
+  C.setTitle('<i class="ic ic-crown"></i>', 'Rangok', 'Rangok létrehozása és módosítása');
   const count = k => [...C.S.users.values()].filter(u => C.roleKey(u) === k).length;
   v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS · CSAK A TULAJ</div>${tabs()}<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap">
-    <div><h1 class="gold">Rangok</h1><p class="lead">Itt hozhatsz létre új rangokat, és módosíthatod a meglévők nevét, színét, szintjét és jogait. A <b>szint</b> dönti el, ki kit moderálhat: mindenki csak a nála alacsonyabb szintűeket. A 👑 Tulaj rang a tiéd, be van égetve – senki nem módosíthatja.</p></div>
-    <button class="btn goldb" id="newRole">＋ ÚJ RANG</button></div>
+    <div><h1 class="gold">Rangok</h1><p class="lead">Itt hozhatsz létre új rangokat, és módosíthatod a meglévők nevét, színét, szintjét és jogait. A <b>szint</b> dönti el, ki kit moderálhat: mindenki csak a nála alacsonyabb szintűeket. A <i class="ic ic-crown"></i> Tulaj rang a tiéd, be van égetve – senki nem módosíthatja.</p></div>
+    <button class="btn goldb" id="newRole"><i class="ic ic-plus"></i> Új rang</button></div>
     <div class="atable" style="margin-top:1.2rem">${rolesSorted().map(([k, r]) => `<div class="arow">
       <span class="rdot" style="background:${esc(r.color)};box-shadow:0 0 12px ${esc(r.color)}"></span>
-      <div class="who"><b style="color:${esc(r.color)}">${k === 'owner' ? '👑 ' : ''}${esc(r.label)}</b><small>Szint: ${r.rank} · ${count(k)} fő${SYSTEM_ROLES.includes(k) ? ' · alap rang' : ' · egyedi rang'}</small>
+      <div class="who"><b style="color:${esc(r.color)}">${k === 'owner' ? '<i class="ic ic-crown"></i> ' : ''}${esc(r.label)}</b><small>Szint: ${r.rank} · ${count(k)} fő${SYSTEM_ROLES.includes(k) ? ' · alap rang' : ' · egyedi rang'}</small>
         <div class="permlist">${k === 'owner' ? '<span class="tg g">MINDEN JOG</span>' : PERMS.filter(([p]) => r.perms?.[p]).map(([, l]) => `<span class="tg">${esc(l)}</span>`).join('') || '<span class="hint">Nincs külön joga (csevegés, filmnézés, értékelés)</span>'}</div></div>
-      <div class="ac">${k === 'owner' ? '<span class="tg g">🔒 BEÉGETVE</span>' : `<button class="btn plain sm" data-redit="${k}">✏️ Szerkesztés</button>`}</div></div>`).join('')}</div></div>`;
+      <div class="ac">${k === 'owner' ? '<span class="tg g"><i class="ic ic-lock"></i> BEÉGETVE</span>' : `<button class="btn plain sm" data-redit="${k}"><i class="ic ic-pencil"></i> Szerkesztés</button>`}</div></div>`).join('')}</div></div>`;
   $('#newRole').onclick = () => roleModal();
   $$('[data-redit]', v).forEach(b => b.onclick = () => roleModal(b.dataset.redit));
 }
@@ -594,10 +594,10 @@ function roleModal(k) {
     <div class="grid2"><div class="field"><label>Név <em>(max. 24)</em></label><input class="inp" name="n" maxlength="24" value="${esc(r.label)}" placeholder="pl. VIP, Rendező"></div>
       <div class="field"><label>Szint <em>(1–99, magasabb = erősebb)</em></label><input class="inp" type="number" name="rk" min="1" max="99" value="${r.rank}"></div></div>
     <div class="field"><label>Szín</label><div class="swatches">${TAG_COLORS.map(c => `<button type="button" data-c="${c}" class="${c === color ? 'on' : ''}" style="background:${c}"></button>`).join('')}
-      <label class="cpick" title="Egyéni szín"><input type="color" value="${esc(color)}">🎨</label></div></div>
+      <label class="cpick" title="Egyéni szín"><input type="color" value="${esc(color)}"><i class="ic ic-palette"></i></label></div></div>
     <div class="field"><label>Jogok</label><div class="permpick">${PERMS.map(([p, l, h]) => `<label class="chk"><input type="checkbox" data-p="${p}" ${r.perms?.[p] ? 'checked' : ''}> <span><b>${esc(l)}</b>${h ? `<small>${esc(h)}</small>` : ''}</span></label>`).join('')}</div></div>
     <div class="field"><label>Előnézet</label><div class="tprev"><b data-pn>Locsoló Laci</b> <span data-prev></span></div></div>
-    ${k === 'admin' ? '<p class="hint">ℹ️ Admin rangot mindig csak te (a tulaj) adhatsz.</p>' : ''}`,
+    ${k === 'admin' ? '<p class="hint"><i class="ic ic-info"></i> Admin rangot mindig csak te (a tulaj) adhatsz.</p>' : ''}`,
     foot: `${k && !sys ? '<button class="btn danger l" data-del>Rang törlése</button>' : ''}${k && sys ? '<button class="btn plain l" data-reset>Alapértékek</button>' : ''}<button class="btn plain" data-x>Mégse</button><button class="btn goldb" data-save>${k ? 'Mentés' : 'Létrehozás'}</button>` });
   const n = el.querySelector('[name=n]'), pick = el.querySelector('input[type=color]');
   const prev = () => { el.querySelector('[data-prev]').innerHTML = `<span class="rb" style="--rc:${esc(color)}">${esc(n.value.trim() || 'Rang')}</span>`; el.querySelector('[data-pn]').style.color = color; };
@@ -627,21 +627,21 @@ function roleModal(k) {
 
 /* ================= NAPLÓ (audit log) ================= */
 const ACTIONS = {
-  'role.set': ['👑', 'Rangot adott', 'rang'], 'role.request': ['📨', 'Rangot kért', 'rang'], 'role.approve': ['✅', 'Rangkérelmet jóváhagyott', 'rang'], 'role.reject': ['✕', 'Rangkérelmet elutasított', 'rang'],
-  'rank.create': ['✨', 'Rangot hozott létre', 'rang'], 'rank.edit': ['✏️', 'Rangot módosított', 'rang'], 'rank.delete': ['🗑️', 'Rangot törölt', 'rang'],
-  'user.ban': ['⛔', 'Kitiltott', 'mod'], 'user.unban': ['↩️', 'Feloldotta a kitiltást', 'mod'], 'user.mute': ['🔇', 'Lenémított', 'mod'], 'user.unmute': ['🔊', 'Feloldotta a némítást', 'mod'], 'user.rename': ['✏️', 'Átnevezett', 'mod'],
-  'msg.delete': ['🗑️', 'Üzenetet törölt', 'mod'],
-  'tag.create': ['🏷️', 'Taget hozott létre', 'tag'], 'tag.edit': ['✏️', 'Taget módosított', 'tag'], 'tag.delete': ['🗑️', 'Taget törölt', 'tag'], 'tag.assign': ['🏷️', 'Tageket osztott', 'tag'],
-  'film.create': ['🎬', 'Filmet adott hozzá', 'media'], 'film.edit': ['✏️', 'Filmet módosított', 'media'], 'film.delete': ['🗑️', 'Filmet törölt', 'media'],
-  'music.create': ['🎵', 'Zenét adott hozzá', 'media'], 'music.edit': ['✏️', 'Zenét módosított', 'media'], 'music.delete': ['🗑️', 'Zenét törölt', 'media'],
-  'media.submit': ['📤', 'Beküldött', 'media'], 'media.approve': ['✅', 'Beküldést jóváhagyott', 'media'], 'media.reject': ['✕', 'Beküldést elutasított', 'media'],
-  'channel.create': ['💬', 'Csatornát hozott létre', 'chan'], 'channel.edit': ['✏️', 'Csatornát módosított', 'chan'], 'channel.delete': ['🗑️', 'Csatornát törölt', 'chan'],
-  'idea.status': ['💡', 'Ötlet állapotát állította', 'idea'], 'arcade.champion': ['🏆', 'Heti Arcade-bajnok', 'tag']
+  'role.set': ['<i class="ic ic-crown"></i>', 'Rangot adott', 'rang'], 'role.request': ['<i class="ic ic-send"></i>', 'Rangot kért', 'rang'], 'role.approve': ['<i class="ic ic-circle-check"></i>', 'Rangkérelmet jóváhagyott', 'rang'], 'role.reject': ['<i class="ic ic-x"></i>', 'Rangkérelmet elutasított', 'rang'],
+  'rank.create': ['<i class="ic ic-sparkles"></i>', 'Rangot hozott létre', 'rang'], 'rank.edit': ['<i class="ic ic-pencil"></i>', 'Rangot módosított', 'rang'], 'rank.delete': ['<i class="ic ic-trash-2"></i>', 'Rangot törölt', 'rang'],
+  'user.ban': ['<i class="ic ic-ban"></i>', 'Kitiltott', 'mod'], 'user.unban': ['<i class="ic ic-reply"></i>', 'Feloldotta a kitiltást', 'mod'], 'user.mute': ['<i class="ic ic-volume-x"></i>', 'Lenémított', 'mod'], 'user.unmute': ['<i class="ic ic-volume-2"></i>', 'Feloldotta a némítást', 'mod'], 'user.rename': ['<i class="ic ic-pencil"></i>', 'Átnevezett', 'mod'],
+  'msg.delete': ['<i class="ic ic-trash-2"></i>', 'Üzenetet törölt', 'mod'],
+  'tag.create': ['<i class="ic ic-tag"></i>', 'Taget hozott létre', 'tag'], 'tag.edit': ['<i class="ic ic-pencil"></i>', 'Taget módosított', 'tag'], 'tag.delete': ['<i class="ic ic-trash-2"></i>', 'Taget törölt', 'tag'], 'tag.assign': ['<i class="ic ic-tag"></i>', 'Tageket osztott', 'tag'],
+  'film.create': ['<i class="ic ic-clapperboard"></i>', 'Filmet adott hozzá', 'media'], 'film.edit': ['<i class="ic ic-pencil"></i>', 'Filmet módosított', 'media'], 'film.delete': ['<i class="ic ic-trash-2"></i>', 'Filmet törölt', 'media'],
+  'music.create': ['<i class="ic ic-music"></i>', 'Zenét adott hozzá', 'media'], 'music.edit': ['<i class="ic ic-pencil"></i>', 'Zenét módosított', 'media'], 'music.delete': ['<i class="ic ic-trash-2"></i>', 'Zenét törölt', 'media'],
+  'media.submit': ['<i class="ic ic-share-2"></i>', 'Beküldött', 'media'], 'media.approve': ['<i class="ic ic-circle-check"></i>', 'Beküldést jóváhagyott', 'media'], 'media.reject': ['<i class="ic ic-x"></i>', 'Beküldést elutasított', 'media'],
+  'channel.create': ['<i class="ic ic-message-circle"></i>', 'Csatornát hozott létre', 'chan'], 'channel.edit': ['<i class="ic ic-pencil"></i>', 'Csatornát módosított', 'chan'], 'channel.delete': ['<i class="ic ic-trash-2"></i>', 'Csatornát törölt', 'chan'],
+  'idea.status': ['<i class="ic ic-lightbulb"></i>', 'Ötlet állapotát állította', 'idea'], 'arcade.champion': ['<i class="ic ic-trophy"></i>', 'Heti Arcade-bajnok', 'tag']
 };
-const AGROUPS = [['', 'Mind'], ['rang', '👑 Rangok'], ['mod', '🛡️ Moderálás'], ['tag', '🏷️ Tagek'], ['media', '🎬 Filmek, zenék'], ['chan', '💬 Csatornák'], ['idea', '💡 Ötletek']];
+const AGROUPS = [['', 'Mind'], ['rang', '<i class="ic ic-crown"></i> Rangok'], ['mod', '<i class="ic ic-shield"></i> Moderálás'], ['tag', '<i class="ic ic-tag"></i> Tagek'], ['media', '<i class="ic ic-clapperboard"></i> Filmek, zenék'], ['chan', '<i class="ic ic-message-circle"></i> Csatornák'], ['idea', '<i class="ic ic-lightbulb"></i> Ötletek']];
 const LOG = { items: [], at: 0, grp: '', q: '' };
 async function auditPage(v, again) {
-  C.setTitle('📜', 'Napló', 'Ki mit csinált a kezelőfelületen');
+  C.setTitle('<i class="ic ic-scroll-text"></i>', 'Napló', 'Ki mit csinált a kezelőfelületen');
   if (!again || Date.now() - LOG.at > 30000) {
     try { const s = await FB.getDocs(FB.query(FB.collection(db, 'audit'), FB.orderBy('at', 'desc'), FB.limit(400))); LOG.items = s.docs.map(d => ({ id: d.id, ...d.data() })); LOG.at = Date.now(); }
     catch (e) { v.innerHTML = `<div class="page">${tabs()}<p class="hint">${esc(errText(e))}</p></div>`; return; }
@@ -653,7 +653,7 @@ async function auditPage(v, again) {
   let day = '';
   v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div>${tabs()}<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap">
     <div><h1 class="gold">Napló</h1><p class="lead">Minden kezelési művelet: rangok, moderálás, tagek, filmek, csatornák. Csak a tulaj és az adminok látják, és senki nem törölheti.</p></div>
-    <button class="btn plain" id="lr">↻ Frissítés</button></div>
+    <button class="btn plain" id="lr"><i class="ic ic-refresh-cw"></i> Frissítés</button></div>
     <div class="lfil"><div class="ifilt">${AGROUPS.map(([k, l]) => `<button data-g="${k}" class="${LOG.grp === k ? 'on' : ''}">${l}</button>`).join('')}</div>
       <div class="search" style="max-width:300px;margin:0"><input type="search" id="lq" placeholder="Keresés (név, cél, részlet)…" value="${esc(LOG.q)}"></div></div>
     <div class="logl">${list.length ? list.map(x => {
@@ -674,7 +674,7 @@ const DAY = 864e5;
 const hbars = (rows, unit = '') => { const max = Math.max(1, ...rows.map(r => r[1]));
   return `<div class="hb">${rows.map(([l, n, c]) => `<div class="hbr" title="${esc(l)}: ${n.toLocaleString('hu-HU')}${unit}"><span class="hbl">${l}</span><span class="hbt"><i style="width:${Math.max(n ? 2 : 0, n / max * 100)}%;${c ? `background:${c}` : ''}"></i></span><b>${n.toLocaleString('hu-HU')}</b></div>`).join('')}</div>`; };
 async function statsPage(v) {
-  C.setTitle('📊', 'Statisztika');
+  C.setTitle('<i class="ic ic-chart-column"></i>', 'Statisztika');
   const users = [...C.S.users.values()], now = Date.now();
   const seen = u => toDate(u.lastSeen)?.getTime() || 0, born = u => toDate(u.createdAt)?.getTime() || 0;
   const act = d => users.filter(u => now - seen(u) < d * DAY).length;
@@ -695,19 +695,20 @@ async function statsPage(v) {
     </div>
     <div class="sgrid">
       <section class="sbox wide"><h3>Új regisztrációk – elmúlt 30 nap</h3>
-        <div class="cols">${reg.map((n, i) => `<div class="col" title="${new Date(days[i]).toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })}: ${n} új tag"><i style="height:${n / regMax * 100}%"></i></div>`).join('')}</div>
-        <div class="colx"><span>${new Date(days[0]).toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })}</span><span>ma</span></div></section>
-      <section class="sbox"><h3>Legnézettebb filmek</h3><div id="stTop"><div class="spin"></div></div></section>
-      <section class="sbox"><h3>Legjobbra értékelt filmek</h3><div id="stRate"><div class="spin"></div></div></section>
+        ${reg.some(Boolean) ? `<div class="cols">${reg.map((n, i) => `<div class="col" title="${new Date(days[i]).toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })}: ${n} új tag"><i style="height:${n / regMax * 100}%"></i></div>`).join('')}</div>
+        <div class="colx"><span>${new Date(days[0]).toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })}</span><span>ma</span></div>`
+        : `<div class="estate"><i class="ic ic-users"></i><b>Az elmúlt 30 napban nem volt új regisztráció</b><span>Amint valaki csatlakozik, itt napi bontásban látod.</span></div>`}</section>
+      <section class="sbox"><h3>Legnézettebb filmek</h3><div id="stTop"><div class="skl"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div></section>
+      <section class="sbox"><h3>Legjobbra értékelt filmek</h3><div id="stRate"><div class="skl"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div></section>
       <section class="sbox"><h3>Tagok rangok szerint</h3>${hbars(roles, ' fő')}</section>
-      <section class="sbox"><h3>Ötletek állapota</h3><div id="stIdea"><div class="spin"></div></div></section>
-      <section class="sbox"><h3>Arcade – játékosok száma</h3><div id="stArc"><div class="spin"></div></div></section>
+      <section class="sbox"><h3>Ötletek állapota</h3><div id="stIdea"><div class="skl"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div></section>
+      <section class="sbox"><h3>Arcade – játékosok száma</h3><div id="stArc"><div class="skl"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div></section>
     </div></div>`;
   const name = id => esc(vids.find(x => x.id === id)?.title || id);
   FB.getDocs(FB.collection(db, 'views')).then(s => {
     const l = s.docs.map(d => [d.id, d.data().n || 0]).sort((a, b) => b[1] - a[1]);
     $('#stV').textContent = l.reduce((a, b) => a + b[1], 0).toLocaleString('hu-HU');
-    $('#stTop').innerHTML = l.length ? hbars(l.slice(0, 8).map(([id, n]) => [name(id), n]), ' megtekintés') : '<p class="hint">Még nincs adat – a megtekintéseket mostantól számoljuk.</p>';
+    $('#stTop').innerHTML = l.length ? hbars(l.slice(0, 8).map(([id, n]) => [name(id), n]), ' megtekintés') : '<div class="estate"><i class="ic ic-eye"></i><b>Még nincs megtekintés</b><span>A nézéseket mostantól számoljuk.</span></div>';
   }).catch(() => { $('#stV').textContent = '–'; $('#stTop').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
   FB.getDocs(FB.collectionGroup(db, 'ratings')).then(s => {
     const sum = {}, n = {}; let all = 0;
@@ -718,9 +719,9 @@ async function statsPage(v) {
   }).catch(() => { $('#stR').textContent = '–'; $('#stRate').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
   FB.getDocs(FB.collection(db, 'ideas')).then(s => {
     const st = { nyitott: ['Nyitott', '#6cc6ff'], folyamatban: ['Folyamatban', '#ffa94d'], kesz: ['Kész', '#5ee08a'], elutasitva: ['Elutasítva', '#ff7a6e'] };
-    $('#stIdea').innerHTML = s.size ? hbars(Object.entries(st).map(([k, [l, c]]) => [l, s.docs.filter(d => d.data().status === k).length, c]), ' db') : '<p class="hint">Még nincs beküldött ötlet.</p>';
+    $('#stIdea').innerHTML = s.size ? hbars(Object.entries(st).map(([k, [l, c]]) => [l, s.docs.filter(d => d.data().status === k).length, c]), ' db') : '<div class="estate"><i class="ic ic-lightbulb"></i><b>Még nincs beküldött ötlet</b></div>';
   }).catch(() => { $('#stIdea').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
-  import('./browse.js?v=202611170221').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
+  import('./browse.js?v=202611170644').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
     .then(l => { $('#stArc').innerHTML = hbars(l, ' játékos'); });
 }
 const lbScores = g => FB.collection(db, 'leaderboards', g, 'scores');

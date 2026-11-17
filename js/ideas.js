@@ -1,12 +1,12 @@
 // HGWS – Ötletek (ticket rendszer): a belépett tagok ötletet, hibát, kérdést küldhetnek,
 // a moderátortól felfelé (akinek „tickets” joga van) mindenki látja és válaszolhat rájuk.
-import { FB, db, $, $$, esc, avatar, timeLabel, toDate, toast, errText, notify, audit, roleOf, OWNER_UID } from './core.js?v=202611170221';
-import { modal, confirmBox } from './ui.js?v=202611170221';
+import { FB, db, $, $$, esc, avatar, timeLabel, toDate, toast, errText, notify, audit, roleOf, OWNER_UID } from './core.js?v=202611170644';
+import { modal, confirmBox } from './ui.js?v=202611170644';
 
 let C = null;
 export function init(ctx) { C = ctx; }
 
-export const CATS = { otlet: ['💡', 'Ötlet'], hiba: ['🐞', 'Hiba'], kerdes: ['❓', 'Kérdés'], egyeb: ['💬', 'Egyéb'] };
+export const CATS = { otlet: ['<i class="ic ic-lightbulb"></i>', 'Ötlet'], hiba: ['<i class="ic ic-bug"></i>', 'Hiba'], kerdes: ['<i class="ic ic-circle-help"></i>', 'Kérdés'], egyeb: ['<i class="ic ic-message-circle"></i>', 'Egyéb'] };
 export const STATUS = {
   nyitott: ['Nyitott', '#6cc6ff'], folyamatban: ['Folyamatban', '#ffa94d'], kesz: ['Kész', '#5ee08a'], elutasitva: ['Elutasítva', '#ff7a6e']
 };
@@ -25,8 +25,8 @@ export function render(id) {
   const page = $('#page');
   page.innerHTML = `<div class="pg ideas"><div class="ihead"><div><div class="eyebrow">// HGWS KÖZÖSSÉG</div><h1 class="gold">Ötletek és visszajelzések</h1>
     <p class="lead">${staff() ? 'Az összes beküldött ötlet, hibajelzés és kérdés. Válaszolj rájuk, és állítsd az állapotukat.' : 'Van egy ötleted, hibát találtál, vagy kérdésed van? Küldd be – a HGWS csapata (moderátoroktól felfelé) válaszol rá.'}</p></div>
-    <button class="btn goldb" id="newIdea">＋ ÚJ BEKÜLDÉS</button></div>
-    <div class="ifilt">${[['szavaz', '👍 Szavazás'], ['aktiv', 'Aktív'], ['mind', 'Mind'], ...(staff() ? [] : [['sajat', 'Sajátjaim']]), ...Object.entries(STATUS).map(([k, [l]]) => [k, l])].map(([k, l]) => `<button data-f="${k}" class="${filter === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <button class="btn goldb" id="newIdea"><i class="ic ic-plus"></i> Új beküldés</button></div>
+    <div class="ifilt">${[['szavaz', '<i class="ic ic-thumbs-up"></i> Szavazás'], ['aktiv', 'Aktív'], ['mind', 'Mind'], ...(staff() ? [] : [['sajat', 'Sajátjaim']]), ...Object.entries(STATUS).map(([k, [l]]) => [k, l])].map(([k, l]) => `<button data-f="${k}" class="${filter === k ? 'on' : ''}">${l}</button>`).join('')}</div>
     <div id="ilist"><div class="spin" style="margin:2rem auto"></div></div></div>`;
   $('#newIdea').onclick = newIdea;
   $('#ilist').addEventListener('click', e => { const v = e.target.closest('[data-vote]'); if (v) { e.preventDefault(); e.stopPropagation(); vote(v.dataset.vote); } });
@@ -57,10 +57,10 @@ function drawList() {
     const u = C.U(x.uid), [ic, cl] = CATS[x.category] || CATS.egyeb;
     const fresh = x.lastReplyBy && x.lastReplyBy !== C.uid() && (toDate(x.lastReplyAt)?.getTime() || 0) > seen(x.id);
     const vn = x.votes?.length || 0, iv = (x.votes || []).includes(C.uid());
-    return `<a class="icard${fresh ? ' fresh' : ''}" href="#/otletek/${esc(x.id)}">${x.public ? `<button class="ivote${iv ? ' on' : ''}" data-vote="${esc(x.id)}" title="${iv ? 'Szavazat visszavonása' : 'Szavazok rá'}"><span>👍</span><b>${vn}</b></button>` : ''}<span class="icat" title="${cl}">${ic}</span>
+    return `<a class="icard${fresh ? ' fresh' : ''}" href="#/otletek/${esc(x.id)}">${x.public ? `<button class="ivote${iv ? ' on' : ''}" data-vote="${esc(x.id)}" title="${iv ? 'Szavazat visszavonása' : 'Szavazok rá'}"><span><i class="ic ic-thumbs-up"></i></span><b>${vn}</b></button>` : ''}<span class="icat" title="${cl}">${ic}</span>
       <div class="ib"><div class="it"><b>${esc(x.title)}</b>${pill(x.status)}${fresh ? '<span class="inew">ÚJ VÁLASZ</span>' : ''}</div>
-        <small>${staff() || x.uid !== C.uid() ? `${esc(u.name)} · ` : ''}${cl} · ${timeLabel(x.createdAt)}${x.public ? ' · 🌐 nyilvános' : ''}${x.replies ? ` · 💬 ${x.replies} válasz` : ''}</small></div><span class="iarr">›</span></a>`;
-  }).join('') : `<div class="empty"><div class="big">💡</div>${filter === 'szavaz' ? 'Még nincs nyilvános ötlet. Az ötleteket beküldéskor nyilvánossá teheted, és a többiek szavazhatnak rájuk.' : items.length ? 'Ebben a nézetben nincs semmi.' : staff() ? 'Még senki nem küldött be semmit.' : 'Még nem küldtél be semmit. Itt az ideje!'}</div>`;
+        <small>${staff() || x.uid !== C.uid() ? `${esc(u.name)} · ` : ''}${cl} · ${timeLabel(x.createdAt)}${x.public ? ' · <i class="ic ic-globe"></i> nyilvános' : ''}${x.replies ? ` · <i class="ic ic-message-circle"></i> ${x.replies} válasz` : ''}</small></div><span class="iarr">›</span></a>`;
+  }).join('') : `<div class="empty"><div class="big"><i class="ic ic-lightbulb"></i></div>${filter === 'szavaz' ? 'Még nincs nyilvános ötlet. Az ötleteket beküldéskor nyilvánossá teheted, és a többiek szavazhatnak rájuk.' : items.length ? 'Ebben a nézetben nincs semmi.' : staff() ? 'Még senki nem küldött be semmit.' : 'Még nem küldtél be semmit. Itt az ideje!'}</div>`;
 }
 /* olvasottság (helyben) – hogy az új válaszok kiemelve látszódjanak */
 const seen = id => { try { return +(JSON.parse(localStorage.getItem('hgws_ideas_seen') || '{}')[id] || 0); } catch (_) { return 0; } };
@@ -71,7 +71,7 @@ function newIdea() {
     <div class="field"><label>Típus</label><div class="icats">${Object.entries(CATS).map(([k, [i, l]], n) => `<label><input type="radio" name="cat" value="${k}" ${n ? '' : 'checked'}><span>${i} ${l}</span></label>`).join('')}</div></div>
     <div class="field"><label>Cím <em>(max. 100)</em></label><input class="inp" name="t" maxlength="100" placeholder="pl. Legyen sötét/világos mód"></div>
     <div class="field"><label>Részletek <em>(max. 2000)</em></label><textarea class="inp" name="x" rows="6" maxlength="2000" placeholder="Írd le minél pontosabban…"></textarea></div>
-    <label class="chk"><input type="checkbox" name="pub" checked> <span><b>Nyilvános</b> – a többi tag is látja és szavazhat rá 👍 <small class="hint">(hibánál, kérdésnél érdemes kikapcsolni)</small></span></label>`,
+    <label class="chk"><input type="checkbox" name="pub" checked> <span><b>Nyilvános</b> – a többi tag is látja és szavazhat rá. <small class="hint">(hibánál, kérdésnél érdemes kikapcsolni)</small></span></label>`,
     foot: '<button class="btn plain" data-x>Mégse</button><button class="btn goldb" data-ok>Beküldés</button>' });
   setTimeout(() => el.querySelector('[name=t]').focus(), 50);
   el.querySelectorAll('[name=cat]').forEach(r => r.onchange = () => { el.querySelector('[name=pub]').checked = r.value === 'otlet' || r.value === 'egyeb'; });
@@ -100,14 +100,14 @@ function detail(id) {
     const u = C.U(x.uid), [ic, cl] = CATS[x.category] || CATS.egyeb, mine = x.uid === C.uid();
     document.title = x.title + ' · Ötletek · HGWS';
     box.innerHTML = `<div class="iorig"><div class="it"><span class="icat">${ic}</span><h1>${esc(x.title)}</h1>${pill(x.status)}</div>
-      <div class="imeta">${avatar(u, 28)} <b>${esc(u.name)}</b>${C.roleBadge(u)} · ${cl} · ${timeLabel(x.createdAt)}${x.public ? ' · 🌐 nyilvános' : ' · 🔒 csak a csapat látja'}</div>
-      ${x.public ? `<div class="ivrow"><button class="ivote big${(x.votes || []).includes(C.uid()) ? ' on' : ''}" data-vote="${esc(x.id)}"><span>👍</span><b>${x.votes?.length || 0}</b></button><span class="hint">${(x.votes || []).length ? esc((x.votes || []).slice(0, 8).map(v => C.U(v).name).join(', ')) + ((x.votes || []).length > 8 ? '…' : '') + ' szavazott rá' : 'Még senki nem szavazott rá – légy te az első!'}</span></div>` : ''}
+      <div class="imeta">${avatar(u, 28)} <b>${esc(u.name)}</b>${C.roleBadge(u)} · ${cl} · ${timeLabel(x.createdAt)}${x.public ? ' · <i class="ic ic-globe"></i> nyilvános' : ' · <i class="ic ic-lock"></i> csak a csapat látja'}</div>
+      ${x.public ? `<div class="ivrow"><button class="ivote big${(x.votes || []).includes(C.uid()) ? ' on' : ''}" data-vote="${esc(x.id)}"><span><i class="ic ic-thumbs-up"></i></span><b>${x.votes?.length || 0}</b></button><span class="hint">${(x.votes || []).length ? esc((x.votes || []).slice(0, 8).map(v => C.U(v).name).join(', ')) + ((x.votes || []).length > 8 ? '…' : '') + ' szavazott rá' : 'Még senki nem szavazott rá – légy te az első!'}</span></div>` : ''}
       ${x.text ? `<div class="itext">${esc(x.text)}</div>` : ''}
       ${staff() ? `<div class="istaff"><span>Állapot:</span>${Object.entries(STATUS).map(([k, [l, c]]) => `<button data-st="${k}" class="${x.status === k ? 'on' : ''}" style="--ic:${c}">${l}</button>`).join('')}
-        <button class="ipub" data-pub>${x.public ? '🔒 Elrejtés a tagok elől' : '🌐 Nyilvánossá tétel'}</button><button class="idel" data-del>🗑️ Törlés</button></div>` : mine ? '<div class="istaff"><button class="idel" data-del>🗑️ Visszavonás</button></div>' : ''}</div>
+        <button class="ipub" data-pub>${x.public ? '<i class="ic ic-lock"></i> Elrejtés a tagok elől' : '<i class="ic ic-globe"></i> Nyilvánossá tétel'}</button><button class="idel" data-del><i class="ic ic-trash-2"></i> Törlés</button></div>` : mine ? '<div class="istaff"><button class="idel" data-del><i class="ic ic-trash-2"></i> Visszavonás</button></div>' : ''}</div>
       <h3 class="irh">Válaszok <span class="cnt">${reps.length}</span></h3>
       <div class="ireps">${reps.length ? reps.map(r => { const ru = C.U(r.uid), st = r.uid !== x.uid;
-        return `<div class="irep${st ? ' staff' : ''}">${avatar(ru, 36)}<div><div class="irm"><b>${esc(ru.name)}</b>${C.roleBadge(ru)}<time>${timeLabel(r.createdAt)}</time>${staff() ? `<button class="idx" data-rdel="${esc(r.id)}" title="Törlés">✕</button>` : ''}</div><div class="irt">${esc(r.text)}</div></div></div>`; }).join('')
+        return `<div class="irep${st ? ' staff' : ''}">${avatar(ru, 36)}<div><div class="irm"><b>${esc(ru.name)}</b>${C.roleBadge(ru)}<time>${timeLabel(r.createdAt)}</time>${staff() ? `<button class="idx" data-rdel="${esc(r.id)}" title="Törlés"><i class="ic ic-x"></i></button>` : ''}</div><div class="irt">${esc(r.text)}</div></div></div>`; }).join('')
         : `<p class="hint">${staff() ? 'Még nincs válasz – írj elsőként!' : 'Még nincs válasz. A HGWS csapata hamarosan ránéz. 🙂'}</p>`}</div>
       ${mine || staff() ? `<div class="irform"><textarea class="inp" rows="3" maxlength="2000" placeholder="${staff() && !mine ? 'Válasz a beküldőnek…' : 'Kiegészítés, válasz…'}"></textarea><div><button class="btn goldb sm" data-send>Küldés</button></div></div>` : ''}`;
     const ta = box.querySelector('.irform textarea');
@@ -146,9 +146,9 @@ function detail(id) {
   };
   unsubs.push(FB.onSnapshot(ref, s => {
     if (!here()) return stop();
-    if (!s.exists()) { $('#idet').innerHTML = '<div class="empty"><div class="big">🔍</div>Ez a beküldés nem található (lehet, hogy törölték).</div>'; return; }
+    if (!s.exists()) { $('#idet').innerHTML = '<div class="empty"><div class="big"><i class="ic ic-search"></i></div>Ez a beküldés nem található (lehet, hogy törölték).</div>'; return; }
     x = { id: s.id, ...s.data({ serverTimestamps: 'estimate' }) }; draw();
-  }, e => { $('#idet').innerHTML = `<div class="empty"><div class="big">🔒</div>${esc(errText(e))}</div>`; }));
+  }, e => { $('#idet').innerHTML = `<div class="empty"><div class="big"><i class="ic ic-lock"></i></div>${esc(errText(e))}</div>`; }));
   unsubs.push(FB.onSnapshot(FB.query(FB.collection(db, 'ideas', id, 'replies'), FB.orderBy('createdAt')), s => {
     if (!here()) return stop();
     reps = s.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) })); draw();
