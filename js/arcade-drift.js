@@ -82,9 +82,9 @@ window.HGDrift = function (env) {
   const GEO = {};
   function geo(T) {
     if (GEO[T.id]) return GEO[T.id];
-    const main = fillet(T.pts, T.r, T.loop), mlen = plen(main, T.loop), paths = [{ raw: main, w: T.w, dirt: 0, main: 1 }];
+    const RW = 1.4, main = fillet(T.pts, T.r, T.loop), mlen = plen(main, T.loop), paths = [{ raw: main, w: T.w * RW, dirt: 0, main: 1 }];
     const mid = i => { const a = T.pts[i % T.pts.length], b = T.pts[(i + 1) % T.pts.length]; return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; };
-    for (const br of T.br || []) paths.push({ raw: fillet([mid(br.a), ...br.pts, mid(br.b)], br.r || Math.min(T.r, 200), false), w: br.w || T.w, dirt: br.dirt || 0 });
+    for (const br of T.br || []) paths.push({ raw: fillet([mid(br.a), ...br.pts, mid(br.b)], br.r || Math.min(T.r, 200), false), w: (br.w || T.w) * RW, dirt: br.dirt || 0 });
     const par = Math.round((T.loop ? LAPS : 1) * mlen / 410 * 1000);
     return GEO[T.id] = { paths, mlen, par };
   }
@@ -101,12 +101,12 @@ window.HGDrift = function (env) {
         if (i) s += Math.hypot(raw[i][0] - raw[i - 1][0], raw[i][1] - raw[i - 1][1]);
         let pr = p0 + (p1 - p0) * s / L; if (loop) pr = ((pr % 1) + 1) % 1;
         P.push({ x: raw[i][0], y: raw[i][1], tx: tx / tl, ty: ty / tl, prog: pr, h: hf(raw[i][0], raw[i][1]), pi, hw: w / 2, dirt }); } };
-    pathSamples(main, 0, T.w, 0, 0, 1, loop);
+    pathSamples(main, 0, GE.paths[0].w, 0, 0, 1, loop);
     const mprog = (x, y) => { let b = 1e18, bp = 0; for (let i = 0; i < nm; i++) { const d = (P[i].x - x) ** 2 + (P[i].y - y) ** 2; if (d < b) { b = d; bp = P[i].prog; } } return bp; };
     GE.paths.slice(1).forEach((pa, k) => { const r = pa.raw, p0 = mprog(...r[0]); let p1 = mprog(...r[r.length - 1]); if (loop && p1 < p0) p1 += 1; pathSamples(r, k + 1, pa.w, pa.dirt, p0, p1, false); });
     const n = P.length, CELL = 128, grid = new Map();
     P.forEach((p, i) => { const k = Math.floor(p.x / CELL) + ',' + Math.floor(p.y / CELL); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(i); });
-    const R = rng(hash(T.id)), hw = T.w / 2, obs = [], deco = [], lamps = [];
+    const R = rng(hash(T.id)), hw = GE.paths[0].w / 2, obs = [], deco = [], lamps = [];
     const near = (x, y, m) => { const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL), rr2 = Math.ceil(m / CELL); for (let a = -rr2; a <= rr2; a++) for (let b = -rr2; b <= rr2; b++) { const l = grid.get((cx + a) + ',' + (cy + b)); if (l) for (const i of l) if ((P[i].x - x) ** 2 + (P[i].y - y) ** 2 < (m + P[i].hw - hw) ** 2) return true; } return false; };
     const S = SURF[T.th];
     if (T.th === 'city') {
@@ -210,7 +210,7 @@ window.HGDrift = function (env) {
     const glist = (NETG[T.id] || []).filter(r => r.p && r.ms).sort((a, b) => a.ms - b.ms);
     glist.filter(r => !r.me).slice(0, 3).forEach((r, i) => { const d = dec(r.p); if (d) ghosts.push({ d, k: CARS[r.car] ? r.car : 'utcai', name: r.name + ' · ' + fmtT(r.ms), col: ['#ffd84a', '#c0c0c0', '#cd7f32'][i] }); });
     for (const ck of CK) { const own = ls.get(bestKey(T.id, ck), null); if (own) { const d = dec(own.p); if (d) ghosts.push({ d, k: ck, name: (ck === sel.c1 ? 'Te' : 'Te · ' + CARS[ck].n) + ' · ' + fmtT(own.ms), col: '#9fe0ff', own: 1 }); } }
-    S = { phase: 'count', t: -3.2, cars, ghosts, skids: [], smoke: [], cam: { x: cars[0].x, y: cars[0].y, z: 1 }, msg: [], end: 0, res: null };
+    S = { phase: 'race', t: 0, cars, ghosts, skids: [], smoke: [], cam: { x: cars[0].x, y: cars[0].y, z: 1 }, msg: [], end: 0, res: null };
     audio(); if (AC && AC.C.state === 'suspended') AC.C.resume();
     G.score = 0; hud();
   }
@@ -243,9 +243,13 @@ window.HGDrift = function (env) {
     const L = C.len * .62, a = L * C.cg, b = L - a, G = C.mu * gf, dir = vx >= 0 ? 1 : -1, avx = Math.max(Math.abs(vx), 100);
     // kormány: simított bemenet; ha nem kormányzol, enyhe automatikus ellenkormány (kerék-visszatérítés)
     const beta = Math.atan2(vy, Math.max(Math.abs(vx), 1));
-    let target = inp.s; if (!inp.s && Math.abs(vx) > 60 && Math.abs(beta) > .08) target = Math.max(-1, Math.min(1, beta / C.steer * 1.4)) * .85;
-    c.st += (target - c.st) * Math.min(1, h * (inp.s ? 11 : 6));
-    const delta = (c.st * C.steer / (1 + Math.abs(vx) / 85) + (c.st * beta > 0 ? Math.sign(c.st) * Math.min(.55, Math.abs(beta)) * Math.abs(c.st) : 0)) * dir;
+    // drift mód: csak a SZÓKÖZ lenyomásakor indul; ha az autó kiegyenesedett, véget ér – újra le kell nyomni
+    const hbEdge = inp.hb && !c.hbPrev; c.hbPrev = inp.hb;
+    if (hbEdge && Math.abs(vx) > 90 && S.phase === 'race' && !c.done) { c.dm = 1; c.dmT = 0; c.dmCalm = 0; if (inp.s) w += inp.s * Math.min(1.4, Math.abs(vx) / 300) * dir; }
+    if (c.dm) { c.dmT += h; if (c.dmT > .8 && Math.abs(beta) < .06) c.dmCalm += h; else c.dmCalm = 0; if (c.dmCalm > .3 || Math.abs(vx) < 70 || c.done) c.dm = 0; }
+    let target = inp.s; if (!inp.s && c.dm && Math.abs(vx) > 60 && Math.abs(beta) > .08) target = Math.max(-1, Math.min(1, beta / C.steer * 1.2)) * .6;
+    c.st += (target - c.st) * Math.min(1, h * (inp.s ? (c.dm ? 4.5 : 8) : 5));
+    const delta = (c.st * C.steer / (1 + Math.abs(vx) / 85) * (c.dm ? .65 : 1) + (c.st * beta > 0 ? Math.sign(c.st) * Math.min(.3, Math.abs(beta)) * Math.abs(c.st) : 0)) * dir;
     // hosszirányú erők
     let Fd = 0, Fb = 0;
     if (S.phase === 'race' && !c.done) {
@@ -258,28 +262,27 @@ window.HGDrift = function (env) {
     const Nf = Math.max(.15 * G, G * b / L - wt), Nr = Math.max(.15 * G, G * a / L + wt);
     const fr = C.awd || 0;
     let FxF = Fd * fr + Fb * .6, FxR = Fd * (1 - fr) + Fb * .4;
-    const muF = Nf, muR = Nr * (inp.hb ? .5 : 1);
-    if (inp.hb) FxR += -dir * Math.min(Math.abs(vx) * 2, .03 * G);
-    FxF = Math.max(-muF, Math.min(muF * .7, FxF)); FxR = Math.max(-muR, Math.min(muR * (inp.hb ? 1 : .68), FxR));
-    // kerékkipörgés: ha a far már csúszik és nyomod a gázt, a hátsó kerék pörög – a far csúszva marad, a sebesség megmarad
-    const spin = inp.thr && !inp.hb && (c.aR || 0) > .13 && vx > 120 && fr < .5;
-    let latR = Math.sqrt(Math.max(0, muR * muR - FxR * FxR)); if (spin) { FxR = Math.max(FxR, Math.min(C.eng, muR * .8)); latR = muR * .6; }
+    const kick = c.dm && inp.hb && c.dmT < .45, muF = Nf, muR = Nr * (kick ? .38 : c.dm && inp.hb ? .7 : 1);
+    if (c.dm && inp.hb) FxR += -dir * Math.min(Math.abs(vx) * 2, .02 * G);
+    FxF = Math.max(-muF, Math.min(muF * .7, FxF)); FxR = Math.max(-muR, Math.min(muR * (c.dm ? 1 : .55), FxR));
+    // driftben gázzal pörög a hátsó kerék – a far kint marad; gáz nélkül visszatapad
+    let latR = Math.sqrt(Math.max(0, muR * muR - FxR * FxR)); if (c.dm && inp.thr && !kick && vx > 100 && fr < .5) { FxR = Math.max(FxR, Math.min(C.eng, muR * .62)); latR = muR * .7; }
     // oldalerők (tapadási kör: a hosszirányú erő elveszi az oldaltapadást – gázzal kicsúszik a far)
     const aF = Math.atan2(vy + w * a, avx) - delta, aR = Math.atan2(vy - w * b, avx);
     const FyF = tire(aF, Math.sqrt(Math.max(0, muF * muF - FxF * FxF)), C.B), FyR = tire(aR, latR, C.B);
     const cd = Math.cos(delta), sd = Math.sin(delta);
     const Fx = FxR + FxF * cd - FyF * sd + Fres, Fy = FyR + FxF * sd + FyF * cd, tq = a * (FyF * cd + FxF * sd) - b * FyR;
-    vx += (Fx + w * vy) * h; vy += (Fy - w * vx) * h; w += tq / (C.I * a * b * 2) * h; w *= 1 - .9 * h;
+    vx += (Fx + w * vy) * h; vy += (Fy - w * vx) * h; w += tq / (C.I * a * b * 2.6) * h; w *= 1 - (c.dm ? 1.5 : 1) * h;
     // driftszög-határoló (játszhatóság): 40° fölött a perdület és az oldalsebesség visszafogva – kipörgés helyett tartható drift
-    { const bb = Math.atan2(vy, Math.max(1, Math.abs(vx))), ex = Math.abs(bb) - .7; if (ex > 0 && Math.abs(vx) > 80) { if (w * bb < 0) w -= Math.sign(w) * Math.min(Math.abs(w), ex * 14 * h * 10); vy *= 1 - Math.min(.5, ex * 3 * h * 10); } }
+    { const bb = Math.atan2(vy, Math.max(1, Math.abs(vx))), ex = Math.abs(bb) - .6; if (ex > 0 && Math.abs(vx) > 80) { if (w * bb < 0) w -= Math.sign(w) * Math.min(Math.abs(w), ex * 14 * h * 10); vy *= 1 - Math.min(.5, ex * 3 * h * 10); } }
     // kis sebességnél kinematikus kormányzás (nincs csúszás)
     if (Math.abs(vx) < 80) { const k = Math.abs(vx) / 80; w = w * k + (vx * Math.tan(delta) / L) * (1 - k); vy *= 1 - (1 - k) * Math.min(1, h * 12); }
     if (B.T.hills) { const gx = (B.hf(c.x + 6, c.y) - B.hf(c.x - 6, c.y)) / 12, gy = (B.hf(c.x, c.y + 6) - B.hf(c.x, c.y - 6)) / 12, k = HK * 260 * h; vx -= (gx * ca + gy * sa) * k; vy -= (-gx * sa + gy * ca) * k; c.z = B.hf(c.x, c.y); }
     c.ax = Fx; c.w = w; c.aR = Math.abs(aR); c.a += w * h; ca = Math.cos(c.a); sa = Math.sin(c.a);
     c.vx = ca * vx - sa * vy; c.vy = sa * vx + ca * vy;
     c.x += c.vx * h; c.y += c.vy * h;
-    c.slip = Math.min(1.5, Math.abs(Math.atan2(vy, Math.max(1, Math.abs(vx))))); c.spd = Math.hypot(c.vx, c.vy); c.off = off; c.brake = inp.brk && vx > 0; c.vf = vx; c.hb = inp.hb;
-    c.sliding = inp.hb && Math.abs(vx) > 40 || Math.abs(aR) > .13 && c.spd > 50 ? 1 : 0;
+    c.slip = Math.min(1.5, Math.abs(Math.atan2(vy, Math.max(1, Math.abs(vx))))); c.spd = Math.hypot(c.vx, c.vy); c.off = off; c.brake = inp.brk && vx > 0; c.vf = vx;
+    c.sliding = c.dm && Math.abs(beta) > .05 || Math.abs(aR) > .13 && c.spd > 50 ? 1 : 0; c.hb = inp.hb && c.dm;
     // ütközés
     const cr = C.len * .42;
     for (const o of B.obs) {
@@ -634,8 +637,6 @@ window.HGDrift = function (env) {
         if (B.T.hills) g.fillText('▲ ' + Math.round(c.z * 1200) + ' m', x, y0 + 80 * d);
       });
       if (cs.length === 1 || G.W / d > 700) minimap(g, cs.length > 1 ? G.W / 2 - 70 * d : G.W - 166 * d, cs.length > 1 ? G.H - 120 * d : 70 * d, 150 * d, 104 * d);
-      if (S.phase === 'count') { const k = Math.ceil(-S.t); g.textAlign = 'center'; g.font = `900 ${90 * d}px Inter, sans-serif`; g.fillStyle = k <= 1 ? '#6fcf6a' : '#ffe29a'; g.fillText(k > 0 ? k : 'RAJT!', G.W / 2, G.H * .4); }
-      if (S.phase === 'race' && S.t < .8) { g.textAlign = 'center'; g.font = `900 ${80 * d}px Inter, sans-serif`; g.fillStyle = `rgba(111,207,106,${1 - S.t / .8})`; g.fillText('RAJT!', G.W / 2, G.H * .4); }
       if (touchUI && S.phase !== 'res') for (const b of btns()) { const on = [...TP.values()].includes(b.id); g.fillStyle = on ? 'rgba(255,216,74,.35)' : 'rgba(4,7,14,.45)'; g.strokeStyle = 'rgba(255,216,74,.5)'; g.lineWidth = 2 * d;
         g.beginPath(); g.arc(b.x, b.y, b.r, 0, 6.283); g.fill(); g.stroke(); g.fillStyle = '#ffe29a'; g.textAlign = 'center'; g.font = `800 ${b.t.length > 2 ? 12 * d : 20 * d}px Inter, sans-serif`; g.fillText(b.t, b.x, b.y + 1); }
       if (S.res) {
