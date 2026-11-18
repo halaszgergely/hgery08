@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID } from './core.js?v=202611180007';
-import { stageHtml, confirmBox } from './ui.js?v=202611180007';
-import * as Player from './player.js?v=202611180007';
-import * as Party from './party.js?v=202611180007';
-import * as VP from './vplayer.js?v=202611180007';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611180007';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID } from './core.js?v=202611181108';
+import { stageHtml, confirmBox } from './ui.js?v=202611181108';
+import * as Player from './player.js?v=202611181108';
+import * as Party from './party.js?v=202611181108';
+import * as VP from './vplayer.js?v=202611181108';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611181108';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -251,7 +251,8 @@ export const GAMES = [
   { id: 'nyomas', name: 'Nyomásmester', icon: '🎛️', desc: 'Állítsd meg a mutatót a zöld zónában – a PLC rád bízta a szivattyút.', c: '#6cc6ff' },
   { id: 'vizagyu', name: 'Vízágyú', icon: '💦', desc: 'Kaktuszok és tűzgolyók zúdulnak a kertre. Célozz a vízágyúval!', c: '#ff7a6e' },
   { id: 'csepp', name: 'Csepp Futam', icon: '💧', desc: 'Repülj át a csövek között egy bátor vízcseppel – egy ütközés és vége!', c: '#e8b656' },
-  { id: 'viztorony', name: 'Víztorony', icon: '🗼', unit: 'm', desc: 'Mássz fel a víztorony tetejére az Arany Locsolófejért – egy rossz ugrás, és zuhansz!', c: '#b48cff', sponsor: 'A Zerosites támogatásával' }
+  { id: 'viztorony', name: 'Víztorony', icon: '🗼', unit: 'm', desc: 'Mássz fel a víztorony tetejére az Arany Locsolófejért – egy rossz ugrás, és zuhansz!', c: '#b48cff', sponsor: 'A Zerosites támogatásával' },
+  { id: 'birodalom', name: 'Öntöző Birodalom', icon: '🌱', unit: 'Ft', desc: 'Építs csőhálózatot, ültess kertet és ültetvényt – a kerted akkor is termel, amikor nem vagy itt.', c: '#6fcf6a' }
 ];
 const EXTRA = [{ id: 'zerospace', name: 'Zero Space Demo', icon: '🚀', desc: 'Építs űrhajót modulról modulra és vezesd csatába – korai demó, egyjátékos sandbox.', c: '#b2382a', demo: 1 }];
 const best = id => { try { return +localStorage.getItem('hgws_best_' + id) || 0; } catch (_) { return 0; } };
