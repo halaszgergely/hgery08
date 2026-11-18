@@ -214,9 +214,10 @@ h2{font-family:var(--head);font-weight:900;font-size:clamp(1.8rem,5.2vw,3.2rem);
 @media (max-width:520px){.lbg{grid-template-columns:1fr}}
 .lbc{padding:.9rem 1rem;border-radius:14px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.07)}
 .lbc h4{font-size:.95rem;font-weight:800;margin-bottom:.6rem;display:flex;gap:.4rem;align-items:center}
-.lbr{display:grid;grid-template-columns:1.6rem 1fr auto;gap:.4rem;align-items:center;padding:.3rem 0;font-size:.88rem;border-bottom:1px solid rgba(255,255,255,.05)}
+.lbr.adm{grid-template-columns:1.6rem 1fr auto auto}.lbr{display:grid;grid-template-columns:1.6rem 1fr auto;gap:.4rem;align-items:center;padding:.3rem 0;font-size:.88rem;border-bottom:1px solid rgba(255,255,255,.05)}
 .lbr:last-child{border:0}
 @media (min-width:700px){.lbc.wide{grid-column:span 2}}
+.lbdel{margin-left:0;padding:.1rem .4rem;border-radius:6px;border:1px solid rgba(255,90,77,.35);background:transparent;color:#ff8a7a;font-size:.72rem;cursor:pointer;opacity:.55}.lbdel:hover,.lbdel.sure{opacity:1;background:rgba(255,90,77,.15)}.lbdel.sure{font-weight:700}
 .lbr .lbw2{font-style:normal;margin-right:.45rem;font-size:.72rem;font-weight:700;color:#1a1004;background:linear-gradient(180deg,#ffe29a,#e8b656);padding:.08rem .4rem;border-radius:999px;white-space:nowrap}
 .lbr i{font-style:normal;font-family:var(--mono);color:#8f8a7e;text-align:center}
 .lbr span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -375,7 +376,7 @@ body.embed .scroll{display:none}
   </div>
 </div>
 
-<script src="js/arcade-drift.js?v=202611182130"></script>
+<script src="js/arcade-drift.js?v=202611182141"></script>
 <script>
 (() => {
 'use strict';
@@ -1812,13 +1813,15 @@ function lbDraw() {
   const esc = t => String(t).replace(/[<>&"]/g, '');
   const base = lbt === 'week' ? `E heti verseny (${LB.week}) – a hét végén a legjobb regisztrált játékosok megkapják az „Arcade-bajnok” taget! 🏆` : 'Minden idők legjobbjai.';
   $('#lbn').innerHTML = LB.guest
-    ? (LB.nick ? `Vendégként játszol, <b>${esc(LB.nick)}</b> néven kerülsz fel a ranglistára. ` : 'Vendégként is felkerülsz a ranglistára – az első eredményednél megadhatsz egy becenevet. ')
-      + `<button class="lbnick" data-nick>✏️ ${LB.nick ? 'Becenév módosítása' : 'Becenév megadása'}</button>`
+    ? `Vendégként <b>${esc(LB.nick)}</b> néven szerepelsz a ranglistán. <button class="lbnick" data-nick>✏️ Becenév módosítása</button>`
     : base;
   $('#lbg').innerHTML = GAMES.filter(g => !g.ext).map(g => { const l = (LB.boards[g.id] || {})[lbt] || [];
-    return `<div class="lbc${g.unit ? ' wide' : ''}"><h4>${g.icon || ''} ${g.name}</h4>${l.length ? l.map((r, i) => `<div class="lbr${r.me ? ' me' : ''}"><i>${['🥇', '🥈', '🥉'][i] || i + 1}</i><span>${esc(r.name)}${r.guest ? '<em class="lbg2">VENDÉG</em>' : ''}</span><b>${r.wins ? `<em class="lbw2" title="Arany Locsolófej">🏆×${r.wins}</em>` : ''}${r.score.toLocaleString('hu-HU')}${g.lb ? ' ' + g.lb : ''}</b></div>`).join('') : '<p class="lbe">Még senki – légy te az első!</p>'}</div>`; }).join('');
+    return `<div class="lbc${g.unit ? ' wide' : ''}"><h4>${g.icon || ''} ${g.name}</h4>${l.length ? l.map((r, i) => `<div class="lbr${r.me ? ' me' : ''}${LB.admin && r.uid ? ' adm' : ''}"><i>${['🥇', '🥈', '🥉'][i] || i + 1}</i><span>${esc(r.name)}${r.guest ? '<em class="lbg2">VENDÉG</em>' : ''}</span><b>${r.wins ? `<em class="lbw2" title="Arany Locsolófej">🏆×${r.wins}</em>` : ''}${r.score.toLocaleString('hu-HU')}${g.lb ? ' ' + g.lb : ''}</b>${LB.admin && r.uid ? `<button class="lbdel" data-del="${g.id}|${esc(r.uid)}" title="Eredmény törlése">🗑</button>` : ''}</div>`).join('') : '<p class="lbe">Még senki – légy te az első!</p>'}</div>`; }).join('');
 }
-$('#lbw').addEventListener('click', e => { if (e.target.closest('[data-nick]')) { parent.postMessage({ hgws: 'nickreq' }, location.origin); return; } const b = e.target.closest('[data-lbt]'); if (!b) return; lbt = b.dataset.lbt; document.querySelectorAll('[data-lbt]').forEach(x => x.classList.toggle('on', x === b)); lbDraw(); });
+$('#lbw').addEventListener('click', e => { if (e.target.closest('[data-nick]')) { parent.postMessage({ hgws: 'nickreq' }, location.origin); return; }
+  const del = e.target.closest('[data-del]');
+  if (del) { if (!del.classList.contains('sure')) { document.querySelectorAll('.lbdel.sure').forEach(x => { x.classList.remove('sure'); x.textContent = '🗑'; }); del.classList.add('sure'); del.textContent = 'Biztos?'; clearTimeout(del._t); del._t = setTimeout(() => { del.classList.remove('sure'); del.textContent = '🗑'; }, 3000); return; }
+    const [game, uid] = del.dataset.del.split('|'); del.disabled = true; del.textContent = '…'; parent.postMessage({ hgws: 'lbdel', game, uid }, location.origin); return; } const b = e.target.closest('[data-lbt]'); if (!b) return; lbt = b.dataset.lbt; document.querySelectorAll('[data-lbt]').forEach(x => x.classList.toggle('on', x === b)); lbDraw(); });
 addEventListener('message', e => { if (e.origin !== location.origin || e.data?.hgws !== 'lb') return; LB = e.data; lbDraw(); });
 if (window.top !== window) parent.postMessage({ hgws: 'lbreq' }, location.origin);
 })();

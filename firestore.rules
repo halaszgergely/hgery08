@@ -285,7 +285,7 @@ service cloud.firestore {
         && request.resource.data.at == request.time
         && (resource == null || (request.resource.data.ms <= resource.data.ms && request.resource.data.rms <= resource.data.rms
             && (request.resource.data.ms < resource.data.ms || request.resource.data.rms < resource.data.rms || nickChanged())));
-      allow delete: if perm('moderate');
+      allow delete: if perm('publishMedia');
     }
 
     // ---------- Arcade ranglista: mindenki csak a saját rekordját írhatja, és csak felfelé ----------
@@ -302,7 +302,8 @@ service cloud.firestore {
         && (request.resource.data.get('wins', 0) == resource.data.get('wins', 0) || request.resource.data.get('wins', 0) == resource.data.get('wins', 0) + 1)
         && (request.resource.data.best > resource.data.best || request.resource.data.get('wins', 0) == resource.data.get('wins', 0) + 1 || nickChanged())
         && request.resource.data.at == request.time;
-      allow delete: if perm('moderate');
+      // eredmény törlése: admin és tulaj
+      allow delete: if perm('publishMedia');
     }
 
     // ---------- közös nézés ----------
