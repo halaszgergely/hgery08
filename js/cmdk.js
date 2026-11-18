@@ -1,6 +1,6 @@
 // HGWS – gyorskereső (Ctrl+K vagy /): filmek, zenék, tagok és oldalak egy helyen, billentyűzettel is
-import { $, esc, avatar } from './core.js?v=202611181121';
-import { bgOf, I } from './fx.js?v=202611181121';
+import { $, esc, avatar } from './core.js?v=202611181159';
+import { bgOf, I } from './fx.js?v=202611181159';
 
 let C = null, el = null, items = [], cur = 0;
 export function init(ctx) {
