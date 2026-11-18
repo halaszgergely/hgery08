@@ -269,12 +269,12 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create: if active() && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['best', 'at', 'wins'])
-        && request.resource.data.best is int && request.resource.data.best > 0 && request.resource.data.best <= 100000000
+        && request.resource.data.best is int && request.resource.data.best > 0 && request.resource.data.best <= 1000000000000
         && request.resource.data.get('wins', 0) in [0, 1]
         && request.resource.data.at == request.time;
       allow update: if active() && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['best', 'at', 'wins'])
-        && request.resource.data.best is int && request.resource.data.best >= resource.data.best && request.resource.data.best <= 100000000
+        && request.resource.data.best is int && request.resource.data.best >= resource.data.best && request.resource.data.best <= 1000000000000
         && request.resource.data.get('wins', 0) is int
         && (request.resource.data.get('wins', 0) == resource.data.get('wins', 0) || request.resource.data.get('wins', 0) == resource.data.get('wins', 0) + 1)
         && (request.resource.data.best > resource.data.best || request.resource.data.get('wins', 0) == resource.data.get('wins', 0) + 1)
