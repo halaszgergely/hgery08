@@ -8,11 +8,11 @@ window.HGDrift = function (env) {
 
   /* ---------------- autók ---------------- */
   const CARS = {
-    utcai: { n: 'Utcai', col: '#2f8fe0', c2: '#1b5c99', len: 34, w: 17, acc: 520, top: 560, grip: 7.5, slide: .5, turn: 3.2, off: 1 },
-    izom: { n: 'Izomautó', col: '#e5533d', c2: '#8f2a1d', len: 38, w: 19, acc: 610, top: 600, grip: 5.6, slide: .38, turn: 2.9, off: .9, stripe: '#fff' },
-    rally: { n: 'Rally', col: '#f2f2f2', c2: '#9aa3ad', len: 33, w: 17, acc: 570, top: 540, grip: 8, slide: .5, turn: 3.4, off: 1.8, stripe: '#2f8fe0' },
-    gokart: { n: 'Gokart', col: '#6fcf6a', c2: '#2f7d32', len: 26, w: 16, acc: 660, top: 470, grip: 10, slide: .65, turn: 4, off: .8, kart: 1 },
-    szuper: { n: 'Szuperautó', col: '#ffcf2e', c2: '#b88a00', len: 36, w: 18, acc: 650, top: 700, grip: 7, slide: .45, turn: 3, off: .7, wing: 1 }
+    utcai: { n: 'Utcai', col: '#2f8fe0', c2: '#1b5c99', len: 34, w: 17, acc: 520, top: 560, grip: 7.5, slide: .42, turn: 3.2, off: 1 },
+    izom: { n: 'Izomautó', col: '#e5533d', c2: '#8f2a1d', len: 38, w: 19, acc: 610, top: 600, grip: 5.6, slide: .3, turn: 2.9, off: .9, stripe: '#fff' },
+    rally: { n: 'Rally', col: '#f2f2f2', c2: '#9aa3ad', len: 33, w: 17, acc: 570, top: 540, grip: 8, slide: .45, turn: 3.4, off: 1.8, stripe: '#2f8fe0' },
+    gokart: { n: 'Gokart', col: '#6fcf6a', c2: '#2f7d32', len: 26, w: 16, acc: 660, top: 470, grip: 10, slide: .55, turn: 4, off: .8, kart: 1 },
+    szuper: { n: 'Szuperautó', col: '#ffcf2e', c2: '#b88a00', len: 36, w: 18, acc: 650, top: 700, grip: 7, slide: .38, turn: 3, off: .7, wing: 1 }
   };
   const CK = Object.keys(CARS);
 
@@ -243,15 +243,21 @@ window.HGDrift = function (env) {
     vf -= vf * (.32 + drag) * h;
     if (B.T.hills) { const gx = (B.hf(c.x + 6, c.y) - B.hf(c.x - 6, c.y)) / 12, gy = (B.hf(c.x, c.y + 6) - B.hf(c.x, c.y - 6)) / 12; vf -= (gx * ca + gy * sa) * HK * 260 * h; c.z = B.hf(c.x, c.y); }
     c.st += (inp.s - c.st) * Math.min(1, h * 9);
-    const sp = Math.abs(vf), turn = c.st * C.turn * Math.min(1, sp / 130) * (vf >= 0 ? 1 : -1) * (inp.hb ? 1.4 : 1) * (1 - Math.min(.3, sp / C.top * .3));
+    // csúszás: hiszterézissel – ha egyszer megcsúszik, sokáig csúszós marad
+    if (inp.hb && Math.abs(vf) > 80 || Math.abs(vl) > 42) c.sliding = 1; else if (Math.abs(vl) < 16) c.sliding = 0;
+    const sp = Math.abs(vf), turn = c.st * C.turn * Math.min(1, sp / 130) * (vf >= 0 ? 1 : -1) * (inp.hb ? 1.45 : c.sliding ? 1.25 : 1) * (1 - Math.min(.3, sp / C.top * .3));
     c.a += turn * h;
-    let gr = C.grip * grip0; const sliding = Math.abs(vl) > 55;
-    if (inp.hb) { gr *= .16; vf -= vf * .7 * h; } else if (sliding) gr *= C.slide;
+    let gr = C.grip * grip0;
+    const keep = Math.hypot(vf, vl);
+    if (inp.hb) gr *= .12;
+    else if (c.sliding) { gr *= C.slide * .5; if (inp.thr) gr *= .75; if (c.st * vl < -.1) gr *= 1.6; vf -= vf * .1 * Math.min(1, Math.abs(vl) / 200) * h; }
     vl *= Math.max(0, 1 - gr * h);
+    // kézifék alatt nem lassul: az oldalirányú lendület előre fordul
+    if (inp.hb && keep > 1) { const nf = Math.sqrt(Math.max(0, keep * keep - vl * vl)); vf = vf < 0 ? -nf : nf; }
     const na = Math.cos(c.a), nb = Math.sin(c.a);
     c.vx = na * vf - nb * vl; c.vy = nb * vf + na * vl;
     c.x += c.vx * h; c.y += c.vy * h;
-    c.slip = Math.min(1.5, Math.atan2(Math.abs(vl), Math.max(1, Math.abs(vf)))); c.spd = Math.hypot(c.vx, c.vy); c.off = off; c.brake = inp.brk && vf > 0; c.vf = vf;
+    c.slip = Math.min(1.5, Math.atan2(Math.abs(vl), Math.max(1, Math.abs(vf)))); c.spd = Math.hypot(c.vx, c.vy); c.off = off; c.brake = inp.brk && vf > 0; c.vf = vf; c.hb = inp.hb;
     // ütközés
     const cr = C.len * .42;
     for (const o of B.obs) {
@@ -374,7 +380,9 @@ window.HGDrift = function (env) {
       if (fin) { g.fillStyle = '#2b2f36'; g.fillRect(-hw - 16, -6, 10, 12); g.fillRect(hw + 6, -6, 10, 12); g.fillStyle = '#ff5a4d'; g.fillRect(-hw - 12, -16, hw * 2 + 24, 8); g.fillStyle = '#fff'; g.font = '700 7px Inter, sans-serif'; g.textAlign = 'center'; g.fillText('CÉL', 0, -11); }
       g.restore(); };
     line(B.iStart, false); if (!B.loop) line(B.iFin, true);
-    g.strokeStyle = 'rgba(20,20,20,.38)'; g.lineWidth = 4; g.beginPath(); for (const sk of S.skids) { g.moveTo(sk[0], sk[1]); g.lineTo(sk[2], sk[3]); } g.stroke();
+    g.lineCap = 'round';
+    for (const [ty, al, col] of [[0, 1, 'rgba(12,12,14,.55)'], [0, .5, 'rgba(12,12,14,.3)'], [1, 1, 'rgba(70,48,26,.5)'], [1, .5, 'rgba(70,48,26,.28)']]) {
+      g.strokeStyle = col; g.lineWidth = al === 1 ? 5 : 4; g.beginPath(); for (const sk of S.skids) if (sk[4] === ty && sk[5] === al) { g.moveTo(sk[0], sk[1]); g.lineTo(sk[2], sk[3]); } g.stroke(); }
   }
   function minimap(g, x, y, w, h) {
     const d = G.d; g.save(); g.fillStyle = 'rgba(4,7,14,.6)'; rr(x, y, w, h, 10 * d); g.fill();
@@ -479,23 +487,25 @@ window.HGDrift = function (env) {
       if (S.phase !== 'race') { sound(0, 0); if (S.phase === 'count') { const k = Math.ceil(-S.t); if (k !== S.cd) { S.cd = k; if (k > 0) Sfx.blip(440, .12, 'square', .07); } } return; }
       // drift-pontozás, nyomok, felvétel
       for (const c of S.cars) {
-        const drifting = c.spd > 150 && c.slip > .22 && !c.off && !c.done;
+        const drifting = c.spd > 130 && c.sliding && c.slip > .15 && !c.off && !c.done;
         if (drifting) { c.dTime += dt; c.dCalm = 0; c.drift += c.spd * c.slip * dt * .12 * (1 + Math.min(4, c.dTime * .8)); }
         else if (c.drift > 0) { c.dCalm += dt; if (c.dCalm > .5) { const p = Math.round(c.drift); if (p > 20) { c.dTotal += p; flash(c, '+' + p + ' DRIFT'); } c.drift = 0; c.dTime = 0; } }
-        if (c.slip > .25 && c.spd > 90) { const ca = Math.cos(c.a), sa = Math.sin(c.a), L = c.c.len * .3, W = c.c.w * .45;
-          for (const s of [-1, 1]) { const x = c.x - ca * L - sa * W * s, y = c.y - sa * L + ca * W * s, pk = s < 0 ? 'skl' : 'skr'; if (c[pk]) S.skids.push([c[pk][0], c[pk][1], x, y]); c[pk] = [x, y]; }
-          if (Math.random() < dt * 30) S.smoke.push({ x: c.x - ca * c.c.len * .5, y: c.y - sa * c.c.len * .5, r: 6, l: 1, vx: (Math.random() - .5) * 30, vy: (Math.random() - .5) * 30 }); }
-        else c.skl = c.skr = null;
+        const marks = (c.hb && c.spd > 12) || (c.sliding && c.slip > .1 && c.spd > 50) || (c.brake && c.vf > 220);
+        if (marks) { const ca = Math.cos(c.a), sa = Math.sin(c.a), L = c.c.len * .3, W = c.c.w * .45, ty = c.off || B.P[c.ti].dirt ? 1 : 0, fr = c.slip > .45;
+          for (const s of [-1, 1]) for (const f of fr ? [-1, 1] : [-1]) { const x = c.x + ca * L * f - sa * W * s, y = c.y + sa * L * f + ca * W * s, pk = 'sk' + s + f; if (c[pk]) S.skids.push([c[pk][0], c[pk][1], x, y, ty, f > 0 ? .5 : 1]); c[pk] = [x, y]; }
+          if (!fr) c['sk-11'] = c['sk11'] = null;
+          if (c.slip > .2 && Math.random() < dt * 30) S.smoke.push({ x: c.x - ca * c.c.len * .5, y: c.y - sa * c.c.len * .5, r: 6, l: 1, vx: (Math.random() - .5) * 30, vy: (Math.random() - .5) * 30 }); }
+        else c['sk-1-1'] = c['sk1-1'] = c['sk-11'] = c['sk11'] = null;
         if (c.off && c.spd > 120 && Math.random() < dt * 20) S.smoke.push({ x: c.x, y: c.y, r: 5, l: .8, vx: 0, vy: 0, dirt: 1 });
         c.recT += dt; if (c.ctrl === 1 && !c.done) while (c.recT >= GS) { c.recT -= GS; c.rec.push(Math.round(c.x), Math.round(c.y), Math.round(c.a * 100)); }
       }
-      if (S.skids.length > 2400) S.skids.splice(0, S.skids.length - 2400);
+      if (S.skids.length > 12000) S.skids.splice(0, S.skids.length - 12000);
       for (const s of S.smoke) { s.x += s.vx * dt; s.y += s.vy * dt; s.r += 30 * dt; s.l -= dt * .9; } S.smoke = S.smoke.filter(s => s.l > 0); if (S.smoke.length > 160) S.smoke.splice(0, S.smoke.length - 160);
       for (const m of S.msg) m.l -= dt; S.msg = S.msg.filter(m => m.l > 0);
       // 2P felzárkóztatás
       if (S.cars.length > 1) { const [a, b] = S.cars, far = Math.hypot(a.x - b.x, a.y - b.y); if (far > 1500 && !a.done && !b.done) { const tr = a.prog < b.prog ? a : b, ld = tr === a ? b : a; let ii = ld.ti - 14; if (ii < 0 || B.P[ii].pi !== B.P[ld.ti].pi) ii = ld.ti; const p = B.P[ii];
         tr.x = p.x; tr.y = p.y; tr.a = Math.atan2(p.ty, p.tx); tr.vx = p.tx * ld.spd * .7; tr.vy = p.ty * ld.spd * .7; tr.ti = ii; tr.pr = p.prog; tr.lap = ld.lap; tr.cp = ld.cp; tr.prog = ld.prog - .001; flash(tr, 'FELZÁRKÓZTATVA', 1); } }
-      const c0 = S.cars[0]; sound(Math.min(1.2, Math.max(...S.cars.map(c => c.spd)) / 600), Math.max(...S.cars.map(c => c.slip > .25 && c.spd > 90 ? c.slip : 0)));
+      const c0 = S.cars[0]; sound(Math.min(1.2, Math.max(...S.cars.map(c => c.spd)) / 600), Math.max(...S.cars.map(c => c.sliding && c.slip > .1 && c.spd > 60 ? c.slip + .2 : 0)));
       const doneAll = S.cars.every(c => c.done), first = Math.min(...S.cars.filter(c => c.done).map(c => c.done));
       if (doneAll || (S.cars.length > 1 && isFinite(first) && S.t - first > 15)) finish();
       if (c0.done || S.cars.some(c => c.dTotal)) { /* nothing */ }
