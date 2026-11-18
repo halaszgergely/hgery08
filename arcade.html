@@ -1178,150 +1178,233 @@ const Torony = (() => {
 
 /* =================== GAME 6: Öntöző Birodalom – idle kertépítő =================== */
 const Birodalom = (() => {
-  const COLS = 16, ROWS = 10, SRC = [0, 2], KEY = 'hgws_birodalom_v1', MAXOFF = 8 * 3600, CAP = 99999999;
+  const COLS = 20, ROWS = 12, SRC = [0, 2], KEY = 'hgws_birodalom_v1', CAP = 1e12;
+  // network: COND; w = vízigény, r = sugár, nb = szomszédok, q = vízhozam, wm = locsolás-szorzó; aura: nem hálózati, bónusz a környékre
   const MOD = {
     pipe: { n: 'Cső', c: 4, u: 0, m: 1 },
     spr: { n: 'Szórófej', c: 30, u: 0, r: 1, w: 1, m: 1.06 },
     pump: { n: 'Szivattyú', c: 150, u: 250, q: 6, m: 1.3 },
-    drip: { n: 'Csepegtető', c: 15, u: 400, nb: 1, w: .3, m: 1.04 },
+    drip: { n: 'Csepegtető', c: 15, u: 400, nb: 1, w: .3, wm: 1.15, m: 1.04 },
+    hordo: { n: 'Esővízgyűjtő', c: 900, u: 4000, q: 3, m: 1.2 },
     rot: { n: 'Esőztető', c: 400, u: 2500, r: 2, w: 2.5, m: 1.15 },
+    komp: { n: 'Komposztáló', c: 3000, u: 15000, aura: 1, gb: .3, m: 1.25 },
+    kod: { n: 'Ködölő', c: 8000, u: 40000, r: 1, w: 2, wm: 1.35, m: 1.2 },
+    meh: { n: 'Méhkaptár', c: 25000, u: 120000, aura: 2, yb: .25, m: 1.3 },
+    kut: { n: 'Mélykút', c: 60000, u: 400000, q: 14, m: 1.35 },
+    piv: { n: 'Körforgó öntöző', c: 400000, u: 3e6, r: 3, w: 6, m: 1.3 },
     del: { n: 'Bontás', c: 0, u: 0, m: 1 }
   };
   const PL = {
-    fu: { n: 'Fű', c: 2, t: 6, v: 3, u: 0, m: 1.03, col: '#6fcf6a' },
-    sal: { n: 'Saláta', c: 15, t: 15, v: 20, u: 120, m: 1.06, col: '#9be36a' },
-    par: { n: 'Paradicsom', c: 80, t: 35, v: 90, u: 1500, m: 1.07, col: '#e5533d' },
-    roz: { n: 'Rózsa', c: 400, t: 60, v: 330, u: 9000, m: 1.08, col: '#ff6fa8' },
-    szo: { n: 'Szőlő', c: 2000, t: 110, v: 1300, u: 60000, m: 1.09, col: '#8e5bd6' },
-    fa: { n: 'Gyümölcsfa', c: 10000, t: 240, v: 5200, u: 400000, m: 1.1, col: '#ffa531' }
+    fu: { n: 'Fű', c: 2, t: 6, v: 3, u: 0, m: 1.03, s: 'grass', col: '#6fcf6a' },
+    sal: { n: 'Saláta', c: 15, t: 15, v: 14, u: 120, m: 1.05, s: 'rosette', col: '#9be36a' },
+    ret: { n: 'Retek', c: 45, t: 20, v: 30, u: 500, m: 1.06, s: 'root', col: '#e2496b' },
+    eper: { n: 'Eper', c: 120, t: 30, v: 78, u: 2000, m: 1.06, s: 'bush', col: '#ff3b4a' },
+    par: { n: 'Paradicsom', c: 320, t: 40, v: 184, u: 6000, m: 1.07, s: 'stake', col: '#e5533d' },
+    papr: { n: 'Paprika', c: 900, t: 55, v: 440, u: 20000, m: 1.07, s: 'stake', col: '#ffcf2e' },
+    lev: { n: 'Levendula', c: 2400, t: 70, v: 980, u: 60000, m: 1.08, s: 'lav', col: '#a07be0' },
+    roz: { n: 'Rózsa', c: 6000, t: 90, v: 2160, u: 200000, m: 1.08, s: 'flower', col: '#ff6fa8' },
+    tok: { n: 'Tök', c: 15000, t: 120, v: 5040, u: 700000, m: 1.09, s: 'gourd', col: '#ff9d2e' },
+    szo: { n: 'Szőlő', c: 40000, t: 150, v: 11100, u: 2.5e6, m: 1.1, s: 'vine', col: '#8e5bd6' },
+    fa: { n: 'Gyümölcsfa', c: 100000, t: 200, v: 26000, u: 8e6, m: 1.11, s: 'tree', col: '#ffa531' },
+    olaj: { n: 'Olajfa', c: 250000, t: 260, v: 60000, u: 2.5e7, m: 1.12, s: 'olive', col: '#3b3f2a' }
   };
-  const SIZES = [[8, 6], [10, 7], [12, 8], [14, 9], [16, 10]], SIZEC = [500, 4000, 25000, 150000];
+  const SIZES = [[8, 6], [10, 7], [12, 8], [14, 9], [16, 10], [18, 11], [20, 12]], SIZEC = [500, 4000, 25000, 150000, 1e6, 6e6];
   const UP = {
-    nyomas: { n: 'Nyomás', ic: '💧', cost: n => 150 * 1.9 ** n, max: 30 },
-    tap: { n: 'Tápoldat', ic: '🧪', cost: n => 250 * 2.1 ** n, max: 25 },
-    piac: { n: 'Piac', ic: '🧺', cost: n => 400 * 2.25 ** n, max: 25 },
-    kertesz: { n: 'Kertész', ic: '🧑‍🌾', cost: n => 800 * 3 ** n, max: 5 },
-    telek: { n: 'Telek', ic: '🏡', cost: n => SIZEC[n], max: 4 }
+    nyomas: { n: 'Nyomás', ic: '💧', cost: n => 150 * 1.9 ** n, max: 40 },
+    hatas: { n: 'Hatásfok', ic: '⚙️', cost: n => 2000 * 2.4 ** n, max: 20, u: 3000 },
+    tap: { n: 'Tápoldat', ic: '🧪', cost: n => 250 * 2.1 ** n, max: 30 },
+    piac: { n: 'Piac', ic: '🧺', cost: n => 400 * 2.25 ** n, max: 30 },
+    kertesz: { n: 'Kertész', ic: '🧑‍🌾', cost: n => 800 * 3 ** n, max: 6 },
+    ido: { n: 'Időzítő', ic: '⏱️', cost: n => 5000 * 3.2 ** n, max: 8, u: 10000 },
+    telek: { n: 'Telek', ic: '🏡', cost: n => SIZEC[n], max: SIZEC.length }
   };
-  const TABS = [['mod', 'MODULOK'], ['pl', 'NÖVÉNYEK'], ['up', 'FEJLESZTÉS']];
-  const COND = { src: 1, pipe: 1, pump: 1, spr: 1, drip: 1, rot: 1 };
-  const fmt = n => n >= 1e6 ? (n / 1e6).toLocaleString('hu-HU', { maximumFractionDigits: 2 }) + ' M' : Math.floor(n).toLocaleString('hu-HU');
-  let S = null, L = null, NET = null, drag = null, lastTile = -1;
+  const PERK = {
+    toke: { n: 'Kezdőtőke', ic: '💰', c: 2 },
+    orok: { n: 'Örökölt kertész', ic: '🧑‍🌾', c: 2 },
+    hosszu: { n: 'Hosszú távollét', ic: '🌙', c: 3 },
+    halo: { n: 'Megmaradó hálózat', ic: '🔧', c: 5 }
+  };
+  const TABS = [['mod', 'MODULOK'], ['pl', 'NÖVÉNYEK'], ['up', 'FEJLESZTÉS'], ['bir', 'BIRTOK']];
+  const COND = { src: 1, pipe: 1, pump: 1, spr: 1, drip: 1, rot: 1, hordo: 1, kod: 1, kut: 1, piv: 1 };
+  const fmt = n => n >= 1e9 ? (n / 1e9).toLocaleString('hu-HU', { maximumFractionDigits: 2 }) + ' Mrd' : n >= 1e6 ? (n / 1e6).toLocaleString('hu-HU', { maximumFractionDigits: 2 }) + ' M' : Math.floor(n).toLocaleString('hu-HU');
+  let S = null, L = null, NET = null, drag = null, lastTile = -1, fl = [], confirmT = 0;
 
   const idx = (c, r) => r * COLS + c;
   const size = () => SIZES[S.up.telek];
   const inside = (c, r) => c >= 0 && r >= 0 && c < size()[0] && r < size()[1];
-  const speed = () => 1 + .2 * S.up.tap, price = () => 1 + .25 * S.up.piac;
-  const offF = () => S.up.kertesz ? Math.min(.9, .3 + .15 * (S.up.kertesz - 1)) : 0;
-  const unlocked = it => S.life >= it.u;
+  const speed = () => 1 + .2 * S.up.tap, price = () => (1 + .25 * S.up.piac) * (1 + .1 * S.star);
+  const offF = () => S.up.kertesz ? Math.min(.9, .3 + .12 * (S.up.kertesz - 1)) : 0;
+  const offMax = () => (8 + 2 * S.up.ido + (S.perk.hosszu ? 16 : 0)) * 3600;
+  const unlocked = it => S.life >= (it.u || 0);
   const own = k => { let n = 0; for (const x of S.k) if (x === k) n++; return n; };
   const costOf = (k, n = own(k)) => { const it = MOD[k] || PL[k]; return Math.round(it.c * it.m ** n); };
+  const starsAt = life => Math.floor(Math.sqrt(life / 50000));
+  const starGain = () => Math.max(0, starsAt(S.life) - S.starT);
 
-  function fresh() {
-    const s = { money: 60, life: 0, up: { nyomas: 0, tap: 0, piac: 0, kertesz: 0, telek: 0 }, k: Array(COLS * ROWS).fill(''), g: Array(COLS * ROWS).fill(0), t: Date.now(), sent: 0 };
-    s.k[idx(...SRC)] = 'src'; return s;
+  function fresh(keep) {
+    const s = { money: 60, life: 0, up: Object.fromEntries(Object.keys(UP).map(k => [k, 0])), k: Array(COLS * ROWS).fill(''), g: Array(COLS * ROWS).fill(0), t: Date.now(), sent: 0, star: 0, starT: 0, perk: {}, runs: 0 };
+    s.k[idx(...SRC)] = 'src';
+    if (keep) Object.assign(s, keep);
+    return s;
   }
-  function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.k && s.k.length === COLS * ROWS) { const f = fresh(); return { ...f, ...s, up: { ...f.up, ...s.up } }; } } catch (_) {} return fresh(); }
-  function save() { if (!S) return; S.t = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (_) {} }
+  function load() {
+    try {
+      const s = JSON.parse(localStorage.getItem(KEY));
+      if (s && s.k) {
+        const f = fresh();
+        if (s.k.length === 16 * 10) { const k = Array(COLS * ROWS).fill(''), g = Array(COLS * ROWS).fill(0); s.k.forEach((v, i) => { k[idx(i % 16, Math.floor(i / 16))] = v; g[idx(i % 16, Math.floor(i / 16))] = s.g[i] || 0; }); s.k = k; s.g = g; }
+        if (s.k.length === COLS * ROWS) return { ...f, ...s, up: { ...f.up, ...s.up }, perk: { ...(s.perk || {}) } };
+      }
+    } catch (_) {}
+    return fresh();
+  }
+  function save() { if (!S) return; S.t = Date.now(); try { const { rt, away, saveT, syncT, hudT, ...o } = S; localStorage.setItem(KEY, JSON.stringify(o)); } catch (_) {} }
 
   function net() {
-    const [cw, rh] = size(), on = new Uint8Array(COLS * ROWS), q = [SRC];
+    const [cw, rh] = size(), N = COLS * ROWS, on = new Uint8Array(N), q = [SRC];
     on[idx(...SRC)] = 1;
     while (q.length) { const [c, r] = q.pop(); for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = c + dc, y = r + dr, i = idx(x, y);
       if (x < 0 || y < 0 || x >= cw || y >= rh || on[i] || !COND[S.k[i]]) continue; on[i] = 1; q.push([x, y]); } }
-    let cap = 4 + 3 * S.up.nyomas, dem = 0;
-    for (let i = 0; i < on.length; i++) if (on[i]) { const m = MOD[S.k[i]]; if (m && m.q) cap += m.q; if (m && m.w) dem += m.w; }
-    const eff = dem ? Math.min(1, cap / dem) : 1, wet = new Float32Array(COLS * ROWS);
+    let cap = 4 + 3 * S.up.nyomas, dem = 0; const pm = 1 + .15 * S.up.hatas;
+    for (let i = 0; i < N; i++) if (on[i]) { const m = MOD[S.k[i]]; if (m && m.q) cap += m.q * (S.k[i] === 'pump' || S.k[i] === 'kut' ? pm : 1); if (m && m.w) dem += m.w; }
+    cap = Math.round(cap * 10) / 10;
+    const eff = dem ? Math.min(1, cap / dem) : 1, wet = new Float32Array(N), gb = new Float32Array(N).fill(1), yb = new Float32Array(N).fill(1);
+    const area = (c, r, R, f) => { for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) { const x = c + dx, y = r + dy; if ((dx || dy) && x >= 0 && y >= 0 && x < cw && y < rh) f(idx(x, y)); } };
     for (let r = 0; r < rh; r++) for (let c = 0; c < cw; c++) {
-      const i = idx(c, r), m = MOD[S.k[i]]; if (!on[i] || !m || !m.w) continue;
-      const cells = m.nb ? [[1, 0], [-1, 0], [0, 1], [0, -1]] : [];
-      if (m.r) for (let dy = -m.r; dy <= m.r; dy++) for (let dx = -m.r; dx <= m.r; dx++) if (dx || dy) cells.push([dx, dy]);
-      for (const [dx, dy] of cells) { const x = c + dx, y = r + dy; if (x >= 0 && y >= 0 && x < cw && y < rh) wet[idx(x, y)] = Math.max(wet[idx(x, y)], eff * (m.nb ? 1.15 : 1)); }
+      const i = idx(c, r), m = MOD[S.k[i]]; if (!m) continue;
+      if (m.aura) { area(c, r, m.aura, j => { if (m.gb) gb[j] += m.gb; if (m.yb) yb[j] += m.yb; }); continue; }
+      if (!on[i] || !m.w) continue;
+      const v = eff * (m.wm || 1);
+      if (m.nb) { for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = c + dx, y = r + dy; if (x >= 0 && y >= 0 && x < cw && y < rh) wet[idx(x, y)] = Math.max(wet[idx(x, y)], v); } }
+      else area(c, r, m.r, j => { wet[j] = Math.max(wet[j], v); });
     }
     let inc = 0;
-    for (let i = 0; i < wet.length; i++) { const p = PL[S.k[i]]; if (p && wet[i]) inc += p.v * price() * wet[i] * speed() / p.t; }
-    NET = { on, cap, dem, eff, wet, inc };
+    for (let i = 0; i < N; i++) { const p = PL[S.k[i]]; if (p && wet[i]) inc += p.v * price() * yb[i] * wet[i] * gb[i] * speed() / p.t; }
+    NET = { on, cap, dem, eff, wet, gb, yb, inc };
   }
+  const rate = i => NET.wet[i] * NET.gb[i] * speed() / PL[S.k[i]].t;
+  const val = i => Math.round(PL[S.k[i]].v * price() * NET.yb[i]);
 
   function earn(v) { S.money += v; S.life += v; }
   function harvest(G, i, auto) {
-    const p = PL[S.k[i]], v = Math.round(p.v * price()); earn(v); S.g[i] = 0;
+    const v = val(i); earn(v); S.g[i] = 0;
     const [x, y] = tileXY(i); if (fl.length < 40) fl.push({ x: x + L.ts / 2, y: y + L.ts * .2, t: '+' + fmt(v), l: 1 });
     if (!auto) { Sfx.coin(); G.splash(x + L.ts / 2, y + L.ts / 2, '255,215,120', 10, 3); } else if (Math.random() < .15) Sfx.blip(1200, .04, 'sine', .02);
   }
-  let fl = [], drops = [];
   if (typeof addEventListener === 'function') { addEventListener('pagehide', save); document.addEventListener('visibilitychange', () => { if (document.hidden) save(); }); }
 
   /* ---------- elrendezés ---------- */
   function layout(G) {
-    const d = G.d, [cw, rh] = size(), top = 112 * d, barH = 132 * d, bot = G.H - barH - 10 * d;
-    const ts = Math.max(14 * d, Math.floor(Math.min((G.W - 24 * d) / cw, (bot - top) / rh)));
-    L = { d, ts, bx: Math.round((G.W - ts * cw) / 2), by: Math.round(top + (bot - top - ts * rh) / 2), barY: G.H - barH, barH };
+    const d = G.d, [c0, r0] = size(), top = 112 * d, barH = 132 * d, bot = G.H - barH - 10 * d;
+    const fit = (a, b) => Math.floor(Math.min((G.W - 24 * d) / a, (bot - top) / b)), tr = fit(r0, c0) > fit(c0, r0) * 1.15, cw = tr ? r0 : c0, rh = tr ? c0 : r0;
+    const ts = Math.max(12 * d, fit(cw, rh));
+    L = { d, ts, tr, vw: cw, vh: rh, bx: Math.round((G.W - ts * cw) / 2), by: Math.round(top + (bot - top - ts * rh) / 2), barY: G.H - barH, barH, W: G.W, H: G.H };
   }
-  const tileXY = i => [L.bx + (i % COLS) * L.ts, L.by + Math.floor(i / COLS) * L.ts];
-  const tileAt = (x, y) => { const c = Math.floor((x - L.bx) / L.ts), r = Math.floor((y - L.by) / L.ts); return inside(c, r) ? idx(c, r) : -1; };
+  const tileXY = i => { const c = i % COLS, r = Math.floor(i / COLS); return L.tr ? [L.bx + r * L.ts, L.by + c * L.ts] : [L.bx + c * L.ts, L.by + r * L.ts]; };
+  const tileAt = (x, y) => { let c = Math.floor((x - L.bx) / L.ts), r = Math.floor((y - L.by) / L.ts); if (L.tr) [c, r] = [r, c]; return inside(c, r) ? idx(c, r) : -1; };
 
   function items() {
     if (S.tab === 'mod') return Object.keys(MOD).map(k => ({ k, kind: 'mod', ...MOD[k], c: costOf(k) }));
     if (S.tab === 'pl') return Object.keys(PL).map(k => ({ k, kind: 'pl', ...PL[k], c: costOf(k) }));
-    return Object.keys(UP).map(k => { const u = UP[k], n = S.up[k]; return { k, kind: 'up', n: u.n, ic: u.ic, lvl: n, c: n >= u.max ? Infinity : Math.round(u.cost(n)), u: 0 }; });
+    if (S.tab === 'up') return Object.keys(UP).map(k => { const u = UP[k], n = S.up[k]; return { k, kind: 'up', n: u.n, ic: u.ic, lvl: n, u: u.u, c: n >= u.max ? Infinity : Math.round(u.cost(n)) }; });
+    const sg = starGain();
+    return [{ k: 'reset', kind: 'reset', n: confirmT > 0 ? 'Biztos? Még egyszer!' : 'Új birtok', ic: '🌅', lbl: sg ? '+' + sg + ' ⭐' : '–', ok: sg > 0 },
+      ...Object.keys(PERK).map(k => ({ k, kind: 'perk', ...PERK[k], lbl: S.perk[k] ? 'MEGVAN' : PERK[k].c + ' ⭐', ok: !S.perk[k] && S.star >= PERK[k].c, have: !!S.perk[k] }))];
   }
   function bar(G) {
-    const d = L.d, tw = Math.min(150 * d, (G.W - 16 * d) / 3), tx = (G.W - tw * 3) / 2, ty = L.barY + 8 * d, th = 30 * d;
-    const its = items(), iw = Math.min(110 * d, (G.W - 16 * d) / its.length), ix = (G.W - iw * its.length) / 2, iy = ty + th + 8 * d, ih = L.barH - th - 24 * d;
-    return { tabs: TABS.map(([k, n], i) => ({ k, n, x: tx + i * tw, y: ty, w: tw, h: th })), its: its.map((it, i) => ({ ...it, x: ix + i * iw, y: iy, w: iw, h: ih })) };
+    const d = L.d, tw = Math.min(140 * d, (G.W - 16 * d) / TABS.length), tx = (G.W - tw * TABS.length) / 2, ty = L.barY + 8 * d, th = 30 * d;
+    const its = items(), per = Math.max(3, Math.min(its.length, Math.floor((G.W - 16 * d) / (92 * d)))), pages = Math.ceil(its.length / per);
+    S.pg = S.pg || {}; const pg = Math.min(S.pg[S.tab] || 0, pages - 1), arr = pages > 1 ? 26 * d : 0;
+    const vis = its.slice(pg * per, pg * per + per), iw = Math.min(110 * d, (G.W - 16 * d - arr * 2) / per), ix = (G.W - iw * vis.length) / 2, iy = ty + th + 8 * d, ih = L.barH - th - 24 * d;
+    return { pg, pages, tabs: TABS.map(([k, n], i) => ({ k, n, x: tx + i * tw, y: ty, w: tw, h: th })), its: vis.map((it, i) => ({ ...it, x: ix + i * iw, y: iy, w: iw, h: ih })),
+      arr: pages > 1 ? [{ dir: -1, x: ix - arr - 2 * d, y: iy, w: arr, h: ih }, { dir: 1, x: ix + iw * vis.length + 2 * d, y: iy, w: arr, h: ih }] : [] };
   }
 
   function place(G, i) {
     const k = S.k[i], tool = S.tool;
     if (PL[k] && S.g[i] >= 1) return harvest(G, i);
     if (!tool) return;
-    if (tool === 'del') { if (!k || k === 'src') return; S.k[i] = ''; S.money += Math.floor(costOf(k) / 2); S.g[i] = 0; net(); Sfx.blip(220, .06, 'square', .05, .6); return; }
+    if (tool === 'del') { if (!k || k === 'src') return; S.k[i] = ''; S.g[i] = 0; S.money += Math.floor(costOf(k) / 2); net(); Sfx.blip(220, .06, 'square', .05, .6); return; }
     if (k) return;
     const it = MOD[tool] || PL[tool], c = costOf(tool); if (!unlocked(it)) return;
     if (S.money < c) { Sfx.blip(140, .1, 'square', .05); return; }
     S.money -= c; S.k[i] = tool; S.g[i] = 0; net();
     PL[tool] ? Sfx.blip(520, .05, 'triangle', .06, 1.3) : Sfx.blip(380, .05, 'square', .04, 1.2);
   }
+  function rebirth(G) {
+    const sg = starGain(); if (!sg) return;
+    const keep = { life: S.life, sent: S.sent, star: S.star + sg, starT: S.starT + sg, perk: S.perk, runs: (S.runs || 0) + 1, tab: 'mod', tool: 'pipe' };
+    const n = fresh(keep);
+    if (S.perk.toke) n.money = 5000;
+    if (S.perk.orok) n.up.kertesz = 1;
+    if (S.perk.halo) { n.up.telek = S.up.telek; S.k.forEach((v, i) => { if (MOD[v] || v === 'src') n.k[i] = v; }); }
+    S = n; layout(G); net(); save(); Sfx.perfect(); G.splash(G.W / 2, G.H / 2, '255,215,120', 90, 10);
+    S.away = { got: 0, sec: 0, l: 3.5, msg: '⭐ +' + sg + ' hírnév' };
+  }
   function buy(G, it) {
-    if (it.kind !== 'up') { S.tool = S.tool === it.k ? null : it.k; Sfx.blip(700, .04, 'sine', .05); return; }
-    if (!(S.money >= it.c)) { Sfx.blip(140, .1, 'square', .05); return; }
+    if (it.kind === 'mod' || it.kind === 'pl') { S.tool = S.tool === it.k ? null : it.k; Sfx.blip(700, .04, 'sine', .05); return; }
+    if (it.kind === 'reset') { if (!it.ok) return Sfx.blip(140, .1, 'square', .05); if (confirmT > 0) { confirmT = 0; rebirth(G); } else { confirmT = 3; Sfx.blip(500, .05, 'square', .05); } return; }
+    if (it.kind === 'perk') { if (!it.ok) return Sfx.blip(140, .1, 'square', .05); S.star -= it.c; S.perk[it.k] = 1; net(); Sfx.perfect(); save(); return; }
+    if (!unlocked(it) || !(S.money >= it.c)) { Sfx.blip(140, .1, 'square', .05); return; }
     S.money -= it.c; S.up[it.k]++; if (it.k === 'telek') layout(G); net(); Sfx.perfect(); save();
   }
 
   /* ---------- rajz ---------- */
   function drawPlant(g, k, s, x, y, ts, t) {
-    const p = PL[k], cx = x + ts / 2, by = y + ts * .86, h = ts * (.25 + .55 * s);
+    const p = PL[k], cx = x + ts / 2, by = y + ts * .86, h = ts * (.25 + .55 * s), st = p.s, ripe = s > .55;
+    const dot = (dx, dy, r, col = p.col) => { g.fillStyle = col; g.beginPath(); g.arc(cx + dx, by + dy, r, 0, 6.283); g.fill(); };
     g.fillStyle = '#4a2f1a'; rr(x + ts * .14, y + ts * .62, ts * .72, ts * .3, ts * .1); g.fill();
     g.strokeStyle = '#3f8f3a'; g.fillStyle = '#4fae46'; g.lineWidth = Math.max(1, ts * .05);
-    if (k === 'fu') { for (let j = -2; j <= 2; j++) { g.beginPath(); g.moveTo(cx + j * ts * .08, by); g.quadraticCurveTo(cx + j * ts * .12, by - h * .6, cx + j * ts * .16 + Math.sin(t * 2 + j) * ts * .03, by - h); g.stroke(); } }
-    else if (k === 'sal') { for (let j = 0; j < 5; j++) { const a = j / 5 * 6.283; g.fillStyle = j & 1 ? '#7fd65a' : '#9be36a'; g.beginPath(); g.ellipse(cx + Math.cos(a) * h * .3, by - h * .35 + Math.sin(a) * h * .15, h * .32, h * .2, a, 0, 6.283); g.fill(); } }
-    else if (k === 'fa') { g.fillStyle = '#6b4423'; g.fillRect(cx - ts * .05, by - h * .55, ts * .1, h * .55); g.fillStyle = '#3d9a45'; g.beginPath(); g.arc(cx, by - h * .7, h * .42, 0, 6.283); g.fill(); g.fillStyle = '#56b85a'; g.beginPath(); g.arc(cx - h * .12, by - h * .8, h * .25, 0, 6.283); g.fill(); }
-    else if (k === 'szo') { g.strokeStyle = '#8a6a44'; g.beginPath(); g.moveTo(cx - ts * .3, by); g.lineTo(cx - ts * .3, by - ts * .7); g.moveTo(cx + ts * .3, by); g.lineTo(cx + ts * .3, by - ts * .7); g.moveTo(cx - ts * .35, by - ts * .62); g.lineTo(cx + ts * .35, by - ts * .62); g.stroke();
-      g.fillStyle = '#4fae46'; for (let j = -1; j <= 1; j++) { g.beginPath(); g.arc(cx + j * ts * .2, by - h * .75, h * .2, 0, 6.283); g.fill(); } }
-    else { g.beginPath(); g.moveTo(cx, by); g.lineTo(cx, by - h * .7); g.stroke(); g.beginPath(); g.arc(cx, by - h * .65, h * .35, 0, 6.283); g.fill(); g.fillStyle = '#62c35a'; g.beginPath(); g.arc(cx - h * .15, by - h * .75, h * .2, 0, 6.283); g.fill(); }
-    if (s > .55 && k !== 'fu' && k !== 'sal') {
-      const r = ts * .06 * (s - .4) * 2, pts = k === 'szo' ? [[0, -.55], [.05, -.48], [-.05, -.48], [0, -.42]] : [[-.15, -.6], [.15, -.65], [0, -.8], [.05, -.5]];
-      g.fillStyle = p.col; for (const [dx, dy] of pts) { g.beginPath(); g.arc(cx + dx * ts * (k === 'szo' ? 1.5 : 1), by + dy * h * (k === 'szo' ? 1.4 : 1), r * (k === 'roz' ? 1.6 : 1), 0, 6.283); g.fill(); }
-    }
+    if (st === 'grass') { for (let j = -2; j <= 2; j++) { g.beginPath(); g.moveTo(cx + j * ts * .08, by); g.quadraticCurveTo(cx + j * ts * .12, by - h * .6, cx + j * ts * .16 + Math.sin(t * 2 + j) * ts * .03, by - h); g.stroke(); } }
+    else if (st === 'rosette') { for (let j = 0; j < 5; j++) { const a = j / 5 * 6.283; g.fillStyle = j & 1 ? '#7fd65a' : '#9be36a'; g.beginPath(); g.ellipse(cx + Math.cos(a) * h * .3, by - h * .35 + Math.sin(a) * h * .15, h * .32, h * .2, a, 0, 6.283); g.fill(); } }
+    else if (st === 'root') { for (let j = -1; j <= 1; j++) { g.beginPath(); g.ellipse(cx + j * h * .2, by - h * .6, h * .12, h * .3, j * .5, 0, 6.283); g.fill(); } if (ripe) dot(0, -h * .1, h * .22); }
+    else if (st === 'bush') { for (let j = -1; j <= 1; j++) dot(j * h * .25, -h * .35, h * .25, '#4fae46'); if (ripe) for (const [a, b] of [[-.3, -.2], [.25, -.25], [0, -.5]]) dot(a * h, b * h, h * .1); }
+    else if (st === 'stake') { g.strokeStyle = '#8a6a44'; g.beginPath(); g.moveTo(cx + ts * .12, by); g.lineTo(cx + ts * .12, by - h); g.stroke(); dot(0, -h * .5, h * .3, '#4fae46'); dot(-h * .12, -h * .78, h * .2, '#62c35a');
+      if (ripe) for (const [a, b] of [[-.2, -.4], [.15, -.6], [-.05, -.85]]) dot(a * h, b * h, h * .11); }
+    else if (st === 'lav') { for (let j = -2; j <= 2; j++) { g.strokeStyle = '#6b8f5e'; g.beginPath(); g.moveTo(cx + j * ts * .07, by); g.lineTo(cx + j * ts * .1, by - h); g.stroke(); if (ripe) { g.fillStyle = p.col; g.fillRect(cx + j * ts * .1 - ts * .03, by - h, ts * .06, h * .35); } } }
+    else if (st === 'flower') { g.beginPath(); g.moveTo(cx, by); g.lineTo(cx, by - h * .7); g.stroke(); dot(0, -h * .55, h * .32, '#4fae46'); if (ripe) { dot(-h * .15, -h * .8, h * .16); dot(h * .18, -h * .7, h * .14); dot(0, -h * .95, h * .13); } }
+    else if (st === 'gourd') { g.beginPath(); g.moveTo(cx - ts * .3, by - ts * .05); g.quadraticCurveTo(cx, by - h, cx + ts * .3, by - ts * .1); g.stroke(); dot(-ts * .15, -h * .55, h * .18, '#4fae46'); if (ripe) { g.fillStyle = p.col; g.beginPath(); g.ellipse(cx + ts * .05, by - ts * .12, ts * .22 * s, ts * .15 * s, 0, 0, 6.283); g.fill(); } }
+    else if (st === 'vine') { g.strokeStyle = '#8a6a44'; g.beginPath(); g.moveTo(cx - ts * .3, by); g.lineTo(cx - ts * .3, by - ts * .7); g.moveTo(cx + ts * .3, by); g.lineTo(cx + ts * .3, by - ts * .7); g.moveTo(cx - ts * .35, by - ts * .62); g.lineTo(cx + ts * .35, by - ts * .62); g.stroke();
+      for (let j = -1; j <= 1; j++) dot(j * ts * .2, -h * .75, h * .2, '#4fae46'); if (ripe) for (const [a, b] of [[0, -.55], [.05, -.48], [-.05, -.48], [0, -.42]]) dot(a * ts * 1.5, b * h * 1.4, ts * .05); }
+    else { const ol = st === 'olive'; g.fillStyle = ol ? '#5a4632' : '#6b4423'; g.fillRect(cx - ts * .05, by - h * .55, ts * .1, h * .55);
+      dot(0, -h * .7, h * .42, ol ? '#7c9a6a' : '#3d9a45'); dot(-h * .12, -h * .8, h * .25, ol ? '#9bb58a' : '#56b85a');
+      if (ripe) for (const [a, b] of [[-.15, -.6], [.15, -.65], [0, -.85], [.2, -.85]]) dot(a * ts, b * h, ts * (ol ? .035 : .05)); }
     if (s >= 1) { const a = .45 + .35 * Math.sin(t * 5 + x); g.strokeStyle = `rgba(255,215,120,${a})`; g.lineWidth = Math.max(1.5, ts * .06); rr(x + 2, y + 2, ts - 4, ts - 4, ts * .2); g.stroke(); }
     else { g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(x + ts * .15, y + ts * .93, ts * .7, ts * .05); g.fillStyle = '#9fe0ff'; g.fillRect(x + ts * .15, y + ts * .93, ts * .7 * s, ts * .05); }
   }
-  function drawMod(g, k, i, x, y, ts, t, on) {
-    const c = i % COLS, r = Math.floor(i / COLS), cx = x + ts / 2, cy = y + ts / 2, pw = ts * .26;
+  function drawMod(g, k, i, x, y, ts, t, on, eff) {
+    const c = i % COLS, r = Math.floor(i / COLS), cx = x + ts / 2, cy = y + ts / 2, pw = ts * .26, m = MOD[k];
+    if (m && m.aura) {
+      if (k === 'komp') { g.fillStyle = '#5a3a1e'; rr(x + ts * .15, y + ts * .25, ts * .7, ts * .6, ts * .08); g.fill(); g.fillStyle = '#3d2814'; for (let j = 0; j < 3; j++) g.fillRect(x + ts * .2, y + ts * (.35 + j * .16), ts * .6, ts * .05); g.fillStyle = '#6fcf6a'; g.fillRect(x + ts * .3, y + ts * .2, ts * .4, ts * .08); }
+      else { g.fillStyle = '#e8b656'; g.beginPath(); g.ellipse(cx, cy + ts * .1, ts * .3, ts * .32, 0, Math.PI, 0); g.fill(); g.fillRect(cx - ts * .3, cy + ts * .1, ts * .6, ts * .25); g.fillStyle = '#8a5a1a'; for (let j = 0; j < 3; j++) g.fillRect(cx - ts * .3, cy - ts * .08 + j * ts * .12, ts * .6, ts * .025); g.fillStyle = '#3a2410'; g.beginPath(); g.arc(cx, cy + ts * .28, ts * .06, 0, 6.283); g.fill();
+        if (i >= 0) for (let j = 0; j < 3; j++) { const a = t * 3 + j * 2.1 + i; g.fillStyle = '#ffd93b'; g.beginPath(); g.arc(cx + Math.cos(a) * ts * .55, cy + Math.sin(a * 1.3) * ts * .4, ts * .05, 0, 6.283); g.fill(); } }
+      return;
+    }
     const nb = i < 0 ? (k === 'pipe' ? [[1, 0], [-1, 0]] : []) : [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => inside(c + dx, r + dy) && COND[S.k[idx(c + dx, r + dy)]]);
     if (k === 'src') nb.push([-1, 0]);
+    if (i >= 0 && L.tr) for (const v of nb) v.reverse();
     g.fillStyle = on ? '#6f8fae' : '#59606b';
     for (const [dx, dy] of nb) g.fillRect(dx > 0 ? cx : dx < 0 ? x - 1 : cx - pw / 2, dy > 0 ? cy : dy < 0 ? y - 1 : cy - pw / 2, dx ? ts / 2 + 1 : pw, dy ? ts / 2 + 1 : pw);
     g.beginPath(); g.arc(cx, cy, pw * .62, 0, 6.283); g.fill();
     if (on && k === 'pipe') { g.fillStyle = 'rgba(160,220,255,.35)'; for (const [dx, dy] of nb) g.fillRect(dx > 0 ? cx : dx < 0 ? x : cx - pw * .15, dy > 0 ? cy : dy < 0 ? y : cy - pw * .15, dx ? ts / 2 : pw * .3, dy ? ts / 2 : pw * .3); }
+    const spray = (R, n, rot) => { if (!on) return; g.strokeStyle = `rgba(150,215,255,${.18 + .12 * Math.sin(t * 6 + i)})`; g.lineWidth = Math.max(1, ts * .04);
+      for (let j = 0; j < n; j++) { const a = rot + j * 6.283 / n, r2 = R * (.55 + .45 * ((t * 1.7 + j * .37) % 1)); g.beginPath(); g.arc(cx, cy, r2, a - .18, a + .18); g.stroke(); } };
     if (k === 'src') { g.save(); g.translate(cx, cy); g.rotate(t * .8); g.strokeStyle = '#e8b656'; g.lineWidth = ts * .08; g.beginPath(); g.arc(0, 0, ts * .3, 0, 6.283); g.stroke();
       for (let j = 0; j < 4; j++) { g.rotate(Math.PI / 2); g.beginPath(); g.moveTo(0, 0); g.lineTo(ts * .3, 0); g.stroke(); } g.restore(); }
     else if (k === 'pump') { g.fillStyle = on ? '#2f8fe0' : '#4b5563'; rr(x + ts * .14, y + ts * .14, ts * .72, ts * .72, ts * .14); g.fill();
       g.save(); g.translate(cx, cy); g.rotate(on ? t * 8 : 0); g.fillStyle = '#d6ecff'; for (let j = 0; j < 3; j++) { g.rotate(2.094); g.fillRect(-ts * .04, 0, ts * .08, ts * .24); } g.restore(); }
-    else if (k === 'spr' || k === 'rot') { const big = k === 'rot'; g.fillStyle = '#2b3442'; g.beginPath(); g.arc(cx, cy, ts * (big ? .26 : .2), 0, 6.283); g.fill(); g.fillStyle = on ? '#e8b656' : '#6b7280'; g.beginPath(); g.arc(cx, cy, ts * (big ? .13 : .1), 0, 6.283); g.fill();
-      if (on) { const R = ts * (big ? 2.4 : 1.4) * NET.eff, a0 = big ? t * 2.2 : 0; g.strokeStyle = `rgba(150,215,255,${.18 + .12 * Math.sin(t * 6 + i)})`; g.lineWidth = Math.max(1, ts * .04);
-        for (let j = 0; j < (big ? 3 : 8); j++) { const a = a0 + j * 6.283 / (big ? 3 : 8), rr2 = R * (.55 + .45 * ((t * 1.7 + j * .37) % 1)); g.beginPath(); g.arc(cx, cy, rr2, a - .18, a + .18); g.stroke(); } } }
+    else if (k === 'kut') { g.fillStyle = '#7b7b7b'; g.beginPath(); g.arc(cx, cy, ts * .4, 0, 6.283); g.fill(); g.fillStyle = '#5a5a5a'; for (let j = 0; j < 8; j++) { const a = j * .785; g.fillRect(cx + Math.cos(a) * ts * .32 - ts * .05, cy + Math.sin(a) * ts * .32 - ts * .05, ts * .1, ts * .1); }
+      g.fillStyle = on ? `rgba(60,150,220,${.8 + .2 * Math.sin(t * 3)})` : '#1f2937'; g.beginPath(); g.arc(cx, cy, ts * .25, 0, 6.283); g.fill(); }
+    else if (k === 'hordo') { g.fillStyle = '#8a5a2a'; rr(x + ts * .22, y + ts * .14, ts * .56, ts * .72, ts * .12); g.fill(); g.fillStyle = '#4a4a4a'; g.fillRect(x + ts * .2, y + ts * .3, ts * .6, ts * .06); g.fillRect(x + ts * .2, y + ts * .64, ts * .6, ts * .06);
+      g.fillStyle = on ? '#6cc6ff' : '#2b3442'; g.beginPath(); g.ellipse(cx, y + ts * .18, ts * .24, ts * .06, 0, 0, 6.283); g.fill(); }
+    else if (k === 'spr' || k === 'rot' || k === 'kod' || k === 'piv') {
+      const big = k === 'rot' || k === 'piv', ef = eff == null ? NET.eff : eff;
+      g.fillStyle = '#2b3442'; g.beginPath(); g.arc(cx, cy, ts * (big ? .26 : .2), 0, 6.283); g.fill();
+      g.fillStyle = on ? (k === 'kod' ? '#9fe0ff' : '#e8b656') : '#6b7280'; g.beginPath(); g.arc(cx, cy, ts * (big ? .13 : .1), 0, 6.283); g.fill();
+      if (k === 'piv') { g.save(); g.translate(cx, cy); g.rotate(on ? t * .6 : 0); g.fillStyle = '#c3ced9'; g.fillRect(0, -ts * .05, ts * (i < 0 ? .45 : 3.3), ts * .1); g.restore(); if (on) spray(ts * 3.4 * ef, 4, t * .6); }
+      else if (k === 'kod') { if (on) for (let j = 0; j < 6; j++) { const k2 = (t * .5 + j / 6) % 1; g.fillStyle = `rgba(220,240,255,${.25 * (1 - k2)})`; g.beginPath(); g.arc(cx + Math.cos(j) * ts * .5 * k2, cy + Math.sin(j * 1.7) * ts * .5 * k2, ts * (.2 + .5 * k2), 0, 6.283); g.fill(); } }
+      else spray(ts * (big ? 2.4 : 1.4) * ef, big ? 3 : 8, big ? t * 2.2 : 0);
+    }
     else if (k === 'drip') { g.fillStyle = '#1f2937'; g.beginPath(); g.arc(cx, cy, ts * .14, 0, 6.283); g.fill();
       if (on) for (let j = 0; j < 4; j++) { const k2 = (t * 1.3 + j * .25) % 1, [dx, dy] = [[1, 0], [-1, 0], [0, 1], [0, -1]][j]; g.fillStyle = `rgba(150,215,255,${1 - k2})`; g.beginPath(); g.arc(cx + dx * ts * .35 * k2, cy + dy * ts * .35 * k2, ts * .05, 0, 6.283); g.fill(); } }
   }
@@ -1330,16 +1413,16 @@ const Birodalom = (() => {
     id: 'birodalom', name: 'ÖNTÖZŐ BIRODALOM', lives: 0, quit: false, idle: true, unit: ' FT', lb: 'Ft',
     desc: 'Vegyél modulokat, építs csőhálózatot, ültess kertet és ültetvényt – a víz hozza a termést, a termés a pénzt. A kerted akkor is dolgozik, amikor nem vagy itt.',
     how: 'VÁLASSZ ESZKÖZT · ÉRINTSD A MEZŐT · ARATÁS: ÉRETT NÖVÉNYRE KOPPINTS',
-    ranks: [[0, 'Palántanevelő'], [1000, 'Kiskertész'], [20000, 'Kertész'], [250000, 'Ültetvényes'], [3000000, 'Vízmester'], [30000000, 'Öntöző Birodalom ura']],
+    ranks: [[0, 'Palántanevelő'], [1000, 'Kiskertész'], [50000, 'Kertész'], [1e6, 'Ültetvényes'], [5e7, 'Vízmester'], [1e9, 'Öntöző Birodalom ura']],
     init(G) {
-      S = load(); S.tab = S.tab || 'mod'; S.tool = S.tool || 'pipe'; fl = []; drops = []; drag = null;
+      S = load(); S.tab = S.tab || 'mod'; S.tool = S.tool === undefined ? 'pipe' : S.tool; fl = []; drag = null; confirmT = 0;
       layout(G); net(); G.score = Math.min(CAP, Math.floor(S.life));
-      const away = Math.min(MAXOFF, Math.max(0, (Date.now() - S.t) / 1000)); S.away = null;
+      const away = Math.min(offMax(), Math.max(0, (Date.now() - S.t) / 1000)); S.away = null;
       if (away > 30) {
         let got = 0;
         for (let i = 0; i < S.k.length; i++) { const p = PL[S.k[i]]; if (!p || !NET.wet[i]) continue;
-          const grow = away * NET.wet[i] * speed() / p.t + S.g[i];
-          if (S.up.kertesz) { const n = Math.floor(grow); got += n * p.v * price() * offF(); S.g[i] = grow - n; } else S.g[i] = Math.min(1, grow); }
+          const grow = away * rate(i) + S.g[i];
+          if (S.up.kertesz) { const n = Math.floor(grow); got += n * val(i) * offF(); S.g[i] = grow - n; } else S.g[i] = Math.min(1, grow); }
         got = Math.floor(got); if (got > 0) { earn(got); G.score = Math.min(CAP, Math.floor(S.life)); }
         S.away = { got, sec: away, l: 6 };
       }
@@ -1347,13 +1430,15 @@ const Birodalom = (() => {
     },
     resize(G) { if (S) layout(G); },
     leave(G) { save(); this.sync(G, true); },
-    sync(G, force) { const sc = Math.min(CAP, Math.floor(S.life)); if (sc > (S.sent || 0) && (force || sc - S.sent >= 1)) { S.sent = sc; save(); store.set('best_' + this.id, Math.max(store.get('best_' + this.id), sc));
+    sync(G, force) { const sc = Math.min(CAP, Math.floor(S.life)); if (sc > (S.sent || 0)) { S.sent = sc; save(); store.set('best_' + this.id, Math.max(store.get('best_' + this.id), sc));
       if (window.top !== window) parent.postMessage({ hgws: 'score', game: this.id, score: sc }, location.origin); } },
     down(G, x, y, e) {
       if (e === true) return;
       if (S.away && S.away.l > 0) { S.away.l = 0; return; }
-      if (y >= L.barY) { const b = bar(G); const tb = b.tabs.find(o => x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h); if (tb) { S.tab = tb.k; Sfx.blip(600, .03, 'sine', .04); return; }
-        const it = b.its.find(o => x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h); if (it) buy(G, it); return; }
+      if (y >= L.barY) { const b = bar(G), hit = o => x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h;
+        const tb = b.tabs.find(hit); if (tb) { S.tab = tb.k; confirmT = 0; Sfx.blip(600, .03, 'sine', .04); return; }
+        const ar = b.arr.find(hit); if (ar) { S.pg[S.tab] = (b.pg + ar.dir + b.pages) % b.pages; Sfx.blip(650, .03, 'sine', .04); return; }
+        const it = b.its.find(hit); if (it) buy(G, it); return; }
       const i = tileAt(x, y); if (i < 0) return;
       place(G, i); lastTile = i; drag = S.tool === 'pipe' || S.tool === 'del' || PL[S.tool] ? 1 : null;
     },
@@ -1363,70 +1448,74 @@ const Birodalom = (() => {
       const now = performance.now(), dt = S.rt ? Math.min(600, Math.max(0, (now - S.rt) / 1000)) : fdt; S.rt = now;
       const auto = S.up.kertesz > 0;
       for (let i = 0; i < S.k.length; i++) { const p = PL[S.k[i]]; if (!p) continue;
-        if (S.g[i] < 1 && NET.wet[i]) S.g[i] += dt * NET.wet[i] * speed() / p.t;
-        if (S.g[i] >= 1) { if (auto) { const n = Math.floor(S.g[i]); if (n > 1) earn((n - 1) * Math.round(p.v * price())); const rest = S.g[i] - n; harvest(G, i, true); S.g[i] = rest; } else S.g[i] = 1; } }
+        if (S.g[i] < 1 && NET.wet[i]) S.g[i] += dt * rate(i);
+        if (S.g[i] >= 1) { if (auto) { const n = Math.floor(S.g[i]), rest = S.g[i] - n; if (n > 1) earn((n - 1) * val(i)); harvest(G, i, true); S.g[i] = rest; } else S.g[i] = 1; } }
       const sc = Math.min(CAP, Math.floor(S.life));
       S.hudT -= dt; if (sc !== G.score && S.hudT <= 0) { G.score = sc; S.hudT = .25; if (sc > store.get('best_' + this.id)) store.set('best_' + this.id, sc); hud(); }
       if ((S.saveT += dt) > 5) { S.saveT = 0; save(); }
       if ((S.syncT += dt) > 45) { S.syncT = 0; this.sync(G); }
       if (S.away) S.away.l -= dt;
+      if (confirmT > 0) confirmT -= dt;
       for (const f of fl) { f.y -= 22 * L.d * dt; f.l -= dt * .9; } fl = fl.filter(f => f.l > 0);
     },
     draw(g, G, t) {
       if (!S) return;
-      if (!L || L.W !== G.W || L.H !== G.H) { layout(G); L.W = G.W; L.H = G.H; }
+      if (!L || L.W !== G.W || L.H !== G.H) layout(G);
       const d = L.d, ts = L.ts, [cw, rh] = size();
       bg('#0f2a1a', '#06120b');
-      // kerítés + talaj
-      g.fillStyle = '#2a1d10'; rr(L.bx - 8 * d, L.by - 8 * d, ts * cw + 16 * d, ts * rh + 16 * d, 10 * d); g.fill();
+      if (L.vw !== (L.tr ? rh : cw)) layout(G);
+      g.fillStyle = '#2a1d10'; rr(L.bx - 8 * d, L.by - 8 * d, ts * L.vw + 16 * d, ts * L.vh + 16 * d, 10 * d); g.fill();
       for (let r = 0; r < rh; r++) for (let c = 0; c < cw; c++) {
         const i = idx(c, r), [x, y] = tileXY(i), w = NET.wet[i];
         g.fillStyle = (c + r) & 1 ? '#3b7a33' : '#367230'; g.fillRect(x, y, ts + .5, ts + .5);
-        if (w) { g.fillStyle = `rgba(40,110,170,${.18 + .14 * w})`; g.fillRect(x, y, ts + .5, ts + .5); }
+        if (w) { g.fillStyle = `rgba(40,110,170,${.18 + .12 * Math.min(1.3, w)})`; g.fillRect(x, y, ts + .5, ts + .5); }
+        if (NET.gb[i] > 1 || NET.yb[i] > 1) { g.fillStyle = NET.yb[i] > 1 ? 'rgba(255,217,59,.07)' : 'rgba(120,80,30,.12)'; g.fillRect(x, y, ts + .5, ts + .5); }
       }
-      // modulok és növények
       for (let r = 0; r < rh; r++) for (let c = 0; c < cw; c++) {
         const i = idx(c, r), k = S.k[i]; if (!k) continue; const [x, y] = tileXY(i);
         if (PL[k]) drawPlant(g, k, S.g[i], x, y, ts, t); else drawMod(g, k, i, x, y, ts, t, NET.on[i]);
       }
-      // főcsap a falból
-      { const [x, y] = tileXY(idx(...SRC)); g.fillStyle = '#6f8fae'; g.fillRect(x - 10 * d, y + ts / 2 - ts * .13, 10 * d, ts * .26); }
+      { const [x, y] = tileXY(idx(...SRC)); g.fillStyle = '#6f8fae'; if (L.tr) g.fillRect(x + ts / 2 - ts * .13, y - 10 * d, ts * .26, 10 * d); else g.fillRect(x - 10 * d, y + ts / 2 - ts * .13, 10 * d, ts * .26); }
       for (const f of fl) { g.font = `700 ${Math.max(10, ts * .32)}px Inter, sans-serif`; g.textAlign = 'center'; g.fillStyle = `rgba(255,225,140,${Math.max(0, f.l)})`; g.fillText(f.t, f.x, f.y); }
       // felső sáv
-      const water = NET.dem > NET.cap;
       g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.font = `800 ${20 * d}px Inter, sans-serif`; g.fillStyle = '#ffe29a'; g.fillText('💰 ' + fmt(S.money) + ' Ft', G.W / 2, 78 * d);
+      g.font = `800 ${20 * d}px Inter, sans-serif`; g.fillStyle = '#ffe29a'; g.fillText('💰 ' + fmt(S.money) + ' Ft' + (S.star ? '   ⭐ ' + S.star : ''), G.W / 2, 78 * d);
       g.font = `600 ${12 * d}px Inter, sans-serif`;
-      g.fillStyle = 'rgba(255,255,255,.7)'; g.fillText(`+${NET.inc.toLocaleString('hu-HU', { maximumFractionDigits: 1 })} Ft/s  ·  `, G.W / 2 - 50 * d, 99 * d);
-      g.fillStyle = water ? '#ff8a7a' : '#9fd6f5'; g.fillText(`💧 ${NET.dem.toLocaleString('hu-HU', { maximumFractionDigits: 1 })} / ${NET.cap} L/s`, G.W / 2 + 50 * d, 99 * d);
+      g.fillStyle = 'rgba(255,255,255,.7)'; g.fillText(`+${NET.inc < 1e4 ? NET.inc.toLocaleString('hu-HU', { maximumFractionDigits: 1 }) : fmt(NET.inc)} Ft/s  ·  `, G.W / 2 - 50 * d, 99 * d);
+      g.fillStyle = NET.dem > NET.cap ? '#ff8a7a' : '#9fd6f5'; g.fillText(`💧 ${NET.dem.toLocaleString('hu-HU', { maximumFractionDigits: 1 })} / ${NET.cap.toLocaleString('hu-HU')} L/s`, G.W / 2 + 50 * d, 99 * d);
       // alsó sáv
       const b = bar(G);
-      g.fillStyle = 'rgba(4,7,14,.88)'; g.fillRect(0, L.barY, G.W, G.H - L.barY); g.fillStyle = 'rgba(232,182,86,.35)'; g.fillRect(0, L.barY, G.W, 1 * d);
+      g.fillStyle = 'rgba(4,7,14,.9)'; g.fillRect(0, L.barY, G.W, G.H - L.barY); g.fillStyle = 'rgba(232,182,86,.35)'; g.fillRect(0, L.barY, G.W, 1 * d);
       for (const tb of b.tabs) { const on = S.tab === tb.k; g.fillStyle = on ? 'rgba(232,182,86,.9)' : 'rgba(255,255,255,.06)'; rr(tb.x + 3 * d, tb.y, tb.w - 6 * d, tb.h, tb.h / 2); g.fill();
-        g.fillStyle = on ? '#1a1004' : 'rgba(255,255,255,.75)'; g.font = `700 ${Math.min(12, tb.w / d / 9) * d}px Inter, sans-serif`; g.fillText(tb.n, tb.x + tb.w / 2, tb.y + tb.h / 2 + 1); }
+        g.fillStyle = on ? '#1a1004' : tb.k === 'bir' && starGain() ? '#ffe29a' : 'rgba(255,255,255,.75)'; g.font = `700 ${Math.min(12, tb.w / d / 9.5) * d}px Inter, sans-serif`; g.fillText(tb.n, tb.x + tb.w / 2, tb.y + tb.h / 2 + 1); }
+      for (const a of b.arr) { g.fillStyle = 'rgba(255,255,255,.06)'; rr(a.x, a.y, a.w, a.h, 8 * d); g.fill(); g.fillStyle = '#ffe29a'; g.font = `700 ${14 * d}px Inter, sans-serif`; g.fillText(a.dir < 0 ? '‹' : '›', a.x + a.w / 2, a.y + a.h / 2); }
       for (const it of b.its) {
-        const lock = it.kind !== 'up' && !unlocked(it), sel = S.tool === it.k && it.kind !== 'up', can = it.kind === 'up' ? S.money >= it.c : S.money >= it.c;
-        g.fillStyle = sel ? 'rgba(232,182,86,.22)' : 'rgba(255,255,255,.05)'; g.strokeStyle = sel ? '#e8b656' : 'rgba(255,255,255,.1)'; g.lineWidth = 1.5 * d;
+        const shop = it.kind === 'mod' || it.kind === 'pl', lock = (shop || it.kind === 'up') && !unlocked(it), sel = shop && S.tool === it.k;
+        const can = it.kind === 'reset' || it.kind === 'perk' ? it.ok : S.money >= it.c;
+        g.fillStyle = sel || (it.kind === 'reset' && confirmT > 0) ? 'rgba(232,182,86,.22)' : 'rgba(255,255,255,.05)'; g.strokeStyle = sel ? '#e8b656' : 'rgba(255,255,255,.1)'; g.lineWidth = 1.5 * d;
         rr(it.x + 3 * d, it.y, it.w - 6 * d, it.h, 10 * d); g.fill(); g.stroke();
-        const ix = it.x + it.w / 2, ic = Math.min(it.w * .42, it.h * .42);
-        g.save(); if (lock) g.globalAlpha = .3;
-        if (it.kind === 'pl') { drawPlant(g, it.k, 1, ix - ic / 2, it.y + 4 * d, ic, 0); }
-        else if (it.kind === 'mod') { if (it.k === 'del') { g.font = `${ic * .7}px sans-serif`; g.fillStyle = '#fff'; g.fillText('🪓', ix, it.y + 4 * d + ic / 2); } else { const sv = NET; NET = { ...NET, eff: .5 }; drawMod(g, it.k, -1, ix - ic / 2, it.y + 4 * d, ic, t, 1); NET = sv; } }
-        else { g.font = `${ic * .7}px sans-serif`; g.fillStyle = '#fff'; g.fillText(it.ic, ix, it.y + 4 * d + ic / 2); }
+        const ix = it.x + it.w / 2, ic = Math.min(it.w * .42, it.h * .42), iy = it.y + 4 * d;
+        g.save(); if (lock || it.have) g.globalAlpha = .35;
+        if (it.kind === 'pl') drawPlant(g, it.k, 1, ix - ic / 2, iy, ic, 0);
+        else if (it.kind === 'mod' && it.k !== 'del') drawMod(g, it.k, -1, ix - ic / 2, iy, ic, t, 1, .5);
+        else { g.font = `${ic * .7}px sans-serif`; g.fillStyle = '#fff'; g.fillText(it.k === 'del' ? '🪓' : it.ic, ix, iy + ic / 2); }
         g.restore();
-        g.font = `700 ${Math.min(11, it.w / d / 8) * d}px Inter, sans-serif`; g.fillStyle = 'rgba(255,255,255,.85)';
-        g.fillText(it.kind === 'up' ? `${it.n} ${it.lvl}` : it.n, ix, it.y + it.h - 26 * d);
-        g.font = `700 ${Math.min(11, it.w / d / 8) * d}px Inter, sans-serif`;
-        g.fillStyle = lock ? 'rgba(255,255,255,.4)' : it.c === Infinity ? '#86b86c' : can || !it.c ? '#ffe29a' : '#ff8a7a';
-        g.fillText(lock ? '🔒 ' + fmt(it.u) : it.c === Infinity ? 'MAX' : it.c ? fmt(it.c) + ' Ft' : '–', ix, it.y + it.h - 11 * d);
+        const fs = Math.min(11, it.w / d / 8.5) * d; g.font = `700 ${fs}px Inter, sans-serif`; g.fillStyle = 'rgba(255,255,255,.85)';
+        g.fillText(it.kind === 'up' ? `${it.n} ${it.lvl}` : it.n, ix, it.y + it.h - 26 * d, it.w - 8 * d);
+        let lbl, col;
+        if (lock) { lbl = '🔒 ' + fmt(it.u); col = 'rgba(255,255,255,.4)'; }
+        else if (it.lbl) { lbl = it.lbl; col = it.have ? '#86b86c' : can ? '#ffe29a' : 'rgba(255,255,255,.4)'; }
+        else if (it.c === Infinity) { lbl = 'MAX'; col = '#86b86c'; }
+        else { lbl = it.c ? fmt(it.c) + ' Ft' : '–'; col = can || !it.c ? '#ffe29a' : '#ff8a7a'; }
+        g.fillStyle = col; g.fillText(lbl, ix, it.y + it.h - 11 * d, it.w - 8 * d);
       }
-      // távollét
+      // üzenet panel
       if (S.away && S.away.l > 0) {
         const a = Math.min(1, S.away.l), w = Math.min(340 * d, G.W - 40 * d), h = 92 * d, x = (G.W - w) / 2, y = L.by + 20 * d;
         g.globalAlpha = a; g.fillStyle = 'rgba(4,7,14,.92)'; g.strokeStyle = '#e8b656'; g.lineWidth = 1.5 * d; rr(x, y, w, h, 14 * d); g.fill(); g.stroke();
         const hh = Math.floor(S.away.sec / 3600), mm = Math.floor(S.away.sec % 3600 / 60);
-        g.fillStyle = 'rgba(255,255,255,.7)'; g.font = `600 ${12 * d}px Inter, sans-serif`; g.fillText(`Távol voltál: ${hh ? hh + ' ó ' : ''}${mm} perc`, G.W / 2, y + 24 * d);
-        g.fillStyle = '#ffe29a'; g.font = `800 ${22 * d}px Inter, sans-serif`; g.fillText(S.away.got ? '+' + fmt(S.away.got) + ' Ft' : 'A termés vár rád 🌾', G.W / 2, y + 56 * d);
+        g.fillStyle = 'rgba(255,255,255,.7)'; g.font = `600 ${12 * d}px Inter, sans-serif`; g.fillText(S.away.msg ? 'Új birtok' : `Távol voltál: ${hh ? hh + ' ó ' : ''}${mm} perc`, G.W / 2, y + 24 * d);
+        g.fillStyle = '#ffe29a'; g.font = `800 ${22 * d}px Inter, sans-serif`; g.fillText(S.away.msg || (S.away.got ? '+' + fmt(S.away.got) + ' Ft' : 'A termés vár rád 🌾'), G.W / 2, y + 56 * d);
         g.globalAlpha = 1;
       }
     }
