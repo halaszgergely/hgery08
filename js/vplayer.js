@@ -1,6 +1,6 @@
 // HGWS saját videólejátszó – YouTube-forrásnál a YouTube IFrame API-t vezérli saját gombokkal
 // (a YouTube felülete nem kattintható, így a videó linkje sem érhető el egy kattintással), MP4-nél sima <video>.
-import { esc } from './core.js?v=202611181327';
+import { esc } from './core.js?v=202611182029';
 
 let ytLoad = null;
 function loadYT() {
