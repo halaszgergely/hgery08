@@ -333,7 +333,7 @@ body.embed .scroll{display:none}
   <div class="wrap">
     <div class="eyebrow reveal">// HGWS ARCADE</div>
     <h2 class="reveal">Szünet a filmek között?</h2>
-    <p class="lead reveal">Hét játék a HGWS-univerzumból. Rekordokat a böngésződ megjegyzi – döntsd meg a sajátodat.</p>
+    <p class="lead reveal">Nyolc játék a HGWS-univerzumból. Rekordokat a böngésződ megjegyzi – döntsd meg a sajátodat.</p>
     <div class="games" id="games"></div>
     <div class="lbw" id="lbw" hidden><div class="lbh"><h3>🏆 Ranglista</h3><div class="lbt"><button data-lbt="week" class="on">E heti</button><button data-lbt="all">Mindenkori</button></div></div>
       <p class="lbn" id="lbn"></p><div class="lbg" id="lbg"></div></div>
@@ -372,6 +372,7 @@ body.embed .scroll{display:none}
   </div>
 </div>
 
+<script src="js/arcade-drift.js?v=202611181302"></script>
 <script>
 (() => {
 'use strict';
@@ -1685,12 +1686,14 @@ const Birodalom = (() => {
 
 const ZeroSpace = { id: 'zerospace', name: 'ZERO SPACE DEMO', ext: 'zerospace.html', tag: 'DEMO',
   desc: 'Tervezd meg a saját űrhajódat modulról modulra, és vezesd csatába a végtelen űrben. Korai demó – az egyjátékos sandbox már elérhető.' };
-const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Torony, Birodalom, ZeroSpace];
+const Drift = window.HGDrift ? window.HGDrift({ G, Sfx, rr, store, hud }) : null;
+const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Torony, Birodalom, ...(Drift ? [Drift] : []), ZeroSpace];
 const EXT = $('#ext'), EXF = $('#extf');
 function openExt(gm) { EXF.src = gm.ext + '?v=' + Date.now().toString(36).slice(0, 5); EXT.hidden = false; document.body.classList.add('locked'); setTimeout(() => { try { EXF.focus(); } catch (_) {} }, 300); }
 function closeExt() { EXT.hidden = true; EXF.src = 'about:blank'; document.body.classList.remove('locked'); }
 $('#extX').onclick = closeExt;
 const ARTS = {
+  drift: (c, x, t) => Drift && Drift.art(c, x, t),
   birodalom: (c, x, t) => { const W = c.width, H = c.height, s = 22, ox = (W - s * 11) / 2, oy = (H - s * 5) / 2; x.fillStyle = '#0f2a1a'; x.fillRect(0, 0, W, H);
     for (let r = 0; r < 5; r++) for (let q = 0; q < 11; q++) { x.fillStyle = (q + r) & 1 ? '#3b7a33' : '#367230'; x.fillRect(ox + q * s, oy + r * s, s, s); }
     x.fillStyle = 'rgba(40,110,170,.3)'; x.fillRect(ox + 2 * s, oy, s * 3, s * 3); x.fillRect(ox + 6 * s, oy + 2 * s, s * 3, s * 3);

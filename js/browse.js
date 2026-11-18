@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID } from './core.js?v=202611181159';
-import { stageHtml, confirmBox } from './ui.js?v=202611181159';
-import * as Player from './player.js?v=202611181159';
-import * as Party from './party.js?v=202611181159';
-import * as VP from './vplayer.js?v=202611181159';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611181159';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID } from './core.js?v=202611181302';
+import { stageHtml, confirmBox } from './ui.js?v=202611181302';
+import * as Player from './player.js?v=202611181302';
+import * as Party from './party.js?v=202611181302';
+import * as VP from './vplayer.js?v=202611181302';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611181302';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -252,6 +252,7 @@ export const GAMES = [
   { id: 'vizagyu', name: 'Vízágyú', icon: '💦', desc: 'Kaktuszok és tűzgolyók zúdulnak a kertre. Célozz a vízágyúval!', c: '#ff7a6e' },
   { id: 'csepp', name: 'Csepp Futam', icon: '💧', desc: 'Repülj át a csövek között egy bátor vízcseppel – egy ütközés és vége!', c: '#e8b656' },
   { id: 'viztorony', name: 'Víztorony', icon: '🗼', unit: 'm', desc: 'Mássz fel a víztorony tetejére az Arany Locsolófejért – egy rossz ugrás, és zuhansz!', c: '#b48cff', sponsor: 'A Zerosites támogatásával' },
+  { id: 'drift', name: 'Drift Király', icon: '🏎️', desc: 'Felülnézetes drift-verseny 10 pályán, szellemautókkal és kétjátékos móddal.', c: '#ff5a4d' },
   { id: 'birodalom', name: 'Öntöző Birodalom', icon: '🌱', unit: 'Ft', desc: 'Építs csőhálózatot, ültess kertet és ültetvényt – a kerted akkor is termel, amikor nem vagy itt.', c: '#6fcf6a' }
 ];
 const EXTRA = [{ id: 'zerospace', name: 'Zero Space Demo', icon: '🚀', desc: 'Építs űrhajót modulról modulra és vezesd csatába – korai demó, egyjátékos sandbox.', c: '#b2382a', demo: 1 }];
@@ -294,6 +295,32 @@ async function sendBoards(win) {
   }));
   win?.postMessage({ hgws: 'lb', boards, week: wk.replace('-W', '. év ') + '. hét', guest: guest() }, location.origin);
 }
+/* Drift Király: pályánkénti legjobb kör (szellem) és legjobb verseny-idő */
+const okTrack = t => typeof t === 'string' && /^[a-z0-9_]{1,24}$/.test(t);
+async function ghostList(tracks) {
+  const out = {};
+  await Promise.all((Array.isArray(tracks) ? tracks : []).slice(0, 20).filter(okTrack).map(async t => {
+    try {
+      const col = FB.collection(db, 'ghosts', t, 'runs');
+      const [a, b] = await Promise.all([FB.getDocs(FB.query(col, FB.orderBy('ms'), FB.limit(3))), FB.getDocs(FB.query(col, FB.orderBy('rms'), FB.limit(1)))]);
+      const m = new Map(); for (const d of [...a.docs, ...b.docs]) m.set(d.id, d.data());
+      if (!guest() && !m.has(C.uid())) { const s = await FB.getDoc(FB.doc(db, 'ghosts', t, 'runs', C.uid())); if (s.exists()) m.set(s.id, s.data()); }
+      out[t] = [...m].map(([uid, r]) => ({ name: C.U(uid).name, ms: r.ms < 36e5 ? r.ms : 0, rms: r.rms < 36e5 ? r.rms : 0, car: r.car, p: r.ms < 36e5 ? r.path : '', me: uid === C.uid() }));
+    } catch (_) {}
+  }));
+  return out;
+}
+async function ghostSave(d) {
+  if (guest() || !okTrack(d.track)) return;
+  const ref = FB.doc(db, 'ghosts', d.track, 'runs', C.uid());
+  try {
+    const s = await FB.getDoc(ref), o = s.data() || {}, big = 36e5;
+    const lap = Number.isInteger(d.ms) && d.ms > 5000 && d.ms < big && typeof d.path === 'string' && d.path.length < 60000 && typeof d.car === 'string' && d.car.length < 20 && d.ms < (o.ms || big);
+    const race = Number.isInteger(d.rms) && d.rms > 10000 && d.rms < big && d.rms < (o.rms || big);
+    if (!lap && !race) return;
+    await FB.setDoc(ref, { ms: lap ? d.ms : (o.ms || big), car: lap ? d.car : (o.car || ''), path: lap ? d.path : (o.path || ''), rms: race ? d.rms : (o.rms || big), at: FB.serverTimestamp() });
+  } catch (e) { console.warn('szellem', e); }
+}
 async function saveScore(game, score, win) {
   if (guest() || !GAMES.some(g => g.id === game) || !(score > 0)) return;
   const me = C.uid(), sc = Math.floor(score);
@@ -308,6 +335,8 @@ addEventListener('message', async e => {
   const fr = $('.arcframe'); if (!fr || e.source !== fr.contentWindow) return;
   if (e.data.hgws === 'score') { await saveScore(e.data.game, e.data.score, !!e.data.win); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbreq') sendBoards(fr.contentWindow);
+  if (e.data.hgws === 'ghostreq') fr.contentWindow.postMessage({ hgws: 'ghosts', data: await ghostList(e.data.tracks), guest: guest() }, location.origin);
+  if (e.data.hgws === 'ghostsave') await ghostSave(e.data);
 });
 /* heti bajnok: az előző hét játékonkénti győztesei megkapják az „Arcade-bajnok” taget.
    Szerver nincs, ezért az első tagkezelő (moderátor+) végzi el, aki a hét után megnyitja az Arcade-ot. */

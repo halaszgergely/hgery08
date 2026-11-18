@@ -263,6 +263,20 @@ service cloud.firestore {
       allow update: if signedIn() && changed().hasOnly(['n']) && request.resource.data.n == resource.data.n + 1;
     }
 
+    // ---------- Drift Király: pályánkénti legjobb kör (szellemautó) és verseny-idő – csak javulhat ----------
+    match /ghosts/{track}/runs/{uid} {
+      allow read: if signedIn();
+      allow create, update: if active() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['ms', 'car', 'path', 'rms', 'at'])
+        && request.resource.data.ms is int && request.resource.data.ms > 5000 && request.resource.data.ms <= 3600000
+        && request.resource.data.rms is int && request.resource.data.rms > 10000 && request.resource.data.rms <= 3600000
+        && request.resource.data.car is string && request.resource.data.car.size() < 20
+        && request.resource.data.path is string && request.resource.data.path.size() < 60000
+        && request.resource.data.at == request.time
+        && (resource == null || (request.resource.data.ms <= resource.data.ms && request.resource.data.rms <= resource.data.rms
+            && (request.resource.data.ms < resource.data.ms || request.resource.data.rms < resource.data.rms)));
+    }
+
     // ---------- Arcade ranglista: mindenki csak a saját rekordját írhatja, és csak felfelé ----------
     // wins: hányszor érte el a csúcsot (Víztorony) – egyszerre csak eggyel nőhet
     match /leaderboards/{lb}/scores/{uid} {
