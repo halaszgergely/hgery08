@@ -372,7 +372,7 @@ body.embed .scroll{display:none}
   </div>
 </div>
 
-<script src="js/arcade-drift.js?v=202611182050"></script>
+<script src="js/arcade-drift.js?v=202611182104"></script>
 <script>
 (() => {
 'use strict';
@@ -1271,7 +1271,7 @@ const Birodalom = (() => {
     } catch (_) {}
     return fresh();
   }
-  function save() { if (!S) return; S.t = Date.now(); try { const { rt, away, saveT, syncT, hudT, ...o } = S; localStorage.setItem(KEY, JSON.stringify(o)); } catch (_) {} }
+  function save() { if (!S) return; S.t = Date.now(); try { const { rt, away, saveT, syncT, hudT, info, hover, ...o } = S; localStorage.setItem(KEY, JSON.stringify(o)); } catch (_) {} }
 
   function net() {
     const [cw, rh] = size(), N = COLS * ROWS, on = new Uint8Array(N), dist = new Int16Array(N).fill(-1), q = [SRC];
@@ -1389,7 +1389,46 @@ const Birodalom = (() => {
     S.away = { got: 0, sec: 0, l: 3.5, msg: '⭐ +' + sg + ' hírnév' };
   }
   function syncCB() { while (CB.length < S.up.kombajn) CB.push({ x: SRC[0] + .5, y: SRC[1] + .5, a: 0, tgt: -1, run: 0 }); CB.length = S.up.kombajn; }
+  const DESC = {
+    pipe: 'Összeköti a főcsapot a többi elemmel. Húzással egyszerre többet is lerakhatsz.',
+    spr: 'A körülötte lévő 8 mezőt locsolja. 1 L/s vizet fogyaszt.',
+    pump: '+6 L/s vízhozam a hálózatnak, ha csőre van kötve.',
+    drip: 'Csak a 4 szomszédos mezőt locsolja, de takarékos (0,3 L/s), és +15% növekedést ad.',
+    szelep: 'Koppintásra elzárja vagy kinyitja a vizet mögötte.',
+    rot: '2 mezős sugárban locsol (5×5 terület). 2,5 L/s.',
+    hordo: '+3 L/s vízhozam, ha csőre van kötve.',
+    komp: 'Nem kell rá cső. A körülötte lévő mezőkön +30% gyorsabb a növekedés.',
+    fok: '+15% a teljes hálózat vízhozamára. Csőre kell kötni.',
+    kod: 'A körülötte lévő 8 mezőt párásítja: +35% növekedés. 2 L/s.',
+    szuro: '+8% növekedés az egész kertben. Csőre kell kötni.',
+    linx: 'Mozgó öntöző: tömlőn húzva oda-vissza járja a sort, 3 mező széles sávban. 3 L/s.',
+    liny: 'Mozgó öntöző: tömlőn húzva oda-vissza járja az oszlopot, 3 mező széles sávban. 3 L/s.',
+    meh: 'Nem kell rá cső. 2 mezős körzetben +25% termést hoznak a növények.',
+    kut: '+14 L/s vízhozam (a Hatásfok is növeli), ha csőre van kötve.',
+    piv: '3 mezős sugárban locsol egy forgó karral (7×7 terület). 6 L/s.',
+    torony: '+30 L/s vízhozam, ha csőre van kötve.',
+    del: 'Lebont egy elemet vagy növényt, az ára felét visszakapod.',
+    nyomas: n => '+3 L/s alap vízhozam szintenként. Most: +' + 3 * n + ' L/s.',
+    hatas: n => '+15% a szivattyúk és mélykutak vízhozamára szintenként. Most: +' + 15 * n + '%.',
+    tap: n => '+20% növekedési sebesség szintenként. Most: +' + 20 * n + '%.',
+    piac: n => '+25% eladási ár minden termésre szintenként. Most: +' + 25 * n + '%.',
+    kombajn: n => 'Egy újabb kombájn: magától járja a kertet és learatja az érett termést +25% bónusszal. Most: ' + n + ' db.',
+    motor: n => 'Gyorsabbak a kombájnok. Most: +' + Math.round(35 * n / 1.8) + '%.',
+    kertesz: n => 'Learatja az érett termést, és amíg nem vagy itt, akkor is termel a kert (' + (n ? Math.round(offF() * 100) + '%-os hatékonysággal' : 'kertész nélkül csak megérik és vár') + ').',
+    ido: n => '+2 óra a távollét alatti termelés felső határához. Most: ' + (offMax() / 3600) + ' óra.',
+    telek: n => 'Nagyobb kert. Most: ' + SIZES[n].join('×') + (SIZES[n + 1] ? ', következő: ' + SIZES[n + 1].join('×') : '') + '.',
+    reset: 'Elölről kezded a kertet (pénz, fejlesztések és növények nullázódnak), cserébe hírnév-csillagokat kapsz. Minden csillag +10% bevétel. A ranglista-pontod megmarad.',
+    toke: 'Új birtok után 5 000 Ft-tal kezdesz.',
+    orok: 'Új birtok után azonnal van 1 szintű kertészed.',
+    hosszu: '+16 óra a távollét alatti termelés felső határához.',
+    halo: 'Új birtok után a csövek, a modulok és a telekméret megmaradnak.'
+  };
+  function descOf(it) {
+    if (it.kind === 'pl') return 'Locsolt mezőn ' + it.t + ' mp alatt érik be, és ' + fmt(Math.round(it.v * price())) + ' Ft termést hoz. Víz nélkül nem nő.';
+    const d = DESC[it.k]; return typeof d === 'function' ? d(S.up[it.k]) : d || '';
+  }
   function buy(G, it) {
+    S.info = { it, l: 5 };
     if (it.kind === 'mod' || it.kind === 'pl') { S.tool = S.tool === it.k ? null : it.k; Sfx.blip(700, .04, 'sine', .05); return; }
     if (it.kind === 'reset') { if (!it.ok) return Sfx.blip(140, .1, 'square', .05); if (confirmT > 0) { confirmT = 0; rebirth(G); } else { confirmT = 3; Sfx.blip(500, .05, 'square', .05); } return; }
     if (it.kind === 'perk') { if (!it.ok) return Sfx.blip(140, .1, 'square', .05); S.star -= it.c; S.perk[it.k] = 1; net(); Sfx.perfect(); save(); return; }
@@ -1559,7 +1598,8 @@ const Birodalom = (() => {
       const i = tileAt(x, y); if (i < 0) return;
       place(G, i, true); lastTile = i; drag = S.tool === 'pipe' || S.tool === 'del' || PL[S.tool] ? 1 : null;
     },
-    move(G, x, y, btn) { if (!drag || !btn) return; const i = tileAt(x, y); if (i >= 0 && i !== lastTile) { lastTile = i; place(G, i, false); } },
+    move(G, x, y, btn) { if (!btn && L && y >= L.barY) { const b = bar(G); S.hover = b.its.find(o => x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h) || null; } else if (!btn) S.hover = null;
+      if (!drag || !btn) return; const i = tileAt(x, y); if (i >= 0 && i !== lastTile) { lastTile = i; place(G, i, false); } },
     up() { drag = null; lastTile = -1; },
     update(G, fdt) {
       const now = performance.now(), dt = S.rt ? Math.min(600, Math.max(0, (now - S.rt) / 1000)) : fdt; S.rt = now;
@@ -1598,7 +1638,7 @@ const Birodalom = (() => {
       S.hudT -= dt; if (sc !== G.score && S.hudT <= 0) { G.score = sc; S.hudT = .25; if (sc > store.get('best_' + this.id)) store.set('best_' + this.id, sc); hud(); }
       if ((S.saveT += dt) > 5) { S.saveT = 0; save(); }
       if ((S.syncT += dt) > 45) { S.syncT = 0; this.sync(G); }
-      if (S.away) S.away.l -= dt;
+      if (S.away) S.away.l -= dt; if (S.info) S.info.l -= dt;
       if (confirmT > 0) confirmT -= dt;
       for (const f of fl) { f.y -= 22 * L.d * dt; f.l -= dt * .9; } fl = fl.filter(f => f.l > 0);
       for (const p of dust) { p.x += p.vx * dt; p.y += p.vy * dt; p.l -= dt * 1.4; } dust = dust.filter(p => p.l > 0); if (dust.length > 200) dust.splice(0, dust.length - 200);
@@ -1672,6 +1712,15 @@ const Birodalom = (() => {
         else { lbl = it.c ? fmt(it.c) + ' Ft' : '–'; col = can || !it.c ? '#ffe29a' : '#ff8a7a'; }
         g.fillStyle = col; g.fillText(lbl, ix, it.y + it.h - 11 * d, it.w - 8 * d);
       }
+      { const shownIt = S.hover || (S.info && S.info.l > 0 ? S.info.it : null) || (S.tool ? items().find(o => o.k === S.tool && (o.kind === 'mod' || o.kind === 'pl')) : null);
+        if (shownIt) { const fresh = items().find(o => o.k === shownIt.k && o.kind === shownIt.kind) || shownIt, txt = descOf(fresh);
+          if (txt) { g.font = `600 ${12 * d}px Inter, sans-serif`; g.textAlign = 'left'; const title = fresh.n + '  ', tw = g.measureText(title).width; g.font = `500 ${12 * d}px Inter, sans-serif`;
+            const maxW = Math.min(G.W - 24 * d, 760 * d), words = txt.split(' '), lines = []; let ln = '', first = true;
+            for (const wd of words) { const tryL = ln ? ln + ' ' + wd : wd, lim = maxW - 24 * d - (first ? tw : 0); if (g.measureText(tryL).width > lim && ln) { lines.push(ln); ln = wd; first = false; } else ln = tryL; } lines.push(ln);
+            const lh = 16 * d, bh = lines.length * lh + 12 * d, bx = (G.W - maxW) / 2, by = L.barY - bh - 6 * d;
+            g.fillStyle = 'rgba(4,7,14,.88)'; g.strokeStyle = 'rgba(232,182,86,.45)'; g.lineWidth = d; rr(bx, by, maxW, bh, 10 * d); g.fill(); g.stroke();
+            g.textBaseline = 'middle'; lines.forEach((t2, i) => { let x = bx + 12 * d; const y = by + 6 * d + lh * (i + .5); if (!i) { g.font = `800 ${12 * d}px Inter, sans-serif`; g.fillStyle = '#ffe29a'; g.fillText(title, x, y); x += tw; } g.font = `500 ${12 * d}px Inter, sans-serif`; g.fillStyle = 'rgba(255,255,255,.85)'; g.fillText(t2, x, y); });
+            g.textAlign = 'center'; } } }
       if (S.away && S.away.l > 0) {
         const a = Math.min(1, S.away.l), w = Math.min(340 * d, G.W - 40 * d), h = 92 * d, x = (G.W - w) / 2, y = L.by + 20 * d;
         g.globalAlpha = a; g.fillStyle = 'rgba(4,7,14,.92)'; g.strokeStyle = '#e8b656'; g.lineWidth = 1.5 * d; rr(x, y, w, h, 14 * d); g.fill(); g.stroke();
