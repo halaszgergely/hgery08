@@ -450,3 +450,57 @@ body{background:var(--bg)}
 .col:hover i{filter:brightness(1.25)}
 .colx{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-top:.35rem}
 @media (max-width:860px){.sgrid{grid-template-columns:1fr}}
+
+/* ===== HGWS matricák és saját emojik ===== */
+.cemo{display:inline-block;width:1.35em;height:1.35em;vertical-align:-.3em;margin:0 .05em;object-fit:contain}
+.mt.big .cemo{width:1.5em;height:1.5em;vertical-align:-.25em}
+.reacts .cemo.rx{width:1.25em;height:1.25em;vertical-align:-.28em;margin:0}
+.stk{width:150px;height:150px;margin:.15rem 0 .1rem;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.stk img{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35))}
+.msg.new .stk img{animation:stkIn .5s cubic-bezier(.2,1.6,.4,1) both}
+.stk.missing{width:auto;height:auto;color:var(--muted);font-size:.85rem}
+@keyframes stkIn{0%{transform:scale(.3) rotate(-10deg);opacity:0}60%{opacity:1}100%{transform:none}}
+@media (prefers-reduced-motion:reduce){.msg.new .stk img{animation:none}}
+.pop.cpop{min-width:250px;padding:.3rem;max-width:calc(100vw - 16px)}
+.cpop small{display:block;padding:.3rem .5rem .2rem;font-size:.68rem;letter-spacing:.08em;color:var(--muted)}
+.cpop .mi{min-height:40px}
+.cpop .mi .cemo{width:28px;height:28px;margin:0}
+.cpop .mi span{color:var(--muted);font-size:.8rem;white-space:nowrap}
+.pop.hpop{padding:0;width:min(380px,calc(100vw - 16px))}
+.hpick{display:flex;flex-direction:column;max-height:min(440px,70vh);position:relative}
+.hpt{display:flex;gap:.2rem;padding:.45rem .45rem 0;border-bottom:1px solid var(--line2)}
+.hpt button{flex:1;padding:.55rem .4rem;font-size:.8rem;font-weight:600;color:var(--muted);border-radius:9px 9px 0 0;border-bottom:2px solid transparent;white-space:nowrap}
+.hpt button:hover{color:var(--ink2);background:rgba(255,255,255,.04)}
+.hpt button.on{color:var(--gold1,#ffe29a);border-bottom-color:#e8b656}
+.hps{display:flex;align-items:center;gap:.4rem;margin:.5rem .55rem 0;padding:0 .6rem;background:rgba(0,0,0,.3);border:1px solid var(--line2);border-radius:10px;color:var(--muted)}
+.hps input{flex:1;min-width:0;background:none;border:0;outline:none;padding:.5rem 0;font-size:.9rem;color:var(--ink)}
+.hps[hidden]{display:none}
+.hpb{overflow-y:auto;padding:.45rem;overscroll-behavior:contain}
+.hpb h6{margin:.4rem .2rem .3rem;font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.hpb .emo{padding:0}
+.hpn{color:var(--muted);font-size:.85rem;text-align:center;padding:1.2rem 0}
+.cemos{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:4px}
+.cemos button{height:44px;border-radius:10px;display:grid;place-items:center;transition:transform .1s,background .1s}
+.cemos button .cemo{width:32px;height:32px;margin:0;vertical-align:0}
+.stks{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.stks button{aspect-ratio:1;min-height:44px;border-radius:12px;padding:6px;transition:transform .12s,background .12s;-webkit-touch-callout:none;user-select:none}
+.stks img{width:100%;height:100%;object-fit:contain;pointer-events:none}
+.cemos button:hover,.stks button:hover,.cemos button:focus-visible,.stks button:focus-visible{background:rgba(255,255,255,.08);transform:scale(1.08)}
+.stkprev{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem;background:rgba(8,12,20,.94);border-radius:inherit;text-align:center;padding:1rem;z-index:2;pointer-events:none}
+.stkprev[hidden]{display:none}
+.stkprev img{width:min(180px,50vw);height:min(180px,50vw)}
+.stkprev b{color:#ffe29a;font-size:1.05rem}
+.stkprev small{color:var(--muted);font-size:.8rem;max-width:26ch}
+/* telefonon: alulról felcsúszó lap */
+.pop.hpop.sheet{left:0!important;right:0;top:auto!important;bottom:0;width:100%;border-radius:20px 20px 0 0;border-bottom:0;padding-bottom:env(safe-area-inset-bottom);
+  box-shadow:0 0 0 100vmax rgba(2,4,9,.6),0 -10px 40px rgba(0,0,0,.5);animation:sheetUp .22s cubic-bezier(.2,.9,.3,1) both}
+.pop.hpop.sheet .hpick{max-height:62vh}
+.pop.hpop.sheet .hpick::before{content:"";display:block;width:40px;height:4px;border-radius:2px;background:var(--line2);margin:.5rem auto 0}
+.pop.hpop.sheet .hpt button{min-height:44px;font-size:.85rem}
+.pop.hpop.sheet .emo{grid-template-columns:repeat(auto-fill,minmax(44px,1fr))}
+.pop.hpop.sheet .emo button{width:auto;height:46px}
+.pop.hpop.sheet .stks{grid-template-columns:repeat(4,1fr);gap:6px}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
+.pop.hpop:not(.sheet) .hpick{height:min(430px,calc(100vh - 24px))}
+.pop.hpop:not(.sheet) .hpb{flex:1}
+.hps input:focus{box-shadow:none;border:0;outline:none}
