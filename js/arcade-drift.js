@@ -247,9 +247,11 @@ window.HGDrift = function (env) {
     const hbEdge = inp.hb && !c.hbPrev; c.hbPrev = inp.hb;
     if (hbEdge && Math.abs(vx) > 90 && S.phase === 'race' && !c.done) { c.dm = 1; c.dmT = 0; c.dmCalm = 0; if (inp.s) w += inp.s * Math.min(1.4, Math.abs(vx) / 300) * dir; }
     if (c.dm) { c.dmT += h; if (c.dmT > .8 && Math.abs(beta) < .06) c.dmCalm += h; else c.dmCalm = 0; if (c.dmCalm > .3 || Math.abs(vx) < 70 || c.done) c.dm = 0; }
+    // ellenkormány: a forgással ellentétes kormány driftben gyorsan és erősen hat – könnyű korrigálni
+    const cs = c.dm && inp.s && inp.s * w * dir < 0;
     let target = inp.s; if (!inp.s && c.dm && Math.abs(vx) > 60 && Math.abs(beta) > .08) target = Math.max(-1, Math.min(1, beta / C.steer * 1.2)) * .6;
-    c.st += (target - c.st) * Math.min(1, h * (inp.s ? (c.dm ? 4.5 : 8) : 5));
-    const delta = (c.st * C.steer / (1 + Math.abs(vx) / 85) * (c.dm ? .65 : 1) + (c.st * beta > 0 ? Math.sign(c.st) * Math.min(.3, Math.abs(beta)) * Math.abs(c.st) : 0)) * dir;
+    c.st += (target - c.st) * Math.min(1, h * (cs ? 12 : inp.s ? (c.dm ? 4.5 : 8) : 5));
+    const delta = (c.st * C.steer / (1 + Math.abs(vx) / 85) * (c.dm && !cs ? .65 : 1) + (c.st * beta > 0 ? Math.sign(c.st) * Math.min(cs ? .55 : .3, Math.abs(beta)) * Math.abs(c.st) : 0)) * dir;
     // hosszirányú erők
     let Fd = 0, Fb = 0;
     if (S.phase === 'race' && !c.done) {
@@ -266,13 +268,13 @@ window.HGDrift = function (env) {
     if (c.dm && inp.hb) FxR += -dir * Math.min(Math.abs(vx) * 2, .02 * G);
     FxF = Math.max(-muF, Math.min(muF * .7, FxF)); FxR = Math.max(-muR, Math.min(muR * (c.dm ? 1 : .55), FxR));
     // driftben gázzal pörög a hátsó kerék – a far kint marad; gáz nélkül visszatapad
-    let latR = Math.sqrt(Math.max(0, muR * muR - FxR * FxR)); if (c.dm && inp.thr && !kick && vx > 100 && fr < .5) { FxR = Math.max(FxR, Math.min(C.eng, muR * .62)); latR = muR * .7; }
+    let latR = Math.sqrt(Math.max(0, muR * muR - FxR * FxR)); if (c.dm && inp.thr && !kick && !cs && vx > 100 && fr < .5) { FxR = Math.max(FxR, Math.min(C.eng, muR * .62)); latR = muR * .7; }
     // oldalerők (tapadási kör: a hosszirányú erő elveszi az oldaltapadást – gázzal kicsúszik a far)
     const aF = Math.atan2(vy + w * a, avx) - delta, aR = Math.atan2(vy - w * b, avx);
     const FyF = tire(aF, Math.sqrt(Math.max(0, muF * muF - FxF * FxF)), C.B), FyR = tire(aR, latR, C.B);
     const cd = Math.cos(delta), sd = Math.sin(delta);
     const Fx = FxR + FxF * cd - FyF * sd + Fres, Fy = FyR + FxF * sd + FyF * cd, tq = a * (FyF * cd + FxF * sd) - b * FyR;
-    vx += (Fx + w * vy) * h; vy += (Fy - w * vx) * h; w += tq / (C.I * a * b * 2.6) * h; w *= 1 - (c.dm ? 1.5 : 1) * h;
+    vx += (Fx + w * vy) * h; vy += (Fy - w * vx) * h; w += tq / (C.I * a * b * 2.6) * h; w *= 1 - (cs ? 3.5 : c.dm ? 1.5 : 1) * h; if (cs) w += inp.s * dir * 2.2 * h;
     // driftszög-határoló (játszhatóság): 40° fölött a perdület és az oldalsebesség visszafogva – kipörgés helyett tartható drift
     { const bb = Math.atan2(vy, Math.max(1, Math.abs(vx))), ex = Math.abs(bb) - .6; if (ex > 0 && Math.abs(vx) > 80) { if (w * bb < 0) w -= Math.sign(w) * Math.min(Math.abs(w), ex * 14 * h * 10); vy *= 1 - Math.min(.5, ex * 3 * h * 10); } }
     // kis sebességnél kinematikus kormányzás (nincs csúszás)
@@ -553,7 +555,7 @@ window.HGDrift = function (env) {
       if (S.phase === 'over') return;
       const n = Math.ceil(dt / (1 / 120)), h = dt / n;
       for (let it = 0; it < n; it++) {
-        S.t += h;
+        if (!S.go && S.cars.some(c => c.spd > 3)) S.go = true; if (S.go) S.t += h;
         if (S.phase === 'count' && S.t >= 0) { S.phase = 'race'; S.t = 0; for (const c of S.cars) c.lapT0 = 0; Sfx.perfect(); }
         for (const c of S.cars) { physics(c, h, inputs(c)); if (S.phase === 'race' && !c.done) lapLogic(c, S.t); }
       }
@@ -570,7 +572,7 @@ window.HGDrift = function (env) {
           if (c.slip > .2 && Math.random() < dt * 30) S.smoke.push({ x: c.x - ca * c.c.len * .5, y: c.y - sa * c.c.len * .5, r: 6, l: 1, vx: (Math.random() - .5) * 30, vy: (Math.random() - .5) * 30 }); }
         else c['sk-1-1'] = c['sk1-1'] = c['sk-11'] = c['sk11'] = null;
         if (c.off && c.spd > 120 && Math.random() < dt * 20) S.smoke.push({ x: c.x, y: c.y, r: 5, l: .8, vx: 0, vy: 0, dirt: 1 });
-        c.recT += dt; if (c.ctrl === 1 && !c.done) while (c.recT >= GS) { c.recT -= GS; c.rec.push(Math.round(c.x), Math.round(c.y), Math.round(c.a * 100)); }
+        if (S.go) c.recT += dt; if (c.ctrl === 1 && !c.done) while (c.recT >= GS) { c.recT -= GS; c.rec.push(Math.round(c.x), Math.round(c.y), Math.round(c.a * 100)); }
       }
       if (S.skids.length > 12000) S.skids.splice(0, S.skids.length - 12000);
       for (const s of S.smoke) { s.x += s.vx * dt; s.y += s.vy * dt; s.r += 30 * dt; s.l -= dt * .9; } S.smoke = S.smoke.filter(s => s.l > 0); if (S.smoke.length > 160) S.smoke.splice(0, S.smoke.length - 160);
