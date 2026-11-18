@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID } from './core.js?v=202611182104';
-import { stageHtml, confirmBox } from './ui.js?v=202611182104';
-import * as Player from './player.js?v=202611182104';
-import * as Party from './party.js?v=202611182104';
-import * as VP from './vplayer.js?v=202611182104';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611182104';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG } from './core.js?v=202611182130';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611182130';
+import * as Player from './player.js?v=202611182130';
+import * as Party from './party.js?v=202611182130';
+import * as VP from './vplayer.js?v=202611182130';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611182130';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -284,16 +284,16 @@ export function weekKey(d = new Date()) {
 const lbCol = lb => FB.collection(db, 'leaderboards', lb, 'scores');
 async function topOf(lb, n = 10) {
   try { const s = await FB.getDocs(FB.query(lbCol(lb), FB.orderBy('best', 'desc'), FB.limit(n * 3)));
-    return s.docs.map(d => ({ uid: d.id, score: d.data().best, wins: d.data().wins || 0 })).sort((a, b) => b.score - a.score || b.wins - a.wins).slice(0, n); } catch (_) { return []; }
+    return s.docs.map(d => ({ uid: d.id, score: d.data().best, wins: d.data().wins || 0, nick: d.data().nick })).sort((a, b) => b.score - a.score || b.wins - a.wins).slice(0, n); } catch (_) { return []; }
 }
 async function sendBoards(win) {
   const wk = weekKey(), boards = {};
   await Promise.all(GAMES.map(async g => {
     const [all, week] = await Promise.all([topOf(g.id), topOf(g.id + '_' + wk)]);
-    const fmt = l => l.map(r => ({ name: C.U(r.uid).name, score: r.score, wins: r.wins, me: r.uid === C.uid() }));
+    const fmt = l => l.map(r => ({ name: lbName(r.uid, r.nick), guest: !!r.nick, score: r.score, wins: r.wins, me: r.uid === C.uid() }));
     boards[g.id] = { all: fmt(all), week: fmt(week) };
   }));
-  win?.postMessage({ hgws: 'lb', boards, week: wk.replace('-W', '. év ') + '. hét', guest: guest() }, location.origin);
+  win?.postMessage({ hgws: 'lb', boards, week: wk.replace('-W', '. év ') + '. hét', guest: guest(), nick: guest() ? getNick() : '' }, location.origin);
 }
 /* Drift Király: pályánkénti legjobb kör (szellem) és legjobb verseny-idő */
 const okTrack = t => typeof t === 'string' && /^[a-z0-9_]{1,24}$/.test(t);
@@ -304,30 +304,80 @@ async function ghostList(tracks) {
       const col = FB.collection(db, 'ghosts', t, 'runs');
       const [a, b] = await Promise.all([FB.getDocs(FB.query(col, FB.orderBy('ms'), FB.limit(3))), FB.getDocs(FB.query(col, FB.orderBy('rms'), FB.limit(1)))]);
       const m = new Map(); for (const d of [...a.docs, ...b.docs]) m.set(d.id, d.data());
-      if (!guest() && !m.has(C.uid())) { const s = await FB.getDoc(FB.doc(db, 'ghosts', t, 'runs', C.uid())); if (s.exists()) m.set(s.id, s.data()); }
-      out[t] = [...m].map(([uid, r]) => ({ name: C.U(uid).name, ms: r.ms < 36e5 ? r.ms : 0, rms: r.rms < 36e5 ? r.rms : 0, car: r.car, p: r.ms < 36e5 ? r.path : '', me: uid === C.uid() }));
+      if (!m.has(C.uid())) { const s = await FB.getDoc(FB.doc(db, 'ghosts', t, 'runs', C.uid())); if (s.exists()) m.set(s.id, s.data()); }
+      out[t] = [...m].map(([uid, r]) => ({ name: lbName(uid, r.nick), guest: !!r.nick, ms: r.ms < 36e5 ? r.ms : 0, rms: r.rms < 36e5 ? r.rms : 0, car: r.car, p: r.ms < 36e5 ? r.path : '', me: uid === C.uid() }));
     } catch (_) {}
   }));
   return out;
 }
 async function ghostSave(d) {
-  if (guest() || !okTrack(d.track)) return;
+  if (!okTrack(d.track)) return;
+  const nick = await nickFor(); if (nick === null) return;
   const ref = FB.doc(db, 'ghosts', d.track, 'runs', C.uid());
   try {
     const s = await FB.getDoc(ref), o = s.data() || {}, big = 36e5;
     const lap = Number.isInteger(d.ms) && d.ms > 5000 && d.ms < big && typeof d.path === 'string' && d.path.length < 60000 && typeof d.car === 'string' && d.car.length < 20 && d.ms < (o.ms || big);
     const race = Number.isInteger(d.rms) && d.rms > 10000 && d.rms < big && d.rms < (o.rms || big);
     if (!lap && !race) return;
-    await FB.setDoc(ref, { ms: lap ? d.ms : (o.ms || big), car: lap ? d.car : (o.car || ''), path: lap ? d.path : (o.path || ''), rms: race ? d.rms : (o.rms || big), at: FB.serverTimestamp() });
+    await FB.setDoc(ref, { ms: lap ? d.ms : (o.ms || big), car: lap ? d.car : (o.car || ''), path: lap ? d.path : (o.path || ''), rms: race ? d.rms : (o.rms || big), at: FB.serverTimestamp(), ...nick });
   } catch (e) { console.warn('szellem', e); }
 }
+/* ---------- vendég becenév a ranglistához ----------
+   A vendég (névtelen Firebase-fiók) uid-ja megmarad ebben a böngészőben, így a rekordjai is.
+   A becenév localStorage-ben van, és minden rekord-dokumentumba bekerül („nick” mező). */
+const NICK_KEY = 'hgws_nick';
+const getNick = () => { try { return localStorage.getItem(NICK_KEY) || ''; } catch (_) { return ''; } };
+const setNick = n => { try { localStorage.setItem(NICK_KEY, n); } catch (_) {} };
+const lbName = (uid, nick) => nick ? String(nick) : C.U(uid).name;
+let nickAsk = null, nickSkip = false;
+function nickError(n) {
+  if (n.length < 2 || n.length > 20) return 'A becenév 2–20 karakter legyen.';
+  if (/[<>&"]/.test(n)) return 'Ezek a karakterek nem használhatók: < > & "';
+  if (reservedName(n)) return RESERVED_MSG;
+  if ([...S().users.values()].some(u => (u.name || '').trim().toLowerCase() === n.toLowerCase())) return 'Ezt a nevet már egy regisztrált tag használja. Válassz másikat!';
+  return '';
+}
+function askNick(force) {
+  if (nickAsk) return nickAsk;
+  return nickAsk = new Promise(res => {
+    const cur = getNick();
+    const el = modal({ title: cur ? 'Becenév módosítása' : '🏆 Felkerülsz a ranglistára!',
+      body: `<p style="color:var(--ink2);line-height:1.55;margin-bottom:.8rem">${cur ? 'Az új beceneved az összes eddigi rekordodnál is lecserélődik.' : 'Vendégként is ott lehetsz a ranglistán – add meg, milyen néven szerepelj.'}</p>
+        <input class="inp" id="nickInp" maxlength="20" placeholder="Becenév (2–20 karakter)" value="${esc(cur)}" autocomplete="nickname" style="width:100%">
+        <p id="nickErr" style="color:#ff8080;font-size:.85rem;min-height:1.2em;margin-top:.4rem"></p>
+        <p style="color:var(--ink3,#8f8a7e);font-size:.8rem;line-height:1.5">A vendégrekordok ehhez a böngészőhöz kötődnek. Ha megtartanád őket, és bajnok-taget is szeretnél, regisztrálj!</p>`,
+      foot: `<button class="btn plain" data-x>${force ? 'Mégse' : 'Most nem'}</button><button class="btn goldb" data-ok>Mentés</button>`,
+      onClose: () => { nickAsk = null; if (!done) { if (!force) nickSkip = true; res(null); } } });
+    let done = false;
+    const inp = el.querySelector('#nickInp'), err = el.querySelector('#nickErr');
+    const ok = () => { const n = inp.value.trim().replace(/\s+/g, ' '), m = nickError(n); if (m) { err.textContent = m; inp.focus(); return; }
+      done = true; setNick(n); el.close(); res(n); };
+    el.querySelector('[data-ok]').onclick = ok;
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+  });
+}
+/* {} regisztrált tagnak, { nick } vendégnek, null ha a vendég nem adott meg becenevet */
+async function nickFor() {
+  if (!guest()) return {};
+  const n = getNick() || (nickSkip ? '' : await askNick());
+  return n ? { nick: n } : null;
+}
+/* becenév-csere: a vendég meglévő rekordjaiban is átírjuk */
+async function renameNick() {
+  if (!guest()) return;
+  const n = await askNick(true); if (!n) return;
+  const me = C.uid(), wk = weekKey(), refs = GAMES.flatMap(g => [g.id, g.id + '_' + wk].map(lb => FB.doc(db, 'leaderboards', lb, 'scores', me)));
+  await Promise.all(refs.map(async ref => { try { const s = await FB.getDoc(ref); if (s.exists() && s.data().nick !== n) await FB.setDoc(ref, { ...s.data(), nick: n, at: FB.serverTimestamp() }); } catch (e) { console.warn('becenév', e); } }));
+  toast('Becenév mentve: ' + n);
+}
 async function saveScore(game, score, win) {
-  if (guest() || !GAMES.some(g => g.id === game) || !(score > 0)) return;
+  if (!GAMES.some(g => g.id === game) || !(score > 0)) return;
+  const nick = await nickFor(); if (nick === null) return;
   const me = C.uid(), sc = Math.floor(score);
   for (const lb of [game, game + '_' + weekKey()]) {
     const ref = FB.doc(db, 'leaderboards', lb, 'scores', me);
     try { const s = await FB.getDoc(ref), o = s.data() || {}, ob = o.best || 0;
-      if (sc > ob || win) await FB.setDoc(ref, { best: Math.max(sc, ob), at: FB.serverTimestamp(), ...(win || o.wins ? { wins: (o.wins || 0) + (win ? 1 : 0) } : {}) }); } catch (e) { console.warn('ranglista', e); }
+      if (sc > ob || win) await FB.setDoc(ref, { best: Math.max(sc, ob), at: FB.serverTimestamp(), ...(win || o.wins ? { wins: (o.wins || 0) + (win ? 1 : 0) } : {}), ...nick }); } catch (e) { console.warn('ranglista', e); }
   }
 }
 addEventListener('message', async e => {
@@ -335,6 +385,7 @@ addEventListener('message', async e => {
   const fr = $('.arcframe'); if (!fr || e.source !== fr.contentWindow) return;
   if (e.data.hgws === 'score') { await saveScore(e.data.game, e.data.score, !!e.data.win); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbreq') sendBoards(fr.contentWindow);
+  if (e.data.hgws === 'nickreq') { await renameNick(); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'ghostreq') fr.contentWindow.postMessage({ hgws: 'ghosts', data: await ghostList(e.data.tracks), guest: guest() }, location.origin);
   if (e.data.hgws === 'ghostsave') await ghostSave(e.data);
 });
@@ -346,8 +397,9 @@ async function awardChampions() {
   const prev = weekKey(new Date(Date.now() - 7 * 864e5)), meta = FB.doc(db, 'meta', 'arcade');
   try {
     const m = await FB.getDoc(meta); if (m.data()?.awarded === prev) return;
-    const winners = [...new Set((await Promise.all(GAMES.map(g => topOf(g.id + '_' + prev, 1)))).flat().map(r => r.uid))]
-      .filter(u => S().users.has(u) && (u !== OWNER_UID || C.isOwner()));
+    // a bajnok-tag profilhoz kötött, ezért a legjobb REGISZTRÁLT játékos kapja (a vendégek a ranglistán szerepelnek, tagot nem kapnak)
+    const winners = [...new Set((await Promise.all(GAMES.map(g => topOf(g.id + '_' + prev, 10)))).map(l => l.find(r => !r.nick && S().users.has(r.uid))?.uid).filter(Boolean))]
+      .filter(u => u !== OWNER_UID || C.isOwner());
     const bt = FB.writeBatch(db);
     [...S().users.values()].filter(u => (u.tags || []).includes(tag.id) && !winners.includes(u.id) && (u.id !== OWNER_UID || C.isOwner()))
       .forEach(u => bt.update(FB.doc(db, 'users', u.id), { tags: FB.arrayRemove(tag.id) }));

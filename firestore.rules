@@ -263,35 +263,44 @@ service cloud.firestore {
       allow update: if signedIn() && changed().hasOnly(['n']) && request.resource.data.n == resource.data.n + 1;
     }
 
+    // ---------- Arcade ranglista + Drift: vendégek (névtelen belépés) is felkerülhetnek ----------
+    // Nekik kötelező a „nick” (becenév) mező, a regisztráltaknál a profilnév látszik
+    function isGuest() { return signedIn() && request.auth.token.firebase.sign_in_provider == 'anonymous'; }
+    function okNick(n) { return n is string && n.size() >= 2 && n.size() <= 20 && n.matches('^[^<>&"]+$') && !reservedName(n); }
+    function lbWriter(uid, extra) {
+      return request.auth.uid == uid && (
+        (active() && request.resource.data.keys().hasOnly(extra))
+        || (isGuest() && request.resource.data.keys().hasOnly(extra.concat(['nick'])) && okNick(request.resource.data.get('nick', null))));
+    }
+    function nickChanged() { return isGuest() && request.resource.data.nick != resource.data.get('nick', ''); }
+
     // ---------- Drift Király: pályánkénti legjobb kör (szellemautó) és verseny-idő – csak javulhat ----------
     match /ghosts/{track}/runs/{uid} {
       allow read: if signedIn();
-      allow create, update: if active() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['ms', 'car', 'path', 'rms', 'at'])
+      allow create, update: if lbWriter(uid, ['ms', 'car', 'path', 'rms', 'at'])
         && request.resource.data.ms is int && request.resource.data.ms > 5000 && request.resource.data.ms <= 3600000
         && request.resource.data.rms is int && request.resource.data.rms > 10000 && request.resource.data.rms <= 3600000
         && request.resource.data.car is string && request.resource.data.car.size() < 20
         && request.resource.data.path is string && request.resource.data.path.size() < 60000
         && request.resource.data.at == request.time
         && (resource == null || (request.resource.data.ms <= resource.data.ms && request.resource.data.rms <= resource.data.rms
-            && (request.resource.data.ms < resource.data.ms || request.resource.data.rms < resource.data.rms)));
+            && (request.resource.data.ms < resource.data.ms || request.resource.data.rms < resource.data.rms || nickChanged())));
+      allow delete: if perm('moderate');
     }
 
     // ---------- Arcade ranglista: mindenki csak a saját rekordját írhatja, és csak felfelé ----------
     // wins: hányszor érte el a csúcsot (Víztorony) – egyszerre csak eggyel nőhet
     match /leaderboards/{lb}/scores/{uid} {
       allow read: if signedIn();
-      allow create: if active() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['best', 'at', 'wins'])
+      allow create: if lbWriter(uid, ['best', 'at', 'wins'])
         && request.resource.data.best is int && request.resource.data.best > 0 && request.resource.data.best <= 1000000000000
         && request.resource.data.get('wins', 0) in [0, 1]
         && request.resource.data.at == request.time;
-      allow update: if active() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['best', 'at', 'wins'])
+      allow update: if lbWriter(uid, ['best', 'at', 'wins'])
         && request.resource.data.best is int && request.resource.data.best >= resource.data.best && request.resource.data.best <= 1000000000000
         && request.resource.data.get('wins', 0) is int
         && (request.resource.data.get('wins', 0) == resource.data.get('wins', 0) || request.resource.data.get('wins', 0) == resource.data.get('wins', 0) + 1)
-        && (request.resource.data.best > resource.data.best || request.resource.data.get('wins', 0) == resource.data.get('wins', 0) + 1)
+        && (request.resource.data.best > resource.data.best || request.resource.data.get('wins', 0) == resource.data.get('wins', 0) + 1 || nickChanged())
         && request.resource.data.at == request.time;
       allow delete: if perm('moderate');
     }
