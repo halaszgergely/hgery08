@@ -310,7 +310,7 @@ window.HGDrift = function (env) {
     const saveGhost = (ms, lapMsg) => { if (c.ctrl !== 1) return; const key = bestKey(tid, c.k), prv = ls.get(key, null);
       if (!prv || ms < prv.ms) { const pp = enc(c.rec); if (pp.length < 90000) ls.set(key, { ms, p: pp }); if (lapMsg) { flash(c, 'ÚJ KÖRREKORD ' + fmtT(ms)); Sfx.perfect(); } }
       const gb = Math.min(...(NETG[tid] || []).filter(r => r.me && r.ms).map(r => r.ms), 1e12);
-      if (ms < gb && window.top !== window && !netGuest) { const pp = enc(c.rec); if (pp.length < 90000) { parent.postMessage({ hgws: 'ghostsave', track: tid, ms, car: c.k, path: pp }, location.origin); (NETG[tid] = NETG[tid] || []).push({ me: true, ms }); } } };
+      if (ms < gb && window.top !== window) { const pp = enc(c.rec); if (pp.length < 90000) { parent.postMessage({ hgws: 'ghostsave', track: tid, ms, car: c.k, path: pp }, location.origin); (NETG[tid] = NETG[tid] || []).push({ me: true, ms }); } } };
     if (B.loop) {
       if (c.cp >= NC - 1 && prev > .85 && pr2 < .15) {
         c.cp = 0; const lt = now - c.lapT0; c.laps.push(lt); c.lapT0 = now; c.lap++;
@@ -327,7 +327,7 @@ window.HGDrift = function (env) {
     const c = S.cars[0], tid = B.T.id; S.phase = 'res'; silence();
     let pts = 0, newBest = false;
     if (c.done) { const ms = Math.round(c.total * 1000), old = myBestRace(tid); if (!old || ms < old) { ls.set('r_' + tid, ms); newBest = true;
-        if (window.top !== window && !netGuest) parent.postMessage({ hgws: 'ghostsave', track: tid, rms: ms }, location.origin); }
+        if (window.top !== window) parent.postMessage({ hgws: 'ghostsave', track: tid, rms: ms }, location.origin); }
       pts = pointsFor(B, ms); }
     const tot = totalPoints();
     S.res = { pts, tot, newBest, best: myBestRace(tid) };

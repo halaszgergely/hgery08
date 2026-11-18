@@ -221,6 +221,9 @@ h2{font-family:var(--head);font-weight:900;font-size:clamp(1.8rem,5.2vw,3.2rem);
 .lbr i{font-style:normal;font-family:var(--mono);color:#8f8a7e;text-align:center}
 .lbr span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lbr b{font-family:var(--mono);color:var(--gold2)}
+.lbr .lbg2{font-style:normal;font-size:.62rem;font-weight:700;letter-spacing:.06em;margin-left:.35rem;padding:.05rem .35rem;border-radius:999px;color:#c9c3b5;border:1px solid rgba(201,195,181,.35);vertical-align:1px}
+.lbnick{margin-left:.5rem;padding:.2rem .65rem;border-radius:999px;border:1px solid rgba(232,182,86,.45);color:var(--gold1);font-weight:700;font-size:.78rem;background:rgba(232,182,86,.08);cursor:pointer}
+.lbnick:hover{background:rgba(232,182,86,.18)}
 .lbr.me{background:rgba(108,198,255,.1);border-radius:8px;padding-inline:.3rem}
 .lbe{color:#8f8a7e;font-size:.82rem}
 .games{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:clamp(.8rem,2vw,1.2rem);margin-top:2.4rem}
@@ -372,7 +375,7 @@ body.embed .scroll{display:none}
   </div>
 </div>
 
-<script src="js/arcade-drift.js?v=202611182104"></script>
+<script src="js/arcade-drift.js?v=202611182130"></script>
 <script>
 (() => {
 'use strict';
@@ -1806,11 +1809,16 @@ let LB = null, lbt = 'week';
 function lbDraw() {
   if (!LB) return;
   $('#lbw').hidden = false;
-  $('#lbn').textContent = LB.guest ? 'Vendégként is játszhatsz, de a ranglistára csak regisztrált tagok kerülnek fel.' : (lbt === 'week' ? `E heti verseny (${LB.week}) – a hét végén a játékonkénti győztesek megkapják az „Arcade-bajnok” taget! 🏆` : 'Minden idők legjobbjai.');
+  const esc = t => String(t).replace(/[<>&"]/g, '');
+  const base = lbt === 'week' ? `E heti verseny (${LB.week}) – a hét végén a legjobb regisztrált játékosok megkapják az „Arcade-bajnok” taget! 🏆` : 'Minden idők legjobbjai.';
+  $('#lbn').innerHTML = LB.guest
+    ? (LB.nick ? `Vendégként játszol, <b>${esc(LB.nick)}</b> néven kerülsz fel a ranglistára. ` : 'Vendégként is felkerülsz a ranglistára – az első eredményednél megadhatsz egy becenevet. ')
+      + `<button class="lbnick" data-nick>✏️ ${LB.nick ? 'Becenév módosítása' : 'Becenév megadása'}</button>`
+    : base;
   $('#lbg').innerHTML = GAMES.filter(g => !g.ext).map(g => { const l = (LB.boards[g.id] || {})[lbt] || [];
-    return `<div class="lbc${g.unit ? ' wide' : ''}"><h4>${g.icon || ''} ${g.name}</h4>${l.length ? l.map((r, i) => `<div class="lbr${r.me ? ' me' : ''}"><i>${['🥇', '🥈', '🥉'][i] || i + 1}</i><span>${r.name.replace(/[<>&"]/g, '')}</span><b>${r.wins ? `<em class="lbw2" title="Arany Locsolófej">🏆×${r.wins}</em>` : ''}${r.score.toLocaleString('hu-HU')}${g.lb ? ' ' + g.lb : ''}</b></div>`).join('') : '<p class="lbe">Még senki – légy te az első!</p>'}</div>`; }).join('');
+    return `<div class="lbc${g.unit ? ' wide' : ''}"><h4>${g.icon || ''} ${g.name}</h4>${l.length ? l.map((r, i) => `<div class="lbr${r.me ? ' me' : ''}"><i>${['🥇', '🥈', '🥉'][i] || i + 1}</i><span>${esc(r.name)}${r.guest ? '<em class="lbg2">VENDÉG</em>' : ''}</span><b>${r.wins ? `<em class="lbw2" title="Arany Locsolófej">🏆×${r.wins}</em>` : ''}${r.score.toLocaleString('hu-HU')}${g.lb ? ' ' + g.lb : ''}</b></div>`).join('') : '<p class="lbe">Még senki – légy te az első!</p>'}</div>`; }).join('');
 }
-$('#lbw').addEventListener('click', e => { const b = e.target.closest('[data-lbt]'); if (!b) return; lbt = b.dataset.lbt; document.querySelectorAll('[data-lbt]').forEach(x => x.classList.toggle('on', x === b)); lbDraw(); });
+$('#lbw').addEventListener('click', e => { if (e.target.closest('[data-nick]')) { parent.postMessage({ hgws: 'nickreq' }, location.origin); return; } const b = e.target.closest('[data-lbt]'); if (!b) return; lbt = b.dataset.lbt; document.querySelectorAll('[data-lbt]').forEach(x => x.classList.toggle('on', x === b)); lbDraw(); });
 addEventListener('message', e => { if (e.origin !== location.origin || e.data?.hgws !== 'lb') return; LB = e.data; lbDraw(); });
 if (window.top !== window) parent.postMessage({ hgws: 'lbreq' }, location.origin);
 })();
