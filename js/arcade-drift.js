@@ -245,13 +245,13 @@ window.HGDrift = function (env) {
     const beta = Math.atan2(vy, Math.max(Math.abs(vx), 1));
     // drift mód: csak a SZÓKÖZ lenyomásakor indul; ha az autó kiegyenesedett, véget ér – újra le kell nyomni
     const hbEdge = inp.hb && !c.hbPrev; c.hbPrev = inp.hb;
-    if (hbEdge && Math.abs(vx) > 90 && S.phase === 'race' && !c.done) { c.dm = 1; c.dmT = 0; c.dmCalm = 0; if (inp.s) w += inp.s * Math.min(1.4, Math.abs(vx) / 300) * dir; }
+    if (hbEdge && Math.abs(vx) > 90 && S.phase === 'race' && !c.done) { c.dm = 1; c.dmT = 0; c.dmCalm = 0; if (inp.s) w += inp.s * Math.min(1.1, Math.abs(vx) / 380) * dir; }
     if (c.dm) { c.dmT += h; if (c.dmT > .8 && Math.abs(beta) < .06) c.dmCalm += h; else c.dmCalm = 0; if (c.dmCalm > .3 || Math.abs(vx) < 70 || c.done) c.dm = 0; }
     // ellenkormány: a forgással ellentétes kormány driftben gyorsan és erősen hat – könnyű korrigálni
     const cs = c.dm && inp.s && inp.s * w * dir < 0;
     let target = inp.s; if (!inp.s && c.dm && Math.abs(vx) > 60 && Math.abs(beta) > .08) target = Math.max(-1, Math.min(1, beta / C.steer * 1.2)) * .6;
-    c.st += (target - c.st) * Math.min(1, h * (cs ? 12 : inp.s ? (c.dm ? 4.5 : 8) : 5));
-    const delta = (c.st * C.steer / (1 + Math.abs(vx) / 85) * (c.dm && !cs ? .65 : 1) + (c.st * beta > 0 ? Math.sign(c.st) * Math.min(cs ? .55 : .3, Math.abs(beta)) * Math.abs(c.st) : 0)) * dir;
+    c.st += (target - c.st) * Math.min(1, h * (cs ? 7 : inp.s ? (c.dm ? 3 : 7) : 5));
+    const delta = (c.st * C.steer / (1 + Math.abs(vx) / 85) * (c.dm && !cs ? .5 : 1) + (c.st * beta > 0 ? Math.sign(c.st) * Math.min(cs ? .4 : .25, Math.abs(beta)) * Math.abs(c.st) : 0)) * dir;
     // hosszirányú erők
     let Fd = 0, Fb = 0;
     if (S.phase === 'race' && !c.done) {
@@ -268,15 +268,15 @@ window.HGDrift = function (env) {
     if (c.dm && inp.hb) FxR += -dir * Math.min(Math.abs(vx) * 2, .02 * G);
     FxF = Math.max(-muF, Math.min(muF * .7, FxF)); FxR = Math.max(-muR, Math.min(muR * (c.dm ? 1 : .55), FxR));
     // driftben gázzal pörög a hátsó kerék – a far kint marad; gáz nélkül visszatapad
-    let latR = Math.sqrt(Math.max(0, muR * muR - FxR * FxR)); if (c.dm && inp.thr && !kick && !cs && vx > 100 && fr < .5) { FxR = Math.max(FxR, Math.min(C.eng, muR * .62)); latR = muR * .7; }
+    let latR = Math.sqrt(Math.max(0, muR * muR - FxR * FxR)); if (c.dm && inp.thr && !kick && !cs && vx > 100 && fr < .5) { FxR = Math.max(FxR, Math.min(C.eng * Math.max(0, 1 - (vx / C.top) ** 2), muR * .58)); latR = muR * .66; }
     // oldalerők (tapadási kör: a hosszirányú erő elveszi az oldaltapadást – gázzal kicsúszik a far)
     const aF = Math.atan2(vy + w * a, avx) - delta, aR = Math.atan2(vy - w * b, avx);
     const FyF = tire(aF, Math.sqrt(Math.max(0, muF * muF - FxF * FxF)), C.B), FyR = tire(aR, latR, C.B);
     const cd = Math.cos(delta), sd = Math.sin(delta);
     const Fx = FxR + FxF * cd - FyF * sd + Fres, Fy = FyR + FxF * sd + FyF * cd, tq = a * (FyF * cd + FxF * sd) - b * FyR;
-    vx += (Fx + w * vy) * h; vy += (Fy - w * vx) * h; w += tq / (C.I * a * b * 2.6) * h; w *= 1 - (cs ? 3.5 : c.dm ? 1.5 : 1) * h; if (cs) w += inp.s * dir * 2.2 * h;
+    vx += (Fx + w * vy) * h; vy += (Fy - w * vx) * h; w += tq / (C.I * a * b * (c.dm ? 3 : 2.6)) * h; w *= 1 - (cs ? 2.6 : c.dm ? 1.9 : 1) * h; if (cs) w += inp.s * dir * 1.2 * h;
     // driftszög-határoló (játszhatóság): 40° fölött a perdület és az oldalsebesség visszafogva – kipörgés helyett tartható drift
-    { const bb = Math.atan2(vy, Math.max(1, Math.abs(vx))), ex = Math.abs(bb) - .6; if (ex > 0 && Math.abs(vx) > 80) { if (w * bb < 0) w -= Math.sign(w) * Math.min(Math.abs(w), ex * 14 * h * 10); vy *= 1 - Math.min(.5, ex * 3 * h * 10); } }
+    { const bb = Math.atan2(vy, Math.max(1, Math.abs(vx))), ex = Math.abs(bb) - .5; if (ex > 0 && Math.abs(vx) > 80) { if (w * bb < 0) w -= Math.sign(w) * Math.min(Math.abs(w), ex * 14 * h * 10); vy *= 1 - Math.min(.5, ex * 3 * h * 10); } }
     // kis sebességnél kinematikus kormányzás (nincs csúszás)
     if (Math.abs(vx) < 80) { const k = Math.abs(vx) / 80; w = w * k + (vx * Math.tan(delta) / L) * (1 - k); vy *= 1 - (1 - k) * Math.min(1, h * 12); }
     if (B.T.hills) { const gx = (B.hf(c.x + 6, c.y) - B.hf(c.x - 6, c.y)) / 12, gy = (B.hf(c.x, c.y + 6) - B.hf(c.x, c.y - 6)) / 12, k = HK * 260 * h; vx -= (gx * ca + gy * sa) * k; vy -= (-gx * sa + gy * ca) * k; c.z = B.hf(c.x, c.y); }
