@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG } from './core.js?v=202611182130';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611182130';
-import * as Player from './player.js?v=202611182130';
-import * as Party from './party.js?v=202611182130';
-import * as VP from './vplayer.js?v=202611182130';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611182130';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG } from './core.js?v=202611182141';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611182141';
+import * as Player from './player.js?v=202611182141';
+import * as Party from './party.js?v=202611182141';
+import * as VP from './vplayer.js?v=202611182141';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611182141';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -290,10 +290,10 @@ async function sendBoards(win) {
   const wk = weekKey(), boards = {};
   await Promise.all(GAMES.map(async g => {
     const [all, week] = await Promise.all([topOf(g.id), topOf(g.id + '_' + wk)]);
-    const fmt = l => l.map(r => ({ name: lbName(r.uid, r.nick), guest: !!r.nick, score: r.score, wins: r.wins, me: r.uid === C.uid() }));
+    const adm = C.isAdmin(), fmt = l => l.map(r => ({ name: lbName(r.uid, r.nick), guest: !!r.nick, score: r.score, wins: r.wins, me: r.uid === C.uid(), ...(adm ? { uid: r.uid } : {}) }));
     boards[g.id] = { all: fmt(all), week: fmt(week) };
   }));
-  win?.postMessage({ hgws: 'lb', boards, week: wk.replace('-W', '. év ') + '. hét', guest: guest(), nick: guest() ? getNick() : '' }, location.origin);
+  win?.postMessage({ hgws: 'lb', boards, week: wk.replace('-W', '. év ') + '. hét', guest: guest(), nick: guest() ? getNick() : '', admin: C.isAdmin() }, location.origin);
 }
 /* Drift Király: pályánkénti legjobb kör (szellem) és legjobb verseny-idő */
 const okTrack = t => typeof t === 'string' && /^[a-z0-9_]{1,24}$/.test(t);
@@ -326,7 +326,14 @@ async function ghostSave(d) {
    A vendég (névtelen Firebase-fiók) uid-ja megmarad ebben a böngészőben, így a rekordjai is.
    A becenév localStorage-ben van, és minden rekord-dokumentumba bekerül („nick” mező). */
 const NICK_KEY = 'hgws_nick';
-const getNick = () => { try { return localStorage.getItem(NICK_KEY) || ''; } catch (_) { return ''; } };
+const NICK_A = ['Csöpögő', 'Szomjas', 'Rozsdás', 'Pörgő', 'Bátor', 'Álmos', 'Kócos', 'Csúszós', 'Turbó', 'Vizes', 'Morcos', 'Vidám', 'Laza', 'Fürge', 'Kósza', 'Ügyes', 'Ázott', 'Sunyi', 'Nyugis', 'Pimasz'];
+const NICK_B = ['Locsolófej', 'Slag', 'Kaktusz', 'Csiga', 'Uborka', 'Vödör', 'Szivattyú', 'Kertitörpe', 'Pocsolya', 'Esőfelhő', 'Retek', 'Sünimalac', 'Tökfej', 'Kacsa', 'Csepp', 'Gereblye', 'Spenót', 'Béka', 'Sárkány', 'Krumpli'];
+function funnyNick() {
+  for (let i = 0; i < 20; i++) { const n = NICK_A[Math.random() * NICK_A.length | 0] + ' ' + NICK_B[Math.random() * NICK_B.length | 0] + ' ' + (10 + (Math.random() * 90 | 0)); if (n.length <= 20) return n; }
+  return 'Vizes Csiga ' + (10 + (Math.random() * 90 | 0));
+}
+/* a vendég beceneve: amíg nem ad meg sajátot, egy véletlenszerű (vicces) név, ami ebben a böngészőben megmarad */
+const getNick = () => { try { let n = localStorage.getItem(NICK_KEY); if (!n) { n = funnyNick(); localStorage.setItem(NICK_KEY, n); } return n; } catch (_) { return 'Vizes Csiga 42'; } };
 const setNick = n => { try { localStorage.setItem(NICK_KEY, n); } catch (_) {} };
 const lbName = (uid, nick) => nick ? String(nick) : C.U(uid).name;
 let nickAsk = null, nickSkip = false;
@@ -359,8 +366,7 @@ function askNick(force) {
 /* {} regisztrált tagnak, { nick } vendégnek, null ha a vendég nem adott meg becenevet */
 async function nickFor() {
   if (!guest()) return {};
-  const n = getNick() || (nickSkip ? '' : await askNick());
-  return n ? { nick: n } : null;
+  return { nick: getNick() };
 }
 /* becenév-csere: a vendég meglévő rekordjaiban is átírjuk */
 async function renameNick() {
@@ -369,6 +375,15 @@ async function renameNick() {
   const me = C.uid(), wk = weekKey(), refs = GAMES.flatMap(g => [g.id, g.id + '_' + wk].map(lb => FB.doc(db, 'leaderboards', lb, 'scores', me)));
   await Promise.all(refs.map(async ref => { try { const s = await FB.getDoc(ref); if (s.exists() && s.data().nick !== n) await FB.setDoc(ref, { ...s.data(), nick: n, at: FB.serverTimestamp() }); } catch (e) { console.warn('becenév', e); } }));
   toast('Becenév mentve: ' + n);
+}
+/* admin/tulaj: egy játékos eredményének törlése (mindenkori + heti) */
+async function delScore(game, uid) {
+  if (!C.isAdmin() || !GAMES.some(g => g.id === game) || typeof uid !== 'string' || !/^[\w-]{6,128}$/.test(uid)) return;
+  const name = lbName(uid, null);
+  try { await Promise.all([game, game + '_' + weekKey()].map(lb => FB.deleteDoc(FB.doc(db, 'leaderboards', lb, 'scores', uid))));
+    if (game === 'drift') await Promise.all(['belvaros', 'neon', 'kikoto', 'csillag', 'kigyo', 'szoloheggy', 'erdei', 'nyolcas', 'szerpentin', 'csucstamadas', 'teli', 'sivatag'].map(t => FB.deleteDoc(FB.doc(db, 'ghosts', t, 'runs', uid)).catch(() => {})));
+    toast('Eredmény törölve' + (name ? ': ' + name : ''));
+  } catch (e) { console.warn('ranglista-törlés', e); toast('Nem sikerült törölni.'); }
 }
 async function saveScore(game, score, win) {
   if (!GAMES.some(g => g.id === game) || !(score > 0)) return;
@@ -386,6 +401,7 @@ addEventListener('message', async e => {
   if (e.data.hgws === 'score') { await saveScore(e.data.game, e.data.score, !!e.data.win); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbreq') sendBoards(fr.contentWindow);
   if (e.data.hgws === 'nickreq') { await renameNick(); sendBoards(fr.contentWindow); }
+  if (e.data.hgws === 'lbdel') { await delScore(e.data.game, e.data.uid); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'ghostreq') fr.contentWindow.postMessage({ hgws: 'ghosts', data: await ghostList(e.data.tracks), guest: guest() }, location.origin);
   if (e.data.hgws === 'ghostsave') await ghostSave(e.data);
 });
