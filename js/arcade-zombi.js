@@ -5,7 +5,7 @@ window.HGZombi = function (env) {
   'use strict';
   const { G, Sfx, rr, hud } = env;
   const STEAM = 'https://store.steampowered.com/app/5185890/Zombies_Arent_Real/';
-  const MD = window.HGZMap, WW = MD.W, WH = MD.H, RW = 15, R_START = 760, R_GROW = 260, HPZ = .25, GMAX = 20; // HPZ: egy zombi életereje; GMAX: legfeljebb ennyien mozognak egy egységként
+  const MD = window.HGZMap, WW = MD.W, WH = MD.H, RW = 15, R_START = 760, R_GROW = 260, HPZ = .25, DENS = .4; // HPZ: egy zombi életereje; DENS: lakos / utcaképpont
   // u: melyik küldetéstől érhető el; on: 'b' épület, 'r' út, 'br' híd
   const TOOLS = [
     { k: 'zone', tab: 0, n: 'Fal', ic: '🧱', c: 0, u: 1, n2: 1, d: 'Húzz falat szabadon. Ami így el van vágva a várostól, az védett.' },
@@ -132,7 +132,10 @@ window.HGZombi = function (env) {
     const seen = new Set(); let best = []; for (const i of inn) { if (seen.has(i)) continue; const q = [i], o = [i]; seen.add(i); while (q.length) { const u = q.pop(); for (const a of S.N[u].adj) if (!seen.has(a.n)) { seen.add(a.n); q.push(a.n); o.push(a.n); } } if (o.length > best.length) best = o; }
     const keep = new Set(best); for (const i of inn) if (!keep.has(i)) S.N[i].adj = []; S.live = best; S.E = S.Eall.filter(e => keep.has(e.a) && keep.has(e.b)); S.B = S.Ball.filter(b => Math.hypot(b.x - sx, b.y - sy) < R0);
     S.box = [Math.max(0, sx - R0 - 20), Math.max(0, sy - R0 - 20), Math.min(WW, sx + R0 + 20), Math.min(WH, sy + R0 + 20)]; protCalc(); }
-  function spawn() { const n = Math.min(32000, 8000 + 3000 * S.m); S.civs = []; let pool = S.E.filter(e => !e.nob && !e.bridge); if (pool.length < 10) pool = S.E; for (let left = n; left > 0;) { const a = agent(pool[Math.floor(Math.random() * pool.length)]); a.n = Math.min(left, 6 + Math.floor(Math.random() * 9)); left -= a.n; S.civs.push(a); } S.n0 = n; S.obj = Math.min(.6, .2 + .04 * S.m); }
+  // a népesség a játszható terület utcahosszával arányos, felső határ nélkül; nagy tömegnél a csoportok nőnek, nem az egységek száma
+  function spawn() { let pool = S.E.filter(e => !e.nob && !e.bridge); if (pool.length < 10) pool = S.E; const cum = []; let tot = 0; for (const e of pool) { tot += e.len; cum.push(tot); }
+    const n = Math.max(400, Math.round(tot * DENS)), avg = Math.max(10, n / 3200), pickE = () => { const v = Math.random() * tot; let lo = 0, hi = cum.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (cum[m] < v) lo = m + 1; else hi = m; } return pool[lo]; };
+    S.gmax = Math.round(avg * 2); S.civs = []; for (let left = n; left > 0;) { const a = agent(pickE()); a.n = Math.min(left, Math.max(1, Math.round(avg * (.6 + Math.random() * .8)))); left -= a.n; S.civs.push(a); } S.n0 = n; S.obj = Math.min(.6, .2 + .04 * S.m); }
   function setStart(x, y) { const n = nearNode(x, y, 700); if (n < 0) return say('Itt nincs település – válassz lakott helyet.'); S.start = [S.N[n].x, S.N[n].y]; region(); if (S.E.length < 30) { S.start = null; S.live = S.liveAll; for (const i of S.liveAll) S.N[i].adj = S.N[i].all; return say('Itt túl kevés az utca – válassz lakott helyet.'); } { let bt = null, bd = 1e9; for (const t of S.towns) { const d0 = Math.hypot(t.x - S.start[0], t.y - S.start[1]) - t.r; if (d0 < bd) { bd = d0; bt = t; } } S.name = inPoly(GEO.bp, S.start[0], S.start[1]) || !bt ? 'Budapest' : bt.n; }
     spawn(); S.phase = 'plan'; const old = { s: L.s, cx: L.cam.cx, cy: L.cam.cy }; L = null; layout(true); S.zin = { t: 0, ...old }; Sfx.perfect(); }
   function agent(e, R = Math.random) { const a = { e, s: R() * e.len, dir: R() < .5 ? 1 : -1, off: (R() - .5) * (RW - 5), hp: 2, n: 1, cd: R(), x: 0, y: 0, idle: 0 }; pos(a); return a; }
@@ -240,8 +243,8 @@ window.HGZombi = function (env) {
     // kitörések a zónáktól távol
     protCalc(); const pn = S.live.filter(i => S.prot[i]).map(i => [S.N[i].x, S.N[i].y]), zc = pn.length ? pn : [[WW / 2, WH / 2]], mid = e => [(S.N[e.a].x + S.N[e.b].x) / 2, (S.N[e.a].y + S.N[e.b].y) / 2];
     const cand = S.E.filter(e => !e.dead && !e.bridge && !e.bars.length && !S.prot[e.a] && !S.prot[e.b]).map(e => { const [x, y] = mid(e); return [Math.min(...zc.map(z => Math.hypot(z[0] - x, z[1] - y))) + Math.random() * 200, e]; }).sort((a, b) => b[0] - a[0]);
-    const sites = 2 + Math.min(5, Math.floor(S.m / 2)), per = 6 + 3 * S.m;
-    for (let k = 0; k < sites && cand.length; k++) { const e = cand[Math.min(cand.length - 1, Math.floor(k * cand.length * .1 / sites + Math.random() * 6))][1]; for (let j = 0; j < per; j++) { const z = agent(e); z.cd = 1; z.n = 8; z.hp = 8 * HPZ; S.zs.push(z); } S.fx.push({ k: 'ring', x: mid(e)[0], y: mid(e)[1], l: 1.5 }); }
+    const sites = 2 + Math.min(5, Math.floor(S.m / 2)), per = 6 + 3 * S.m, zn = Math.max(8, Math.round(S.gmax * .4));
+    for (let k = 0; k < sites && cand.length; k++) { const e = cand[Math.min(cand.length - 1, Math.floor(k * cand.length * .1 / sites + Math.random() * 6))][1]; for (let j = 0; j < per; j++) { const z = agent(e); z.cd = 1; z.n = zn; z.hp = zn * HPZ; S.zs.push(z); } S.fx.push({ k: 'ring', x: mid(e)[0], y: mid(e)[1], l: 1.5 }); }
     layout(); fields(); flags();
   }
   function flags() { const bros = S.units.filter(u => u.k === 'bro'), lifts = S.units.filter(u => u.k === 'lift');
@@ -256,20 +259,20 @@ window.HGZombi = function (env) {
   function nearestZ(x, y, r, rmin = 0) { if (!S.zg) zGrid(); let b = null, bd = r * r; const x0 = Math.max(0, (x - r) / 100 | 0), x1 = (x + r) / 100 | 0, y0 = Math.max(0, (y - r) / 100 | 0), y1 = (y + r) / 100 | 0, m2 = rmin * rmin;
     for (let gx = x0; gx <= x1; gx++) for (let gy = y0; gy <= y1; gy++) { const l = S.zg.get(gx * 64 + gy); if (!l) continue; for (const z of l) { if (z.dead) continue; const d2 = (z.x - x) ** 2 + (z.y - y) ** 2; if (d2 < bd && d2 >= m2) { bd = d2; b = z; } } } return b; }
   function hurtZ(z, dmg) { if (z.dead) return; z.hp -= dmg; const n1 = Math.max(0, Math.ceil(z.hp / HPZ - 1e-6)); if (n1 < z.n) { S.kills += z.n - n1; z.n = n1; } if (!n1) z.dead = 1; }
-  function shoot(x, y, z, dmg, col) { hurtZ(z, dmg); S.fx.push({ k: 'shot', x, y, x2: z.x, y2: z.y, l: .08, col }); }
+  function shoot(x, y, z, dmg, col) { hurtZ(z, dmg * S.gmax / 20); S.fx.push({ k: 'shot', x, y, x2: z.x, y2: z.y, l: .08, col }); }
   const hashOf = list => { const h = new Map(); for (const a of list) { const k = (a.x / 24 | 0) * 512 + (a.y / 24 | 0), l = h.get(k); if (l) l.push(a); else h.set(k, [a]); } return h; };
   const grab = (h, x, y, r) => { const gx = Math.floor(x / 24), gy = Math.floor(y / 24); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const l = h.get((gx + a) * 512 + gy + b); if (l) for (const o of l) if (!o.bit && Math.hypot(o.x - x, o.y - y) < r) return o; } return null; };
   function tick(dt) {
     S.t += dt; if ((S.fT -= dt) <= 0) { S.fT = .5; fields(); } if ((S.cT -= dt) <= 0) { S.cT = .3; flags(); }
-    if ((S.mT = (S.mT || 0) - dt) <= 0) { S.mT = 1; const by = new Map(); for (const z of S.zs) { if (z.n >= GMAX || z.dead) continue; const l = by.get(z.e); if (l) l.push(z); else by.set(z.e, [z]); }
-      for (const l of by.values()) if (l.length > 1) { l.sort((a, b) => a.s - b.s); for (let i = 1; i < l.length; i++) { const a = l[i - 1], b = l[i]; if (!a.dead && a.dir === b.dir && b.s - a.s < 16 && a.n + b.n <= GMAX) { b.n += a.n; b.hp += a.hp; a.n = 0; a.dead = 1; } } } S.zs = S.zs.filter(z => !z.dead); }
+    if ((S.mT = (S.mT || 0) - dt) <= 0) { S.mT = 1; const by = new Map(); for (const z of S.zs) { if (z.n >= S.gmax || z.dead) continue; const l = by.get(z.e); if (l) l.push(z); else by.set(z.e, [z]); }
+      for (const l of by.values()) if (l.length > 1) { l.sort((a, b) => a.s - b.s); for (let i = 1; i < l.length; i++) { const a = l[i - 1], b = l[i]; if (!a.dead && a.dir === b.dir && b.s - a.s < 16 && a.n + b.n <= S.gmax) { b.n += a.n; b.hp += a.hp; a.n = 0; a.dead = 1; } } } S.zs = S.zs.filter(z => !z.dead); }
     zGrid(); const mines = S.units.filter(u => u.k === 'mine'), ch = hashOf(S.civs), sh = hashOf(S.sol), zsp = Math.min(52, 34 + S.m * 2.2), born = [], hitBars = new Map();
     for (const z of S.zs) { if (z.dead) continue; z.e.stain = Math.min(1, z.e.stain + dt * .08);
       for (const u of mines) if (!u.dead && Math.hypot(u.x - z.x, u.y - z.y) < 14) { u.dead = 1; boom(u.x, u.y, 55); } if (z.dead) continue;
       if ((z.cd -= dt) <= 0) { const v = grab(ch, z.x, z.y, 11) || grab(sh, z.x, z.y, 11); if (v) { z.cd = 1.3; if (v.r) { if (--v.hp > 0) continue; v.bit = 1; born.push([v, 1]); continue; } const k = Math.min(v.n, z.n); v.n -= k; S.lost += k; if (!v.n) v.bit = 1; born.push([v, k]); continue; } }
       if (S.zF && (z.rt = (z.rt || Math.random() * .4) - dt) <= 0) { z.rt = .4; zTurn(z); }
       const r = advance(z, zsp, dt, () => true); if (r === 'node') { const a = S.zF ? zPick(headN(z)) : pick(headN(z), null); if (a) take(z, a, headN(z)); else z.dir *= -1; } else if (r) hitBars.set(r, (hitBars.get(r) || 0) + z.n); }
-    for (const [b, n] of hitBars) { b.hp -= dt * .04 * Math.min(40, n); if (b.hp <= 0) { b.hp = 0; S.fx.push({ k: 'boom', x: b.x, y: b.y, r: 22, l: .4 }); Sfx.hit(); } }
+    for (const [b, n] of hitBars) { b.hp -= dt * .04 * Math.min(40, n * 20 / S.gmax); if (b.hp <= 0) { b.hp = 0; S.fx.push({ k: 'boom', x: b.x, y: b.y, r: 22, l: .4 }); Sfx.hit(); } }
     for (const u of S.units) if (u.k === 'rep') for (const z of S.zones) for (const b of z.bars) if (b.hp > 0 && b.hp < b.max && Math.hypot(b.x - u.x, b.y - u.y) < TOOL.rep.R) b.hp = Math.min(b.max, b.hp + 2 * dt);
     S.units = S.units.filter(u => !u.dead);
     if (born.length) { S.civs = S.civs.filter(c => !c.bit); S.sol = S.sol.filter(s => !s.bit); for (const [v, k] of born) { const z = agent(v.e); z.s = v.s; z.dir = v.dir; z.off = v.off; z.cd = 1.8; z.n = k; z.hp = k * HPZ; pos(z); S.zs.push(z); } }
