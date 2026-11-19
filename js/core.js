@@ -1,6 +1,6 @@
 // HGWS – közös Firebase-indítás és segédfüggvények
-import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611190855';
-import * as FB from './firebase.js?v=202611190855';
+import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611190906';
+import * as FB from './firebase.js?v=202611190906';
 
 export { FB, notConfigured };
 
@@ -106,11 +106,11 @@ export function toast(msg, err) {
   clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), err ? 6000 : 2600);
 }
 
-/* nagy számok rövidítve: 1,5 millió · 12,3 ezer milliárd */
+/* nagy számok rövidítve (idle-játékos jelölés): 1,5 M · 12,3 B (milliárd) · 4 T · 2 Qa … */
 export const bigNum = n => { n = Math.floor(n || 0); if (!isFinite(n)) return '∞'; if (n < 1e6) return n.toLocaleString('hu-HU');
-  const g = Math.floor(Math.log10(n) / 3) * 3, k = Math.floor(g / 9), r = g % 9, w = [r === 3 ? 'ezer' : r === 6 ? 'millió' : '', ...Array(k).fill('milliárd')].filter(Boolean);
-  const m = n / 10 ** g, num = m.toLocaleString('hu-HU', { maximumFractionDigits: m < 10 ? 2 : m < 100 ? 1 : 0 });
-  return w.length <= 4 ? num + ' ' + w.join(' ') : num + ' × 10^' + g; };
+  const k = Math.floor(Math.log10(n) / 3) - 1, m = n / 10 ** (3 * (k + 1)), num = m.toLocaleString('hu-HU', { maximumFractionDigits: m < 10 ? 2 : m < 100 ? 1 : 0 });
+  const U = ['', 'U', 'D', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No'], T = ['', 'Dc', 'Vg', 'Tg', 'Qag', 'Qig', 'Sxg', 'Spg', 'Ocg', 'Nog'], F = ['', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No'];
+  return k >= 100 ? num + ' × 10^' + 3 * (k + 1) : num + ' ' + (k < 10 ? F[k] : U[k % 10] + T[Math.floor(k / 10)]); };
 
 export const errText = e => ({
   'auth/invalid-email': 'Érvénytelen e-mail-cím.',
