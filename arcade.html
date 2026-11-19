@@ -376,7 +376,7 @@ body.embed .scroll{display:none}
   </div>
 </div>
 
-<script src="js/arcade-drift.js?v=202611191034"></script>
+<script src="js/arcade-drift.js?v=202611191055"></script>
 <script>
 (() => {
 'use strict';
@@ -2511,6 +2511,9 @@ $('#lbw').addEventListener('click', e => { if (e.target.closest('[data-nick]')) 
     const [game, uid] = del.dataset.del.split('|'); del.disabled = true; del.textContent = '…'; parent.postMessage({ hgws: 'lbdel', game, uid }, location.origin); return; } const b = e.target.closest('[data-lbt]'); if (!b) return; lbt = b.dataset.lbt; document.querySelectorAll('[data-lbt]').forEach(x => x.classList.toggle('on', x === b)); lbDraw(); });
 addEventListener('message', e => { if (e.origin !== location.origin || e.data?.hgws !== 'lb') return; LB = e.data; lbDraw(); });
 if (window.top !== window) parent.postMessage({ hgws: 'lbreq' }, location.origin);
+// a helyi rekordok felszinkronizálása a ranglistára (nem vendég fióknál, akkor is, ha az eredményt korábban törölték)
+if (window.top !== window) { const bests = {}; for (const gm of GAMES) if (!gm.ext) { const v = store.get('best_' + gm.id); if (v > 0) bests[gm.id] = v; }
+  if (Object.keys(bests).length) parent.postMessage({ hgws: 'sync', bests }, location.origin); }
 })();
 </script>
 </body>
