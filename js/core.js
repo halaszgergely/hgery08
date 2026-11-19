@@ -1,6 +1,6 @@
 // HGWS – közös Firebase-indítás és segédfüggvények
-import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611190815';
-import * as FB from './firebase.js?v=202611190815';
+import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611190855';
+import * as FB from './firebase.js?v=202611190855';
 
 export { FB, notConfigured };
 
@@ -107,7 +107,10 @@ export function toast(msg, err) {
 }
 
 /* nagy számok rövidítve: 1,5 millió · 12,3 ezer milliárd */
-export const bigNum = n => { n = Math.floor(n || 0); if (n < 1e6) return n.toLocaleString('hu-HU'); const [d, w] = n >= 1e15 ? [1e15, 'millió milliárd'] : n >= 1e12 ? [1e12, 'ezer milliárd'] : n >= 1e9 ? [1e9, 'milliárd'] : [1e6, 'millió']; return (n / d).toLocaleString('hu-HU', { maximumFractionDigits: n / d < 10 ? 2 : n / d < 100 ? 1 : 0 }) + ' ' + w; };
+export const bigNum = n => { n = Math.floor(n || 0); if (!isFinite(n)) return '∞'; if (n < 1e6) return n.toLocaleString('hu-HU');
+  const g = Math.floor(Math.log10(n) / 3) * 3, k = Math.floor(g / 9), r = g % 9, w = [r === 3 ? 'ezer' : r === 6 ? 'millió' : '', ...Array(k).fill('milliárd')].filter(Boolean);
+  const m = n / 10 ** g, num = m.toLocaleString('hu-HU', { maximumFractionDigits: m < 10 ? 2 : m < 100 ? 1 : 0 });
+  return w.length <= 4 ? num + ' ' + w.join(' ') : num + ' × 10^' + g; };
 
 export const errText = e => ({
   'auth/invalid-email': 'Érvénytelen e-mail-cím.',
