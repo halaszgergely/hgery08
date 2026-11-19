@@ -6,15 +6,15 @@ window.HGZombi = function (env) {
   const { G, Sfx, rr, hud, store } = env;
   const STEAM = 'https://store.steampowered.com/app/5185890/Zombies_Arent_Real/';
   const MAPS = window.HGZMaps; let MD = MAPS[0], WW = MD.W, WH = MD.H, GEO = null;
-  const RW = 15, R_START = 760, R_GROW = 520, HPZ = .25, DENS = .8, HP_WALL = 170, HP_GATE = 28; // HPZ: egy zombi életereje; DENS: lakos / utcaképpont
+  const RW = 15, R_START = 760, R_GROW = 520, HPZ = .32, DENS = .8, HP_WALL = 170, HP_GATE = 28; // HPZ: egy zombi életereje; DENS: lakos / utcaképpont
   // u: melyik küldetéstől érhető el; on: 'b' épület, 'r' út, 'br' híd
   const TOOLS = [
     { k: 'zone', tab: 0, n: 'Fal', ic: '🧱', c: 0, u: 1, n2: 1, d: 'Húzz falat szabadon. Ami így el van vágva a várostól, az védett.' },
     { k: 'gate', tab: 0, n: 'Kapu', ic: '🚪', c: 20, u: 1, d: 'Koppints egy útzárra: a civilek bejutnak rajta, de ez a fal gyenge pontja.' },
-    { k: 'gar', tab: 0, n: 'Őrség', ic: '🪖', c: 60, u: 1, on: 'b', r: 150, cd: .16, dmg: 1, d: 'Épületbe. Közepes hatótáv.' },
-    { k: 'snp', tab: 0, n: 'Mesterlövész', ic: '🎯', c: 110, u: 2, on: 'b', r: 330, cd: 1.1, dmg: 3, d: 'Épületbe. Nagy hatótáv, lassú.' },
-    { k: 'tur', tab: 0, n: 'Gépágyú', ic: '🔫', c: 150, u: 1, on: 'r', r: 170, cd: .07, dmg: 1, ammo: 900, d: 'Útra. Gyors tűz, 900 lőszer.' },
-    { k: 'mor', tab: 0, n: 'Aknavető', ic: '💥', c: 200, u: 3, on: 'b', r: 420, rmin: 120, cd: 3.5, d: 'Épületbe. Területre lő – a civileket is eltalálja!' },
+    { k: 'gar', tab: 0, n: 'Őrség', ic: '🪖', c: 60, u: 1, on: 'b', r: 150, cd: .2, dmg: 1, d: 'Épületbe. Közepes hatótáv.' },
+    { k: 'snp', tab: 0, n: 'Mesterlövész', ic: '🎯', c: 110, u: 2, on: 'b', r: 330, cd: 1.35, dmg: 3, d: 'Épületbe. Nagy hatótáv, lassú.' },
+    { k: 'tur', tab: 0, n: 'Gépágyú', ic: '🔫', c: 150, u: 1, on: 'r', r: 170, cd: .09, dmg: 1, ammo: 900, d: 'Útra. Gyors tűz, 900 lőszer.' },
+    { k: 'mor', tab: 0, n: 'Aknavető', ic: '💥', c: 200, u: 3, on: 'b', r: 420, rmin: 120, cd: 4.3, d: 'Épületbe. Területre lő – a civileket is eltalálja!' },
     { k: 'mine', tab: 0, n: 'Akna', ic: '💣', c: 25, u: 1, on: 'r', d: 'Útra. Zombira robban.' },
     { k: 'c4', tab: 0, n: 'C4', ic: '🧨', c: 80, u: 2, on: 'br', d: 'Hídra: a csata elején felrobban.' },
     { k: 'cor', tab: 1, n: 'Terelőút', ic: '➡️', c: 0, u: 1, d: 'Húzd végig az utakon: a civilek ezen át a zónába indulnak.' },
@@ -331,11 +331,11 @@ window.HGZombi = function (env) {
     for (const u of S.units) { const T = TOOL[u.k]; if (!T.r || (u.cd -= dt) > 0) continue; const R0 = T.r * (u.rm || 1);
       if (u.k === 'mor') { const z = nearestZ(u.x, u.y, R0, T.rmin); if (z) { u.cd = T.cd; S.strikes.push({ x: z.x, y: z.y, t: .9, r: 50, pw: 28, from: [u.x, u.y] }); } continue; }
       if (u.k === 'tur' && u.ammo <= 0) continue; const z = nearestZ(u.x, u.y, R0); if (z) { u.cd = T.cd; if (u.k === 'tur') u.ammo--; shoot(u.x, u.y, z, T.dmg, u.k === 'snp' ? '255,255,255' : '255,220,120'); } }
-    for (const s of S.sol) { if ((s.cd -= dt) <= 0) { s.tz = nearestZ(s.x, s.y, s.r * RUN.rng); s.cd = s.tz ? .35 : .15; if (s.tz) shoot(s.x, s.y, s.tz, 1, '255,240,150'); } if (s.tz) { if (s.tz.dead) s.tz = null; }
+    for (const s of S.sol) { if ((s.cd -= dt) <= 0) { s.tz = nearestZ(s.x, s.y, s.r * RUN.rng); s.cd = s.tz ? .44 : .15; if (s.tz) shoot(s.x, s.y, s.tz, 1, '255,240,150'); } if (s.tz) { if (s.tz.dead) s.tz = null; }
       else if (!s.guard && S.zD) { const r = advance(s, 34, dt, b => !b.gate); if (r === 'node') { const a = pick(headN(s), S.zD, (e) => wallBars(e) > 0); if (a) take(s, a, headN(s)); } else if (r) s.dir *= -1; } }
-    for (const h of S.helis) { h.t -= dt; h.a += dt * 1.2; h.x = h.cx + Math.cos(h.a) * 70; h.y = h.cy + Math.sin(h.a) * 70; if ((h.cd -= dt) <= 0) { const z = nearestZ(h.x, h.y, 170); if (z) { h.cd = .1; shoot(h.x, h.y, z, 1, '255,160,90'); } } } S.helis = S.helis.filter(h => h.t > 0);
+    for (const h of S.helis) { h.t -= dt; h.a += dt * 1.2; h.x = h.cx + Math.cos(h.a) * 70; h.y = h.cy + Math.sin(h.a) * 70; if ((h.cd -= dt) <= 0) { const z = nearestZ(h.x, h.y, 170); if (z) { h.cd = .125; shoot(h.x, h.y, z, 1, '255,160,90'); } } } S.helis = S.helis.filter(h => h.t > 0);
     for (const a of S.apcs) { if (a.path.length) { const T = S.N[a.path[0]], dx = T.x - a.x, dy = T.y - a.y, dd = Math.hypot(dx, dy); if (dd < 4) a.path.shift(); else { a.x += dx / dd * 70 * dt; a.y += dy / dd * 70 * dt; a.ang = Math.atan2(dy, dx); } }
-      a.t -= dt; for (const z of S.zs) if (!z.dead && Math.hypot(z.x - a.x, z.y - a.y) < 14) { a.hp -= dt * .5 * Math.min(40, z.n * 20 / S.gmax); hurtZ(z, 5 * dt * HPZ * S.gmax / 20); } if ((a.cd -= dt) <= 0) { const z = nearestZ(a.x, a.y, 140); if (z) { a.cd = .22; shoot(a.x, a.y, z, 1, '255,200,120'); } } if (a.hp <= 0) S.fx.push({ k: 'boom', x: a.x, y: a.y, r: 30, l: .5 }); }
+      a.t -= dt; for (const z of S.zs) if (!z.dead && Math.hypot(z.x - a.x, z.y - a.y) < 14) { a.hp -= dt * .5 * Math.min(40, z.n * 20 / S.gmax); hurtZ(z, 5 * dt * HPZ * S.gmax / 20); } if ((a.cd -= dt) <= 0) { const z = nearestZ(a.x, a.y, 140); if (z) { a.cd = .27; shoot(a.x, a.y, z, 1, '255,200,120'); } } if (a.hp <= 0) S.fx.push({ k: 'boom', x: a.x, y: a.y, r: 30, l: .5 }); }
     S.apcs = S.apcs.filter(a => a.hp > 0 && a.t > 0);
     for (const q of S.gas) { q.t -= dt; for (const z of S.zs) if (!z.dead && Math.hypot(z.x - q.x, z.y - q.y) < q.r) hurtZ(z, z.n * HPZ * dt / 1.5 + 1e-4);
       const c0 = cnt(S.civs); for (const c of S.civs) if (Math.hypot(c.x - q.x, c.y - q.y) < q.r) { c.hp -= .5 * dt; if (c.hp <= 0) c.gone = 1; } S.civs = S.civs.filter(c => !c.gone); S.lost += c0 - cnt(S.civs); } S.gas = S.gas.filter(q => q.t > 0);
