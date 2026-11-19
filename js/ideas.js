@@ -1,7 +1,7 @@
 // HGWS – Ötletek (ticket rendszer): a belépett tagok ötletet, hibát, kérdést küldhetnek,
 // a moderátortól felfelé (akinek „tickets” joga van) mindenki látja és válaszolhat rájuk.
-import { FB, db, $, $$, esc, avatar, timeLabel, toDate, toast, errText, notify, audit, roleOf, OWNER_UID } from './core.js?v=202611191353';
-import { modal, confirmBox } from './ui.js?v=202611191353';
+import { FB, db, $, $$, esc, avatar, timeLabel, toDate, toast, errText, notify, audit, roleOf, OWNER_UID } from './core.js?v=202611191406';
+import { modal, confirmBox } from './ui.js?v=202611191406';
 
 let C = null;
 export function init(ctx) { C = ctx; }
