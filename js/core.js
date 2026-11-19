@@ -1,6 +1,6 @@
 // HGWS – közös Firebase-indítás és segédfüggvények
-import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611190813';
-import * as FB from './firebase.js?v=202611190813';
+import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611190815';
+import * as FB from './firebase.js?v=202611190815';
 
 export { FB, notConfigured };
 
@@ -106,8 +106,8 @@ export function toast(msg, err) {
   clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), err ? 6000 : 2600);
 }
 
-/* nagy számok rövidítve: 1,5 millió · 12 billió */
-export const bigNum = n => { n = Math.floor(n || 0); if (n < 1e6) return n.toLocaleString('hu-HU'); const [d, w] = n >= 1e15 ? [1e15, 'billiárd'] : n >= 1e12 ? [1e12, 'billió'] : n >= 1e9 ? [1e9, 'milliárd'] : [1e6, 'millió']; return (n / d).toLocaleString('hu-HU', { maximumFractionDigits: n / d < 10 ? 2 : n / d < 100 ? 1 : 0 }) + ' ' + w; };
+/* nagy számok rövidítve: 1,5 millió · 12,3 ezer milliárd */
+export const bigNum = n => { n = Math.floor(n || 0); if (n < 1e6) return n.toLocaleString('hu-HU'); const [d, w] = n >= 1e15 ? [1e15, 'millió milliárd'] : n >= 1e12 ? [1e12, 'ezer milliárd'] : n >= 1e9 ? [1e9, 'milliárd'] : [1e6, 'millió']; return (n / d).toLocaleString('hu-HU', { maximumFractionDigits: n / d < 10 ? 2 : n / d < 100 ? 1 : 0 }) + ' ' + w; };
 
 export const errText = e => ({
   'auth/invalid-email': 'Érvénytelen e-mail-cím.',
