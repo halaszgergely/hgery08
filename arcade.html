@@ -360,6 +360,8 @@ body.embed .scroll{display:none}
       <h3 id="pTitle"></h3>
       <div class="spon" id="pSpon" hidden></div>
       <p id="pDesc"></p>
+      <p id="pCredit" hidden style="font-size:.8rem;opacity:.8;margin-top:.5rem"></p>
+      <a id="pLink" hidden target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:.35rem;font-size:.85rem;font-weight:700;color:#6cc6ff;text-decoration:underline"></a>
       <div class="how" id="pHow"></div>
       <div class="row"><button class="btn primary" id="pGo">▶ INDÍTÁS</button></div>
     </div>
@@ -376,7 +378,8 @@ body.embed .scroll{display:none}
   </div>
 </div>
 
-<script src="js/arcade-drift.js?v=202611191259"></script>
+<script src="js/arcade-drift.js?v=202611191313"></script>
+<script src="js/arcade-zombi.js?v=202611191313"></script>
 <script>
 (() => {
 'use strict';
@@ -639,6 +642,7 @@ function openGame(game) {
   if (game.ext) return openExt(game);
   G.game = game; gEl.classList.add('open'); document.body.classList.add('locked'); gsize();
   $('#pTitle').textContent = game.name; $('#pDesc').textContent = game.desc; $('#pHow').textContent = game.how;
+  $('#pCredit').hidden = !game.credit; $('#pCredit').textContent = game.credit || ''; $('#pLink').hidden = !game.link; if (game.link) { $('#pLink').href = game.link.url; $('#pLink').textContent = game.link.label; }
   $('#pSpon').hidden = !game.sponsor; $('#pSpon').textContent = game.sponsor || ''; $('#gQuit').hidden = !game.quit;
   UI.pStart.hidden = false; UI.pOver.hidden = true; G.running = false; G.score = 0; G.lives = game.lives || 0; G.fx = []; G.fl = [];
   game.init(G); hud();
@@ -2640,13 +2644,15 @@ const Birodalom = (() => {
 const ZeroSpace = { id: 'zerospace', name: 'ZERO SPACE DEMO', ext: 'zerospace.html', tag: 'DEMO',
   desc: 'Tervezd meg a saját űrhajódat modulról modulra, és vezesd csatába a végtelen űrben. Korai demó – az egyjátékos sandbox már elérhető.' };
 const Drift = window.HGDrift ? window.HGDrift({ G, Sfx, rr, store, hud }) : null;
-const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Torony, Birodalom, ...(Drift ? [Drift] : []), ZeroSpace];
+const Zombi = window.HGZombi ? window.HGZombi({ G, Sfx, rr, store, hud }) : null;
+const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Torony, Birodalom, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), ZeroSpace];
 const EXT = $('#ext'), EXF = $('#extf');
 function openExt(gm) { EXF.src = gm.ext + '?v=' + Date.now().toString(36).slice(0, 5); EXT.hidden = false; document.body.classList.add('locked'); setTimeout(() => { try { EXF.focus(); } catch (_) {} }, 300); }
 function closeExt() { EXT.hidden = true; EXF.src = 'about:blank'; document.body.classList.remove('locked'); }
 $('#extX').onclick = closeExt;
 const ARTS = {
   drift: (c, x, t) => Drift && Drift.art(c, x, t),
+  holtvaros: (c, x, t) => Zombi && Zombi.art(c, x, t),
   birodalom: (c, x, t) => { const W = c.width, H = c.height, s = 22, ox = (W - s * 11) / 2, oy = (H - s * 5) / 2; x.fillStyle = '#0f2a1a'; x.fillRect(0, 0, W, H);
     for (let r = 0; r < 5; r++) for (let q = 0; q < 11; q++) { x.fillStyle = (q + r) & 1 ? '#3b7a33' : '#367230'; x.fillRect(ox + q * s, oy + r * s, s, s); }
     x.fillStyle = 'rgba(40,110,170,.3)'; x.fillRect(ox + 2 * s, oy, s * 3, s * 3); x.fillRect(ox + 6 * s, oy + 2 * s, s * 3, s * 3);
