@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, bigNum } from './core.js?v=202611191034';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611191034';
-import * as Player from './player.js?v=202611191034';
-import * as Party from './party.js?v=202611191034';
-import * as VP from './vplayer.js?v=202611191034';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611191034';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, bigNum } from './core.js?v=202611191055';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611191055';
+import * as Player from './player.js?v=202611191055';
+import * as Party from './party.js?v=202611191055';
+import * as VP from './vplayer.js?v=202611191055';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611191055';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -385,21 +385,24 @@ async function delScore(game, uid) {
     toast('Eredmény törölve' + (name ? ': ' + name : ''));
   } catch (e) { console.warn('ranglista-törlés', e); toast('Nem sikerült törölni.'); }
 }
-async function saveScore(game, score, win) {
+async function saveScore(game, score, win, sync) {
   if (!GAMES.some(g => g.id === game) || !(score > 0)) return;
   const nick = await nickFor(); if (nick === null) return;
   const me = C.uid(), sc = Math.floor(score);
-  for (const lb of [game, game + '_' + weekKey()]) {
+  // szinkronnál csak az örök ranglistára (a régi rekord a heti listába nem való)
+  for (const lb of sync ? [game] : [game, game + '_' + weekKey()]) {
     const ref = FB.doc(db, 'leaderboards', lb, 'scores', me);
     try { const s = await FB.getDoc(ref), o = s.data() || {}, ob = o.best || 0;
       if (sc > ob || win) await FB.setDoc(ref, { best: Math.max(sc, ob), at: FB.serverTimestamp(), ...(win || o.wins ? { wins: (o.wins || 0) + (win ? 1 : 0) } : {}), ...nick }); } catch (e) { console.warn('ranglista', e); }
   }
 }
+let synced = false;
 addEventListener('message', async e => {
   if (e.origin !== location.origin || !e.data?.hgws) return;
   const fr = $('.arcframe'); if (!fr || e.source !== fr.contentWindow) return;
   if (e.data.hgws === 'score') { await saveScore(e.data.game, e.data.score, !!e.data.win); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbreq') sendBoards(fr.contentWindow);
+  if (e.data.hgws === 'sync' && !guest() && C.uid() && !synced) { synced = true; for (const [g, v] of Object.entries(e.data.bests || {})) await saveScore(g, v, false, true); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'nickreq') { await renameNick(); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbdel') { await delScore(e.data.game, e.data.uid); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'ghostreq') fr.contentWindow.postMessage({ hgws: 'ghosts', data: await ghostList(e.data.tracks), guest: guest() }, location.origin);
