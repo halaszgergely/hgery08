@@ -376,7 +376,7 @@ body.embed .scroll{display:none}
   </div>
 </div>
 
-<script src="js/arcade-drift.js?v=202611190807"></script>
+<script src="js/arcade-drift.js?v=202611190813"></script>
 <script>
 (() => {
 'use strict';
@@ -621,9 +621,11 @@ const G = { W: 0, H: 0, d: 1, t: 0, score: 0, lives: 3, running: false, shake: 0
   lose() { this.lives--; this.shake = 14 * this.d; Sfx.hit(); hud(); if (navigator.vibrate) navigator.vibrate(60); if (this.lives <= 0) over(); },
   end() { over(); }
 };
+/* nagy számok rövidítve: 1,5 millió · 12 billió */
+const bigNum = n => { n = Math.floor(n || 0); if (n < 1e6) return n.toLocaleString('hu-HU'); const [d, w] = n >= 1e15 ? [1e15, 'billiárd'] : n >= 1e12 ? [1e12, 'billió'] : n >= 1e9 ? [1e9, 'milliárd'] : [1e6, 'millió']; return (n / d).toLocaleString('hu-HU', { maximumFractionDigits: n / d < 10 ? 2 : n / d < 100 ? 1 : 0 }) + ' ' + w; };
 function hud() {
-  UI.score.textContent = G.score.toLocaleString('hu-HU') + (G.game.unit || ' PONT');
-  UI.best.textContent = 'REKORD ' + store.get('best_' + G.game.id).toLocaleString('hu-HU') + (G.game.unit || '');
+  UI.score.textContent = bigNum(G.score) + (G.game.unit || ' PONT');
+  UI.best.textContent = 'REKORD ' + bigNum(store.get('best_' + G.game.id)) + (G.game.unit || '');
   UI.lives.textContent = G.game.lives ? '💧'.repeat(Math.max(0, G.lives)) + '🥀'.repeat(Math.max(0, G.game.lives - G.lives)) : '';
   UI.lives.style.display = G.game.lives ? '' : 'none';
 }
@@ -645,9 +647,9 @@ function over() {
   const id = 'best_' + G.game.id, prev = store.get(id), nb = G.score > prev; if (nb) store.set(id, G.score);
   if (G.win) store.set('wins_' + G.game.id, store.get('wins_' + G.game.id) + 1);
   $('#oTitle').textContent = G.game.overTitle || 'VÉGE';
-  $('#oScore').textContent = G.score.toLocaleString('hu-HU') + (G.game.unit || '');
+  $('#oScore').textContent = bigNum(G.score) + (G.game.unit || '');
   $('#oRank').textContent = (G.game.ranks.filter(r => G.score >= r[0]).pop() || [0, ''])[1].toUpperCase();
-  $('#oBest').textContent = (nb ? '🏆 ÚJ REKORD!' : 'Rekord: ' + prev.toLocaleString('hu-HU') + (G.game.unit || '')) + (G.win || store.get('wins_' + G.game.id) ? ' · 🏆 ×' + store.get('wins_' + G.game.id) : '');
+  $('#oBest').textContent = (nb ? '🏆 ÚJ REKORD!' : 'Rekord: ' + bigNum(prev) + (G.game.unit || '')) + (G.win || store.get('wins_' + G.game.id) ? ' · 🏆 ×' + store.get('wins_' + G.game.id) : '');
   setTimeout(() => { UI.pOver.hidden = false; }, 450); hud(); renderCards();
   if (window.top !== window && G.score > 0) parent.postMessage({ hgws: 'score', game: G.game.id, score: G.score, win: !!G.win }, location.origin);
 }
@@ -1343,7 +1345,7 @@ const Birodalom = (() => {
   const szOf = k => (MOD[k] || PL[k] || {}).sz || 1;
   const cells = (i, sz = szOf(S.k[i])) => { const c = i % COLS, r = Math.floor(i / COLS), o = []; for (let y = 0; y < sz; y++) for (let x = 0; x < sz; x++) o.push(idx(c + x, r + y)); return o; };
   const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-  const fmt = n => n >= 1e15 ? (n / 1e15).toLocaleString('hu-HU', { maximumFractionDigits: 2 }) + ' billiárd' : n >= 1e12 ? (n / 1e12).toLocaleString('hu-HU', { maximumFractionDigits: 2 }) + ' billió' : n >= 1e9 ? (n / 1e9).toLocaleString('hu-HU', { maximumFractionDigits: 2 }) + ' Mrd' : n >= 1e6 ? (n / 1e6).toLocaleString('hu-HU', { maximumFractionDigits: 2 }) + ' M' : Math.floor(n).toLocaleString('hu-HU');
+  const fmt = n => n >= 1e6 ? bigNum(n) : Math.floor(n).toLocaleString('hu-HU');
   let S = null, L = null, NET = null, drag = null, lastTile = -1, fl = [], dust = [], confirmT = 0, CB = [], DR = [], MO = null, RP = null, panS = null, pinch = null, pend = null, wheelOn = 0;
   const CAM = { z: 0, cx: null, cy: null }, PT = new Map(), MMC = { t: -9 };
   const MOB = new Map(), TEX = { ts: 0, c: [] };
@@ -1383,7 +1385,7 @@ const Birodalom = (() => {
     } catch (_) {}
     return fresh();
   }
-  function save() { if (!S) return; S.t = Date.now(); try { const { rt, away, saveT, syncT, hudT, info, hover, ...o } = S; localStorage.setItem(KEY, JSON.stringify(o)); } catch (_) {} }
+  function save() { if (!S) return; S.t = Date.now(); try { const { rt, away, saveT, syncT, hudT, info, hover, tip, ...o } = S; localStorage.setItem(KEY, JSON.stringify(o)); } catch (_) {} }
 
   function net() {
     const [cw, rh] = size(), N = COLS * ROWS, on = new Uint8Array(N), dist = new Int16Array(N).fill(-1), q = [SRC];
@@ -1913,6 +1915,7 @@ const Birodalom = (() => {
     },
     commit(G) { if (!pend) return; const i = pend.i; pend = null; place(G, i, true); lastTile = i; drag = S.tool === 'pipe' || S.tool === 'del' || PL[S.tool] ? 1 : null; },
     move(G, x, y, btn, e) { if (!btn && L && y >= L.barY) { const b = bar(G); S.hover = b.its.find(o => x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h) || null; } else if (!btn) S.hover = null;
+      S.tip = !btn && L && y < L.barY && (!e || e.pointerType === 'mouse') ? { i: tileAt(x, y), x, y } : null;
       const id = e && e.pointerId != null ? e.pointerId : 0; if (PT.has(id)) PT.set(id, { x, y });
       if (pinch && PT.size >= 2) { const [a, b] = [...PT.values()], dd = Math.hypot(a.x - b.x, a.y - b.y) || 1, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
         zoomAt(G, mx, my, dd / pinch.d); pan(G, mx - pinch.mx, my - pinch.my); pinch = { d: dd, mx, my }; return; }
@@ -2020,8 +2023,8 @@ const Birodalom = (() => {
       g.textAlign = 'center'; g.textBaseline = 'middle';
       g.font = `800 ${20 * d}px Inter, sans-serif`; g.fillStyle = '#ffe29a'; g.fillText('💰 ' + fmt(S.money) + ' Ft' + (S.star ? '   ⭐ ' + S.star : ''), G.W / 2, 78 * d);
       g.font = `600 ${12 * d}px Inter, sans-serif`;
-      g.fillStyle = 'rgba(255,255,255,.7)'; g.fillText(`+${NET.inc < 1e4 ? NET.inc.toLocaleString('hu-HU', { maximumFractionDigits: 1 }) : fmt(NET.inc)} Ft/s  ·  `, G.W / 2 - 50 * d, 99 * d);
-      g.fillStyle = NET.dem > NET.cap ? '#ff8a7a' : '#9fd6f5'; g.fillText(`💧 ${NET.dem.toLocaleString('hu-HU', { maximumFractionDigits: 1 })} / ${NET.cap.toLocaleString('hu-HU')} L/s`, G.W / 2 + 50 * d, 99 * d);
+      { const t1 = `+${NET.inc < 1e4 ? NET.inc.toLocaleString('hu-HU', { maximumFractionDigits: 1 }) : fmt(NET.inc)} Ft/s   ·   `, t2 = `💧 ${NET.dem < 1e6 ? NET.dem.toLocaleString('hu-HU', { maximumFractionDigits: 1 }) : fmt(NET.dem)} / ${NET.cap < 1e6 ? NET.cap.toLocaleString('hu-HU') : fmt(NET.cap)} L/s`, w1 = g.measureText(t1).width, w2 = g.measureText(t2).width, x0 = G.W / 2 - (w1 + w2) / 2;
+        g.textAlign = 'left'; g.fillStyle = 'rgba(255,255,255,.7)'; g.fillText(t1, x0, 99 * d); g.fillStyle = NET.dem > NET.cap ? '#ff8a7a' : '#9fd6f5'; g.fillText(t2, x0 + w1, 99 * d); g.textAlign = 'center'; }
       // alsó sáv
       const b = bar(G);
       const bg2 = g.createLinearGradient(0, L.barY, 0, G.H); bg2.addColorStop(0, 'rgba(12,18,28,.96)'); bg2.addColorStop(1, 'rgba(4,7,14,.98)'); g.fillStyle = bg2; g.fillRect(0, L.barY, G.W, G.H - L.barY); g.fillStyle = 'rgba(232,182,86,.35)'; g.fillRect(0, L.barY, G.W, 1 * d);
@@ -2061,6 +2064,19 @@ const Birodalom = (() => {
             g.fillStyle = 'rgba(4,7,14,.88)'; g.strokeStyle = 'rgba(232,182,86,.45)'; g.lineWidth = d; rr(bx, by, maxW, bh, 10 * d); g.fill(); g.stroke();
             g.textBaseline = 'middle'; lines.forEach((t2, i) => { let x = bx + 12 * d; const y = by + 6 * d + lh * (i + .5); if (!i) { g.font = `800 ${12 * d}px Inter, sans-serif`; g.fillStyle = '#ffe29a'; g.fillText(title, x, y); x += tw; } g.font = `500 ${12 * d}px Inter, sans-serif`; g.fillStyle = 'rgba(255,255,255,.85)'; g.fillText(t2, x, y); });
             g.textAlign = 'center'; } } }
+      if (S.tip && S.tip.i >= 0 && !S.hover && !(S.away && S.away.l > 0)) { const i = anc(S.tip.i), k = S.k[i];
+        if (k) { const P = PL[k], M = MOD[k], lines = [];
+          if (P) { const gr = Math.min(1, S.g[i]), w = wetNow(i); lines.push(P.n + (P.sz ? ' (' + P.sz + '×' + P.sz + ')' : ''));
+            lines.push(gr >= 1 ? 'Érett · kattints az aratáshoz' : Math.floor(gr * 100) + '% · ' + (w ? 'locsolva' : 'nincs víz')); lines.push('Termés: ' + fmt(val(i)) + ' Ft'); }
+          else if (k === 'src') lines.push('Főcsap', 'Innen indul a víz.');
+          else if (M) { lines.push(M.n + (M.sz ? ' (' + M.sz + '×' + M.sz + ')' : ''));
+            if (k === 'szelep') lines.push(S.vc[i] ? 'Zárva · kattints a nyitáshoz' : 'Nyitva · kattints a záráshoz');
+            else if (!M.aura) lines.push(NET.on[i] ? (M.q ? '+' + fmt(M.q) + ' L/s vízhozam' : M.w ? 'Bekötve · ' + M.w + ' L/s' : 'Bekötve') : 'Nincs bekötve a hálózatba');
+            else lines.push('Nem kell rá cső'); }
+          const fs = 12 * d, pad = 8 * d; g.font = `600 ${fs}px Inter, sans-serif`; const w = Math.max(...lines.map(l => g.measureText(l).width)) + pad * 2, h = lines.length * fs * 1.35 + pad * 1.4;
+          let bx = S.tip.x + 16 * d, by = S.tip.y + 14 * d; if (bx + w > G.W - 6 * d) bx = S.tip.x - w - 12 * d; if (by + h > L.barY - 4 * d) by = S.tip.y - h - 10 * d;
+          g.fillStyle = 'rgba(4,7,14,.92)'; g.strokeStyle = 'rgba(232,182,86,.55)'; g.lineWidth = d; rr(bx, by, w, h, 8 * d); g.fill(); g.stroke();
+          g.textAlign = 'left'; g.textBaseline = 'middle'; lines.forEach((l, j) => { g.font = `${j ? 500 : 800} ${fs}px Inter, sans-serif`; g.fillStyle = j ? 'rgba(255,255,255,.82)' : '#ffe29a'; g.fillText(l, bx + pad, by + pad * .7 + fs * 1.35 * (j + .5)); }); g.textAlign = 'center'; } }
       if (S.away && S.away.l > 0) {
         const a = Math.min(1, S.away.l), w = Math.min(340 * d, G.W - 40 * d), h = 92 * d, x = (G.W - w) / 2, y = L.by + 20 * d;
         g.globalAlpha = a; g.fillStyle = 'rgba(4,7,14,.92)'; g.strokeStyle = '#e8b656'; g.lineWidth = 1.5 * d; rr(x, y, w, h, 14 * d); g.fill(); g.stroke();
@@ -2134,7 +2150,7 @@ function renderCards() {
     (function anim(now) { requestAnimationFrame(anim); if (!vis || document.hidden || gEl.classList.contains('open')) return;
       arts.forEach((c, i) => ARTS[GAMES[i].id](c, c.getContext('2d'), now / 1000)); })(0);
   }
-  wrap.querySelectorAll('.best').forEach(b => { if (b.dataset.ext) { b.textContent = 'DEMO'; return; } const v = store.get('best_' + b.dataset.id), gm = GAMES.find(x => x.id === b.dataset.id), w = store.get('wins_' + b.dataset.id); b.textContent = 'REKORD: ' + v.toLocaleString('hu-HU') + (gm.lb ? ' ' + gm.lb : '') + (w ? ' · 🏆×' + w : ''); });
+  wrap.querySelectorAll('.best').forEach(b => { if (b.dataset.ext) { b.textContent = 'DEMO'; return; } const v = store.get('best_' + b.dataset.id), gm = GAMES.find(x => x.id === b.dataset.id), w = store.get('wins_' + b.dataset.id); b.textContent = 'REKORD: ' + bigNum(v) + (gm.lb ? ' ' + gm.lb : '') + (w ? ' · 🏆×' + w : ''); });
 }
 renderCards();
 $('#yr').textContent = new Date().getFullYear();
@@ -2152,7 +2168,7 @@ function lbDraw() {
     ? `Vendégként <b>${esc(LB.nick)}</b> néven szerepelsz a ranglistán. <button class="lbnick" data-nick>✏️ Becenév módosítása</button>`
     : base;
   $('#lbg').innerHTML = GAMES.filter(g => !g.ext).map(g => { const l = (LB.boards[g.id] || {})[lbt] || [];
-    return `<div class="lbc${g.unit ? ' wide' : ''}"><h4>${g.icon || ''} ${g.name}</h4>${l.length ? l.map((r, i) => `<div class="lbr${r.me ? ' me' : ''}${LB.admin && r.uid ? ' adm' : ''}"><i>${['🥇', '🥈', '🥉'][i] || i + 1}</i><span>${esc(r.name)}${r.guest ? '<em class="lbg2">VENDÉG</em>' : ''}</span><b>${r.wins ? `<em class="lbw2" title="Arany Locsolófej">🏆×${r.wins}</em>` : ''}${r.score.toLocaleString('hu-HU')}${g.lb ? ' ' + g.lb : ''}</b>${LB.admin && r.uid ? `<button class="lbdel" data-del="${g.id}|${esc(r.uid)}" title="Eredmény törlése">🗑</button>` : ''}</div>`).join('') : '<p class="lbe">Még senki – légy te az első!</p>'}</div>`; }).join('');
+    return `<div class="lbc${g.unit ? ' wide' : ''}"><h4>${g.icon || ''} ${g.name}</h4>${l.length ? l.map((r, i) => `<div class="lbr${r.me ? ' me' : ''}${LB.admin && r.uid ? ' adm' : ''}"><i>${['🥇', '🥈', '🥉'][i] || i + 1}</i><span>${esc(r.name)}${r.guest ? '<em class="lbg2">VENDÉG</em>' : ''}</span><b>${r.wins ? `<em class="lbw2" title="Arany Locsolófej">🏆×${r.wins}</em>` : ''}${bigNum(r.score)}${g.lb ? ' ' + g.lb : ''}</b>${LB.admin && r.uid ? `<button class="lbdel" data-del="${g.id}|${esc(r.uid)}" title="Eredmény törlése">🗑</button>` : ''}</div>`).join('') : '<p class="lbe">Még senki – légy te az első!</p>'}</div>`; }).join('');
 }
 $('#lbw').addEventListener('click', e => { if (e.target.closest('[data-nick]')) { parent.postMessage({ hgws: 'nickreq' }, location.origin); return; }
   const del = e.target.closest('[data-del]');
