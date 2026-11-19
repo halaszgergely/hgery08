@@ -376,7 +376,7 @@ body.embed .scroll{display:none}
   </div>
 </div>
 
-<script src="js/arcade-drift.js?v=202611191253"></script>
+<script src="js/arcade-drift.js?v=202611191259"></script>
 <script>
 (() => {
 'use strict';
@@ -1584,7 +1584,7 @@ const Birodalom = (() => {
     } catch (_) {}
     return fresh();
   }
-  function save() { if (!S) return; S.t = Date.now(); try { const { gxT, rt, away, saveT, syncT, hudT, info, hover, tip, lp, anim, linc, lincT, ...o } = S; if (o.gx) o.gx = { ...o.gx, pick: null }; localStorage.setItem(KEY, JSON.stringify(o)); } catch (_) {} }
+  function save() { if (!S) return; S.t = Date.now(); try { const { bgMsg, lr, gxT, rt, away, saveT, syncT, hudT, info, hover, tip, lp, anim, linc, lincT, ...o } = S; if (o.gx) o.gx = { ...o.gx, pick: null }; localStorage.setItem(KEY, JSON.stringify(o)); } catch (_) {} }
 
   function net() {
     const [cw, rh] = size(), N = COLS * ROWS, on = new Uint8Array(N), dist = new Int16Array(N).fill(-1), q = [SRC];
@@ -1631,7 +1631,9 @@ const Birodalom = (() => {
     for (let i = 0; i < N; i++) { const p = PL[S.k[i]]; if (!p) continue; const w = netW(i); if (w) inc += p.v * price() * yb[i] * w * gb[i] * speed() / p.t * luck(); }
     NET.inc = inc; let nek = 0;
     for (let i = 0; i < N; i++) { const p = PL[S.k[i]]; if (!p) continue; const w = netW(i); if (w) nek += nekOf(S.k[i]) * w * gb[i] * speed() / p.t; }
-    NET.nek = nek; NET.nekH = hiveN * (1 + .25 * S.up.nektar) * (1 + .5 * S.up.kaptar); NET.cpR = cpR * (1 + .5 * S.up.cpgy);
+    NET.nek = nek; const metR = {};
+    for (let i = 0; i < N; i++) { const p = PL[S.k[i]]; if (!p || !p.met) continue; const w = netW(i); if (w) metR[p.met] = (metR[p.met] || 0) + p.ma * metMul() * w * gb[i] * speed() / p.t; }
+    NET.met = metR; NET.nekH = hiveN * (1 + .25 * S.up.nektar) * (1 + .5 * S.up.kaptar); NET.cpR = cpR * (1 + .5 * S.up.cpgy);
   }
   // egy növény (több mezősnél a legjobban locsolt mezője) víz-ellátottsága a hálózat alapján
   const netW = i => { let w = ghW(); for (const j of cells(i)) w = Math.max(w, NET.wet[j], NET.mwet[j]); return w; };
@@ -1775,19 +1777,23 @@ const Birodalom = (() => {
   function stash() { S.locs[S.loc] = { k: S.k, g: S.g, vc: S.vc, telek: S.up.telek }; }
   function unstash(id) { const L0 = S.locs[id] || newLoc(); S.k = L0.k; S.g = L0.g; S.vc = L0.vc || {}; S.up.telek = L0.telek || 0; S.loc = id; delete S.locs[id]; }
   function goLoc(G, id) {
-    if (id === S.loc) return; stash(); unstash(id);
+    if (id === S.loc) return; payBg(S.bgT || 0); S.bgT = 0; stash(); unstash(id);
     MO.fill(0); RP.fill(0); MOB.clear(); for (const u of [...CB, ...DR]) { u.x = SRC[0] + .5; u.y = SRC[1] + .5; u.tgt = -1; }
     CAM.z = 0; CAM.cx = null; MMC.t = -9; TEX.ts = 0; if (S.tool && S.tool !== 'del' && S.tool !== 'pipe' && S.tool !== 'szelep') S.tool = null; S.pg = {};
     layout(G); net(); lincAll(); save();
   }
   // egy másik helyszín bevétele és nektárja (a háttérben)
   function locRate(id) {
-    const keep = { k: S.k, g: S.g, vc: S.vc, telek: S.up.telek, loc: S.loc }, mob = new Map(MOB), n0 = NET, L0 = S.locs[id]; if (!L0) return [0, 0, 0];
-    S.k = L0.k; S.g = L0.g; S.vc = L0.vc || {}; S.up.telek = L0.telek || 0; S.loc = id; net(); const r = [NET.inc, NET.nek + NET.nekH, NET.cpR];
+    const keep = { k: S.k, g: S.g, vc: S.vc, telek: S.up.telek, loc: S.loc }, mob = new Map(MOB), n0 = NET, L0 = S.locs[id]; if (!L0) return [0, 0, 0, {}];
+    S.k = L0.k; S.g = L0.g; S.vc = L0.vc || {}; S.up.telek = L0.telek || 0; S.loc = id; net(); const r = [NET.inc, NET.nek + NET.nekH, NET.cpR, NET.met || {}];
     S.k = keep.k; S.g = keep.g; S.vc = keep.vc; S.up.telek = keep.telek; S.loc = keep.loc; MOB.clear(); mob.forEach((v, k) => MOB.set(k, v)); NET = n0; return r;
   }
-  const crew = () => .6 + .1 * S.up.szemelyzet;
-  function lincAll() { let a = 0, b = 0, q = 0; for (const id of S.unl) if (id !== S.loc) { const [x, y, z] = locRate(id); a += x; b += y; q += z; } S.linc = [a * crew(), b * crew(), q * crew()]; S.lincT = 0; }
+  const crew = () => 1 + .1 * S.up.szemelyzet;
+  function lincAll() { let a = 0, b = 0, q = 0; const mt = {}; S.lr = {};
+    for (const id of S.unl) if (id !== S.loc) { const [x, y, z, m] = locRate(id), c = crew(); S.lr[id] = [x * c, y * c, z * c]; a += x; b += y; q += z; for (const k in m) mt[k] = (mt[k] || 0) + m[k]; }
+    const c = crew(); for (const k in mt) mt[k] *= c; S.linc = [a * c, b * c, q * c, mt]; }
+  // a nem látott helyszínek termelése: nincs szimuláció, 30 másodpercenként jóváírjuk a kiszámolt ütemet
+  function payBg(sec) { if (!S.linc || sec <= 0) return 0; const v = S.linc[0] * sec; earn(v); S.nek += S.linc[1] * sec; S.cp += (S.linc[2] || 0) * sec; for (const k in S.linc[3] || {}) S.met[k] += S.linc[3][k] * sec; return v; }
   const launchCost = id => LOCS[id].cost * (1 - .1 * S.up.hajtomu), launchNek = id => LOCS[id].nk * (1 - .1 * S.up.hajtomu), launchCp = id => (LOCS[id].cc || 0) * (1 - .1 * S.up.hajtomu);
   const nextLoc = () => LORD.find(id => !S.unl.includes(id));
   function syncCB() { while (CB.length < S.up.kombajn) CB.push({ x: SRC[0] + .5, y: SRC[1] + .5, a: 0, tgt: -1, run: 0 }); CB.length = S.up.kombajn;
@@ -1862,7 +1868,7 @@ const Birodalom = (() => {
     nektar: n => '+25% nektár minden aratásból szintenként. Most: +' + 25 * n + '%.',
     raketa: n => n ? 'Kész! Fent, a kert tetején választhatsz helyszínt, és kilőheted a következőt.' : 'Megépíted az első rakétát: utána kilőheted az Űrállomást, majd a Holdat, a Marsot és tovább. Mindegyik új kert, saját modulokkal és növényekkel.',
     hajtomu: n => '−10% a kilövések árára (pénz és nektár) szintenként. Most: −' + 10 * n + '%.',
-    szemelyzet: n => 'A nem látott helyszínek a háttérben is termelnek. Szintenként +10%. Most: ' + Math.round(crew() * 100) + '%.',
+    szemelyzet: n => 'A nem látott helyszínek 30 másodpercenként jóváírják a kiszámolt termelésüket. Szintenként +10% ehhez. Most: ' + Math.round(crew() * 100) + '%.',
     mehtelep: n => autoDesc(MOD.mehtelep),
     mehgyar: n => autoDesc(MOD.mehgyar),
     robotmeh: n => autoDesc(MOD.robotmeh),
@@ -2370,7 +2376,7 @@ const Birodalom = (() => {
         for (let i = 0; i < S.k.length; i++) { const p = PL[S.k[i]]; if (!p) continue; const w = netW(i); if (!w) continue;
           const grow = away * rate(i, w) + S.g[i];
           if (auto()) { const n = Math.floor(grow); got += n * val(i) * offF() * luck(); S.nek += n * nekOf(S.k[i]) * offF(); if (p.met) S.met[p.met] += n * p.ma * metMul() * offF(); S.g[i] = grow - n; } else S.g[i] = Math.min(1, grow); }
-        lincAll(); GR = gnet(); got += (S.linc[0] + GR.ft) * away; S.nek += GR.nek * away; S.cp += GR.cp * away; for (const k in GR.met) S.met[k] += GR.met[k] * away; S.nek += (S.linc[1] + NET.nekH) * away; S.cp += ((S.linc[2] || 0) + NET.cpR) * away;
+        lincAll(); GR = gnet(); got += GR.ft * away; payBg(away); S.nek += GR.nek * away; S.cp += GR.cp * away; for (const k in GR.met) S.met[k] += GR.met[k] * away; S.nek += (S.linc[1] + NET.nekH) * away; S.cp += ((S.linc[2] || 0) + NET.cpR) * away;
         got = Math.floor(got); if (got > 0) { earn(got); G.score = Math.min(CAP, Math.floor(S.life)); }
         S.away = { got, sec: away, l: 6 };
       }
@@ -2465,8 +2471,9 @@ const Birodalom = (() => {
           if (!cb.fly && Math.random() < dt * 14) { const [px, py] = posXY(cb.x - .5, cb.y - .5); dust.push({ x: px - Math.cos(cb.a) * L.ts * .4, y: py - Math.sin(cb.a) * L.ts * .4, vx: (Math.random() - .5) * 10 * L.d, vy: (Math.random() - .5) * 10 * L.d, l: .8, c: '#c8b48a' }); } }
         else if (cb.tgt >= 0 && S.g[cb.tgt] >= 1) { const rest = S.g[cb.tgt] - 1; harvest(G, cb.tgt, 'cb'); S.g[cb.tgt] = rest; cb.tgt = -1; }
       }
-      if ((S.lincT = (S.lincT || 0) + dt) > 3) lincAll();
-      if (S.linc) { earn(S.linc[0] * dt); S.nek += S.linc[1] * dt; S.cp += (S.linc[2] || 0) * dt; }
+      if (!S.linc) lincAll();
+      if ((S.bgT = (S.bgT || 0) + dt) >= 30) { const v = payBg(S.bgT); S.bgT = 0; lincAll(); if (v > 0) S.bgMsg = { t: '🛰️ A többi helyszín: +' + fmt(v) + ' Ft', l: 3 }; }
+      if (S.bgMsg) S.bgMsg.l -= dt;
       S.nek += NET.nekH * dt; S.cp += NET.cpR * dt;
       if ((S.gxT = (S.gxT || 0) + dt) > 1) { S.gxT = 0; GR = gnet(); }
       if (GR.ft || GR.nek || GR.cp) { earn(GR.ft * dt); S.nek += GR.nek * dt; S.cp += GR.cp * dt; } for (const k in GR.met) S.met[k] += GR.met[k] * dt;
@@ -2604,7 +2611,9 @@ const Birodalom = (() => {
             const curL = cur && !galView(); g.fillStyle = curL ? 'rgba(232,182,86,.25)' : 'rgba(4,7,14,.92)'; g.strokeStyle = cur ? '#e8b656' : 'rgba(255,255,255,.15)'; rr(r.x, r.y, r.w, r.h, 10 * d); g.fill(); g.stroke();
             g.textAlign = 'left'; g.fillStyle = '#fff'; g.font = `700 ${13 * d}px Inter, sans-serif`; g.fillText(L2.ic + '  ' + L2.n, r.x + 12 * d, r.y + r.h / 2 + d);
             g.textAlign = 'right'; g.font = `700 ${11 * d}px Inter, sans-serif`; g.fillStyle = cur ? '#ffe29a' : have ? '#9fd6f5' : ok ? '#ffe29a' : '#ff8a7a';
-            g.fillText(cur && !galView() ? 'Itt vagy' : have ? 'Átváltás' : '🚀 ' + fmt(c) + ' Ft + ' + nfmt(nk) + '🍯' + (cq ? ' + ' + nfmt(cq) + '✨' : ''), r.x + r.w - 12 * d, r.y + r.h / 2 + d, r.w * .62); g.textAlign = 'center'; } } }
+            g.fillText(cur && !galView() ? 'Itt vagy · +' + fmt(NET.inc) + ' Ft/mp' : have ? '+' + fmt((S.lr && S.lr[r.id] ? S.lr[r.id][0] : 0)) + ' Ft/mp · Átváltás' : '🚀 ' + fmt(c) + ' Ft + ' + nfmt(nk) + '🍯' + (cq ? ' + ' + nfmt(cq) + '✨' : ''), r.x + r.w - 12 * d, r.y + r.h / 2 + d, r.w * .62); g.textAlign = 'center'; } } }
+      if (S.bgMsg && S.bgMsg.l > 0) { g.globalAlpha = Math.min(1, S.bgMsg.l); g.font = `700 ${12 * d}px Inter, sans-serif`; const tw2 = g.measureText(S.bgMsg.t).width + 24 * d, bx = (G.W - tw2) / 2, by = L.barY - 70 * d;
+        g.fillStyle = 'rgba(4,7,14,.88)'; g.strokeStyle = 'rgba(159,214,245,.6)'; g.lineWidth = d; rr(bx, by, tw2, 26 * d, 13 * d); g.fill(); g.stroke(); g.fillStyle = '#9fd6f5'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(S.bgMsg.t, G.W / 2, by + 13 * d + d); g.globalAlpha = 1; }
       if (S.anim) { const a = S.anim, k = a.t / a.dur, fade = Math.max(0, 1 - Math.abs(k - .55) / .3);
         if (a.launch) { const ry = G.H * 1.05 - (k ** 2.2) * (G.H * 1.4), rx = G.W / 2, s2 = 40 * d;
           g.fillStyle = `rgba(2,4,10,${Math.min(.85, k * 1.2)})`; g.fillRect(0, 0, G.W, G.H);
