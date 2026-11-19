@@ -378,8 +378,8 @@ body.embed .scroll{display:none}
   </div>
 </div>
 
-<script src="js/arcade-drift.js?v=202611191341"></script>
-<script src="js/arcade-zombi.js?v=202611191341"></script>
+<script src="js/arcade-drift.js?v=202611191350"></script>
+<script src="js/arcade-zombi.js?v=202611191350"></script>
 <script>
 (() => {
 'use strict';
@@ -480,7 +480,7 @@ function startHero() {
   const t0 = performance.now(); const arr = new Float32Array(24);
   (function loop(now) {
     requestAnimationFrame(loop);
-    if (!visible || document.hidden) return;
+    if (!visible || document.hidden || document.body.classList.contains('locked')) return;
     mouse.x += (mouse.tx - mouse.x) * .06; mouse.y += (mouse.ty - mouse.y) * .06;
     for (let k = 0; k < 6; k++) {
       const r = ripples[k];
@@ -536,7 +536,7 @@ const Hero = (() => {
   }
   let last = performance.now(), spawnT = 0;
   (function loop(now) {
-    requestAnimationFrame(loop); if (document.hidden) return;
+    requestAnimationFrame(loop); if (document.hidden || document.body.classList.contains('locked')) { last = now; return; }
     const dt = Math.min(.05, (now - last) / 1000); last = now;
     x.clearRect(0, 0, W, H);
     // warm soft light orbs (out-of-focus)
