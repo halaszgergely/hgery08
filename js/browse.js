@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, bigNum } from './core.js?v=202611191259';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611191259';
-import * as Player from './player.js?v=202611191259';
-import * as Party from './party.js?v=202611191259';
-import * as VP from './vplayer.js?v=202611191259';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611191259';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, bigNum } from './core.js?v=202611191313';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611191313';
+import * as Player from './player.js?v=202611191313';
+import * as Party from './party.js?v=202611191313';
+import * as VP from './vplayer.js?v=202611191313';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611191313';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -253,6 +253,7 @@ export const GAMES = [
   { id: 'csepp', name: 'Csepp Futam', icon: '💧', desc: 'Repülj át a csövek között egy bátor vízcseppel – egy ütközés és vége!', c: '#e8b656' },
   { id: 'viztorony', name: 'Víztorony', icon: '🗼', unit: 'm', desc: 'Mássz fel a víztorony tetejére az Arany Locsolófejért – egy rossz ugrás, és zuhansz!', c: '#b48cff', sponsor: 'A Zerosites támogatásával' },
   { id: 'drift', name: 'Drift Király', icon: '🏎️', desc: 'Felülnézetes drift-verseny 10 pályán, szellemautókkal és kétjátékos móddal.', c: '#ff5a4d' },
+  { id: 'holtvaros', name: 'Holtváros', icon: '🧟', unit: 'pont', desc: 'Védd meg a várost a zombijárványtól: zóna, kapuk, őrség, légicsapás. A Zombies Aren\'t Real ihlette.', c: '#7dff4a', sponsor: 'A Zerosites támogatásával' },
   { id: 'birodalom', name: 'Öntöző Birodalom', icon: '🌱', unit: 'Ft', desc: 'Építs csőhálózatot, ültess kertet és ültetvényt – a kerted akkor is termel, amikor nem vagy itt.', c: '#6fcf6a' }
 ];
 const EXTRA = [{ id: 'zerospace', name: 'Zero Space Demo', icon: '🚀', desc: 'Építs űrhajót modulról modulra és vezesd csatába – korai demó, egyjátékos sandbox.', c: '#b2382a', demo: 1 }];
