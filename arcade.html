@@ -376,7 +376,7 @@ body.embed .scroll{display:none}
   </div>
 </div>
 
-<script src="js/arcade-drift.js?v=202611190813"></script>
+<script src="js/arcade-drift.js?v=202611190815"></script>
 <script>
 (() => {
 'use strict';
@@ -621,8 +621,8 @@ const G = { W: 0, H: 0, d: 1, t: 0, score: 0, lives: 3, running: false, shake: 0
   lose() { this.lives--; this.shake = 14 * this.d; Sfx.hit(); hud(); if (navigator.vibrate) navigator.vibrate(60); if (this.lives <= 0) over(); },
   end() { over(); }
 };
-/* nagy számok rövidítve: 1,5 millió · 12 billió */
-const bigNum = n => { n = Math.floor(n || 0); if (n < 1e6) return n.toLocaleString('hu-HU'); const [d, w] = n >= 1e15 ? [1e15, 'billiárd'] : n >= 1e12 ? [1e12, 'billió'] : n >= 1e9 ? [1e9, 'milliárd'] : [1e6, 'millió']; return (n / d).toLocaleString('hu-HU', { maximumFractionDigits: n / d < 10 ? 2 : n / d < 100 ? 1 : 0 }) + ' ' + w; };
+/* nagy számok rövidítve: 1,5 millió · 12,3 ezer milliárd */
+const bigNum = n => { n = Math.floor(n || 0); if (n < 1e6) return n.toLocaleString('hu-HU'); const [d, w] = n >= 1e15 ? [1e15, 'millió milliárd'] : n >= 1e12 ? [1e12, 'ezer milliárd'] : n >= 1e9 ? [1e9, 'milliárd'] : [1e6, 'millió']; return (n / d).toLocaleString('hu-HU', { maximumFractionDigits: n / d < 10 ? 2 : n / d < 100 ? 1 : 0 }) + ' ' + w; };
 function hud() {
   UI.score.textContent = bigNum(G.score) + (G.game.unit || ' PONT');
   UI.best.textContent = 'REKORD ' + bigNum(store.get('best_' + G.game.id)) + (G.game.unit || '');
