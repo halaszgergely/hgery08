@@ -459,7 +459,7 @@ window.HGZombi = function (env) {
     for (const b of sideBtns()) { g.fillStyle = 'rgba(8,12,22,.88)'; g.strokeStyle = 'rgba(255,226,154,.5)'; g.lineWidth = 1.5 * d; rr(b.x, b.y, b.w, b.h, 9 * d); g.fill(); g.stroke(); g.font = `${17 * d}px sans-serif`; g.fillStyle = '#fff'; g.fillText(b.ic, b.x + b.w / 2, b.y + b.h / 2 + 1); }
     // alsó sáv
     g.fillStyle = 'rgba(10,8,14,.97)'; g.fillRect(0, L.barY, G.W, L.barH); g.fillStyle = 'rgba(125,255,74,.35)'; g.fillRect(0, L.barY, G.W, d);
-    for (const tb of L.tabs) { const on = tb.map ? MD.id === tb.k : S.tab === tb.k; g.fillStyle = on ? 'rgba(232,182,86,.9)' : 'rgba(255,255,255,.07)'; rr(tb.x, tb.y, tb.w, tb.h, tb.h / 2); g.fill(); g.fillStyle = on ? '#1a1004' : '#fff'; g.font = `700 ${Math.min(11, tb.w / d / 9) * d}px Inter, sans-serif`; g.fillText(tb.n, tb.x + tb.w / 2, tb.y + tb.h / 2 + 1); }
+    for (const tb of L.tabs) { const on = tb.map ? MD.id === tb.k : S.tab === tb.k; g.fillStyle = on ? 'rgba(232,182,86,.9)' : 'rgba(255,255,255,.07)'; rr(tb.x, tb.y, tb.w, tb.h, tb.h / 2); g.fill(); g.fillStyle = on ? '#1a1004' : '#fff'; g.font = `700 ${Math.min(11, tb.w / d / 9) * d}px Inter, sans-serif`; g.fillText(tb.n, tb.x + tb.w / 2, tb.y + tb.h / 2 + 1, tb.w - 12 * d); }
     if (L.go) { g.fillStyle = '#7dff4a'; rr(L.go.x, L.go.y, L.go.w, L.go.h, L.go.h / 2); g.fill(); g.fillStyle = '#0b1a05'; g.font = `800 ${12 * d}px Inter, sans-serif`; g.fillText('▶ INDÍTÁS', L.go.x + L.go.w / 2, L.go.y + L.go.h / 2 + 1); }
     for (const it of L.its) { const sel = (it.kind === 'tool' && S.tool === it.k) || (it.kind === 'abil' && S.abil === it.k), lock = it.kind === 'tool' && !unlocked(it), off = (it.kind === 'abil' && S.uses[it.k] <= 0) || lock;
       g.fillStyle = sel ? 'rgba(232,182,86,.28)' : 'rgba(255,255,255,.06)'; g.strokeStyle = sel ? '#e8b656' : 'rgba(255,255,255,.12)'; g.lineWidth = 1.5 * d; rr(it.x + 2 * d, it.y, it.w - 4 * d, it.h, 9 * d); g.fill(); g.stroke();
@@ -478,10 +478,26 @@ window.HGZombi = function (env) {
         for (const b of B0.btns) { g.fillStyle = 'rgba(232,182,86,.16)'; g.strokeStyle = '#e8b656'; g.lineWidth = 1.5 * d; rr(b.x, b.y, b.w, b.h, 10 * d); g.fill(); g.stroke(); g.font = `${20 * d}px sans-serif`; g.fillStyle = '#fff'; g.fillText(b.u[2], b.x + b.w / 2, b.y + 20 * d); g.font = `700 ${10.5 * d}px Inter, sans-serif`; g.fillText(b.u[1], b.x + b.w / 2, b.y + 44 * d, b.w - 6 * d); } }
       else { g.fillStyle = 'rgba(255,255,255,.7)'; g.font = `600 ${12 * d}px Inter, sans-serif`; g.fillText('Koppints a befejezéshez', G.W / 2, B0.y + 176 * d); } }
   }
+  // rövid bevezető minden új játék elején, kihagyható
+  const TUT_STEPS = [['🗺️', 'Válassz helyet', 'Alul megyét váltasz, a térképen pedig egy lakott részre koppintva kijelölöd, honnan indulsz. Görgővel vagy csípéssel nagyíthatsz.'],
+    ['🧱', 'Húzz falat', 'Rajzolj falat az utcákon keresztül. Amit a fal elvág a város többi részétől, az védett terület – kékkel látod.'],
+    ['🚪', 'Nyiss kaput', 'Kapun át jutnak be a civilek a védett részre. A kapu jóval gyengébb a falnál, a horda azt keresi meg és azt töri be először.'],
+    ['🪖', 'Állíts védelmet', 'Őrséget és mesterlövészt épületbe, gépágyút és aknát útra tehetsz – főleg a kapuk köré. A Különleges fülön terelőút, hangosbemondó és más segítség van.'],
+    ['🧟', 'Indítsd a kört', 'Indítás után kitör a járvány a védett részen kívül. Irtsd ki az összes zombit úgy, hogy a civilek előírt hányada életben marad. Lent légicsapást és más képességeket vethetsz be.'],
+    ['🏆', 'Kör után', 'Győzelemkor a védelmed megmarad, a pálya kitágul, és választhatsz egy fejlesztést. A jobb felső 💾 gombbal menthetsz a tervezés közben.']];
+  let TUT = null;
+  function wrap(g, t, w) { const out = []; let cur = ''; for (const word of t.split(' ')) { const nx = cur ? cur + ' ' + word : word; if (cur && g.measureText(nx).width > w) { out.push(cur); cur = word; } else cur = nx; } if (cur) out.push(cur); return out; }
+  function tutBox() { const d = L.d, w = Math.min(G.W - 24 * d, 430 * d), h = 250 * d, x = (G.W - w) / 2, y = (G.H - h) / 2, bh = 38 * d, bw = (w - 36 * d) / 2; return { x, y, w, h, skip: { x: x + 12 * d, y: y + h - bh - 12 * d, w: bw, h: bh }, next: { x: x + 24 * d + bw, y: y + h - bh - 12 * d, w: bw, h: bh } }; }
+  function drawTut(g) { const d = L.d, B = tutBox(), st = TUT_STEPS[TUT]; g.fillStyle = 'rgba(0,0,0,.62)'; g.fillRect(0, 0, G.W, G.H); g.fillStyle = 'rgba(8,12,22,.98)'; g.strokeStyle = '#e8b656'; g.lineWidth = 2 * d; rr(B.x, B.y, B.w, B.h, 16 * d); g.fill(); g.stroke();
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `${34 * d}px sans-serif`; g.fillStyle = '#fff'; g.fillText(st[0], G.W / 2, B.y + 38 * d); g.font = `900 ${19 * d}px Inter, sans-serif`; g.fillStyle = '#ffe29a'; g.fillText(st[1], G.W / 2, B.y + 76 * d);
+    g.font = `500 ${13 * d}px Inter, sans-serif`; g.fillStyle = 'rgba(255,255,255,.88)'; wrap(g, st[2], B.w - 36 * d).slice(0, 5).forEach((l, i) => g.fillText(l, G.W / 2, B.y + 104 * d + i * 18 * d));
+    for (let i = 0; i < TUT_STEPS.length; i++) { g.fillStyle = i === TUT ? '#e8b656' : 'rgba(255,255,255,.25)'; g.beginPath(); g.arc(G.W / 2 + (i - (TUT_STEPS.length - 1) / 2) * 12 * d, B.skip.y - 12 * d, 3 * d, 0, 6.283); g.fill(); }
+    g.fillStyle = 'rgba(255,255,255,.08)'; rr(B.skip.x, B.skip.y, B.skip.w, B.skip.h, B.skip.h / 2); g.fill(); g.fillStyle = '#fff'; g.font = `700 ${13 * d}px Inter, sans-serif`; g.fillText('Kihagyás', B.skip.x + B.skip.w / 2, B.skip.y + B.skip.h / 2 + 1);
+    g.fillStyle = '#7dff4a'; rr(B.next.x, B.next.y, B.next.w, B.next.h, B.next.h / 2); g.fill(); g.fillStyle = '#0b1a05'; g.font = `800 ${13 * d}px Inter, sans-serif`; g.fillText(TUT === TUT_STEPS.length - 1 ? 'Kezdjük!' : 'Tovább ▶', B.next.x + B.next.w / 2, B.next.y + B.next.h / 2 + 1); }
   function sideBtns() { const d = L.d, o = []; if (S.phase === 'plan') o.push({ k: 'save', ic: '💾' }); if ((S.phase === 'plan' || S.phase === 'pick') && saved) o.push({ k: 'load', ic: '📂' }); if (S.start && S.phase !== 'res') o.push({ k: 'home', ic: '🎯' }); return o.map((b, j) => ({ ...b, x: G.W - 44 * d, y: L.top + 8 * d + j * 42 * d, w: 36 * d, h: 36 * d })); }
   function resBox() { const d = L.d, w = Math.min(G.W - 24 * d, 380 * d), h = 240 * d, x = (G.W - w) / 2, y = (G.H - h) / 2, bw = (w - 36 * d) / 3; return { x, y, w, h, btns: S.res.pool.map((u, j) => ({ u, x: x + 12 * d + j * (bw + 6 * d), y: y + 168 * d, w: bw, h: 60 * d })) }; }
   const P2 = e => [e.clientX * G.d, e.clientY * G.d];
-  window.__hv = () => ({ S, L, RUN, begin, makeZone, place, setStart, saveGame, loadGame });
+  window.__hv = () => ({ S, L, RUN, skipTut() { TUT = null; }, begin, makeZone, place, setStart, saveGame, loadGame });
 
   return {
     id: 'holtvaros', name: 'HOLTVÁROS', lives: 0, quit: true, sponsor: 'A Zerosites támogatásával', overTitle: 'A JÁRVÁNY GYŐZÖTT',
@@ -489,9 +505,10 @@ window.HGZombi = function (env) {
     credit: 'A játékmenetet a Jogamedev „Zombies Aren\'t Real” című játéka ihlette.', link: { url: STEAM, label: 'Zombies Aren\'t Real a Steamen ↗' },
     how: 'SZÓKÖZ: INDÍTÁS / SZÜNET · GÖRGŐ / CSÍPÉS: NAGYÍTÁS · JOBB GOMB / KÉT UJJ: MOZGATÁS',
     ranks: [[0, 'Újonc'], [3000, 'Őrmester'], [10000, 'Százados'], [30000, 'Ezredes'], [80000, 'Karantén-parancsnok']],
-    init() { RUN = { total: 0, uses: { air: 1, mis: 0, gas: 0, heli: 0, para: 1, apc: 0 }, bud: 1, rng: 1 }; PT.clear(); pinch = panS = null; newMission(1);
+    init() { RUN = { total: 0, uses: { air: 1, mis: 0, gas: 0, heli: 0, para: 1, apc: 0 }, bud: 1, rng: 1 }; PT.clear(); pinch = panS = null; TUT = 0; newMission(1);
       if (!keyOn) { keyOn = 1; const on = () => G.running && G.game && G.game.id === 'holtvaros' && S && L, gc = document.getElementById('gc');
         addEventListener('keydown', e => { if (!on()) return; const pan = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], a: [-1, 0], d: [1, 0], w: [0, -1], s: [0, 1] }[e.key];
+          if (TUT != null) { if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') { e.preventDefault(); TUT = TUT + 1 < TUT_STEPS.length ? TUT + 1 : null; } else if (e.key === 'Escape') TUT = null; return; }
           if (e.key === ' ') { e.preventDefault(); if (S.phase === 'plan') begin(); else if (S.phase === 'battle') S.speed = S.speed ? 0 : 1; }
           else if (pan) { e.preventDefault(); L.cam.cx += pan[0] * 80 / L.cam.z; L.cam.cy += pan[1] * 80 / L.cam.z; clampCam(); }
           else if (e.key === 'Tab' && S.phase === 'plan') { e.preventDefault(); S.tab = 1 - S.tab; S.tool = TOOLS.find(t => t.tab === S.tab).k; layout(); }
@@ -501,6 +518,7 @@ window.HGZombi = function (env) {
     resize() { if (S) { MAP = null; layout(); } },
     down(G2, x, y, e) {
       if (e === true || !S) return; const hit = o => o && x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h;
+      if (TUT != null) { const B = tutBox(); if (hit(B.skip)) { TUT = null; Sfx.blip(500, .04, 'sine', .04); } else if (hit(B.next)) { TUT = TUT + 1 < TUT_STEPS.length ? TUT + 1 : null; Sfx.blip(700, .04, 'sine', .04); } return; }
       if (S.phase === 'res') { if (!S.res.win) return G.end(); const b = resBox().btns.find(hit); if (!b) return; const k = b.u[0]; if (k === 'bud') RUN.bud += .15; else if (k === 'rng') RUN.rng += .1; else RUN.uses[k]++; Sfx.perfect(); return newMission(S.m + 1, S); }
       { const sb = sideBtns().find(hit); if (sb) { if (sb.k === 'save') saveGame(); else if (sb.k === 'load') loadGame(); else { L.cam.z = 1; L.cam.cx = (S.box[0] + S.box[2]) / 2; L.cam.cy = (S.box[1] + S.box[3]) / 2; clampCam(); } return; } }
       if (y >= L.barY) { const tb = L.tabs.find(hit); if (tb) { if (tb.map) { if (tb.k !== MD.id) { Sfx.blip(700, .03, 'sine', .04); newMission(1, null, tb.k); } return; } S.tab = tb.k; S.tool = TOOLS.find(t => t.tab === tb.k).k; return layout(); } if (hit(L.go)) return begin();
@@ -526,7 +544,7 @@ window.HGZombi = function (env) {
       if (S.zin && L) { const z = S.zin; z.t += dt; clampCam(); if (z.t < 1.3) { const k = 1 - (1 - z.t / 1.3) ** 3, sc = z.s + (L.s - z.s) * k, cx = z.cx + (L.cam.cx - z.cx) * k, cy = z.cy + (L.cam.cy - z.cy) * k; L.s = sc; L.ox = L.vw / 2 - cx * sc; L.oy = L.top + L.vh / 2 - cy * sc; } else S.zin = null; }
       for (const f of S.fx) f.l -= dt * (S.speed || 1); S.fx = S.fx.filter(f => f.l > 0); if (S.fx.length > 220) S.fx.splice(0, S.fx.length - 220);
       if (S.phase === 'battle') for (let k = 0; k < S.speed && S.phase === 'battle'; k++) tick(dt); },
-    draw(g, G2, t) { draw(g, t); },
+    draw(g, G2, t) { draw(g, t); if (TUT != null && S && L) drawTut(g); },
     leave() { TILES.clear(); },
     art(c, x, t) { const W = c.width, H = c.height; x.fillStyle = '#231f2a'; x.fillRect(0, 0, W, H); x.lineCap = 'round';
       x.strokeStyle = '#1e466b'; x.lineWidth = 26; x.beginPath(); x.moveTo(W * .38, -10); x.quadraticCurveTo(W * .3, H * .5, W * .42, H + 10); x.stroke();
