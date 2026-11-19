@@ -303,11 +303,11 @@ service cloud.firestore {
     match /leaderboards/{lb}/scores/{uid} {
       allow read: if signedIn();
       allow create: if lbWriter(uid, ['best', 'at', 'wins'])
-        && request.resource.data.best is int && request.resource.data.best > 0 && request.resource.data.best <= 1000000000000
+        && request.resource.data.best is int && request.resource.data.best > 0 && request.resource.data.best <= 9000000000000000
         && request.resource.data.get('wins', 0) in [0, 1]
         && request.resource.data.at == request.time;
       allow update: if lbWriter(uid, ['best', 'at', 'wins'])
-        && request.resource.data.best is int && request.resource.data.best >= resource.data.best && request.resource.data.best <= 1000000000000
+        && request.resource.data.best is int && request.resource.data.best >= resource.data.best && request.resource.data.best <= 9000000000000000
         && request.resource.data.get('wins', 0) is int
         && (request.resource.data.get('wins', 0) == resource.data.get('wins', 0) || request.resource.data.get('wins', 0) == resource.data.get('wins', 0) + 1)
         && (request.resource.data.best > resource.data.best || request.resource.data.get('wins', 0) == resource.data.get('wins', 0) + 1 || nickChanged())
