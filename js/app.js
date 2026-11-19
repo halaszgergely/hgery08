@@ -1,17 +1,17 @@
 // HGWS Közösség – csatornák, privát üzenetek, csoportok, filmtár
 import { FB, auth, db, notConfigured, $, $$, esc, ROLES, roleOf, applyRoles, OWNER_UID, notify, audit, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
-  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG } from './core.js?v=202611190602';
-import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611190602';
-import * as Admin from './admin.js?v=202611190602';
-import * as Browse from './browse.js?v=202611190602';
-import * as Notif from './notif.js?v=202611190602';
-import * as Profile from './profile.js?v=202611190602';
-import * as Party from './party.js?v=202611190602';
-import * as Ideas from './ideas.js?v=202611190602';
-import * as Player from './player.js?v=202611190602';
-import * as Cmdk from './cmdk.js?v=202611190602';
-import * as Stk from './stickers.js?v=202611190602';
-import { bootOut, pageIn, I } from './fx.js?v=202611190602';
+  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG } from './core.js?v=202611190724';
+import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611190724';
+import * as Admin from './admin.js?v=202611190724';
+import * as Browse from './browse.js?v=202611190724';
+import * as Notif from './notif.js?v=202611190724';
+import * as Profile from './profile.js?v=202611190724';
+import * as Party from './party.js?v=202611190724';
+import * as Ideas from './ideas.js?v=202611190724';
+import * as Player from './player.js?v=202611190724';
+import * as Cmdk from './cmdk.js?v=202611190724';
+import * as Stk from './stickers.js?v=202611190724';
+import { bootOut, pageIn, I } from './fx.js?v=202611190724';
 
 const S = {
   user: null, me: null, users: new Map(), channels: [], convs: [], convsLoaded: false, videos: [], reads: { ch: {} },
@@ -566,20 +566,39 @@ function settings() {
     <div class="field"><label>Bemutatkozás <em>(nem kötelező)</em></label><textarea class="inp" name="bio" maxlength="300" rows="3">${esc(m.bio || '')}</textarea></div>
     <div class="field"><label>Színed</label><div class="swatches">${COLORS.map(c => `<button type="button" data-c="${c}" class="${c === m.color ? 'on' : ''}" style="background:${c}"></button>`).join('')}</div></div>
     <div class="field"><label>Értesítések</label><div>${notif === 'granted' ? '<span class="hint"><i class="ic ic-circle-check"></i> Asztali értesítések bekapcsolva</span>' : notif === 'unsupported' ? '<span class="hint">A böngésződ nem támogatja.</span>' : notif === 'denied' ? '<span class="hint">A böngészőben le vannak tiltva.</span>' : '<button class="btn plain sm" data-notif><i class="ic ic-bell"></i> Asztali értesítések bekapcsolása</button>'}</div></div>
-    ${pwUser ? `<details><summary class="lbl" style="cursor:pointer">Jelszó módosítása</summary><div style="display:flex;flex-direction:column;gap:.6rem;margin-top:.7rem">
-      <input class="inp" type="password" name="old" placeholder="Jelenlegi jelszó" autocomplete="current-password">
-      <input class="inp" type="password" name="new" placeholder="Új jelszó (min. 8 karakter)" autocomplete="new-password">
-      <button class="btn plain sm" data-pw style="align-self:flex-start">Jelszó módosítása</button></div></details>` : ''}`,
+    ${S.user.email ? `<details${pwUser ? '' : ' data-nopw'}><summary class="lbl" style="cursor:pointer">${pwUser ? 'Jelszó módosítása' : 'Jelszó beállítása'}</summary>
+      <form class="pwf" novalidate style="display:flex;flex-direction:column;gap:.6rem;margin-top:.7rem" autocomplete="on">
+      <input type="email" name="email" value="${esc(S.user.email)}" autocomplete="username" hidden>
+      ${pwUser ? `<input class="inp" type="password" name="old" placeholder="Jelenlegi jelszó" autocomplete="current-password" required>
+      <input class="inp" type="password" name="new" placeholder="Új jelszó (min. 8 karakter)" autocomplete="new-password" minlength="8" required>
+      <input class="inp" type="password" name="new2" placeholder="Új jelszó még egyszer" autocomplete="new-password" minlength="8" required>
+      <p class="pwmsg" role="alert" hidden></p>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center"><button class="btn plain sm" data-pw type="submit">Jelszó módosítása</button><button class="btn plain sm" type="button" data-reset>Elfelejtettem</button></div>`
+      : `<p class="pwmsg" role="alert" hidden></p><button class="btn plain sm" type="button" data-reset style="align-self:flex-start">Jelszó-beállító e-mail küldése</button>`}
+      </form></details>` : ''}`,
     foot: `<button class="btn danger l" data-out>Kijelentkezés</button><button class="btn plain" data-x>Mégse</button><button class="btn goldb" data-save>Mentés</button>` });
   let color = m.color;
   el.querySelector('.swatches').onclick = e => { const b = e.target.closest('[data-c]'); if (!b) return; color = b.dataset.c; $$('.swatches button', el).forEach(x => x.classList.toggle('on', x === b)); };
   el.querySelector('[data-out]').onclick = () => FB.signOut(auth);
   const nb = el.querySelector('[data-notif]'); if (nb) nb.onclick = async () => { const p = await Notification.requestPermission(); toast(p === 'granted' ? 'Értesítések bekapcsolva 🔔' : 'Nem kaptunk engedélyt.', p !== 'granted'); el.close(); };
-  const pw = el.querySelector('[data-pw]'); if (pw) pw.onclick = async () => {
-    const o = el.querySelector('[name=old]').value, n = el.querySelector('[name=new]').value;
-    if (n.length < 8) return toast('Az új jelszó legalább 8 karakter legyen.', true);
+  const pf = el.querySelector('.pwf'), pmsg = el.querySelector('.pwmsg');
+  const pwSay = (t, ok) => { pmsg.textContent = t; pmsg.hidden = false; pmsg.style.color = ok ? 'var(--ok, #86d39a)' : '#ff8a7a'; pmsg.style.margin = '0'; pmsg.style.fontSize = '.85rem'; };
+  if (pf) pf.onsubmit = async e => {
+    e.preventDefault(); if (!pf.old) return;
+    const o = pf.old.value, n = pf.new.value, btn = pf.querySelector('[data-pw]');
+    if (!o) return pwSay('Add meg a jelenlegi jelszavad.');
+    if (n.length < 8) return pwSay('Az új jelszó legalább 8 karakter legyen.');
+    if (n !== pf.new2.value) return pwSay('A két új jelszó nem egyezik.');
+    if (n === o) return pwSay('Az új jelszó nem lehet ugyanaz, mint a régi.');
+    btn.disabled = true;
     try { await FB.reauthenticateWithCredential(S.user, FB.EmailAuthProvider.credential(S.user.email, o)); await FB.updatePassword(S.user, n); toast('Jelszó módosítva ✓'); el.close(); }
-    catch (e) { toast(errText(e), true); }
+    catch (err) { pwSay(err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password' || err?.code === 'auth/invalid-login-credentials' ? 'A jelenlegi jelszó nem stimmel.' : errText(err)); }
+    finally { btn.disabled = false; }
+  };
+  const rb = el.querySelector('[data-reset]'); if (rb) rb.onclick = async () => {
+    rb.disabled = true;
+    try { await FB.sendPasswordResetEmail(auth, S.user.email); pwSay('Elküldtük a levelet ide: ' + S.user.email + '. A benne lévő linkkel állíthatsz be új jelszót.', true); }
+    catch (err) { pwSay(errText(err)); } finally { rb.disabled = false; }
   };
   el.querySelector('[data-save]').onclick = async () => {
     const name = el.querySelector('[name=name]').value.trim(), bio = el.querySelector('[name=bio]').value.trim();
