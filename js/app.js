@@ -1,16 +1,17 @@
 // HGWS Közösség – csatornák, privát üzenetek, csoportok, filmtár
 import { FB, auth, db, notConfigured, $, $$, esc, ROLES, roleOf, applyRoles, OWNER_UID, notify, audit, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
-  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG } from './core.js?v=202611182149';
-import { modal, confirmBox, popover, closePop, emojiPicker, QUICK, stageHtml } from './ui.js?v=202611182149';
-import * as Admin from './admin.js?v=202611182149';
-import * as Browse from './browse.js?v=202611182149';
-import * as Notif from './notif.js?v=202611182149';
-import * as Profile from './profile.js?v=202611182149';
-import * as Party from './party.js?v=202611182149';
-import * as Ideas from './ideas.js?v=202611182149';
-import * as Player from './player.js?v=202611182149';
-import * as Cmdk from './cmdk.js?v=202611182149';
-import { bootOut, pageIn, I } from './fx.js?v=202611182149';
+  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG } from './core.js?v=202611182331';
+import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611182331';
+import * as Admin from './admin.js?v=202611182331';
+import * as Browse from './browse.js?v=202611182331';
+import * as Notif from './notif.js?v=202611182331';
+import * as Profile from './profile.js?v=202611182331';
+import * as Party from './party.js?v=202611182331';
+import * as Ideas from './ideas.js?v=202611182331';
+import * as Player from './player.js?v=202611182331';
+import * as Cmdk from './cmdk.js?v=202611182331';
+import * as Stk from './stickers.js?v=202611182331';
+import { bootOut, pageIn, I } from './fx.js?v=202611182331';
 
 const S = {
   user: null, me: null, users: new Map(), channels: [], convs: [], convsLoaded: false, videos: [], reads: { ch: {} },
@@ -36,6 +37,8 @@ function checkPremieres() {
   S.alerts = S.alerts.filter(id => !out.some(v => v.id === id));
   FB.setDoc(FB.doc(db, 'users', uid(), 'private', 'alerts'), { ids: FB.arrayRemove(...out.map(v => v.id)) }, { merge: true }).catch(() => {});
 }
+/* rövid szöveges előnézet egy üzenetről (válasz, értesítés, privát lista) */
+const msgPreview = m => m.sticker ? 'Matricát küldött' : m.text || (m.track ? '🎵 zene' : '🎬 film');
 /* szavazás (poll) egy üzenetben – m.poll = { q, opts }, m.pv = { uid: választott index } */
 function pollHtml(m) {
   const votes = Object.entries(m.pv || {}), n = votes.length, mine = m.pv?.[uid()];
@@ -678,10 +681,11 @@ function fmt(text) {
   s = s.replace(/https?:\/\/[^\s<]+[^\s<.,:;!?)\]'"]/g, u => ph(`<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`));
   const re = mentions();
   if (re) s = s.replace(re, (m, n) => ph(`<span class="at${n === esc(S.me.name) ? ' me' : ''}">@${n}</span>`));
+  s = s.replace(/:([a-z0-9_]{2,32}):/g, (m, c) => Stk.isCode(m) ? ph(Stk.emojiImg(c)) : m);
   s = s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>').replace(/~~(.+?)~~/g, '<s>$1</s>').replace(/__(.+?)__/g, '<u>$1</u>');
   return s.replace(/\u0001(\d+)\u0002/g, (_, i) => keep[i]);
 }
-const onlyEmoji = t => t.length <= 24 && /^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|\s|‍|️)+$/u.test(t) && !/^[\d#*\s]+$/.test(t);
+const onlyEmoji = t => Stk.onlyCustom(t) || t.length <= 24 && /^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|\s|‍|️)+$/u.test(t) && !/^[\d#*\s]+$/.test(t);
 function ytEmbeds(text) {
   const ids = [...new Set([...(text || '').matchAll(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/[^\s<]+/g)].map(m => ytId(m[0])).filter(Boolean))].slice(0, 2);
   return ids.map(id => `<div class="embed"><div class="yt" data-yt="${esc(id)}" style="background-image:url(https://i.ytimg.com/vi/${esc(id)}/hqdefault.jpg)"><span class="pb"><i class="ic ic-play"></i></span><span class="lb">YouTube</span></div></div>`).join('');
@@ -707,7 +711,10 @@ class Chat {
     $('#view').innerHTML = `<div class="msgs" id="msgs"><div class="fill"></div><button class="btn plain sm more" id="more" hidden>Korábbi üzenetek</button><div id="welcome"></div><div id="mlist"></div></div><div class="composer" id="composer"></div>`;
     this.box = $('#msgs'); this.list = $('#mlist');
     $('#more').onclick = () => { this.n += 50; this.keepPos = this.box.scrollHeight - this.box.scrollTop; this.listen(); };
-    this.box.addEventListener('scroll', () => { if (this.box.scrollTop < 60 && !$('#more').hidden && !this.loading) $('#more').click(); if (this.atBottom()) this.markRead(); }, { passive: true });
+    this.box.addEventListener('scroll', () => { this.stick = this.atBottom(); if (this.box.scrollTop < 60 && !$('#more').hidden && !this.loading) $('#more').click(); if (this.stick) this.markRead(); }, { passive: true });
+    // ha alul voltunk, alul is maradunk, amikor a lista vagy az üzenetíró mérete változik (képek, matricák, telefonos billentyűzet)
+    this.stick = true;
+    if (window.ResizeObserver) { this.ro = new ResizeObserver(() => { if (this.stick) this.box.scrollTop = this.box.scrollHeight; }); this.ro.observe(this.box); this.ro.observe(this.list); }
     this.list.addEventListener('click', e => this.onClick(e));
     this.welcome(); this.renderComposer(); this.listen();
   }
@@ -750,7 +757,11 @@ class Chat {
     }, e => { this.loading = false; if (e.code === 'permission-denied') $('#view').innerHTML = '<div class="full"><div><div class="big"><i class="ic ic-lock"></i></div><h2>Ehhez nincs hozzáférésed</h2></div></div>'; else toast(errText(e), true); });
   }
   atBottom() { return this.box.scrollHeight - this.box.scrollTop - this.box.clientHeight < 90; }
-  rerender() { this.els.clear(); this.list.innerHTML = ''; this.header(); this.welcome(); this.render(false, true); }
+  rerender() {
+    const top = this.box.scrollTop, bottom = this.stick || this.atBottom();
+    this.els.clear(); this.list.innerHTML = ''; this.header(); this.welcome(); this.render(false, true);
+    this.box.scrollTop = bottom ? this.box.scrollHeight : top; this.stick = bottom;
+  }
   render(mine, keep) {
     const bottom = this.first || mine || this.atBottom(), prevTop = this.box.scrollTop;
     const items = []; let last = null, lastDay = '';
@@ -759,7 +770,7 @@ class Chat {
       if (day !== lastDay) { items.push({ key: 'd' + day, sig: day, html: `<div class="day">${DAY(d)}</div>` }); lastDay = day; last = null; }
       const cont = last && last.uid === m.uid && !m.replyTo && d - (toDate(last.createdAt) || d) < 5 * 60e3;
       const u = U(m.uid);
-      const sig = JSON.stringify([m.text, ms(m.editedAt), m.reactions, m.pv, m.film, m.track, S.music.length, cont, u.name, u.role, u.color, u.photoURL, m.pending, this.editing === m.id, S.videos.length]);
+      const sig = JSON.stringify([m.text, m.sticker, ms(m.editedAt), m.reactions, m.pv, m.film, m.track, S.music.length, cont, u.name, u.role, u.color, u.photoURL, m.pending, this.editing === m.id, S.videos.length]);
       items.push({ key: m.id, sig, m, cont });
       last = m;
     }
@@ -795,11 +806,11 @@ class Chat {
       <div class="mg">${cont ? `<time>${t ? t.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }) : ''}</time>` : `<span data-u="${esc(u.id)}">${avatar(u, 40)}</span>`}</div>
       <div class="mb">${rep}${cont ? '' : `<div class="mh">${nameHtml(u)}${roleBadge(u)}${tagPills(u)}<time title="${t ? t.toLocaleString('hu-HU') : ''}">${m.pending ? 'küldés…' : timeLabel(m.createdAt)}</time></div>`}
         ${m.text ? `<div class="mt${onlyEmoji(m.text) ? ' big' : ''}">${fmt(m.text)}${m.editedAt ? '<span class="ed">(szerkesztve)</span>' : ''}</div>` : ''}
-        ${m.poll ? pollHtml(m) : ''}${m.film ? filmCard(m.film) : ''}${m.track ? trackCard(m.track) : ''}${m.poll ? '' : ytEmbeds(m.text)}
-        ${rx.length ? `<div class="reacts">${rx.map(([e, l]) => `<button data-rx="${e}" class="${l.includes(uid()) ? 'me' : ''}" title="${esc(l.map(i => U(i).name).join(', '))}">${e}<b>${l.length}</b></button>`).join('')}</div>` : ''}
+        ${m.sticker ? Stk.stickerHtml(m.sticker) : ''}${m.poll ? pollHtml(m) : ''}${m.film ? filmCard(m.film) : ''}${m.track ? trackCard(m.track) : ''}${m.poll ? '' : ytEmbeds(m.text)}
+        ${rx.length ? `<div class="reacts">${rx.map(([e, l]) => `<button data-rx="${esc(e)}" class="${l.includes(uid()) ? 'me' : ''}" title="${esc(l.map(i => U(i).name).join(', '))}">${Stk.reactLabel(e)}<b>${l.length}</b></button>`).join('')}</div>` : ''}
       </div>
       <div class="mtools">${QUICK.slice(0, 3).map(e => `<button data-rx="${e}" title="${e}">${e}</button>`).join('')}<button data-act="emo" title="Reakció"><i class="ic ic-smile"></i></button><button data-act="reply" title="Válasz"><i class="ic ic-reply"></i></button>
-        ${mine ? '<button data-act="edit" title="Szerkesztés"><i class="ic ic-pencil"></i></button>' : ''}${canDel ? '<button class="del" data-act="del" title="Törlés"><i class="ic ic-trash-2"></i></button>' : ''}</div>
+        ${mine && !m.sticker ? '<button data-act="edit" title="Szerkesztés"><i class="ic ic-pencil"></i></button>' : ''}${canDel ? '<button class="del" data-act="del" title="Törlés"><i class="ic ic-trash-2"></i></button>' : ''}</div>
     </div>`;
   }
   onClick(e) {
@@ -809,8 +820,8 @@ class Chat {
     const pv = e.target.closest('[data-pv]'); if (pv) return this.vote(m, +pv.dataset.pv);
     const j = e.target.closest('[data-jump]'); if (j) return this.jump(j.dataset.jump);
     const a = e.target.closest('[data-act]')?.dataset.act;
-    if (a === 'emo') emojiPicker(e.target.closest('button'), em => this.react(m, em));
-    if (a === 'reply') { this.reply = m; this.renderComposer(); $('#mtext')?.focus(); }
+    if (a === 'emo') Stk.picker(e.target.closest('button'), { onEmoji: em => this.react(m, em) });
+    if (a === 'reply') { this.reply = { ...m, text: msgPreview(m) }; this.renderComposer(); $('#mtext')?.focus(); }
     if (a === 'edit') { this.editing = m.id; this.render(false, true); }
     if (a === 'del') this.del(m);
   }
@@ -854,7 +865,7 @@ class Chat {
     const ph = this.kind === 'chan' ? `Üzenet a #${this.chan.name} csatornára` : `Üzenet ${this.conv ? (this.conv.type === 'group' ? 'a csoportnak' : '@' + convName(this.conv) + ' részére') : ''}`;
     const prevText = $('#mtext')?.value || '';
     c.innerHTML = `${this.reply ? `<div class="replybar"><i class="ic ic-reply"></i> <span>Válasz neki: <b>${esc(U(this.reply.uid).name)}</b> — ${esc((this.reply.text || '🎬').slice(0, 80))}</span><button class="ibtn" id="rx" style="width:26px;height:26px"><i class="ic ic-x"></i></button></div>` : ''}
-      <div class="cbox"><button class="ibtn" id="cFilm" title="Film megosztása"><i class="ic ic-clapperboard"></i></button><button class="ibtn" id="cMus" title="Zene megosztása"><i class="ic ic-music"></i></button><button class="ibtn" id="cEmo" title="Emoji"><i class="ic ic-smile"></i></button><button class="ibtn" id="cPoll" title="Szavazás"><i class="ic ic-chart-column"></i></button>
+      <div class="cbox"><button class="ibtn" id="cFilm" title="Film megosztása"><i class="ic ic-clapperboard"></i></button><button class="ibtn" id="cMus" title="Zene megosztása"><i class="ic ic-music"></i></button><button class="ibtn" id="cEmo" title="Emoji és matricák" aria-label="Emoji és matricák"><i class="ic ic-smile"></i></button><button class="ibtn" id="cPoll" title="Szavazás"><i class="ic ic-chart-column"></i></button>
       <textarea id="mtext" rows="1" maxlength="4000" placeholder="${esc(ph)}"></textarea><button class="ibtn send" id="cSend" title="Küldés" disabled><i class="ic ic-send-horizontal"></i></button></div>
       <div class="chint"><span>Enter: küldés · Shift+Enter: új sor · @név: megemlítés</span><span>**félkövér** *dőlt* \`kód\`</span></div>`;
     const ta = $('#mtext'), send = $('#cSend');
@@ -870,7 +881,9 @@ class Chat {
     };
     send.onclick = () => this.send();
     $('#cPoll').onclick = () => this.pollModal();
-    $('#cEmo').onclick = e => emojiPicker(e.currentTarget, em => { const p = ta.selectionStart; ta.value = ta.value.slice(0, p) + em + ta.value.slice(ta.selectionEnd); ta.focus(); ta.selectionStart = ta.selectionEnd = p + em.length; fit(); });
+    $('#cEmo').onclick = e => Stk.picker(e.currentTarget, {
+      onEmoji: em => { const p = ta.selectionStart; ta.value = ta.value.slice(0, p) + em + ta.value.slice(ta.selectionEnd); ta.focus(); ta.selectionStart = ta.selectionEnd = p + em.length; fit(); },
+      onSticker: id => this.sendSticker(id) });
     $('#cFilm').onclick = () => shareFilm(null, this);
     $('#cMus').onclick = () => shareFilm(null, this, '*');
     const rx = $('#rx'); if (rx) rx.onclick = () => { this.reply = null; this.renderComposer(); };
@@ -879,7 +892,7 @@ class Chat {
   mentionPop(ta) {
     const before = ta.value.slice(0, ta.selectionStart), m = before.match(/(^|\s)@([^\s@]{0,20})$/);
     this.mp?.remove(); this.mp = null;
-    if (!m) return;
+    if (!m) return this.emojiPop(ta, before);
     const q = m[2].toLowerCase();
     const list = [...S.users.values()].filter(u => !u.banned && u.name.toLowerCase().startsWith(q)).slice(0, 6);
     if (!list.length) return;
@@ -887,10 +900,28 @@ class Chat {
     const el = document.createElement('div'); el.className = 'pop'; el.style.cssText = `left:${r.left}px;bottom:${innerHeight - r.top + 8}px;min-width:220px;padding:.3rem`;
     el.innerHTML = list.map((u, i) => `<button class="mi y${i === 0 ? ' sel' : ''}" data-n="${esc(u.name)}" style="${i === 0 ? 'background:rgba(108,198,255,.12)' : ''}">${avatar(u, 26)}<b>${esc(u.name)}</b></button>`).join('');
     document.body.appendChild(el); this.mp = el; this.mpi = 0; this.mpq = m[2];
-    el.onmousedown = e => { e.preventDefault(); const b = e.target.closest('[data-n]'); if (b) this.mentionPick(ta, b.dataset.n); };
+    this.mpPick = b => this.mentionPick(ta, b.dataset.n);
+    el.onmousedown = e => { e.preventDefault(); const b = e.target.closest('[data-n]'); if (b) this.mpPick(b); };
+  }
+  /* saját emojik: „:” után felugró lista (nyilak + Enter/Tab) */
+  emojiPop(ta, before) {
+    const m = before.match(/(^|\s):([a-z0-9_]{1,24})$/i); if (!m) return;
+    const list = Stk.suggest(m[2]); if (!list.length) return;
+    const r = ta.getBoundingClientRect();
+    const el = document.createElement('div'); el.className = 'pop cpop'; el.setAttribute('role', 'listbox');
+    el.style.cssText = `left:${Math.max(8, r.left)}px;bottom:${innerHeight - r.top + 8}px`;
+    el.innerHTML = `<small>HGWS EMOJIK · :${esc(m[2])}</small>` + list.map((e, i) => `<button class="mi y${i === 0 ? ' sel' : ''}" role="option" data-c="${esc(e.code)}" style="${i === 0 ? 'background:rgba(108,198,255,.12)' : ''}">${Stk.emojiImg(e.code)}<b>:${esc(e.code)}:</b><span>${esc(e.name)}</span></button>`).join('');
+    document.body.appendChild(el); this.mp = el; this.mpi = 0; this.mpq = m[2];
+    this.mpPick = b => {
+      const p = ta.selectionStart, start = p - this.mpq.length - 1, ins = `:${b.dataset.c}: `;
+      ta.value = ta.value.slice(0, start) + ins + ta.value.slice(p);
+      ta.selectionStart = ta.selectionEnd = start + ins.length; ta.focus();
+      this.mp?.remove(); this.mp = null; ta.dispatchEvent(new Event('input'));
+    };
+    el.onmousedown = e => { e.preventDefault(); const b = e.target.closest('[data-c]'); if (b) this.mpPick(b); };
   }
   mentionKey(e, ta) {
-    const items = [...this.mp.children];
+    const items = [...this.mp.querySelectorAll('button')];
     if (e.key === 'Escape') { this.mp.remove(); this.mp = null; return; }
     e.preventDefault();
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -898,7 +929,7 @@ class Chat {
       items.forEach((b, i) => b.style.background = i === this.mpi ? 'rgba(108,198,255,.12)' : '');
       return;
     }
-    this.mentionPick(ta, items[this.mpi].dataset.n);
+    this.mpPick(items[this.mpi]);
   }
   mentionPick(ta, name) {
     const p = ta.selectionStart, start = p - this.mpq.length - 1;
@@ -948,6 +979,12 @@ class Chat {
     }
     catch (e) { toast(errText(e), true); if (ta && textIn == null && !ta.value) { ta.value = text; ta.dispatchEvent(new Event('input')); } }
   }
+  async sendSticker(id) {
+    if (!Stk.sticker(id)) return;
+    const data = { uid: uid(), text: '', sticker: id, createdAt: FB.serverTimestamp() };
+    if (this.reply) { data.replyTo = { id: this.reply.id, uid: this.reply.uid, text: (this.reply.text || '').slice(0, 140) }; this.reply = null; this.renderComposer(); }
+    try { await postTo(this.kind, this.id, data, this.conv); } catch (e) { toast(errText(e), true); }
+  }
   markRead() {
     if (document.hidden || !this.atBottom()) return;
     if (this.kind === 'chan') {
@@ -964,7 +1001,7 @@ class Chat {
       }
     }
   }
-  destroy() { this.unsub && this.unsub(); this.mp?.remove(); }
+  destroy() { this.unsub && this.unsub(); this.mp?.remove(); this.ro?.disconnect(); }
 }
 
 /* üzenet küldése egy csatornára / beszélgetésbe (a filmmegosztás is ezt használja) */
@@ -972,7 +1009,7 @@ async function postTo(kind, id, data, conv) {
   const b = FB.writeBatch(db);
   const ref = FB.doc(FB.collection(db, kind === 'chan' ? 'channels' : 'conversations', id, 'messages'));
   b.set(ref, data);
-  const preview = data.text ? data.text.slice(0, 120) : data.track ? '🎵 megosztott egy zenét' : '🎬 megosztott egy filmet';
+  const preview = data.sticker ? 'Matricát küldött' : data.text ? data.text.slice(0, 120) : data.track ? '🎵 megosztott egy zenét' : '🎬 megosztott egy filmet';
   if (kind === 'chan') b.update(FB.doc(db, 'channels', id), { lastMessageAt: FB.serverTimestamp() });
   else {
     const upd = { lastMessage: { text: preview, uid: uid(), at: FB.serverTimestamp() }, updatedAt: FB.serverTimestamp() };

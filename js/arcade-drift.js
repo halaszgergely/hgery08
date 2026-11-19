@@ -536,7 +536,7 @@ window.HGDrift = function (env) {
 
   /* ---------------- játék objektum ---------------- */
   const game = {
-    id: 'drift', name: 'DRIFT KIRÁLY', lives: 0, quit: true, overTitle: 'ÖSSZPONTSZÁM',
+    id: 'drift', name: 'DRIFT KIRÁLY', lives: 0, quit: true, sponsor: 'A Zerosites támogatásával', overTitle: 'ÖSSZPONTSZÁM',
     desc: 'Felülnézetes drift-verseny 10 pályán: város, vidék, hegyek, hó és sivatag – nappal, alkonyatkor és éjjel. Versenyezz a legjobbak szellemautói ellen; minél gyorsabban érsz célba, annál több pontot kapsz.',
     how: 'W GÁZ · S FÉK · A/D KORMÁNY · SZÓKÖZ DRIFT · Q LÁMPA · R ÚJRA · T MENÜ  |  2P: NYILAK + JOBB SHIFT',
     ranks: [[0, 'Vasárnapi sofőr'], [3000, 'Csúszkáló'], [6000, 'Driftelő'], [9000, 'Gumiégető'], [11000, 'Drift király']],

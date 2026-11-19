@@ -69,22 +69,32 @@ service cloud.firestore {
     // a név akkor jó, ha nem foglalt – vagy ha a tulaj fiókjáról van szó
     function nameAllowed(uid, n) { return !reservedName(n) || uid == ownerId(); }
 
+    // HGWS matricák és saját emojik – csak ezek az azonosítók küldhetők (img/stickers/hgws/stickers.json)
+    function stickerIds() { return ['szilard_nevet', 'szilard_duhos', 'szilard_azott', 'szilard_megszaritalak', 'szilard_laza', 'locsolofej_ragyog', 'locsolofej_megvan', 'locsolofej_sziv', 'csepp_boldog', 'csepp_sir', 'csepp_szivszem', 'csepp_nevet', 'csepp_gondolkodik', 'csepp_alszik', 'csepp_plusz1', 'novenyke', 'kaktusz_rip', 'hgws_approved', 'szlogen', 'locsolj', 'gg']; }
+    // reakcióként csak a választó emojijai és a saját emojik kódjai használhatók (js/ui.js EMOJIS + stickers.json)
+    function reactionKeys() { return ['👍', '❤️', '😂', '🔥', '💧', '😮', '😢', '😡', '🎉', '👏', '🙏', '💯', '😎', '🤔', '👀', '🤣', '😍', '🥲', '😅', '🙃', '🤝', '💪', '🚿', '🌱', '🌊', '🏆', '⭐', '✅', '❌', '🍿', '🎬', '🎮',
+      ':szilard:', ':szilard_duhos:', ':szilard_azott:', ':locsolofej:', ':csepp:', ':csepp_sir:', ':csepp_szivszem:', ':csepp_nevet:', ':hgws:', ':approved:', ':kaktusz:', ':novenyke:']; }
+
     // új üzenet formai ellenőrzése
     function validMsg() {
       let d = request.resource.data;
       return d.uid == request.auth.uid
         && d.createdAt == request.time
         && d.text is string && d.text.size() <= 4000
-        && d.keys().hasOnly(['uid', 'text', 'createdAt', 'film', 'track', 'replyTo', 'reactions', 'poll'])
-        && (d.text.size() > 0 || d.get('film', null) is string || d.get('track', null) is string)
-        && (!('poll' in d) || (d.poll.q is string && d.poll.q.size() <= 200 && d.poll.opts is list && d.poll.opts.size() >= 2 && d.poll.opts.size() <= 6));
+        && d.keys().hasOnly(['uid', 'text', 'createdAt', 'film', 'track', 'replyTo', 'reactions', 'poll', 'sticker'])
+        && (d.text.size() > 0 || d.get('film', null) is string || d.get('track', null) is string || 'sticker' in d)
+        && (!('poll' in d) || (d.poll.q is string && d.poll.q.size() <= 200 && d.poll.opts is list && d.poll.opts.size() >= 2 && d.poll.opts.size() <= 6))
+        // matrica: külön üzenettípus, szöveg és melléklet nélkül, csak ismert azonosítóval
+        && (!('sticker' in d) || (d.sticker is string && d.sticker in stickerIds() && d.text == ''
+            && !('poll' in d) && !('film' in d) && !('track' in d)));
     }
     // saját üzenet szerkesztése vagy bárki reagál
     function msgUpdate() {
-      return (canPost() && resource.data.uid == request.auth.uid
+      return (canPost() && resource.data.uid == request.auth.uid && !('sticker' in resource.data)
               && changed().hasOnly(['text', 'editedAt'])
               && request.resource.data.text is string && request.resource.data.text.size() <= 4000)
-          || (active() && changed().hasOnly(['reactions']))
+          || (active() && changed().hasOnly(['reactions'])
+            && request.resource.data.reactions.diff(resource.data.get('reactions', {})).affectedKeys().hasOnly(reactionKeys()))
           // szavazás: mindenki csak a saját szavazatát állíthatja
           || (canPost() && 'poll' in resource.data && changed().hasOnly(['pv'])
             && request.resource.data.pv.diff(resource.data.get('pv', {})).affectedKeys().hasOnly([request.auth.uid])

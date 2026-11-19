@@ -1,0 +1,401 @@
+{
+ "version": 1,
+ "base": "img/stickers/hgws/",
+ "stickers": [
+  {
+   "id": "szilard_nevet",
+   "name": "Szilárd nevet",
+   "alt": "Szikkadt Szilárd gonoszul nevet",
+   "category": "szilard",
+   "keywords": [
+    "gonosz",
+    "nevet",
+    "haha",
+    "szilárd"
+   ],
+   "file": "szilard_nevet.svg"
+  },
+  {
+   "id": "szilard_duhos",
+   "name": "Dühös Szilárd",
+   "alt": "Szikkadt Szilárd dühöng, fülén gőz",
+   "category": "szilard",
+   "keywords": [
+    "mérges",
+    "dühös",
+    "harag"
+   ],
+   "file": "szilard_duhos.svg"
+  },
+  {
+   "id": "szilard_azott",
+   "name": "Eláztatott Szilárd",
+   "alt": "Szikkadt Szilárd legyőzve, bőrig ázva",
+   "category": "szilard",
+   "keywords": [
+    "legyőzve",
+    "ázott",
+    "víz",
+    "nyertünk"
+   ],
+   "file": "szilard_azott.svg"
+  },
+  {
+   "id": "szilard_megszaritalak",
+   "name": "Megszárítalak!",
+   "alt": "Szikkadt Szilárd kiabál: Megszárítalak!",
+   "category": "szilard",
+   "keywords": [
+    "fenyeget",
+    "nap",
+    "száraz"
+   ],
+   "file": "szilard_megszaritalak.svg"
+  },
+  {
+   "id": "szilard_laza",
+   "name": "Laza Szilárd",
+   "alt": "Szikkadt Szilárd napszemüvegben lazul egy itallal",
+   "category": "szilard",
+   "keywords": [
+    "laza",
+    "napszemüveg",
+    "chill",
+    "nyár"
+   ],
+   "file": "szilard_laza.svg"
+  },
+  {
+   "id": "locsolofej_ragyog",
+   "name": "Ragyogó Arany Locsolófej",
+   "alt": "Az Arany Locsolófej ragyog",
+   "category": "locsolofej",
+   "keywords": [
+    "arany",
+    "kincs",
+    "ragyog",
+    "legenda"
+   ],
+   "file": "locsolofej_ragyog.svg"
+  },
+  {
+   "id": "locsolofej_megvan",
+   "name": "Megvan!",
+   "alt": "Két kéz magasba emeli az Arany Locsolófejet: Megvan!",
+   "category": "locsolofej",
+   "keywords": [
+    "megvan",
+    "siker",
+    "győzelem"
+   ],
+   "file": "locsolofej_megvan.svg"
+  },
+  {
+   "id": "locsolofej_sziv",
+   "name": "Arany Locsolófej szívekkel",
+   "alt": "Az Arany Locsolófej szívecskékkel",
+   "category": "locsolofej",
+   "keywords": [
+    "szív",
+    "szeretet",
+    "love"
+   ],
+   "file": "locsolofej_sziv.svg"
+  },
+  {
+   "id": "csepp_boldog",
+   "name": "Boldog csepp",
+   "alt": "Mosolygó vízcsepp",
+   "category": "csepp",
+   "keywords": [
+    "boldog",
+    "mosoly",
+    "öröm",
+    "szia"
+   ],
+   "file": "csepp_boldog.svg"
+  },
+  {
+   "id": "csepp_sir",
+   "name": "Síró csepp",
+   "alt": "Szomorú, könnyező vízcsepp",
+   "category": "csepp",
+   "keywords": [
+    "szomorú",
+    "sír",
+    "könny"
+   ],
+   "file": "csepp_sir.svg"
+  },
+  {
+   "id": "csepp_szivszem",
+   "name": "Szívszemű csepp",
+   "alt": "Szívszemű, szerelmes vízcsepp",
+   "category": "csepp",
+   "keywords": [
+    "szív",
+    "szerelem",
+    "imád"
+   ],
+   "file": "csepp_szivszem.svg"
+  },
+  {
+   "id": "csepp_nevet",
+   "name": "Nevető csepp",
+   "alt": "Könnyesre nevető vízcsepp",
+   "category": "csepp",
+   "keywords": [
+    "nevet",
+    "vicces",
+    "lol"
+   ],
+   "file": "csepp_nevet.svg"
+  },
+  {
+   "id": "csepp_gondolkodik",
+   "name": "Gondolkodó csepp",
+   "alt": "Gondolkodó vízcsepp kérdőjellel",
+   "category": "csepp",
+   "keywords": [
+    "gondolkodik",
+    "hmm",
+    "kérdés"
+   ],
+   "file": "csepp_gondolkodik.svg"
+  },
+  {
+   "id": "csepp_alszik",
+   "name": "Alvó csepp",
+   "alt": "Alvó vízcsepp",
+   "category": "csepp",
+   "keywords": [
+    "alszik",
+    "fáradt",
+    "jó éjt",
+    "zzz"
+   ],
+   "file": "csepp_alszik.svg"
+  },
+  {
+   "id": "csepp_plusz1",
+   "name": "+1",
+   "alt": "Vízcsepp +1 táblával",
+   "category": "csepp",
+   "keywords": [
+    "egyetért",
+    "plusz",
+    "igen",
+    "+1"
+   ],
+   "file": "csepp_plusz1.svg"
+  },
+  {
+   "id": "novenyke",
+   "name": "Megy ez!",
+   "alt": "Kihajtó növényke: Megy ez!",
+   "category": "egyeb",
+   "keywords": [
+    "növény",
+    "nő",
+    "siker",
+    "megy ez"
+   ],
+   "file": "novenyke.svg"
+  },
+  {
+   "id": "kaktusz_rip",
+   "name": "RIP kaktusz",
+   "alt": "Kiszáradt kaktusz RIP sírkővel",
+   "category": "egyeb",
+   "keywords": [
+    "rip",
+    "halott",
+    "kiszáradt",
+    "kaktusz"
+   ],
+   "file": "kaktusz_rip.svg"
+  },
+  {
+   "id": "hgws_approved",
+   "name": "HGWS Approved",
+   "alt": "Arany HGWS Approved pecsét",
+   "category": "egyeb",
+   "keywords": [
+    "jóváhagyva",
+    "approved",
+    "pecsét",
+    "oké"
+   ],
+   "file": "hgws_approved.svg"
+  },
+  {
+   "id": "szlogen",
+   "name": "Víz. Erő. Technika. Életforma.",
+   "alt": "Szalag a HGWS szlogennel: Víz. Erő. Technika. Életforma.",
+   "category": "egyeb",
+   "keywords": [
+    "szlogen",
+    "hgws",
+    "víz",
+    "erő"
+   ],
+   "file": "szlogen.svg"
+  },
+  {
+   "id": "locsolj",
+   "name": "Locsolj!",
+   "alt": "Locsolócső vízsugárral: Locsolj!",
+   "category": "egyeb",
+   "keywords": [
+    "locsol",
+    "cső",
+    "víz",
+    "gyerünk"
+   ],
+   "file": "locsolj.svg"
+  },
+  {
+   "id": "gg",
+   "name": "GG",
+   "alt": "GG felirat vízcseppekből",
+   "category": "egyeb",
+   "keywords": [
+    "gg",
+    "jó játék",
+    "gratula"
+   ],
+   "file": "gg.svg"
+  }
+ ],
+ "emojis": [
+  {
+   "code": "szilard",
+   "name": "Szikkadt Szilárd",
+   "alt": "Szikkadt Szilárd gonosz vigyora",
+   "keywords": [
+    "szilárd",
+    "gonosz"
+   ],
+   "file": "emoji/szilard.svg"
+  },
+  {
+   "code": "szilard_duhos",
+   "name": "Dühös Szilárd",
+   "alt": "Dühös Szikkadt Szilárd",
+   "keywords": [
+    "dühös",
+    "mérges"
+   ],
+   "file": "emoji/szilard_duhos.svg"
+  },
+  {
+   "code": "szilard_azott",
+   "name": "Eláztatott Szilárd",
+   "alt": "Bőrig ázott Szikkadt Szilárd",
+   "keywords": [
+    "ázott",
+    "legyőzve"
+   ],
+   "file": "emoji/szilard_azott.svg"
+  },
+  {
+   "code": "locsolofej",
+   "name": "Arany Locsolófej",
+   "alt": "Ragyogó Arany Locsolófej",
+   "keywords": [
+    "arany",
+    "kincs"
+   ],
+   "file": "emoji/locsolofej.svg"
+  },
+  {
+   "code": "csepp",
+   "name": "Csepp",
+   "alt": "Mosolygó vízcsepp",
+   "keywords": [
+    "csepp",
+    "mosoly",
+    "boldog"
+   ],
+   "file": "emoji/csepp.svg"
+  },
+  {
+   "code": "csepp_sir",
+   "name": "Síró csepp",
+   "alt": "Síró vízcsepp",
+   "keywords": [
+    "sír",
+    "szomorú"
+   ],
+   "file": "emoji/csepp_sir.svg"
+  },
+  {
+   "code": "csepp_szivszem",
+   "name": "Szívszemű csepp",
+   "alt": "Szívszemű vízcsepp",
+   "keywords": [
+    "szív",
+    "imád"
+   ],
+   "file": "emoji/csepp_szivszem.svg"
+  },
+  {
+   "code": "csepp_nevet",
+   "name": "Nevető csepp",
+   "alt": "Könnyesre nevető vízcsepp",
+   "keywords": [
+    "nevet",
+    "lol"
+   ],
+   "file": "emoji/csepp_nevet.svg"
+  },
+  {
+   "code": "hgws",
+   "name": "HGWS",
+   "alt": "Arany HGWS vízcsepp",
+   "keywords": [
+    "hgws",
+    "logó"
+   ],
+   "file": "emoji/hgws.svg"
+  },
+  {
+   "code": "approved",
+   "name": "HGWS Approved",
+   "alt": "HGWS Approved pecsét",
+   "keywords": [
+    "approved",
+    "jóváhagyva",
+    "oké"
+   ],
+   "file": "emoji/approved.svg"
+  },
+  {
+   "code": "kaktusz",
+   "name": "Kiszáradt kaktusz",
+   "alt": "Kiszáradt kaktusz",
+   "keywords": [
+    "kaktusz",
+    "rip",
+    "száraz"
+   ],
+   "file": "emoji/kaktusz.svg"
+  },
+  {
+   "code": "novenyke",
+   "name": "Növényke",
+   "alt": "Kihajtó növényke",
+   "keywords": [
+    "növény",
+    "nő"
+   ],
+   "file": "emoji/novenyke.svg"
+  }
+ ],
+ "categories": {
+  "szilard": "Szikkadt Szilárd",
+  "locsolofej": "Arany Locsolófej",
+  "csepp": "Vízcsepp",
+  "egyeb": "Egyéb"
+ }
+}
