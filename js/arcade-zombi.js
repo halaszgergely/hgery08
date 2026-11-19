@@ -6,7 +6,7 @@ window.HGZombi = function (env) {
   const { G, Sfx, rr, hud, store } = env;
   const STEAM = 'https://store.steampowered.com/app/5185890/Zombies_Arent_Real/';
   const MAPS = window.HGZMaps; let MD = MAPS[0], WW = MD.W, WH = MD.H, GEO = null;
-  const RW = 15, R_START = 760, R_GROW = 520, HPZ = .25, DENS = .8, HP_WALL = 170, HP_GATE = 70; // HPZ: egy zombi életereje; DENS: lakos / utcaképpont
+  const RW = 15, R_START = 760, R_GROW = 520, HPZ = .25, DENS = .8, HP_WALL = 170, HP_GATE = 28; // HPZ: egy zombi életereje; DENS: lakos / utcaképpont
   // u: melyik küldetéstől érhető el; on: 'b' épület, 'r' út, 'br' híd
   const TOOLS = [
     { k: 'zone', tab: 0, n: 'Fal', ic: '🧱', c: 0, u: 1, n2: 1, d: 'Húzz falat szabadon. Ami így el van vágva a várostól, az védett.' },
