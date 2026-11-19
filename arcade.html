@@ -376,7 +376,7 @@ body.embed .scroll{display:none}
   </div>
 </div>
 
-<script src="js/arcade-drift.js?v=202611182331"></script>
+<script src="js/arcade-drift.js?v=202611190602"></script>
 <script>
 (() => {
 'use strict';
@@ -1183,53 +1183,89 @@ const Torony = (() => {
 
 /* =================== GAME 6: Öntöző Birodalom – idle kertépítő =================== */
 const Birodalom = (() => {
-  const COLS = 20, ROWS = 12, SRC = [0, 2], KEY = 'hgws_birodalom_v1', CAP = 1e12, MOIST = 6;
+  const COLS = 40, ROWS = 24, SRC = [0, 2], KEY = 'hgws_birodalom_v1', CAP = 1e12, MOIST = 6;
   // hálózat: w = vízigény, r = sugár, nb = szomszédok, q = vízhozam, wm = locsolás-szorzó, mob = mozgó (tengely)
   // aura: nem hálózati, bónusz a környékre; fok/szuro: hálózati, globális bónusz; valve: zárható
   const MOD = {
     pipe: { n: 'Cső', c: 4, u: 0, m: 1 },
     spr: { n: 'Szórófej', c: 30, u: 0, r: 1, w: 1, m: 1.06 },
+    mikro: { n: 'Mikroszórófej', c: 90, u: 120, nb: 1, w: .15, wm: 1.08, m: 1.05 },
     pump: { n: 'Szivattyú', c: 150, u: 250, q: 6, m: 1.3 },
     drip: { n: 'Csepegtető', c: 15, u: 400, nb: 1, w: .3, wm: 1.15, m: 1.04 },
     szelep: { n: 'Szelep', c: 50, u: 1000, valve: 1, m: 1.02 },
     rot: { n: 'Esőztető', c: 400, u: 2500, r: 2, w: 2.5, m: 1.15 },
     hordo: { n: 'Esővízgyűjtő', c: 900, u: 4000, q: 3, m: 1.2 },
+    turbo: { n: 'Turbó szórófej', c: 1800, u: 9000, r: 1, w: 1.6, wm: 1.25, m: 1.08 },
     komp: { n: 'Komposztáló', c: 3000, u: 15000, aura: 1, gb: .3, m: 1.25 },
     fok: { n: 'Nyomásfokozó', c: 5000, u: 20000, fok: .15, m: 1.45 },
     kod: { n: 'Ködölő', c: 8000, u: 40000, r: 1, w: 2, wm: 1.35, m: 1.2 },
+    madar: { n: 'Madárijesztő', c: 10000, u: 60000, aura: 1, yb: .2, m: 1.25 },
     szuro: { n: 'Szűrő', c: 12000, u: 50000, szuro: .08, m: 1.5 },
     linx: { n: 'Lineáris ↔', c: 20000, u: 80000, mob: 'x', w: 3, wm: 1.1, m: 1.5 },
     liny: { n: 'Lineáris ↕', c: 20000, u: 80000, mob: 'y', w: 3, wm: 1.1, m: 1.5 },
     meh: { n: 'Méhkaptár', c: 25000, u: 120000, aura: 2, yb: .25, m: 1.3 },
+    szelk: { n: 'Szélkerék', c: 35000, u: 180000, q: 9, m: 1.3 },
     kut: { n: 'Mélykút', c: 60000, u: 400000, q: 14, m: 1.35 },
+    napel: { n: 'Napelemes szivattyú', c: 180000, u: 1.2e6, q: 18, m: 1.32 },
     piv: { n: 'Körforgó öntöző', c: 400000, u: 3e6, r: 3, w: 6, m: 1.3 },
     torony: { n: 'Víztorony', c: 1.2e6, u: 8e6, q: 30, m: 1.4 },
+    to: { n: 'Kerti tó', c: 3.5e6, u: 2.5e7, q: 45, m: 1.38 },
+    giga: { n: 'Óriás esőztető', c: 9e6, u: 7e7, r: 4, w: 14, m: 1.3 },
+    sotal: { n: 'Sótalanító üzem', c: 4e7, u: 3e8, q: 120, m: 1.4 },
+    arany: { n: 'Arany Locsolófej', c: 3e8, u: 2e9, r: 2, w: 8, wm: 2, m: 2.5 },
     del: { n: 'Bontás', c: 0, u: 0, m: 1 }
   };
   const PL = {
     fu: { n: 'Fű', c: 2, t: 6, v: 3, u: 0, m: 1.03, s: 'grass', col: '#6fcf6a' },
+    hagy: { n: 'Hagyma', c: 7, t: 10, v: 6.5, u: 40, m: 1.04, s: 'root', col: '#e8c27a' },
     sal: { n: 'Saláta', c: 15, t: 15, v: 14, u: 120, m: 1.05, s: 'rosette', col: '#9be36a' },
+    bab: { n: 'Bab', c: 28, t: 18, v: 22, u: 260, m: 1.05, s: 'stake', col: '#7fd04a' },
     ret: { n: 'Retek', c: 45, t: 20, v: 30, u: 500, m: 1.06, s: 'root', col: '#e2496b' },
+    repa: { n: 'Sárgarépa', c: 75, t: 24, v: 50, u: 1000, m: 1.06, s: 'root', col: '#ff8c2e' },
     eper: { n: 'Eper', c: 120, t: 30, v: 78, u: 2000, m: 1.06, s: 'bush', col: '#ff3b4a' },
+    afon: { n: 'Áfonya', c: 200, t: 34, v: 120, u: 3500, m: 1.06, s: 'bush', col: '#4f6cff' },
     par: { n: 'Paradicsom', c: 320, t: 40, v: 184, u: 6000, m: 1.07, s: 'stake', col: '#e5533d' },
+    ubor: { n: 'Uborka', c: 550, t: 46, v: 290, u: 12000, m: 1.07, s: 'gourd', col: '#3f9d3a', hl: '#a8e07a' },
     papr: { n: 'Paprika', c: 900, t: 55, v: 440, u: 20000, m: 1.07, s: 'stake', col: '#ffcf2e' },
+    kuk: { n: 'Kukorica', c: 1500, t: 60, v: 680, u: 35000, m: 1.08, s: 'corn', col: '#ffd84a' },
     lev: { n: 'Levendula', c: 2400, t: 70, v: 980, u: 60000, m: 1.08, s: 'lav', col: '#a07be0' },
+    napr: { n: 'Napraforgó', c: 4000, t: 80, v: 1550, u: 110000, m: 1.08, s: 'sunf', col: '#ffcc00' },
     roz: { n: 'Rózsa', c: 6000, t: 90, v: 2160, u: 200000, m: 1.08, s: 'flower', col: '#ff6fa8' },
+    tul: { n: 'Tulipán', c: 9500, t: 100, v: 3350, u: 400000, m: 1.09, s: 'flower', col: '#ff4d4d' },
     tok: { n: 'Tök', c: 15000, t: 120, v: 5040, u: 700000, m: 1.09, s: 'gourd', col: '#ff9d2e' },
+    diny: { n: 'Görögdinnye', c: 25000, t: 135, v: 8000, u: 1.4e6, m: 1.1, s: 'melon', col: '#2f8a34' },
     szo: { n: 'Szőlő', c: 40000, t: 150, v: 11100, u: 2.5e6, m: 1.1, s: 'vine', col: '#8e5bd6' },
+    kave: { n: 'Kávécserje', c: 65000, t: 175, v: 18500, u: 4.5e6, m: 1.1, s: 'bush', col: '#b3261e', lc: ['#2f8a3a', '#1f6a2a'] },
     fa: { n: 'Gyümölcsfa', c: 100000, t: 200, v: 26000, u: 8e6, m: 1.11, s: 'tree', col: '#ffa531' },
-    olaj: { n: 'Olajfa', c: 250000, t: 260, v: 60000, u: 2.5e7, m: 1.12, s: 'olive', col: '#3b3f2a' }
+    olaj: { n: 'Olajfa', c: 250000, t: 260, v: 60000, u: 2.5e7, m: 1.12, s: 'olive', col: '#3b3f2a' },
+    kakao: { n: 'Kakaófa', c: 650000, t: 320, v: 145000, u: 7e7, m: 1.12, s: 'tree', col: '#a0522d', lc: ['#3f9d4a', '#2a7a36'] },
+    van: { n: 'Vanília', c: 1.7e6, t: 380, v: 340000, u: 2e8, m: 1.13, s: 'vine', col: '#f3e3b0' },
+    saf: { n: 'Sáfrány', c: 4.5e6, t: 450, v: 800000, u: 6e8, m: 1.13, s: 'lav', col: '#c084fc' },
+    sakura: { n: 'Japáncseresznye', c: 1.2e7, t: 540, v: 1.9e6, u: 2e9, m: 1.14, s: 'tree', col: '#ff8fc0', lc: ['#ffc4dd', '#f59ac2'] },
+    orch: { n: 'Orchidea', c: 3.2e7, t: 640, v: 4.5e6, u: 6e9, m: 1.14, s: 'flower', col: '#e879f9' },
+    aalma: { n: 'Aranyalma', c: 9e7, t: 760, v: 1.1e7, u: 2e10, m: 1.15, s: 'tree', col: '#ffd700', glow: 1 },
+    hold: { n: 'Holdvirág', c: 2.5e8, t: 900, v: 2.7e7, u: 6e10, m: 1.15, s: 'flower', col: '#bfe9ff', glow: 1 }
   };
-  const SIZES = [[8, 6], [10, 7], [12, 8], [14, 9], [16, 10], [18, 11], [20, 12]], SIZEC = [500, 4000, 25000, 150000, 1e6, 6e6];
+  const SIZES = [[8, 6], [10, 7], [12, 8], [14, 9], [16, 10], [18, 11], [20, 12], [23, 14], [26, 15], [29, 17], [32, 19], [36, 21], [40, 24]];
+  const SIZEC = [500, 4000, 25000, 150000, 1e6, 6e6, 4e7, 2.5e8, 1.5e9, 8e9, 4e10, 2e11];
   const UP = {
     nyomas: { n: 'Nyomás', ic: '💧', cost: n => 150 * 1.9 ** n, max: 40 },
     hatas: { n: 'Hatásfok', ic: '⚙️', cost: n => 2000 * 2.4 ** n, max: 20, u: 3000 },
     tap: { n: 'Tápoldat', ic: '🧪', cost: n => 250 * 2.1 ** n, max: 30 },
     piac: { n: 'Piac', ic: '🧺', cost: n => 400 * 2.25 ** n, max: 30 },
+    talaj: { n: 'Talajjavítás', ic: '🪱', cost: n => 1200 * 2.5 ** n, max: 20, u: 1500 },
+    vetomag: { n: 'Nemesítés', ic: '🌱', cost: n => 3000 * 3 ** n, max: 10, u: 5000 },
     kombajn: { n: 'Kombájn', ic: '🚜', cost: n => 600 * 2.8 ** n, max: 8, u: 800 },
     motor: { n: 'Motor', ic: '🔥', cost: n => 4000 * 2.3 ** n, max: 12, u: 6000 },
     kertesz: { n: 'Kertész', ic: '🧑‍🌾', cost: n => 800 * 3 ** n, max: 6 },
     ido: { n: 'Időzítő', ic: '⏱️', cost: n => 5000 * 3.2 ** n, max: 8, u: 10000 },
+    takarek: { n: 'Víztakarékosság', ic: '♻️', cost: n => 8000 * 2.7 ** n, max: 10, u: 20000 },
+    szerencse: { n: 'Szerencse', ic: '🍀', cost: n => 25000 * 3 ** n, max: 10, u: 60000 },
+    uveghaz: { n: 'Üvegház', ic: '🏠', cost: n => 60000 * 3.5 ** n, max: 6, u: 150000 },
+    tartaly: { n: 'Gyűjtőtartály', ic: '🛢️', cost: n => 90000 * 2.8 ** n, max: 10, u: 250000 },
+    raktar: { n: 'Hűtőház', ic: '❄️', cost: n => 2e5 * 3.2 ** n, max: 6, u: 5e5 },
+    dron: { n: 'Aratódrón', ic: '🚁', cost: n => 1.5e6 * 4 ** n, max: 6, u: 2e6 },
+    export: { n: 'Exportpiac', ic: '🚢', cost: n => 5e8 * 4.5 ** n, max: 8, u: 5e8 },
     telek: { n: 'Telek', ic: '🏡', cost: n => SIZEC[n], max: SIZEC.length }
   };
   const PERK = {
@@ -1239,22 +1275,25 @@ const Birodalom = (() => {
     halo: { n: 'Megmaradó hálózat', ic: '🔧', c: 5 }
   };
   const TABS = [['mod', 'MODULOK'], ['pl', 'NÖVÉNYEK'], ['up', 'FEJLESZTÉS'], ['bir', 'BIRTOK']];
-  const COND = { src: 1, pipe: 1, pump: 1, spr: 1, drip: 1, rot: 1, hordo: 1, kod: 1, kut: 1, piv: 1, szelep: 1, fok: 1, szuro: 1, linx: 1, liny: 1, torony: 1 };
+  const COND = { src: 1, pipe: 1, pump: 1, spr: 1, drip: 1, rot: 1, hordo: 1, kod: 1, kut: 1, piv: 1, szelep: 1, fok: 1, szuro: 1, linx: 1, liny: 1, torony: 1,
+    mikro: 1, turbo: 1, szelk: 1, napel: 1, to: 1, giga: 1, sotal: 1, arany: 1 };
   const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   const fmt = n => n >= 1e9 ? (n / 1e9).toLocaleString('hu-HU', { maximumFractionDigits: 2 }) + ' Mrd' : n >= 1e6 ? (n / 1e6).toLocaleString('hu-HU', { maximumFractionDigits: 2 }) + ' M' : Math.floor(n).toLocaleString('hu-HU');
-  let S = null, L = null, NET = null, drag = null, lastTile = -1, fl = [], dust = [], confirmT = 0, CB = [], MO = null, RP = null;
+  let S = null, L = null, NET = null, drag = null, lastTile = -1, fl = [], dust = [], confirmT = 0, CB = [], DR = [], MO = null, RP = null, panS = null, pinch = null, pend = null, wheelOn = 0;
+  const CAM = { z: 0, cx: null, cy: null }, PT = new Map();
   const MOB = new Map(), TEX = { ts: 0, c: [] };
 
   const idx = (c, r) => r * COLS + c;
   const size = () => SIZES[S.up.telek];
   const inside = (c, r) => c >= 0 && r >= 0 && c < size()[0] && r < size()[1];
-  const speed = () => (1 + .2 * S.up.tap) * NET.fg, price = () => (1 + .25 * S.up.piac) * (1 + .1 * S.star);
-  const auto = () => S.up.kertesz > 0 || S.up.kombajn > 0;
-  const offF = () => !auto() ? 0 : Math.min(.95, (S.up.kertesz ? .3 + .12 * (S.up.kertesz - 1) : 0) + .08 * S.up.kombajn);
+  const speed = () => (1 + .2 * S.up.tap) * NET.fg, price = () => (1 + .25 * S.up.piac) * (1 + .15 * S.up.talaj) * 1.5 ** S.up.export * (1 + .1 * S.star);
+  const luck = () => 1 + .08 * S.up.szerencse, ghW = () => .08 * S.up.uveghaz, cbBonus = () => 1.25 + .1 * S.up.tartaly;
+  const auto = () => S.up.kertesz > 0 || S.up.kombajn > 0 || S.up.dron > 0;
+  const offF = () => !auto() ? 0 : Math.min(.99, (S.up.kertesz ? .3 + .12 * (S.up.kertesz - 1) : 0) + .08 * S.up.kombajn + .06 * S.up.dron + .05 * S.up.raktar);
   const offMax = () => (8 + 2 * S.up.ido + (S.perk.hosszu ? 16 : 0)) * 3600;
   const unlocked = it => S.life >= (it.u || 0);
   const own = k => { let n = 0; for (const x of S.k) if (x === k) n++; return n; };
-  const costOf = (k, n = own(k)) => { const it = MOD[k] || PL[k]; return Math.round(it.c * it.m ** n); };
+  const costOf = (k, n = own(k)) => { const it = MOD[k] || PL[k]; return Math.round(it.c * it.m ** n * (1 - .06 * (S.up.vetomag || 0))); };
   const starsAt = life => Math.floor(Math.sqrt(life / 50000));
   const starGain = () => Math.max(0, starsAt(S.life) - S.starT);
 
@@ -1269,7 +1308,10 @@ const Birodalom = (() => {
       const s = JSON.parse(localStorage.getItem(KEY));
       if (s && s.k) {
         const f = fresh();
-        if (s.k.length === 16 * 10) { const k = Array(COLS * ROWS).fill(''), g = Array(COLS * ROWS).fill(0); s.k.forEach((v, i) => { k[idx(i % 16, Math.floor(i / 16))] = v; g[idx(i % 16, Math.floor(i / 16))] = s.g[i] || 0; }); s.k = k; s.g = g; }
+        // régebbi, kisebb rácsú mentések átültetése
+        const oc = { 160: 16, 240: 20 }[s.k.length];
+        if (oc) { const k = Array(COLS * ROWS).fill(''), g = Array(COLS * ROWS).fill(0), vc = {}, at = i => idx(i % oc, Math.floor(i / oc));
+          s.k.forEach((v, i) => { k[at(i)] = v; g[at(i)] = (s.g || [])[i] || 0; }); for (const [i, v] of Object.entries(s.vc || {})) vc[at(+i)] = v; s.k = k; s.g = g; s.vc = vc; }
         if (s.k.length === COLS * ROWS) return { ...f, ...s, up: { ...f.up, ...s.up }, perk: { ...(s.perk || {}) }, vc: { ...(s.vc || {}) } };
       }
     } catch (_) {}
@@ -1283,10 +1325,10 @@ const Birodalom = (() => {
     while (q.length) { const [c, r] = q.shift(), i0 = idx(c, r); if (S.k[i0] === 'szelep' && S.vc[i0]) continue;
       for (const [dc, dr] of D4) { const x = c + dc, y = r + dr, i = idx(x, y);
         if (x < 0 || y < 0 || x >= cw || y >= rh || on[i] || !COND[S.k[i]]) continue; on[i] = 1; dist[i] = dist[i0] + 1; q.push([x, y]); } }
-    let cap = 4 + 3 * S.up.nyomas, dem = 0, fok = 1, fg = 1; const pm = 1 + .15 * S.up.hatas;
+    let cap = 4 + 3 * S.up.nyomas, dem = 0, fok = 1, fg = 1; const tk = 1 - .06 * S.up.takarek; const pm = 1 + .15 * S.up.hatas;
     for (let i = 0; i < N; i++) if (on[i]) { const k = S.k[i], m = MOD[k]; if (!m) continue;
-      if (m.q) cap += m.q * (k === 'pump' || k === 'kut' ? pm : 1); if (m.w) dem += m.w; if (m.fok) fok += m.fok; if (m.szuro) fg += m.szuro; }
-    cap = Math.round(cap * fok * 10) / 10;
+      if (m.q) cap += m.q * (k === 'pump' || k === 'kut' || k === 'napel' ? pm : 1); if (m.w) dem += m.w * tk; if (m.fok) fok += m.fok; if (m.szuro) fg += m.szuro; }
+    cap = Math.round(cap * fok * 10) / 10; dem = Math.round(dem * 100) / 100;
     const eff = dem ? Math.min(1, cap / dem) : 1, wet = new Float32Array(N), mwet = new Float32Array(N), gb = new Float32Array(N).fill(1), yb = new Float32Array(N).fill(1), mobs = [];
     const area = (c, r, R, f) => { for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) { const x = c + dx, y = r + dy; if ((dx || dy) && x >= 0 && y >= 0 && x < cw && y < rh) f(idx(x, y)); } };
     for (let r = 0; r < rh; r++) for (let c = 0; c < cw; c++) {
@@ -1309,17 +1351,18 @@ const Birodalom = (() => {
     for (const k of [...MOB.keys()]) if (!mobs.some(o => o.i === k)) MOB.delete(k);
     NET = { on, dist, cap, dem, eff, wet, mwet, gb, yb, mobs, fg, inc: 0 };
     let inc = 0;
-    for (let i = 0; i < N; i++) { const p = PL[S.k[i]], w = Math.max(wet[i], mwet[i]); if (p && w) inc += p.v * price() * yb[i] * w * gb[i] * speed() / p.t; }
+    const gh = ghW(); for (let i = 0; i < N; i++) { const p = PL[S.k[i]], w = Math.max(wet[i], mwet[i], gh); if (p && w) inc += p.v * price() * yb[i] * w * gb[i] * speed() / p.t * luck(); }
     NET.inc = inc;
   }
-  const wetNow = i => Math.max(NET.wet[i], MO && MO[i] > 0 ? MO[i] : 0);
+  const wetVis = i => Math.max(NET.wet[i], MO && MO[i] > 0 ? MO[i] : 0), wetNow = i => Math.max(wetVis(i), ghW());
   const rate = (i, w) => w * NET.gb[i] * speed() / PL[S.k[i]].t;
   const val = i => Math.round(PL[S.k[i]].v * price() * NET.yb[i]);
 
   function earn(v) { S.money += v; S.life += v; }
   function harvest(G, i, how) {
-    const v = Math.round(val(i) * (how === 'cb' ? 1.25 : 1)); earn(v); S.g[i] = 0; RP[i] = 0;
-    const [x, y] = tileXY(i); if (fl.length < 40) fl.push({ x: x + L.ts / 2, y: y + L.ts * .2, t: '+' + fmt(v), l: 1 });
+    const gold = Math.random() < .02 * S.up.szerencse, v = Math.round(val(i) * (how === 'cb' ? cbBonus() : 1) * (gold ? 5 : 1)); earn(v); S.g[i] = 0; RP[i] = 0;
+    const [x, y] = tileXY(i); if (fl.length < 40) fl.push({ x: x + L.ts / 2, y: y + L.ts * .2, t: (gold ? '✨ +' : '+') + fmt(v), l: 1, gold });
+    if (gold) G.splash(x + L.ts / 2, y + L.ts / 2, '255,230,120', 18, 4);
     if (!how) { Sfx.coin(); G.splash(x + L.ts / 2, y + L.ts / 2, '255,215,120', 10, 3); }
     else if (Math.random() < .2) Sfx.blip(how === 'cb' ? 900 : 1200, .04, 'sine', .02);
     for (let j = 0; j < (how === 'cb' ? 6 : 0); j++) dust.push({ x: x + L.ts / 2, y: y + L.ts / 2, vx: (Math.random() - .5) * 40 * L.d, vy: (Math.random() - .5) * 40 * L.d, l: 1, c: PL[S.k[i]] ? PL[S.k[i]].col : '#e8d27a' });
@@ -1329,17 +1372,33 @@ const Birodalom = (() => {
   /* ---------- elrendezés ---------- */
   function layout(G) {
     const d = G.d, [c0, r0] = size(), top = 112 * d, barH = 132 * d, bot = G.H - barH - 14 * d;
-    const fit = (a, b) => Math.floor(Math.min((G.W - 32 * d) / a, (bot - top) / b)), tr = fit(r0, c0) > fit(c0, r0) * 1.15, cw = tr ? r0 : c0, rh = tr ? c0 : r0;
-    const ts = Math.max(12 * d, fit(cw, rh));
-    L = { d, ts, tr, vw: cw, vh: rh, bx: Math.round((G.W - ts * cw) / 2), by: Math.round(top + (bot - top - ts * rh) / 2), barY: G.H - barH, barH, W: G.W, H: G.H };
+    const fx = 16 * d, fw = G.W - 32 * d, fy = top, fh = bot - top, pad = 14 * d;
+    const fit = (a, b) => Math.min((fw - 2 * pad) / a, (fh - 2 * pad) / b), tr = fit(r0, c0) > fit(c0, r0) * 1.15, vw = tr ? r0 : c0, vh = tr ? c0 : r0;
+    const fitTs = Math.max(6 * d, Math.floor(fit(vw, vh))), maxTs = Math.max(fitTs, 56 * d);
+    if (!CAM.z) CAM.z = Math.max(fitTs, Math.min(maxTs, 28 * d)) / d;
+    const ts = Math.round(Math.max(fitTs, Math.min(maxTs, CAM.z * d)));
+    // kamera: a látott terület közepe mezőkben; ha a kert kisebb a képernyőnél, középre kerül
+    if (CAM.cx == null) { CAM.cx = 0; CAM.cy = 0; }
+    const cl = (v, n, span) => { const h = span / ts / 2 - pad / ts; return n * ts <= span - 2 * pad + 1 ? n / 2 : Math.max(h, Math.min(n - h, v)); };
+    CAM.cx = cl(CAM.cx, vw, fw); CAM.cy = cl(CAM.cy, vh, fh);
+    L = { d, ts, tr, vw, vh, fx, fy, fw, fh, fitTs, maxTs, bx: Math.round(fx + fw / 2 - CAM.cx * ts), by: Math.round(fy + fh / 2 - CAM.cy * ts), barY: G.H - barH, barH, W: G.W, H: G.H };
   }
+  const canZoom = () => L.maxTs > L.fitTs;
+  function zoomAt(G, x, y, f) {
+    const vx = (x - L.bx) / L.ts, vy = (y - L.by) / L.ts, ts2 = Math.max(L.fitTs, Math.min(L.maxTs, L.ts * f));
+    CAM.z = ts2 / G.d; CAM.cx = (L.fx + L.fw / 2 - x) / ts2 + vx; CAM.cy = (L.fy + L.fh / 2 - y) / ts2 + vy; layout(G);
+  }
+  function pan(G, dx, dy) { CAM.cx -= dx / L.ts; CAM.cy -= dy / L.ts; layout(G); }
   const tileXY = i => { const c = i % COLS, r = Math.floor(i / COLS); return L.tr ? [L.bx + r * L.ts, L.by + c * L.ts] : [L.bx + c * L.ts, L.by + r * L.ts]; };
   const posXY = (c, r) => L.tr ? [L.bx + (r + .5) * L.ts, L.by + (c + .5) * L.ts] : [L.bx + (c + .5) * L.ts, L.by + (r + .5) * L.ts];
-  const tileAt = (x, y) => { let c = Math.floor((x - L.bx) / L.ts), r = Math.floor((y - L.by) / L.ts); if (L.tr) [c, r] = [r, c]; return inside(c, r) ? idx(c, r) : -1; };
+  const tileAt = (x, y) => { if (y < L.fy - 8 * L.d || y > L.fy + L.fh + 8 * L.d) return -1; let c = Math.floor((x - L.bx) / L.ts), r = Math.floor((y - L.by) / L.ts); if (L.tr) [c, r] = [r, c]; return inside(c, r) ? idx(c, r) : -1; };
+  const zoomBtns = G => { if (!canZoom()) return []; const y = L.fy + 6 * L.d, x = L.fx + L.fw - 6 * L.d; return [{ f: 1 / 1.25, x: x - 76 * L.d, y, w: 36 * L.d, h: 36 * L.d, t: '−' }, { f: 1.25, x: x - 36 * L.d, y, w: 36 * L.d, h: 36 * L.d, t: '+' }]; };
+  // minitérkép (csak ha a kert nagyobb a képernyőnél); koppintásra oda ugrik a nézet
+  const miniMap = () => { if (L.ts * L.vw <= L.fw + 4 * L.d && L.ts * L.vh <= L.fh + 4 * L.d) return null; const mw = Math.min(72, 900 / Math.max(L.vw, L.vh) * 2.6) * L.d, mh = mw * L.vh / L.vw; return { x: L.fx + 6 * L.d, y: L.fy + 6 * L.d, w: mw, h: mh }; };
 
   // előre rajzolt fű-textúrák
   function grassTex(ts) {
-    if (TEX.ts === ts) return TEX.c; TEX.ts = ts; TEX.c = [];
+    ts = Math.max(16, 2 ** Math.ceil(Math.log2(ts))); if (TEX.ts === ts) return TEX.c; TEX.ts = ts; TEX.c = [];
     for (let v = 0; v < 6; v++) {
       const cv = document.createElement('canvas'); cv.width = cv.height = Math.ceil(ts); const x = cv.getContext('2d');
       let sd = v * 977 + 13; const R = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
@@ -1354,7 +1413,7 @@ const Birodalom = (() => {
   }
 
   function items() {
-    if (S.tab === 'mod') return Object.keys(MOD).map(k => ({ k, kind: 'mod', ...MOD[k], c: costOf(k) }));
+    if (S.tab === 'mod') return Object.keys(MOD).filter(k => k !== 'del').map(k => ({ k, kind: 'mod', ...MOD[k], c: costOf(k) }));
     if (S.tab === 'pl') return Object.keys(PL).map(k => ({ k, kind: 'pl', ...PL[k], c: costOf(k) }));
     if (S.tab === 'up') return Object.keys(UP).map(k => { const u = UP[k], n = S.up[k]; return { k, kind: 'up', n: u.n, ic: u.ic, lvl: n, u: u.u, c: n >= u.max ? Infinity : Math.round(u.cost(n)) }; });
     const sg = starGain();
@@ -1362,17 +1421,17 @@ const Birodalom = (() => {
       ...Object.keys(PERK).map(k => ({ k, kind: 'perk', ...PERK[k], lbl: S.perk[k] ? 'MEGVAN' : PERK[k].c + ' ⭐', ok: !S.perk[k] && S.star >= PERK[k].c, have: !!S.perk[k] }))];
   }
   function bar(G) {
-    const d = L.d, tw = Math.min(140 * d, (G.W - 16 * d) / TABS.length), tx = (G.W - tw * TABS.length) / 2, ty = L.barY + 8 * d, th = 30 * d;
+    const d = L.d, dw = Math.min(104 * d, (G.W - 16 * d) * .2), tw = Math.min(140 * d, (G.W - 16 * d - dw - 6 * d) / TABS.length), tx = (G.W - tw * TABS.length - dw - 6 * d) / 2, ty = L.barY + 8 * d, th = 30 * d;
     const its = items(), per = Math.max(3, Math.min(its.length, Math.floor((G.W - 16 * d) / (92 * d)))), pages = Math.ceil(its.length / per);
     S.pg = S.pg || {}; const pg = Math.min(S.pg[S.tab] || 0, pages - 1), arr = pages > 1 ? 26 * d : 0;
     const vis = its.slice(pg * per, pg * per + per), iw = Math.min(110 * d, (G.W - 16 * d - arr * 2) / per), ix = (G.W - iw * vis.length) / 2, iy = ty + th + 8 * d, ih = L.barH - th - 24 * d;
-    return { pg, pages, tabs: TABS.map(([k, n], i) => ({ k, n, x: tx + i * tw, y: ty, w: tw, h: th })), its: vis.map((it, i) => ({ ...it, x: ix + i * iw, y: iy, w: iw, h: ih })),
+    return { pg, pages, tabs: TABS.map(([k, n], i) => ({ k, n, x: tx + i * tw, y: ty, w: tw, h: th })), del: { x: tx + tw * TABS.length + 6 * d, y: ty, w: dw, h: th }, its: vis.map((it, i) => ({ ...it, x: ix + i * iw, y: iy, w: iw, h: ih })),
       arr: pages > 1 ? [{ dir: -1, x: ix - arr - 2 * d, y: iy, w: arr, h: ih }, { dir: 1, x: ix + iw * vis.length + 2 * d, y: iy, w: arr, h: ih }] : [] };
   }
 
   function place(G, i, first) {
     const k = S.k[i], tool = S.tool;
-    if (PL[k] && S.g[i] >= 1) return harvest(G, i);
+    if (PL[k] && S.g[i] >= 1 && tool !== 'del') return harvest(G, i);
     if (k === 'szelep' && first && tool !== 'del') { S.vc[i] = S.vc[i] ? 0 : 1; if (!S.vc[i]) delete S.vc[i]; net(); Sfx.blip(S.vc[i] ? 260 : 520, .07, 'square', .05); return; }
     if (!tool) return;
     if (tool === 'del') { if (!k || k === 'src') return; S.k[i] = ''; S.g[i] = 0; delete S.vc[i]; S.money += Math.floor(costOf(k) / 2); net(); Sfx.blip(220, .06, 'square', .05, .6); return; }
@@ -1389,10 +1448,11 @@ const Birodalom = (() => {
     if (S.perk.toke) n.money = 5000;
     if (S.perk.orok) n.up.kertesz = 1;
     if (S.perk.halo) { n.up.telek = S.up.telek; S.k.forEach((v, i) => { if (MOD[v] || v === 'src') n.k[i] = v; }); n.vc = { ...S.vc }; }
-    S = n; MO = new Float32Array(COLS * ROWS); RP = new Float32Array(COLS * ROWS); syncCB(); layout(G); net(); save(); Sfx.perfect(); G.splash(G.W / 2, G.H / 2, '255,215,120', 90, 10);
+    S = n; MO = new Float32Array(COLS * ROWS); RP = new Float32Array(COLS * ROWS); DR = []; syncCB(); layout(G); net(); save(); Sfx.perfect(); G.splash(G.W / 2, G.H / 2, '255,215,120', 90, 10);
     S.away = { got: 0, sec: 0, l: 3.5, msg: '⭐ +' + sg + ' hírnév' };
   }
-  function syncCB() { while (CB.length < S.up.kombajn) CB.push({ x: SRC[0] + .5, y: SRC[1] + .5, a: 0, tgt: -1, run: 0 }); CB.length = S.up.kombajn; }
+  function syncCB() { while (CB.length < S.up.kombajn) CB.push({ x: SRC[0] + .5, y: SRC[1] + .5, a: 0, tgt: -1, run: 0 }); CB.length = S.up.kombajn;
+    while (DR.length < S.up.dron) DR.push({ x: SRC[0] + .5, y: SRC[1] + .5, a: 0, tgt: -1, run: 0, fly: 1 }); DR.length = S.up.dron; }
   const DESC = {
     pipe: 'Összeköti a főcsapot a többi elemmel. Húzással egyszerre többet is lerakhatsz.',
     spr: 'A körülötte lévő 8 mezőt locsolja. 1 L/s vizet fogyaszt.',
@@ -1411,7 +1471,25 @@ const Birodalom = (() => {
     kut: '+14 L/s vízhozam (a Hatásfok is növeli), ha csőre van kötve.',
     piv: '3 mezős sugárban locsol egy forgó karral (7×7 terület). 6 L/s.',
     torony: '+30 L/s vízhozam, ha csőre van kötve.',
-    del: 'Lebont egy elemet vagy növényt, az ára felét visszakapod.',
+    del: 'Lebont egy elemet vagy növényt, az ára felét visszakapod. Húzással többet is lebonthatsz.',
+    mikro: 'A 4 szomszédos mezőt finom permettel locsolja: nagyon takarékos (0,15 L/s), +8% növekedés.',
+    turbo: 'Erősebb szórófej: a körülötte lévő 8 mezőt locsolja, +25% növekedéssel. 1,6 L/s.',
+    madar: 'Nem kell rá cső. Elriasztja a madarakat: a körülötte lévő 8 mezőn +20% termés.',
+    szelk: '+9 L/s vízhozam, ha csőre van kötve. A szél hajtja, nem kell hozzá semmi más.',
+    napel: '+18 L/s vízhozam (a Hatásfok is növeli), ha csőre van kötve.',
+    to: '+45 L/s vízhozam, ha csőre van kötve. Ráadásnak gyönyörű.',
+    giga: '4 mezős sugárban locsol (9×9 terület). 14 L/s.',
+    sotal: '+120 L/s vízhozam a tenger vizéből, ha csőre van kötve.',
+    arany: 'A legenda. 2 mezős sugárban (5×5) locsol, és dupla gyorsan nőnek tőle a növények. 8 L/s.',
+    talaj: n => '+15% termés minden növényre szintenként. Most: +' + 15 * n + '%.',
+    vetomag: n => '−6% a modulok és növények árára szintenként. Most: −' + 6 * n + '%.',
+    takarek: n => '−6% vízigény az egész hálózaton szintenként. Most: −' + 6 * n + '%.',
+    szerencse: n => 'Szintenként 2% esély, hogy egy aratás aranytermés: ötszörös ár. Most: ' + 2 * n + '%.',
+    uveghaz: n => 'Locsolatlan mezőn is nőnek a növények, szintenként 8%-os sebességgel. Most: ' + 8 * n + '%.',
+    tartaly: n => '+10% a kombájnok és drónok aratási bónuszához szintenként. Most: +' + Math.round((cbBonus() - 1) * 100) + '%.',
+    raktar: n => '+5% hatékonyság a távollét alatti termelésre szintenként. Most: ' + Math.round(offF() * 100) + '%.',
+    dron: n => 'Egy újabb aratódrón: a kert fölött repülve, gyorsabban arat, mint a kombájn. Most: ' + n + ' db.',
+    export: n => 'Szintenként +50% (szorzódik) minden termés árára. Most: ×' + (1.5 ** n).toLocaleString('hu-HU', { maximumFractionDigits: 1 }) + '.',
     nyomas: n => '+3 L/s alap vízhozam szintenként. Most: +' + 3 * n + ' L/s.',
     hatas: n => '+15% a szivattyúk és mélykutak vízhozamára szintenként. Most: +' + 15 * n + '%.',
     tap: n => '+20% növekedési sebesség szintenként. Most: +' + 20 * n + '%.',
@@ -1428,7 +1506,7 @@ const Birodalom = (() => {
     halo: 'Új birtok után a csövek, a modulok és a telekméret megmaradnak.'
   };
   function descOf(it) {
-    if (it.kind === 'pl') return 'Locsolt mezőn ' + it.t + ' mp alatt érik be, és ' + fmt(Math.round(it.v * price())) + ' Ft termést hoz. Víz nélkül nem nő.';
+    if (it.kind === 'pl') return 'Locsolt mezőn ' + (it.t >= 120 ? Math.round(it.t / 6) / 10 + ' perc' : it.t + ' mp') + ' alatt érik be, és ' + fmt(Math.round(it.v * price())) + ' Ft termést hoz. ' + (S.up.uveghaz ? 'Víz nélkül csak lassan nő.' : 'Víz nélkül nem nő.');
     const d = DESC[it.k]; return typeof d === 'function' ? d(S.up[it.k]) : d || '';
   }
   function buy(G, it) {
@@ -1437,7 +1515,7 @@ const Birodalom = (() => {
     if (it.kind === 'reset') { if (!it.ok) return Sfx.blip(140, .1, 'square', .05); if (confirmT > 0) { confirmT = 0; rebirth(G); } else { confirmT = 3; Sfx.blip(500, .05, 'square', .05); } return; }
     if (it.kind === 'perk') { if (!it.ok) return Sfx.blip(140, .1, 'square', .05); S.star -= it.c; S.perk[it.k] = 1; net(); Sfx.perfect(); save(); return; }
     if (!unlocked(it) || !(S.money >= it.c)) { Sfx.blip(140, .1, 'square', .05); return; }
-    S.money -= it.c; S.up[it.k]++; if (it.k === 'telek') layout(G); if (it.k === 'kombajn') syncCB(); net(); Sfx.perfect(); save();
+    S.money -= it.c; S.up[it.k]++; if (it.k === 'telek') layout(G); if (it.k === 'kombajn' || it.k === 'dron') syncCB(); net(); Sfx.perfect(); save();
   }
 
   /* ---------- rajz ---------- */
@@ -1454,19 +1532,31 @@ const Birodalom = (() => {
     if (st === 'grass') { for (let j = -3; j <= 3; j++) { g.strokeStyle = j & 1 ? '#5cbf52' : '#3f8f3a'; g.beginPath(); g.moveTo(cx + j * ts * .06, by); g.quadraticCurveTo(cx + j * ts * .1, by - h * .6, cx + j * ts * .14 + Math.sin(t * 2 + j) * ts * .03, by - h); g.stroke(); } }
     else if (st === 'rosette') { for (let j = 0; j < 6; j++) { const a = j / 6 * 6.283; g.fillStyle = j & 1 ? '#7fd65a' : '#a8ec75'; g.beginPath(); g.ellipse(cx + Math.cos(a) * h * .28, by - h * .35 + Math.sin(a) * h * .14, h * .32, h * .2, a, 0, 6.283); g.fill(); } leaf(0, -h * .38, h * .16, '#d4f7a4', '#8bd65a'); }
     else if (st === 'root') { for (let j = -1; j <= 1; j++) { g.fillStyle = j ? '#4fae46' : '#62c35a'; g.beginPath(); g.ellipse(cx + j * h * .2, by - h * .6, h * .12, h * .3, j * .5, 0, 6.283); g.fill(); } if (ripe) dot(0, -h * .1, h * .22); }
-    else if (st === 'bush') { for (let j = -1; j <= 1; j++) leaf(j * h * .25, -h * .35, h * .26); if (ripe) for (const [a, b] of [[-.3, -.2], [.25, -.25], [0, -.5]]) dot(a * h, b * h, h * .1); }
+    else if (st === 'bush') { for (let j = -1; j <= 1; j++) leaf(j * h * .25, -h * .35, h * .26, p.lc ? p.lc[0] : undefined, p.lc ? p.lc[1] : undefined); if (ripe) for (const [a, b] of [[-.3, -.2], [.25, -.25], [0, -.5]]) dot(a * h, b * h, h * .1); }
     else if (st === 'stake') { g.strokeStyle = '#a07a4e'; g.beginPath(); g.moveTo(cx + ts * .12, by); g.lineTo(cx + ts * .12, by - h); g.stroke(); leaf(0, -h * .5, h * .3); leaf(-h * .12, -h * .78, h * .2, '#7ad06c');
       if (ripe) for (const [a, b] of [[-.2, -.4], [.15, -.6], [-.05, -.85]]) dot(a * h, b * h, h * .11); }
     else if (st === 'lav') { for (let j = -2; j <= 2; j++) { g.strokeStyle = '#6b8f5e'; g.beginPath(); g.moveTo(cx + j * ts * .07, by); g.lineTo(cx + j * ts * .1, by - h); g.stroke(); if (ripe) { g.fillStyle = j & 1 ? p.col : '#b896f0'; rr(cx + j * ts * .1 - ts * .03, by - h, ts * .06, h * .38, ts * .03); g.fill(); } } }
     else if (st === 'flower') { g.beginPath(); g.moveTo(cx, by); g.lineTo(cx, by - h * .7); g.stroke(); leaf(0, -h * .55, h * .32); if (ripe) { for (const [a, b, r] of [[-.15, -.8, .16], [.18, -.7, .14], [0, -.95, .13]]) { dot(a * h, b * h, r * h); dot(a * h, b * h, r * h * .45, '#c2185b'); } } }
     else if (st === 'gourd') { g.beginPath(); g.moveTo(cx - ts * .3, by - ts * .05); g.quadraticCurveTo(cx, by - h, cx + ts * .3, by - ts * .1); g.stroke(); leaf(-ts * .15, -h * .55, h * .2);
-      if (ripe) { const gr = g.createRadialGradient(cx, by - ts * .16, 1, cx + ts * .05, by - ts * .12, ts * .25 * s); gr.addColorStop(0, '#ffc46b'); gr.addColorStop(1, p.col); g.fillStyle = gr; g.beginPath(); g.ellipse(cx + ts * .05, by - ts * .12, ts * .22 * s, ts * .15 * s, 0, 0, 6.283); g.fill(); g.strokeStyle = 'rgba(160,80,10,.5)'; g.lineWidth = 1; g.beginPath(); g.moveTo(cx + ts * .05, by - ts * .26 * s); g.lineTo(cx + ts * .05, by + ts * .02 * s); g.stroke(); } }
+      if (ripe) { const gr = g.createRadialGradient(cx, by - ts * .16, 1, cx + ts * .05, by - ts * .12, ts * .25 * s); gr.addColorStop(0, p.hl || '#ffc46b'); gr.addColorStop(1, p.col); g.fillStyle = gr; g.beginPath(); g.ellipse(cx + ts * .05, by - ts * .12, ts * .22 * s, ts * .15 * s, 0, 0, 6.283); g.fill(); g.strokeStyle = 'rgba(160,80,10,.5)'; g.lineWidth = 1; g.beginPath(); g.moveTo(cx + ts * .05, by - ts * .26 * s); g.lineTo(cx + ts * .05, by + ts * .02 * s); g.stroke(); } }
     else if (st === 'vine') { g.strokeStyle = '#a07a4e'; g.beginPath(); g.moveTo(cx - ts * .3, by); g.lineTo(cx - ts * .3, by - ts * .7); g.moveTo(cx + ts * .3, by); g.lineTo(cx + ts * .3, by - ts * .7); g.moveTo(cx - ts * .35, by - ts * .62); g.lineTo(cx + ts * .35, by - ts * .62); g.stroke();
       for (let j = -1; j <= 1; j++) leaf(j * ts * .2, -h * .75, h * .2); if (ripe) for (const [a, b] of [[0, -.55], [.05, -.48], [-.05, -.48], [0, -.42], [.03, -.36]]) dot(a * ts * 1.5, b * h * 1.4, ts * .05); }
-    else { const ol = st === 'olive'; g.fillStyle = ol ? '#5a4632' : '#6b4423'; g.fillRect(cx - ts * .05, by - h * .55, ts * .1, h * .55);
-      leaf(0, -h * .7, h * .42, ol ? '#a6bf94' : '#5cc062', ol ? '#6a875a' : '#2f8a3a'); leaf(-h * .14, -h * .82, h * .24, ol ? '#b9cfa8' : '#72d070', ol ? '#7c9a6a' : '#3d9a45');
+    else if (st === 'corn') { g.strokeStyle = '#6fae3e'; g.lineWidth = Math.max(1, ts * .06); g.beginPath(); g.moveTo(cx, by); g.lineTo(cx, by - h * 1.05); g.stroke();
+      g.fillStyle = '#5cbf52'; for (const [a, b] of [[-1, .35], [1, .55], [-1, .75]]) { g.beginPath(); g.moveTo(cx, by - h * b); g.quadraticCurveTo(cx + a * ts * .3, by - h * (b + .2), cx + a * ts * .36, by - h * (b - .05)); g.quadraticCurveTo(cx + a * ts * .2, by - h * b, cx, by - h * (b - .06)); g.fill(); }
+      if (ripe) { g.fillStyle = '#a7c46a'; g.beginPath(); g.ellipse(cx + ts * .08, by - h * .6, ts * .07, h * .2, .25, 0, 6.283); g.fill(); g.fillStyle = p.col; g.beginPath(); g.ellipse(cx + ts * .1, by - h * .64, ts * .05, h * .15, .25, 0, 6.283); g.fill();
+        g.strokeStyle = '#e8d07a'; g.lineWidth = Math.max(1, ts * .02); g.beginPath(); g.moveTo(cx + ts * .14, by - h * .78); g.lineTo(cx + ts * .2, by - h * .9); g.stroke(); } }
+    else if (st === 'sunf') { g.strokeStyle = '#5c9a3a'; g.lineWidth = Math.max(1, ts * .055); g.beginPath(); g.moveTo(cx, by); g.lineTo(cx, by - h * .95); g.stroke(); leaf(-ts * .12, -h * .45, h * .16); leaf(ts * .12, -h * .6, h * .14);
+      if (ripe) { const fr = ts * .2 * Math.min(1, s * 1.1), fy = by - h * .98; g.fillStyle = p.col; for (let j = 0; j < 12; j++) { const a = j / 12 * 6.283 + t * .2; g.beginPath(); g.ellipse(cx + Math.cos(a) * fr, fy + Math.sin(a) * fr, fr * .45, fr * .2, a, 0, 6.283); g.fill(); }
+        g.fillStyle = '#5a3414'; g.beginPath(); g.arc(cx, fy, fr * .7, 0, 6.283); g.fill(); g.fillStyle = 'rgba(0,0,0,.25)'; for (let j = 0; j < 5; j++) { g.beginPath(); g.arc(cx + Math.cos(j * 2.4) * fr * .35, fy + Math.sin(j * 2.4) * fr * .35, fr * .08, 0, 6.283); g.fill(); } }
+      else leaf(0, -h * .95, h * .12, '#8fd06a'); }
+    else if (st === 'melon') { leaf(-ts * .22, -h * .2, h * .2); leaf(ts * .24, -h * .28, h * .18); g.strokeStyle = '#3f8f3a'; g.lineWidth = Math.max(1, ts * .03); g.beginPath(); g.moveTo(cx - ts * .3, by - ts * .05); g.bezierCurveTo(cx - ts * .1, by - ts * .25, cx + ts * .1, by, cx + ts * .32, by - ts * .12); g.stroke();
+      if (ripe) { const rx = ts * .27 * s, ry = ts * .17 * s, my = by - ts * .12; g.fillStyle = p.col; g.beginPath(); g.ellipse(cx, my, rx, ry, -.1, 0, 6.283); g.fill(); g.save(); g.beginPath(); g.ellipse(cx, my, rx, ry, -.1, 0, 6.283); g.clip();
+        g.fillStyle = '#1d5a22'; for (let j = -3; j <= 3; j++) { g.beginPath(); g.ellipse(cx + j * rx * .3, my, rx * .07, ry * 1.1, -.1, 0, 6.283); g.fill(); } g.restore(); g.fillStyle = 'rgba(255,255,255,.25)'; g.beginPath(); g.ellipse(cx - rx * .35, my - ry * .4, rx * .25, ry * .2, -.3, 0, 6.283); g.fill(); } }
+    else { const ol = st === 'olive', lc = p.lc; g.fillStyle = ol ? '#5a4632' : '#6b4423'; g.fillRect(cx - ts * .05, by - h * .55, ts * .1, h * .55);
+      leaf(0, -h * .7, h * .42, lc ? lc[0] : ol ? '#a6bf94' : '#5cc062', lc ? lc[1] : ol ? '#6a875a' : '#2f8a3a'); leaf(-h * .14, -h * .82, h * .24, lc ? lc[0] : ol ? '#b9cfa8' : '#72d070', lc ? lc[1] : ol ? '#7c9a6a' : '#3d9a45');
       if (ripe) for (const [a, b] of [[-.15, -.6], [.15, -.65], [0, -.85], [.2, -.85], [-.05, -.7]]) dot(a * ts, b * h, ts * (ol ? .035 : .05)); }
     g.restore();
+    if (p.glow && ripe) { const a = .25 + .15 * Math.sin(t * 2 + x), gr = g.createRadialGradient(cx, by - h * .6, 1, cx, by - h * .6, ts * .55); gr.addColorStop(0, `rgba(255,240,180,${a})`); gr.addColorStop(1, 'rgba(255,240,180,0)'); g.fillStyle = gr; g.fillRect(x, y, ts, ts); }
     if (s >= 1) { const a = .45 + .35 * Math.sin(t * 5 + x); g.strokeStyle = `rgba(255,215,120,${a})`; g.lineWidth = Math.max(1.5, ts * .05); rr(x + 2, y + 2, ts - 4, ts - 4, ts * .2); g.stroke();
       const sp = (t * 1.5 + x * .01) % 1; g.fillStyle = `rgba(255,240,180,${1 - sp})`; g.beginPath(); g.arc(cx + ts * .28, y + ts * (.3 - sp * .2), ts * .03, 0, 6.283); g.fill(); }
     else { g.fillStyle = 'rgba(0,0,0,.45)'; rr(x + ts * .15, y + ts * .935, ts * .7, ts * .045, ts * .02); g.fill(); g.fillStyle = '#9fe0ff'; rr(x + ts * .15, y + ts * .935, ts * .7 * s, ts * .045, ts * .02); g.fill(); }
@@ -1489,6 +1579,11 @@ const Birodalom = (() => {
     if (m && m.aura) {
       shadow(g, cx + ts * .05, cy + ts * .3, ts * .36, ts * .1);
       if (k === 'komp') { const gr = g.createLinearGradient(x, y, x, y + ts); gr.addColorStop(0, '#7a5230'); gr.addColorStop(1, '#4a2f18'); g.fillStyle = gr; rr(x + ts * .15, y + ts * .25, ts * .7, ts * .6, ts * .08); g.fill(); g.fillStyle = '#3d2814'; for (let j = 0; j < 3; j++) g.fillRect(x + ts * .2, y + ts * (.35 + j * .16), ts * .6, ts * .05); g.fillStyle = '#6fcf6a'; g.fillRect(x + ts * .28, y + ts * .18, ts * .44, ts * .1); g.fillStyle = '#a0522d'; g.fillRect(x + ts * .4, y + ts * .2, ts * .08, ts * .06); }
+      else if (k === 'madar') { g.strokeStyle = '#7a5530'; g.lineWidth = ts * .06; g.beginPath(); g.moveTo(cx, cy + ts * .4); g.lineTo(cx, cy - ts * .2); g.moveTo(cx - ts * .34, cy - ts * .02); g.lineTo(cx + ts * .34, cy - ts * .02); g.stroke();
+        g.fillStyle = '#3a6fb0'; g.beginPath(); g.moveTo(cx - ts * .2, cy - ts * .08); g.lineTo(cx + ts * .2, cy - ts * .08); g.lineTo(cx + ts * .16, cy + ts * .22); g.lineTo(cx - ts * .16, cy + ts * .22); g.fill();
+        g.fillStyle = '#e8c27a'; g.beginPath(); g.arc(cx, cy - ts * .22, ts * .12, 0, 6.283); g.fill(); g.fillStyle = '#8a5a1a'; g.beginPath(); g.ellipse(cx, cy - ts * .31, ts * .2, ts * .05, 0, 0, 6.283); g.fill(); g.fillRect(cx - ts * .09, cy - ts * .42, ts * .18, ts * .1);
+        g.fillStyle = '#222'; g.fillRect(cx - ts * .06, cy - ts * .24, ts * .03, ts * .03); g.fillRect(cx + ts * .03, cy - ts * .24, ts * .03, ts * .03);
+        if (i >= 0) { const ph = (t * .5 + i * .3) % 4; if (ph < 1) { g.fillStyle = '#222'; const bx = cx + ts * (.4 + ph * 1.2), by2 = cy - ts * (.3 + ph * .8); g.beginPath(); g.moveTo(bx - ts * .08, by2); g.quadraticCurveTo(bx, by2 - ts * .06 * Math.abs(Math.sin(t * 20)), bx + ts * .08, by2); g.lineTo(bx, by2 + ts * .02); g.fill(); } } }
       else { const gr = g.createLinearGradient(cx - ts * .3, 0, cx + ts * .3, 0); gr.addColorStop(0, '#f5cd6a'); gr.addColorStop(1, '#c99434'); g.fillStyle = gr; g.beginPath(); g.ellipse(cx, cy + ts * .1, ts * .3, ts * .32, 0, Math.PI, 0); g.fill(); g.fillRect(cx - ts * .3, cy + ts * .1, ts * .6, ts * .25); g.fillStyle = '#8a5a1a'; for (let j = 0; j < 3; j++) g.fillRect(cx - ts * .3, cy - ts * .08 + j * ts * .12, ts * .6, ts * .025); g.fillStyle = '#3a2410'; g.beginPath(); g.arc(cx, cy + ts * .28, ts * .06, 0, 6.283); g.fill();
         if (i >= 0) for (let j = 0; j < 4; j++) { const a = t * 3 + j * 1.6 + i; const bx = cx + Math.cos(a) * ts * .6, by2 = cy + Math.sin(a * 1.3) * ts * .45; g.fillStyle = 'rgba(255,255,255,.7)'; g.beginPath(); g.ellipse(bx, by2 - ts * .03, ts * .04, ts * .025, Math.sin(t * 40) , 0, 6.283); g.fill(); g.fillStyle = '#ffd93b'; g.beginPath(); g.arc(bx, by2, ts * .035, 0, 6.283); g.fill(); g.fillStyle = '#222'; g.fillRect(bx - ts * .01, by2 - ts * .035, ts * .02, ts * .07); } }
       return;
@@ -1522,20 +1617,41 @@ const Birodalom = (() => {
       g.fillStyle = '#c8964a'; g.beginPath(); g.moveTo(cx - ts * .38, y + ts * .1); g.lineTo(cx, y - ts * .08); g.lineTo(cx + ts * .38, y + ts * .1); g.fill(); if (on) { g.fillStyle = 'rgba(60,150,220,.6)'; g.fillRect(cx - ts * .3, y + ts * (.3 - .04 * Math.sin(t)), ts * .6, ts * .12); } }
     else if (k === 'hordo') { const gr = g.createLinearGradient(x + ts * .22, 0, x + ts * .78, 0); gr.addColorStop(0, '#6b4220'); gr.addColorStop(.45, '#a8733d'); gr.addColorStop(1, '#5a3618'); g.fillStyle = gr; rr(x + ts * .22, y + ts * .14, ts * .56, ts * .72, ts * .12); g.fill(); g.fillStyle = '#4a4a4a'; g.fillRect(x + ts * .2, y + ts * .3, ts * .6, ts * .06); g.fillRect(x + ts * .2, y + ts * .64, ts * .6, ts * .06);
       g.fillStyle = on ? '#6cc6ff' : '#2b3442'; g.beginPath(); g.ellipse(cx, y + ts * .18, ts * .24, ts * .06, 0, 0, 6.283); g.fill(); }
+    else if (k === 'szelk') { g.strokeStyle = '#8a95a3'; g.lineWidth = ts * .05; g.beginPath(); g.moveTo(cx - ts * .22, y + ts * .9); g.lineTo(cx, y + ts * .3); g.lineTo(cx + ts * .22, y + ts * .9); g.moveTo(cx - ts * .14, y + ts * .66); g.lineTo(cx + ts * .14, y + ts * .66); g.stroke();
+      g.save(); g.translate(cx, y + ts * .3); g.rotate(t * (on ? 3 : .4)); g.fillStyle = '#e7eef4'; for (let j = 0; j < 4; j++) { g.rotate(Math.PI / 2); g.beginPath(); g.moveTo(0, 0); g.lineTo(ts * .36, -ts * .05); g.lineTo(ts * .36, ts * .06); g.closePath(); g.fill(); } g.restore();
+      g.fillStyle = '#c0392b'; g.beginPath(); g.arc(cx, y + ts * .3, ts * .05, 0, 6.283); g.fill(); }
+    else if (k === 'napel') { g.fillStyle = '#3a4250'; g.fillRect(cx - ts * .04, cy, ts * .08, ts * .38); g.save(); g.translate(cx, cy - ts * .02); g.transform(1, 0, -.25, .75, 0, 0);
+      const gr = g.createLinearGradient(-ts * .4, -ts * .3, ts * .4, ts * .3); gr.addColorStop(0, on ? '#2a5fb0' : '#3a4250'); gr.addColorStop(1, on ? '#0f2f63' : '#232a35'); g.fillStyle = gr; g.fillRect(-ts * .38, -ts * .3, ts * .76, ts * .56);
+      g.strokeStyle = 'rgba(180,210,255,.45)'; g.lineWidth = Math.max(1, ts * .015); for (let j = 1; j < 4; j++) { g.beginPath(); g.moveTo(-ts * .38 + j * ts * .19, -ts * .3); g.lineTo(-ts * .38 + j * ts * .19, ts * .26); g.stroke(); } g.beginPath(); g.moveTo(-ts * .38, -ts * .02); g.lineTo(ts * .38, -ts * .02); g.stroke();
+      if (on) { g.fillStyle = `rgba(255,255,255,${.15 + .12 * Math.sin(t * 1.5)})`; g.fillRect(-ts * .38, -ts * .3, ts * .2, ts * .56); } g.restore(); }
+    else if (k === 'to') { const gr = g.createRadialGradient(cx - ts * .1, cy - ts * .1, 1, cx, cy, ts * .45); gr.addColorStop(0, on ? '#7fd0ff' : '#4a5a6a'); gr.addColorStop(1, on ? '#1d6fb0' : '#2b3442');
+      g.fillStyle = '#8a7a62'; g.beginPath(); g.ellipse(cx, cy, ts * .46, ts * .4, 0, 0, 6.283); g.fill(); g.fillStyle = gr; g.beginPath(); g.ellipse(cx, cy, ts * .4, ts * .34, 0, 0, 6.283); g.fill();
+      g.fillStyle = '#3f9d3a'; g.beginPath(); g.arc(cx + ts * .14, cy + ts * .06, ts * .08, 0, 6.283); g.fill(); g.fillStyle = '#ff9ec7'; g.beginPath(); g.arc(cx + ts * .15, cy + ts * .04, ts * .03, 0, 6.283); g.fill();
+      if (on) { g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = Math.max(1, ts * .02); const ph = (t * .5 + i * .1) % 1; g.beginPath(); g.ellipse(cx - ts * .12, cy - ts * .06, ts * .2 * ph, ts * .12 * ph, 0, 0, 6.283); g.stroke();
+        if (i >= 0) { g.fillStyle = '#ff8a2e'; const fa = t * .9 + i; g.beginPath(); g.ellipse(cx + Math.cos(fa) * ts * .2, cy + Math.sin(fa) * ts * .15, ts * .05, ts * .025, fa + 1.57, 0, 6.283); g.fill(); } } }
+    else if (k === 'sotal') { const gr = g.createLinearGradient(x, y, x + ts, y); gr.addColorStop(0, '#cfd8e2'); gr.addColorStop(.5, '#ffffff'); gr.addColorStop(1, '#9fb0c2'); g.fillStyle = gr; rr(x + ts * .1, y + ts * .3, ts * .8, ts * .55, ts * .08); g.fill();
+      for (const ox of [.28, .5, .72]) { g.fillStyle = '#8aa3b8'; rr(x + ts * (ox - .07), y + ts * .12, ts * .14, ts * .3, ts * .05); g.fill(); g.fillStyle = on ? '#6cc6ff' : '#4b5563'; g.fillRect(x + ts * (ox - .05), y + ts * (.36 - (on ? .1 * ((Math.sin(t * 2 + ox * 9) + 1) / 2) : 0)), ts * .1, ts * .06); }
+      g.fillStyle = on ? '#4caf50' : '#6b7280'; g.beginPath(); g.arc(x + ts * .8, y + ts * .4, ts * .04, 0, 6.283); g.fill(); g.fillStyle = '#3a4250'; g.fillRect(x + ts * .2, y + ts * .62, ts * .6, ts * .06); }
     else if (k === 'linx' || k === 'liny') { g.fillStyle = '#2b3442'; rr(cx - ts * .22, cy - ts * .22, ts * .44, ts * .44, ts * .08); g.fill(); g.fillStyle = on ? '#e8b656' : '#6b7280'; g.font = `700 ${ts * .34}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(k === 'linx' ? '↔' : '↕', cx, cy + 1); }
-    else if (k === 'spr' || k === 'rot' || k === 'kod' || k === 'piv') {
-      const big = k === 'rot' || k === 'piv';
+    else if (k === 'spr' || k === 'rot' || k === 'kod' || k === 'piv' || k === 'turbo' || k === 'giga' || k === 'arany') {
+      const big = k === 'rot' || k === 'piv' || k === 'giga' || k === 'arany';
+      if (k === 'arany') { const gl = g.createRadialGradient(cx, cy, 1, cx, cy, ts * .5); gl.addColorStop(0, `rgba(255,226,154,${.5 + .2 * Math.sin(t * 3)})`); gl.addColorStop(1, 'rgba(255,226,154,0)'); g.fillStyle = gl; g.fillRect(x, y, ts, ts); }
       const gr = g.createRadialGradient(cx - ts * .05, cy - ts * .05, 1, cx, cy, ts * (big ? .26 : .2)); gr.addColorStop(0, '#5b6678'); gr.addColorStop(1, '#1f2632'); g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, ts * (big ? .26 : .2), 0, 6.283); g.fill();
-      g.fillStyle = on ? (k === 'kod' ? '#9fe0ff' : '#e8b656') : '#6b7280'; g.beginPath(); g.arc(cx, cy, ts * (big ? .12 : .09), 0, 6.283); g.fill();
+      g.fillStyle = on ? (k === 'kod' ? '#9fe0ff' : k === 'turbo' ? '#ff8a3d' : k === 'giga' ? '#6cc6ff' : k === 'arany' ? '#ffe29a' : '#e8b656') : '#6b7280'; g.beginPath(); g.arc(cx, cy, ts * (big ? .12 : .09), 0, 6.283); g.fill();
+      if (k === 'arany') { g.fillStyle = '#b27a22'; for (let j = 0; j < 6; j++) { const a = j * 1.047 + t; g.beginPath(); g.arc(cx + Math.cos(a) * ts * .2, cy + Math.sin(a) * ts * .2, ts * .025, 0, 6.283); g.fill(); } }
+      if (k === 'turbo' || k === 'giga') { g.strokeStyle = k === 'turbo' ? '#ff8a3d' : '#6cc6ff'; g.lineWidth = Math.max(1, ts * .03); g.beginPath(); g.arc(cx, cy, ts * (big ? .3 : .24), 0, 6.283); g.stroke(); }
       if (!on) return;
       if (k === 'piv') { const a = t * .6; g.save(); g.translate(cx, cy); g.rotate(a); const al = ts * (i < 0 ? .45 : 3.3); g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(ts * .05, ts * .08, al, ts * .08);
           g.strokeStyle = '#c3ced9'; g.lineWidth = ts * .04; g.beginPath(); g.moveTo(0, 0); g.lineTo(al, 0); g.stroke(); for (let s2 = ts * .5; s2 < al; s2 += ts * .5) { g.beginPath(); g.moveTo(s2, -ts * .06); g.lineTo(s2 + ts * .25, ts * .06); g.stroke(); }
           if (i >= 0) { g.fillStyle = '#333'; g.fillRect(al - ts * .1, -ts * .12, ts * .2, ts * .24); for (let s2 = ts * .4; s2 < al; s2 += ts * .35) { const ph = (t * 2 + s2) % 1; g.fillStyle = `rgba(175,225,255,${1 - ph})`; g.beginPath(); g.arc(s2, ts * .12 * ph + ts * .05, ts * .03, 0, 6.283); g.fill(); } }
           g.restore(); }
       else if (k === 'kod') { for (let j = 0; j < 7; j++) { const k2 = (t * .45 + j / 7) % 1; g.fillStyle = `rgba(225,242,255,${.28 * (1 - k2)})`; g.beginPath(); g.arc(cx + Math.cos(j * 1.3) * ts * .6 * k2, cy + Math.sin(j * 2.1) * ts * .6 * k2, ts * (.18 + .55 * k2), 0, 6.283); g.fill(); } }
-      else if (k === 'rot') { const a = t * 2.2; drops(g, cx, cy, ts * 2.4 * ef, i < 0 ? 4 : 14, t, i, a, .5); g.strokeStyle = 'rgba(175,225,255,.5)'; g.lineWidth = Math.max(1, ts * .03); g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a + .25) * ts * .6, cy + Math.sin(a + .25) * ts * .6); g.stroke(); }
-      else drops(g, cx, cy, ts * 1.4 * ef, i < 0 ? 6 : 14, t, i);
+      else if (k === 'rot' || k === 'giga') { const a = t * (k === 'giga' ? 1.4 : 2.2); drops(g, cx, cy, ts * (k === 'giga' ? 4.4 : 2.4) * ef, i < 0 ? 4 : k === 'giga' ? 26 : 14, t, i, a, .5); g.strokeStyle = 'rgba(175,225,255,.5)'; g.lineWidth = Math.max(1, ts * .03); g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a + .25) * ts * .6, cy + Math.sin(a + .25) * ts * .6); g.stroke(); }
+      else if (k === 'arany') { drops(g, cx, cy, ts * 2.4 * ef, i < 0 ? 6 : 22, t, i); if (i >= 0) for (let j = 0; j < 3; j++) { const ph = (t * .7 + j / 3) % 1, a = j * 2.1 + t * .3; g.fillStyle = `rgba(255,236,170,${1 - ph})`; g.beginPath(); g.arc(cx + Math.cos(a) * ts * 1.6 * ph, cy + Math.sin(a) * ts * 1.6 * ph, ts * .04, 0, 6.283); g.fill(); } }
+      else drops(g, cx, cy, ts * 1.4 * ef, i < 0 ? 6 : k === 'turbo' ? 20 : 14, t, i);
     }
+    else if (k === 'mikro') { g.fillStyle = '#1f2937'; g.beginPath(); g.arc(cx, cy, ts * .12, 0, 6.283); g.fill(); g.fillStyle = on ? '#6cc6ff' : '#6b7280'; g.beginPath(); g.arc(cx, cy, ts * .05, 0, 6.283); g.fill();
+      if (on) for (let j = 0; j < 8; j++) { const k2 = (t * .9 + j / 8) % 1, a = j * .785; g.fillStyle = `rgba(210,240,255,${.6 * (1 - k2)})`; g.beginPath(); g.arc(cx + Math.cos(a) * ts * .5 * k2, cy + Math.sin(a) * ts * .5 * k2, ts * (.03 + .05 * k2), 0, 6.283); g.fill(); } }
     else if (k === 'drip') { g.fillStyle = '#1f2937'; g.beginPath(); g.arc(cx, cy, ts * .14, 0, 6.283); g.fill();
       if (on) for (let j = 0; j < 4; j++) { const k2 = (t * 1.3 + j * .25) % 1, [dx, dy] = D4[j]; g.fillStyle = `rgba(150,215,255,${1 - k2})`; g.beginPath(); g.arc(cx + dx * ts * .38 * k2, cy + dy * ts * .38 * k2, ts * .05, 0, 6.283); g.fill(); } }
   }
@@ -1568,21 +1684,37 @@ const Birodalom = (() => {
     g.restore();
   }
 
+  function drawDrone(g, u, t, ts) {
+    const [px, py] = posXY(u.x - .5, u.y - .5), hz = ts * (.55 + .06 * Math.sin(t * 3 + u.run));
+    shadow(g, px + ts * .2, py + ts * .25, ts * .3, ts * .14, .22);
+    g.save(); g.translate(px, py - hz); g.rotate(Math.sin(t * 2 + u.run) * .08);
+    g.strokeStyle = '#2b3442'; g.lineWidth = ts * .06; g.beginPath(); g.moveTo(-ts * .3, -ts * .3); g.lineTo(ts * .3, ts * .3); g.moveTo(ts * .3, -ts * .3); g.lineTo(-ts * .3, ts * .3); g.stroke();
+    for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { g.fillStyle = 'rgba(200,220,240,.35)'; g.beginPath(); g.ellipse(a * ts * .3, b * ts * .3, ts * .2, ts * .2 * Math.abs(Math.sin(t * 40 + a + b)) + ts * .04, 0, 0, 6.283); g.fill(); g.fillStyle = '#111'; g.beginPath(); g.arc(a * ts * .3, b * ts * .3, ts * .04, 0, 6.283); g.fill(); }
+    const gr = g.createLinearGradient(0, -ts * .15, 0, ts * .15); gr.addColorStop(0, '#ffe29a'); gr.addColorStop(1, '#c9902c'); g.fillStyle = gr; rr(-ts * .16, -ts * .13, ts * .32, ts * .26, ts * .07); g.fill();
+    g.fillStyle = (t * 2 % 1) < .5 ? '#ff5d5d' : '#6cc6ff'; g.beginPath(); g.arc(0, ts * .08, ts * .03, 0, 6.283); g.fill(); g.fillStyle = '#123'; g.beginPath(); g.arc(0, -ts * .02, ts * .05, 0, 6.283); g.fill();
+    g.restore();
+  }
+
   return {
     id: 'birodalom', name: 'ÖNTÖZŐ BIRODALOM', lives: 0, quit: false, idle: true, unit: ' FT', lb: 'Ft', sponsor: 'A Zerosites támogatásával',
     desc: 'Vegyél modulokat, építs csőhálózatot, ültess kertet és ültetvényt – a víz hozza a termést, a termés a pénzt. A kerted akkor is dolgozik, amikor nem vagy itt.',
-    how: 'VÁLASSZ ESZKÖZT · ÉRINTSD A MEZŐT · ARATÁS: ÉRETT NÖVÉNYRE KOPPINTS',
-    ranks: [[0, 'Palántanevelő'], [1000, 'Kiskertész'], [50000, 'Kertész'], [1e6, 'Ültetvényes'], [5e7, 'Vízmester'], [1e9, 'Öntöző Birodalom ura']],
+    how: 'VÁLASSZ ESZKÖZT · ÉRINTSD A MEZŐT · ARATÁS: ÉRETT NÖVÉNYRE KOPPINTS · GÖRGETÉS: HÚZÁS ESZKÖZ NÉLKÜL, NAGYÍTÁS: GÖRGŐ / CSÍPÉS',
+    ranks: [[0, 'Palántanevelő'], [1000, 'Kiskertész'], [50000, 'Kertész'], [1e6, 'Ültetvényes'], [5e7, 'Vízmester'], [1e9, 'Öntöző Birodalom ura'], [1e11, 'Vízcsászár']],
     init(G) {
       S = load(); S.tab = S.tab || 'mod'; S.tool = S.tool === undefined ? 'pipe' : S.tool; fl = []; dust = []; drag = null; confirmT = 0;
-      MO = new Float32Array(COLS * ROWS); RP = new Float32Array(COLS * ROWS); CB = []; syncCB();
+      MO = new Float32Array(COLS * ROWS); RP = new Float32Array(COLS * ROWS); CB = []; DR = []; syncCB(); panS = null; pinch = null; PT.clear();
       layout(G); net(); G.score = Math.min(CAP, Math.floor(S.life));
+      if (!wheelOn) { wheelOn = 1; const on = () => G.running && G.game && G.game.id === 'birodalom' && L;
+        gc.addEventListener('wheel', e => { if (!on()) return; e.preventDefault(); const [x, y] = P(e); if (y < L.barY) zoomAt(G, x, y, Math.exp(-Math.max(-60, Math.min(60, e.deltaY)) * .004)); }, { passive: false });
+        gc.addEventListener('contextmenu', e => { if (on()) e.preventDefault(); });
+        addEventListener('keydown', e => { if (!on()) return; const v = { ArrowLeft: [1, 0], ArrowRight: [-1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1], a: [1, 0], d: [-1, 0], w: [0, 1], s: [0, -1] }[e.key]; if (v) { e.preventDefault(); pan(G, v[0] * L.ts * 2, v[1] * L.ts * 2); }
+          else if (e.key === '+' || e.key === '-') zoomAt(G, L.fx + L.fw / 2, L.fy + L.fh / 2, e.key === '+' ? 1.25 : .8); else if (e.key === 'x' || e.key === 'Delete') { S.tool = S.tool === 'del' ? null : 'del'; S.info = { it: { k: 'del', kind: 'del', n: 'Bontás' }, l: 4 }; } }); }
       const away = Math.min(offMax(), Math.max(0, (Date.now() - S.t) / 1000)); S.away = null;
       if (away > 30) {
         let got = 0;
-        for (let i = 0; i < S.k.length; i++) { const p = PL[S.k[i]], w = Math.max(NET.wet[i], NET.mwet[i]); if (!p || !w) continue;
+        for (let i = 0; i < S.k.length; i++) { const p = PL[S.k[i]], w = Math.max(NET.wet[i], NET.mwet[i], ghW()); if (!p || !w) continue;
           const grow = away * rate(i, w) + S.g[i];
-          if (auto()) { const n = Math.floor(grow); got += n * val(i) * offF(); S.g[i] = grow - n; } else S.g[i] = Math.min(1, grow); }
+          if (auto()) { const n = Math.floor(grow); got += n * val(i) * offF() * luck(); S.g[i] = grow - n; } else S.g[i] = Math.min(1, grow); }
         got = Math.floor(got); if (got > 0) { earn(got); G.score = Math.min(CAP, Math.floor(S.life)); }
         S.away = { got, sec: away, l: 6 };
       }
@@ -1595,17 +1727,38 @@ const Birodalom = (() => {
     down(G, x, y, e) {
       if (e === true) return;
       if (S.away && S.away.l > 0) { S.away.l = 0; return; }
-      if (y >= L.barY) { const b = bar(G), hit = o => x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h;
+      const hit = o => x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h;
+      if (y >= L.barY) { const b = bar(G);
+        if (hit(b.del)) { S.tool = S.tool === 'del' ? null : 'del'; S.info = { it: { k: 'del', kind: 'del', n: 'Bontás' }, l: 5 }; Sfx.blip(S.tool ? 300 : 600, .05, 'square', .05); return; }
         const tb = b.tabs.find(hit); if (tb) { S.tab = tb.k; confirmT = 0; Sfx.blip(600, .03, 'sine', .04); return; }
         const ar = b.arr.find(hit); if (ar) { S.pg[S.tab] = (b.pg + ar.dir + b.pages) % b.pages; Sfx.blip(650, .03, 'sine', .04); return; }
         const it = b.its.find(hit); if (it) buy(G, it); return; }
-      const i = tileAt(x, y); if (i < 0) return;
+      const zb = zoomBtns(G).find(hit); if (zb) { zoomAt(G, L.fx + L.fw / 2, L.fy + L.fh / 2, zb.f); Sfx.blip(700, .03, 'sine', .04); return; }
+      const mm = miniMap(); if (mm && hit(mm)) { CAM.cx = (x - mm.x) / mm.w * L.vw; CAM.cy = (y - mm.y) / mm.h * L.vh; layout(G); Sfx.blip(650, .03, 'sine', .04); return; }
+      const id = e && e.pointerId != null ? e.pointerId : 0; PT.set(id, { x, y });
+      if (PT.size >= 2) { const [a, b] = [...PT.values()]; drag = null; panS = null; pend = null; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; return; }
+      const i = tileAt(x, y);
+      // eszköz nélkül (vagy jobb/középső gombbal) húzva a kertet görgeti; koppintásra arat / szelepet kapcsol
+      if (!S.tool || i < 0 || (e && (e.button === 1 || e.button === 2))) { panS = { x, y, moved: 0, i: e && e.button ? -1 : i }; return; }
+      // érintésnél kicsit várunk: ha jön a második ujj (csípés), nem rakunk le semmit
+      if (e && e.pointerType === 'touch') { pend = { i, x, y, t: performance.now() }; return; }
       place(G, i, true); lastTile = i; drag = S.tool === 'pipe' || S.tool === 'del' || PL[S.tool] ? 1 : null;
     },
-    move(G, x, y, btn) { if (!btn && L && y >= L.barY) { const b = bar(G); S.hover = b.its.find(o => x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h) || null; } else if (!btn) S.hover = null;
+    commit(G) { if (!pend) return; const i = pend.i; pend = null; place(G, i, true); lastTile = i; drag = S.tool === 'pipe' || S.tool === 'del' || PL[S.tool] ? 1 : null; },
+    move(G, x, y, btn, e) { if (!btn && L && y >= L.barY) { const b = bar(G); S.hover = b.its.find(o => x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h) || null; } else if (!btn) S.hover = null;
+      const id = e && e.pointerId != null ? e.pointerId : 0; if (PT.has(id)) PT.set(id, { x, y });
+      if (pinch && PT.size >= 2) { const [a, b] = [...PT.values()], dd = Math.hypot(a.x - b.x, a.y - b.y) || 1, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+        zoomAt(G, mx, my, dd / pinch.d); pan(G, mx - pinch.mx, my - pinch.my); pinch = { d: dd, mx, my }; return; }
+      if (pend && btn && Math.hypot(x - pend.x, y - pend.y) > 6 * L.d) this.commit(G);
+      if (panS && btn) { const dx = x - panS.x, dy = y - panS.y; panS.moved += Math.abs(dx) + Math.abs(dy); panS.x = x; panS.y = y; pan(G, dx, dy); return; }
       if (!drag || !btn) return; const i = tileAt(x, y); if (i >= 0 && i !== lastTile) { lastTile = i; place(G, i, false); } },
-    up() { drag = null; lastTile = -1; },
+    up(G, x, y, e) { const id = e && e.pointerId != null ? e.pointerId : 0; PT.delete(id);
+      if (pinch) { if (PT.size < 2) pinch = null; panS = null; drag = null; pend = null; lastTile = -1; return; }
+      if (pend) this.commit(G);
+      if (panS && panS.moved < 10 * L.d && panS.i >= 0) place(G, panS.i, true);
+      panS = null; drag = null; lastTile = -1; },
     update(G, fdt) {
+      if (pend && PT.size === 1 && performance.now() - pend.t > 110) this.commit(G);
       const now = performance.now(), dt = S.rt ? Math.min(600, Math.max(0, (now - S.rt) / 1000)) : fdt; S.rt = now;
       const [cw, rh] = size();
       // mozgó öntözők
@@ -1625,17 +1778,17 @@ const Birodalom = (() => {
           else if (n > 1) S.g[i] = 1;
           if (kert && RP[i] > (S.up.kombajn ? 12 : 1.5)) { const rest = S.g[i] - 1; harvest(G, i, 'k'); S.g[i] = rest; } } }
       // kombájnok
-      const cs = (1.8 + .35 * S.up.motor) * Math.min(dt, .5), taken = new Set(CB.map(c => c.tgt));
-      for (const cb of CB) {
+      const cs0 = (1.8 + .35 * S.up.motor) * Math.min(dt, .5), UN = [...CB, ...DR], taken = new Set(UN.map(c => c.tgt));
+      for (const cb of UN) { const cs = cs0 * (cb.fly ? 1.9 : 1);
         if (cb.tgt < 0 || !PL[S.k[cb.tgt]] || S.g[cb.tgt] < 1) {
           taken.delete(cb.tgt); cb.tgt = -1; let best = 1e9;
           for (let i = 0; i < S.k.length; i++) if (PL[S.k[i]] && S.g[i] >= 1 && !taken.has(i)) { const dx = i % COLS + .5 - cb.x, dy = Math.floor(i / COLS) + .5 - cb.y, dd = dx * dx + dy * dy; if (dd < best) { best = dd; cb.tgt = i; } }
           if (cb.tgt >= 0) taken.add(cb.tgt);
         }
-        let tx, ty; if (cb.tgt >= 0) { tx = cb.tgt % COLS + .5; ty = Math.floor(cb.tgt / COLS) + .5; } else { tx = SRC[0] + 1.5; ty = SRC[1] + 1.5 + CB.indexOf(cb) * .9; tx = Math.min(tx, cw - .5); ty = Math.min(ty, rh - .5); }
+        let tx, ty; if (cb.tgt >= 0) { tx = cb.tgt % COLS + .5; ty = Math.floor(cb.tgt / COLS) + .5; } else { tx = SRC[0] + (cb.fly ? 2.5 + DR.indexOf(cb) * .8 : 1.5); ty = SRC[1] + (cb.fly ? -1.2 : 1.5 + CB.indexOf(cb) * .9); tx = Math.min(tx, cw - .5); ty = Math.max(.5, ty); ty = Math.min(ty, rh - .5); }
         const dx = tx - cb.x, dy = ty - cb.y, dd = Math.hypot(dx, dy);
         if (dd > .05) { const st = Math.min(dd, cs); cb.x += dx / dd * st; cb.y += dy / dd * st; const ta = Math.atan2(dy, dx); let da = ta - cb.a; while (da > Math.PI) da -= 6.283; while (da < -Math.PI) da += 6.283; cb.a += da * Math.min(1, dt * 8); cb.run += dt;
-          if (Math.random() < dt * 14) { const [px, py] = posXY(cb.x - .5, cb.y - .5); dust.push({ x: px - Math.cos(cb.a) * L.ts * .4, y: py - Math.sin(cb.a) * L.ts * .4, vx: (Math.random() - .5) * 10 * L.d, vy: (Math.random() - .5) * 10 * L.d, l: .8, c: '#c8b48a' }); } }
+          if (!cb.fly && Math.random() < dt * 14) { const [px, py] = posXY(cb.x - .5, cb.y - .5); dust.push({ x: px - Math.cos(cb.a) * L.ts * .4, y: py - Math.sin(cb.a) * L.ts * .4, vx: (Math.random() - .5) * 10 * L.d, vy: (Math.random() - .5) * 10 * L.d, l: .8, c: '#c8b48a' }); } }
         else if (cb.tgt >= 0 && S.g[cb.tgt] >= 1) { const rest = S.g[cb.tgt] - 1; harvest(G, cb.tgt, 'cb'); S.g[cb.tgt] = rest; cb.tgt = -1; }
       }
       const sc = Math.min(CAP, Math.floor(S.life));
@@ -1653,7 +1806,8 @@ const Birodalom = (() => {
       const d = L.d, ts = L.ts, [cw, rh] = size();
       if (L.vw !== (L.tr ? rh : cw)) layout(G);
       const sky = g.createLinearGradient(0, 0, 0, G.H); sky.addColorStop(0, '#16351f'); sky.addColorStop(1, '#07140c'); g.fillStyle = sky; g.fillRect(-20, -20, G.W + 40, G.H + 40);
-      const BW = ts * L.vw, BH = ts * L.vh;
+      const BW = ts * L.vw, BH = ts * L.vh, vis = (x, y, m = 0) => x + ts + m > 0 && x - m < G.W && y + ts + m > L.fy - 16 * d && y - m < L.fy + L.fh + 16 * d;
+      g.save(); g.beginPath(); g.rect(0, L.fy - 8 * d, G.W, L.fh + 22 * d); g.clip();
       // kerítés
       shadow(g, L.bx + BW / 2, L.by + BH + 10 * d, BW * .55, 14 * d, .35);
       g.fillStyle = '#5a3d22'; rr(L.bx - 10 * d, L.by - 10 * d, BW + 20 * d, BH + 20 * d, 8 * d); g.fill();
@@ -1662,7 +1816,7 @@ const Birodalom = (() => {
       for (let s2 = 0; s2 <= L.vh; s2++) { g.fillRect(L.bx - 12 * d, L.by + s2 * ts - 3 * d, 6 * d, 6 * d); g.fillRect(L.bx + BW + 6 * d, L.by + s2 * ts - 3 * d, 6 * d, 6 * d); }
       const tex = grassTex(Math.ceil(ts));
       for (let r = 0; r < rh; r++) for (let c = 0; c < cw; c++) {
-        const i = idx(c, r), [x, y] = tileXY(i), w = wetNow(i);
+        const i = idx(c, r), [x, y] = tileXY(i); if (!vis(x, y)) continue; const w = wetVis(i);
         g.drawImage(tex[(c * 7 + r * 13) % tex.length], x, y, ts + .5, ts + .5);
         if (w) { g.fillStyle = `rgba(25,70,110,${.16 + .12 * Math.min(1.3, w)})`; g.fillRect(x, y, ts + .5, ts + .5);
           const gl = (t * .7 + c * .37 + r * .61) % 3; if (gl < 1) { g.fillStyle = `rgba(200,235,255,${.25 * Math.sin(gl * Math.PI)})`; g.beginPath(); g.ellipse(x + ts * ((c * 31 % 7) / 9 + .15), y + ts * ((r * 17 % 7) / 9 + .15), ts * .08, ts * .03, 0, 0, 6.283); g.fill(); } }
@@ -1671,19 +1825,28 @@ const Birodalom = (() => {
       g.strokeStyle = 'rgba(0,0,0,.08)'; g.lineWidth = 1; g.beginPath(); for (let s2 = 1; s2 < L.vw; s2++) { g.moveTo(L.bx + s2 * ts, L.by); g.lineTo(L.bx + s2 * ts, L.by + BH); } for (let s2 = 1; s2 < L.vh; s2++) { g.moveTo(L.bx, L.by + s2 * ts); g.lineTo(L.bx + BW, L.by + s2 * ts); } g.stroke();
       { const [x, y] = tileXY(idx(...SRC)); if (L.tr) seg(g, x + ts / 2, y, 0, -1, 12 * d, ts * .26, 1, -1, t); else seg(g, x, y + ts / 2, -1, 0, 12 * d, ts * .26, 1, -1, t); }
       for (let r = 0; r < rh; r++) for (let c = 0; c < cw; c++) {
-        const i = idx(c, r), k = S.k[i]; if (!k || PL[k]) continue; const [x, y] = tileXY(i); drawMod(g, k, i, x, y, ts, t, NET.on[i]);
+        const i = idx(c, r), k = S.k[i]; if (!k || PL[k]) continue; const [x, y] = tileXY(i); if (!vis(x, y, ts * 4.5)) continue; drawMod(g, k, i, x, y, ts, t, NET.on[i]);
       }
       for (let r = 0; r < rh; r++) for (let c = 0; c < cw; c++) {
-        const i = idx(c, r), k = S.k[i]; if (!PL[k]) continue; const [x, y] = tileXY(i); drawPlant(g, k, Math.min(1, S.g[i]), x, y, ts, t);
+        const i = idx(c, r), k = S.k[i]; if (!PL[k]) continue; const [x, y] = tileXY(i); if (!vis(x, y, ts)) continue; drawPlant(g, k, Math.min(1, S.g[i]), x, y, ts, t);
       }
       for (const o of NET.mobs) drawMob(g, o, t, ts);
       for (const p of dust) { g.fillStyle = p.c; g.globalAlpha = Math.max(0, p.l) * .7; g.beginPath(); g.arc(p.x, p.y, Math.max(1, ts * .04), 0, 6.283); g.fill(); } g.globalAlpha = 1;
       for (const cb of CB) drawCB(g, cb, t, ts);
+      for (const u of DR) drawDrone(g, u, t, ts);
+      if (S.tool === 'del') { g.strokeStyle = 'rgba(255,110,90,.55)'; g.lineWidth = 3 * d; g.setLineDash([10 * d, 8 * d]); g.strokeRect(L.bx + 1.5 * d, L.by + 1.5 * d, BW - 3 * d, BH - 3 * d); g.setLineDash([]); }
       // felhőárnyékok
       g.save(); g.beginPath(); g.rect(L.bx, L.by, BW, BH); g.clip();
       for (let j = 0; j < 3; j++) { const span = BW + 400 * d, cx = L.bx - 200 * d + ((t * 14 * d + j * span / 3) % span), cy = L.by + BH * (.2 + .3 * j); g.fillStyle = 'rgba(0,10,20,.07)'; g.beginPath(); g.ellipse(cx, cy, 140 * d, 60 * d, .3, 0, 6.283); g.ellipse(cx + 80 * d, cy + 20 * d, 90 * d, 45 * d, 0, 0, 6.283); g.fill(); }
       g.restore();
-      for (const f of fl) { g.font = `700 ${Math.max(10, ts * .32)}px Inter, sans-serif`; g.textAlign = 'center'; g.lineWidth = 3 * d; g.strokeStyle = `rgba(0,0,0,${Math.max(0, f.l) * .5})`; g.strokeText(f.t, f.x, f.y); g.fillStyle = `rgba(255,225,140,${Math.max(0, f.l)})`; g.fillText(f.t, f.x, f.y); }
+      for (const f of fl) { g.font = `700 ${Math.max(10, ts * .32)}px Inter, sans-serif`; g.textAlign = 'center'; g.lineWidth = 3 * d; g.strokeStyle = `rgba(0,0,0,${Math.max(0, f.l) * .5})`; g.strokeText(f.t, f.x, f.y); g.fillStyle = f.gold ? `rgba(255,246,190,${Math.max(0, f.l)})` : `rgba(255,225,140,${Math.max(0, f.l)})`; g.fillText(f.t, f.x, f.y); }
+      g.restore();
+      // nagyítás és a kert áttekintése (ha nagyobb a képernyőnél)
+      for (const z of zoomBtns(G)) { g.fillStyle = 'rgba(4,7,14,.75)'; g.strokeStyle = 'rgba(232,182,86,.5)'; g.lineWidth = d; rr(z.x, z.y, z.w, z.h, 9 * d); g.fill(); g.stroke(); g.fillStyle = '#ffe29a'; g.font = `800 ${18 * d}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(z.t, z.x + z.w / 2, z.y + z.h / 2 + d); }
+      { const mm = miniMap(); if (mm) { const { x: mx, y: my, w: mw, h: mh } = mm, sx = mw / BW, sy = mh / BH;
+        g.fillStyle = 'rgba(4,7,14,.75)'; rr(mx - 3 * d, my - 3 * d, mw + 6 * d, mh + 6 * d, 6 * d); g.fill(); g.fillStyle = 'rgba(70,140,70,.7)'; g.fillRect(mx, my, mw, mh);
+        for (let r = 0; r < rh; r++) for (let c = 0; c < cw; c++) { const k = S.k[idx(c, r)]; if (!k) continue; g.fillStyle = PL[k] ? PL[k].col : COND[k] ? '#9fd6f5' : '#e8b656'; const [vx, vy] = L.tr ? [r, c] : [c, r]; g.fillRect(mx + vx * mw / L.vw, my + vy * mh / L.vh, Math.max(1, mw / L.vw), Math.max(1, mh / L.vh)); }
+        g.strokeStyle = '#ffe29a'; g.lineWidth = 1.5 * d; g.strokeRect(mx + Math.max(0, (L.fx - L.bx) * sx), my + Math.max(0, (L.fy - L.by) * sy), Math.min(mw, L.fw * sx), Math.min(mh, L.fh * sy)); } }
       // felső sáv
       g.textAlign = 'center'; g.textBaseline = 'middle';
       g.font = `800 ${20 * d}px Inter, sans-serif`; g.fillStyle = '#ffe29a'; g.fillText('💰 ' + fmt(S.money) + ' Ft' + (S.star ? '   ⭐ ' + S.star : ''), G.W / 2, 78 * d);
@@ -1695,7 +1858,10 @@ const Birodalom = (() => {
       const bg2 = g.createLinearGradient(0, L.barY, 0, G.H); bg2.addColorStop(0, 'rgba(12,18,28,.96)'); bg2.addColorStop(1, 'rgba(4,7,14,.98)'); g.fillStyle = bg2; g.fillRect(0, L.barY, G.W, G.H - L.barY); g.fillStyle = 'rgba(232,182,86,.35)'; g.fillRect(0, L.barY, G.W, 1 * d);
       for (const tb of b.tabs) { const on = S.tab === tb.k; g.fillStyle = on ? 'rgba(232,182,86,.9)' : 'rgba(255,255,255,.06)'; rr(tb.x + 3 * d, tb.y, tb.w - 6 * d, tb.h, tb.h / 2); g.fill();
         g.fillStyle = on ? '#1a1004' : tb.k === 'bir' && starGain() ? '#ffe29a' : 'rgba(255,255,255,.75)'; g.font = `700 ${Math.min(12, tb.w / d / 9.5) * d}px Inter, sans-serif`; g.fillText(tb.n, tb.x + tb.w / 2, tb.y + tb.h / 2 + 1); }
-      for (const a of b.arr) { g.fillStyle = 'rgba(255,255,255,.06)'; rr(a.x, a.y, a.w, a.h, 8 * d); g.fill(); g.fillStyle = '#ffe29a'; g.font = `700 ${14 * d}px Inter, sans-serif`; g.fillText(a.dir < 0 ? '‹' : '›', a.x + a.w / 2, a.y + a.h / 2); }
+      { const z = b.del, on = S.tool === 'del'; g.fillStyle = on ? 'rgba(229,83,61,.92)' : 'rgba(229,83,61,.16)'; g.strokeStyle = on ? '#ff8a7a' : 'rgba(255,138,122,.55)'; g.lineWidth = 1.5 * d; rr(z.x, z.y, z.w, z.h, z.h / 2); g.fill(); g.stroke();
+        g.fillStyle = on ? '#fff' : '#ffb4a8'; g.font = `800 ${Math.min(12, z.w / d / 8) * d}px Inter, sans-serif`; g.fillText('🪓 BONTÁS', z.x + z.w / 2, z.y + z.h / 2 + 1, z.w - 8 * d); }
+      for (const a of b.arr) { g.fillStyle = 'rgba(255,255,255,.06)'; rr(a.x, a.y, a.w, a.h, 8 * d); g.fill(); g.fillStyle = '#ffe29a'; g.font = `700 ${14 * d}px Inter, sans-serif`; g.fillText(a.dir < 0 ? '‹' : '›', a.x + a.w / 2, a.y + a.h / 2 - 6 * d);
+        if (a.dir > 0) { g.font = `600 ${9 * d}px Inter, sans-serif`; g.fillStyle = 'rgba(255,255,255,.5)'; g.fillText((b.pg + 1) + '/' + b.pages, a.x + a.w / 2, a.y + a.h / 2 + 12 * d); } }
       for (const it of b.its) {
         const shop = it.kind === 'mod' || it.kind === 'pl', lock = (shop || it.kind === 'up') && !unlocked(it), sel = shop && S.tool === it.k;
         const can = it.kind === 'reset' || it.kind === 'perk' ? it.ok : S.money >= it.c;
@@ -1716,7 +1882,7 @@ const Birodalom = (() => {
         else { lbl = it.c ? fmt(it.c) + ' Ft' : '–'; col = can || !it.c ? '#ffe29a' : '#ff8a7a'; }
         g.fillStyle = col; g.fillText(lbl, ix, it.y + it.h - 11 * d, it.w - 8 * d);
       }
-      { const shownIt = S.hover || (S.info && S.info.l > 0 ? S.info.it : null) || (S.tool ? items().find(o => o.k === S.tool && (o.kind === 'mod' || o.kind === 'pl')) : null);
+      { const shownIt = S.hover || (S.info && S.info.l > 0 ? S.info.it : null) || (S.tool === 'del' ? { k: 'del', kind: 'del', n: 'Bontás' } : S.tool ? items().find(o => o.k === S.tool && (o.kind === 'mod' || o.kind === 'pl')) : null);
         if (shownIt) { const fresh = items().find(o => o.k === shownIt.k && o.kind === shownIt.kind) || shownIt, txt = descOf(fresh);
           if (txt) { g.font = `600 ${12 * d}px Inter, sans-serif`; g.textAlign = 'left'; const title = fresh.n + '  ', tw = g.measureText(title).width; g.font = `500 ${12 * d}px Inter, sans-serif`;
             const maxW = Math.min(G.W - 24 * d, 760 * d), words = txt.split(' '), lines = []; let ln = '', first = true;

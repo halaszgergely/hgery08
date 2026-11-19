@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG } from './core.js?v=202611182331';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611182331';
-import * as Player from './player.js?v=202611182331';
-import * as Party from './party.js?v=202611182331';
-import * as VP from './vplayer.js?v=202611182331';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611182331';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG } from './core.js?v=202611190602';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611190602';
+import * as Player from './player.js?v=202611190602';
+import * as Party from './party.js?v=202611190602';
+import * as VP from './vplayer.js?v=202611190602';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611190602';
 
 let C = null;
 export function init(ctx) { C = ctx; }
