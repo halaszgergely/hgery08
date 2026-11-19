@@ -376,7 +376,7 @@ body.embed .scroll{display:none}
   </div>
 </div>
 
-<script src="js/arcade-drift.js?v=202611190957"></script>
+<script src="js/arcade-drift.js?v=202611191034"></script>
 <script>
 (() => {
 'use strict';
@@ -1208,7 +1208,7 @@ const Birodalom = (() => {
     szuro: { n: 'Szűrő', c: 12000, u: 50000, szuro: .08, m: 1.5 },
     linx: { n: 'Lineáris ↔', c: 20000, u: 80000, mob: 'x', w: 3, wm: 1.1, m: 1.5 },
     liny: { n: 'Lineáris ↕', c: 20000, u: 80000, mob: 'y', w: 3, wm: 1.1, m: 1.5 },
-    meh: { n: 'Méhkaptár', c: 25000, u: 120000, aura: 2, yb: .25, m: 1.3 },
+    meh: { n: 'Méhkaptár', c: 25000, u: 120000, aura: 2, yb: .25, hive: .02, m: 1.3 },
     szelk: { n: 'Szélkerék', c: 35000, u: 180000, q: 9, m: 1.3 },
     kut: { n: 'Mélykút', c: 60000, u: 400000, q: 14, m: 1.35 },
     napel: { n: 'Napelemes szivattyú', c: 180000, u: 1.2e6, q: 18, m: 1.32 },
@@ -1218,6 +1218,7 @@ const Birodalom = (() => {
     giga: { n: 'Óriás esőztető', c: 9e6, u: 7e7, r: 4, w: 14, m: 1.3 },
     sotal: { n: 'Sótalanító üzem', c: 4e7, u: 3e8, q: 120, m: 1.4 },
     gomba: { n: 'Gombatelep', c: 250000, u: 1.8e6, aura: 1, gb: .5, m: 1.3 },
+    mehtelep: { n: 'Méhtelep', c: 5e9, ck: 50, u: 3e10, sz: 2, aura: 3, yb: .4, hive: .6, m: 1.45 },
     katica: { n: 'Katicaház', c: 1.1e6, u: 7e6, aura: 2, yb: .3, m: 1.3 },
     arany: { n: 'Arany Locsolófej', c: 3e8, u: 2e9, r: 2, w: 8, wm: 2, m: 2.5 },
     lampa: { n: 'Növénylámpa', c: 2.5e9, u: 1.5e10, aura: 1, gb: 1, m: 1.35 },
@@ -1233,6 +1234,8 @@ const Birodalom = (() => {
     hidro: { n: 'Hidropónia-torony', ck: 40, c: 8e11, u: 5e12, sz: 2, boost: 3, gb: 2, yb: 1, w: 150, m: 1.45 },
     tenger: { n: 'Tengervíz-erőmű', ck: 60, c: 2e13, u: 1.5e14, sz: 3, q: 60000, m: 1.5 },
     ciklon: { n: 'Ciklon-öntöző', ck: 120, c: 5e13, u: 4e14, sz: 3, r: 10, w: 500, wm: 2.5, m: 1.5 },
+    mehgyar: { n: 'Ipari méhfarm', c: 1e14, ck: 600, u: 8e14, sz: 3, aura: 4, yb: .6, hive: 8, m: 1.5 },
+    robotmeh: { n: 'Robotméh-központ', c: 1e22, ck: 8000, u: 8e22, sz: 3, aura: 5, yb: 1, hive: 120, m: 1.6 },
     csillkut: { n: 'Csillagkút', ck: 200, c: 5e15, u: 4e16, q: 250000, m: 1.5 },
     galobel: { n: 'Galaktikus obeliszk', ck: 300, c: 8e16, u: 6e17, sz: 2, aura: 4, yb: 2, gb: 1.5, m: 1.6 },
     nebula2: { n: 'Nebula-esőztető', ck: 500, c: 1e18, u: 8e18, sz: 3, r: 14, w: 4000, wm: 4, m: 1.55 },
@@ -1268,6 +1271,36 @@ const Birodalom = (() => {
     fenyperm: { n: 'Fénypermet', loc: 'kepler', look: 'arany', c: 1.5e69, ck: 2e8, u: 0, r: 5, w: 8e12, wm: 30, m: 1.5 },
     vilagont: { n: 'Világöntöző', loc: 'kepler', look: 'univont', c: 1e71, ck: 1.5e9, u: 0, sz: 3, r: 32, w: 1e14, wm: 60, m: 1.5 },
     eletfak: { n: 'Életfa-kamra', loc: 'kepler', look: 'genezis', c: 5e71, ck: 3e9, u: 0, sz: 3, boost: 8, gb: 30, yb: 20, w: 8e13, m: 1.5 },
+    napvit: { n: 'Napvitorla-gyűjtő', loc: 'station', look: 'napel', c: 4e20, ck: 100, u: 0, cp: 0.05, m: 1.5 },
+    urmeh: { n: 'Űrkaptár', loc: 'station', look: 'hive', c: 2e21, ck: 400, cc: 10, u: 0, sz: 2, aura: 2, yb: 0.6, hive: 30, m: 1.5 },
+    gravgen: { n: 'Gravitációs generátor', loc: 'station', look: 'obel', c: 8e21, ck: 600, cc: 30, u: 0, aura: 2, gb: 2, m: 1.5 },
+    plazmaszo: { n: 'Plazmaszóró', loc: 'station', look: 'turbo', c: 4e22, ck: 800, cc: 60, u: 0, r: 3, w: 2e5, wm: 4, m: 1.5 },
+    orbfarm: { n: 'Orbitális farmgyűrű', loc: 'station', look: 'csillagh', c: 5e24, ck: 3000, cc: 300, u: 0, sz: 3, boost: 4, gb: 6, yb: 4, w: 3e6, m: 1.5 },
+    regolit: { n: 'Regolit-bánya', loc: 'hold', look: 'sotal', c: 5e28, ck: 4000, u: 0, cp: 0.6, m: 1.5 },
+    holdmeh: { n: 'Holdkaptár', loc: 'hold', look: 'hive', c: 2e29, ck: 8000, cc: 150, u: 0, sz: 2, aura: 3, yb: 0.8, hive: 400, m: 1.5 },
+    krioter: { n: 'Kriogén terem', loc: 'hold', look: 'lampa', c: 8e29, ck: 1.2e4, cc: 400, u: 0, sz: 2, aura: 3, gb: 4, m: 1.5 },
+    holdkod: { n: 'Holdköd-szóró', loc: 'hold', look: 'kod', c: 4e30, ck: 1.6e4, cc: 800, u: 0, r: 5, w: 6e6, wm: 7, m: 1.5 },
+    holdkut: { n: 'Mélykráter-kút', loc: 'hold', look: 'to', c: 2e31, ck: 2e4, cc: 1500, u: 0, q: 5e8, m: 1.5 },
+    marsfuro: { n: 'Mars-fúrótorony', loc: 'mars', look: 'szelk', c: 5e36, ck: 5e4, u: 0, cp: 7, m: 1.5 },
+    marsmeh: { n: 'Vörös kaptár', loc: 'mars', look: 'hive', c: 2e37, ck: 1e5, cc: 2000, u: 0, sz: 2, aura: 3, yb: 1, hive: 5000, m: 1.5 },
+    porpajzs: { n: 'Porvihar-pajzs', loc: 'mars', look: 'obel', c: 8e37, ck: 1.5e5, cc: 5000, u: 0, sz: 2, aura: 4, gb: 5, yb: 2, m: 1.5 },
+    marsrot: { n: 'Mars-esőztető', loc: 'mars', look: 'giga', c: 4e38, ck: 2e5, cc: 1e4, u: 0, r: 6, w: 2e8, wm: 10, m: 1.5 },
+    jegsapka: { n: 'Jégsapka-olvasztó', loc: 'mars', look: 'gejzir', c: 2e39, ck: 2.5e5, cc: 2e4, u: 0, sz: 2, q: 3e10, m: 1.5 },
+    jegmag: { n: 'Jégmag-fúró', loc: 'europa', look: 'jeg', c: 5e46, ck: 6e5, u: 0, cp: 90, m: 1.5 },
+    europmeh: { n: 'Mélytengeri kaptár', loc: 'europa', look: 'hive', c: 2e47, ck: 1.2e6, cc: 3e4, u: 0, sz: 2, aura: 3, yb: 1.2, hive: 7e4, m: 1.5 },
+    hoforr: { n: 'Hőforrás-kamra', loc: 'europa', look: 'csillagh', c: 8e47, ck: 1.8e6, cc: 8e4, u: 0, sz: 3, boost: 5, gb: 14, yb: 9, w: 8e10, m: 1.5 },
+    jegszo: { n: 'Jégkristály-szóró', loc: 'europa', look: 'kristr', c: 4e48, ck: 2.4e6, cc: 1.5e5, u: 0, r: 7, w: 6e9, wm: 14, m: 1.5 },
+    aramlas: { n: 'Áramlás-turbina', loc: 'europa', look: 'szivv', c: 2e49, ck: 3e6, cc: 3e5, u: 0, q: 5e12, m: 1.5 },
+    metfin: { n: 'Metán-finomító', loc: 'titan', look: 'sotal', c: 5e56, ck: 8e6, u: 0, cp: 1200, m: 1.5 },
+    titmeh: { n: 'Ködkaptár', loc: 'titan', look: 'hive', c: 2e57, ck: 1.5e7, cc: 5e5, u: 0, sz: 2, aura: 3, yb: 1.5, hive: 1e6, m: 1.5 },
+    borkupola: { n: 'Borostyán-kupola', loc: 'titan', look: 'genezis', c: 8e57, ck: 2.2e7, cc: 1.2e6, u: 0, sz: 3, boost: 6, gb: 20, yb: 14, w: 3e12, m: 1.5 },
+    narszo: { n: 'Narancsköd-szóró', loc: 'titan', look: 'felho', c: 4e58, ck: 3e7, cc: 2.5e6, u: 0, r: 8, w: 4e11, wm: 20, m: 1.5 },
+    krioforr: { n: 'Kriovulkán', loc: 'titan', look: 'gejzir', c: 2e59, ck: 4e7, cc: 5e6, u: 0, sz: 3, q: 4e14, m: 1.5 },
+    kvantgy: { n: 'Kvantumgyűjtő', loc: 'kepler', look: 'portal', c: 5e68, ck: 2e8, u: 0, cp: 1.6e4, m: 1.5 },
+    kepmeh: { n: 'Fénykaptár', loc: 'kepler', look: 'hive', c: 2e69, ck: 4e8, cc: 8e6, u: 0, sz: 3, aura: 5, yb: 2.5, hive: 2e7, m: 1.5 },
+    eletmag: { n: 'Életmag-reaktor', loc: 'kepler', look: 'galobel', c: 8e69, ck: 6e8, cc: 2e7, u: 0, sz: 2, aura: 5, gb: 12, yb: 6, m: 1.5 },
+    kettszo: { n: 'Kettős-nap szóró', loc: 'kepler', look: 'arany', c: 4e70, ck: 8e8, cc: 4e7, u: 0, r: 9, w: 2e13, wm: 40, m: 1.5 },
+    csillforr: { n: 'Csillagforrás', loc: 'kepler', look: 'flyuk', c: 2e71, ck: 1e9, cc: 8e7, u: 0, sz: 3, q: 2e16, m: 1.5 },
     del: { n: 'Bontás', c: 0, u: 0, m: 1 }
   };
   const PL = {
@@ -1390,16 +1423,46 @@ const Birodalom = (() => {
     lebdiny: { n: 'Lebegő dinnye', loc: 'kepler', c: 1.44e70, ck: 1.8e6, t: 780, v: 4.32e68, u: 0, m: 1.15, s: 'melon', col: '#7c4dff', glow: 1, pw: 8.67e11, nkx: 30000.0 },
     osszolo: { n: 'Ősidegen szőlő', loc: 'kepler', c: 1.73e71, ck: 2.7e6, t: 920, v: 5.18e69, u: 0, m: 1.15, s: 'vine', col: '#b388ff', glow: 1, pw: 1.47e12, nkx: 30000.0 },
     vilagokf: { n: 'Világok Fája', loc: 'kepler', c: 3.11e73, ck: 3.6e6, t: 1060, v: 9.33e71, u: 0, m: 1.15, s: 'tree', col: '#ffd700', glow: 1, pw: 3.76e13, nkx: 30000.0, sz: 3 },
+    napelev: { n: 'Napelem-levél', loc: 'station', c: 2.49e25, ck: 150, cc: 15, t: 1200, v: 7.46e23, u: 0, m: 1.15, s: 'rosette', col: '#7ad06c', glow: 1, pw: 2.84e5, nkx: 1 },
+    mgomba: { n: 'Mikrogravitációs gomba', loc: 'station', c: 2.99e26, ck: 180, cc: 30, t: 1340, v: 8.96e24, u: 0, m: 1.15, s: 'bush', col: '#e8c27a', glow: 1, pw: 4.83e5, nkx: 1 },
+    kozkuk: { n: 'Kozmikus kukorica', loc: 'station', c: 3.58e27, ck: 210, cc: 45, t: 1480, v: 1.07e26, u: 0, m: 1.15, s: 'corn', col: '#ffe066', glow: 1, pw: 8.21e5, nkx: 1 },
+    fenymoha: { n: 'Fénymoha', loc: 'station', c: 4.3e28, ck: 240, cc: 60, t: 1620, v: 1.29e27, u: 0, m: 1.15, s: 'grass', col: '#a8ffb0', glow: 1, pw: 1.4e6, nkx: 1 },
+    orbitfa: { n: 'Orbitfa', loc: 'station', c: 2.58e30, ck: 270, cc: 75, t: 1760, v: 7.74e28, u: 0, m: 1.15, s: 'tree', col: '#9fe0ff', glow: 1, pw: 1.19e7, nkx: 1, sz: 2 },
+    holdgomba: { n: 'Holdgomba', loc: 'hold', c: 2.49e33, ck: 1200, cc: 180, t: 1200, v: 7.46e31, u: 0, m: 1.15, s: 'bush', col: '#cfd8e2', glow: 1, pw: 7.1e6, nkx: 8 },
+    szliliom: { n: 'Szürke liliom', loc: 'hold', c: 2.99e34, ck: 1440, cc: 360, t: 1340, v: 8.96e32, u: 0, m: 1.15, s: 'flower', col: '#b0b8c0', glow: 1, pw: 1.21e7, nkx: 8 },
+    arapaly: { n: 'Árapály-szőlő', loc: 'hold', c: 3.58e35, ck: 1680, cc: 540, t: 1480, v: 1.07e34, u: 0, m: 1.15, s: 'vine', col: '#90a4ae', glow: 1, pw: 2.05e7, nkx: 8 },
+    holdkodiny: { n: 'Holdkő-dinnye', loc: 'hold', c: 4.3e36, ck: 1920, cc: 720, t: 1620, v: 1.29e35, u: 0, m: 1.15, s: 'melon', col: '#78909c', glow: 1, pw: 3.49e7, nkx: 8 },
+    ezfeny: { n: 'Ezüstfenyő', loc: 'hold', c: 7.74e38, ck: 2160, cc: 900, t: 1760, v: 2.32e37, u: 0, m: 1.15, s: 'tree', col: '#eceff1', glow: 1, pw: 8.89e8, nkx: 8, sz: 3 },
+    rozsrepa: { n: 'Rozsdarépa', loc: 'mars', c: 2.49e41, ck: 9000, cc: 2400, t: 1200, v: 7.46e39, u: 0, m: 1.15, s: 'root', col: '#d84315', glow: 1, pw: 2.13e8, nkx: 60 },
+    vnapr: { n: 'Vörös napraforgó', loc: 'mars', c: 2.99e42, ck: 1.08e4, cc: 4800, t: 1340, v: 8.96e40, u: 0, m: 1.15, s: 'sunf', col: '#ff5722', glow: 1, pw: 3.62e8, nkx: 60 },
+    kraterbab: { n: 'Kráterbab', loc: 'mars', c: 3.58e43, ck: 1.26e4, cc: 7200, t: 1480, v: 1.07e42, u: 0, m: 1.15, s: 'stake', col: '#bf360c', glow: 1, pw: 6.16e8, nkx: 60 },
+    homokfu: { n: 'Homokvihar-fű', loc: 'mars', c: 4.3e44, ck: 1.44e4, cc: 9600, t: 1620, v: 1.29e43, u: 0, m: 1.15, s: 'grass', col: '#ff8a65', glow: 1, pw: 1.05e9, nkx: 60 },
+    voriasfa: { n: 'Vörös óriásfa', loc: 'mars', c: 7.74e46, ck: 1.62e4, cc: 1.2e4, t: 1760, v: 2.32e45, u: 0, m: 1.15, s: 'tree', col: '#c62828', glow: 1, pw: 2.67e10, nkx: 60, sz: 3 },
+    jegvirag: { n: 'Jégvirág', loc: 'europa', c: 2.49e51, ck: 7.5e4, cc: 3e4, t: 1200, v: 7.46e49, u: 0, m: 1.15, s: 'flower', col: '#e1f5fe', glow: 1, pw: 5.68e9, nkx: 500 },
+    gejzbab: { n: 'Gejzírbab', loc: 'europa', c: 2.99e52, ck: 9e4, cc: 6e4, t: 1340, v: 8.96e50, u: 0, m: 1.15, s: 'stake', col: '#4fc3f7', glow: 1, pw: 9.66e9, nkx: 500 },
+    fagyrepa: { n: 'Fagyrépa', loc: 'europa', c: 3.58e53, ck: 1.05e5, cc: 9e4, t: 1480, v: 1.07e52, u: 0, m: 1.15, s: 'root', col: '#81d4fa', glow: 1, pw: 1.64e10, nkx: 500 },
+    krtok: { n: 'Kristálytök', loc: 'europa', c: 4.3e54, ck: 1.2e5, cc: 1.2e5, t: 1620, v: 1.29e53, u: 0, m: 1.15, s: 'gourd', col: '#b3e5fc', glow: 1, pw: 2.79e10, nkx: 500 },
+    oceanfa: { n: 'Óceánfa', loc: 'europa', c: 2.58e56, ck: 1.35e5, cc: 1.5e5, t: 1760, v: 7.74e54, u: 0, m: 1.15, s: 'tree', col: '#29b6f6', glow: 1, pw: 2.37e11, nkx: 500, sz: 2 },
+    kodgomba: { n: 'Ködgomba', loc: 'titan', c: 2.49e61, ck: 6e5, cc: 4.5e5, t: 1200, v: 7.46e59, u: 0, m: 1.15, s: 'bush', col: '#ffcc80', glow: 1, pw: 1.42e11, nkx: 4000 },
+    metlil: { n: 'Metánliliom', loc: 'titan', c: 2.99e62, ck: 7.2e5, cc: 9e5, t: 1340, v: 8.96e60, u: 0, m: 1.15, s: 'flower', col: '#ffb74d', glow: 1, pw: 2.41e11, nkx: 4000 },
+    narnad: { n: 'Narancsnád', loc: 'titan', c: 3.58e63, ck: 8.4e5, cc: 1.35e6, t: 1480, v: 1.07e62, u: 0, m: 1.15, s: 'corn', col: '#ff9800', glow: 1, pw: 4.1e11, nkx: 4000 },
+    szdiny: { n: 'Szerves dinnye', loc: 'titan', c: 4.3e64, ck: 9.6e5, cc: 1.8e6, t: 1620, v: 1.29e63, u: 0, m: 1.15, s: 'melon', col: '#e65100', glow: 1, pw: 6.98e11, nkx: 4000 },
+    titfeny: { n: 'Titánfenyő', loc: 'titan', c: 7.74e66, ck: 1.08e6, cc: 2.25e6, t: 1760, v: 2.32e65, u: 0, m: 1.15, s: 'tree', col: '#ff6f00', glow: 1, pw: 1.78e13, nkx: 4000, sz: 3 },
+    csmoha: { n: 'Csillagmoha', loc: 'kepler', c: 2.49e73, ck: 4.5e6, cc: 6e6, t: 1200, v: 7.46e71, u: 0, m: 1.15, s: 'grass', col: '#ce93d8', glow: 1, pw: 4.26e12, nkx: 30000.0 },
+    kettszolo: { n: 'Kettős szőlő', loc: 'kepler', c: 2.99e74, ck: 5.4e6, cc: 1.2e7, t: 1340, v: 8.96e72, u: 0, m: 1.15, s: 'vine', col: '#ab47bc', glow: 1, pw: 7.24e12, nkx: 30000.0 },
+    idnapr: { n: 'Idegen napraforgó', loc: 'kepler', c: 3.58e75, ck: 6.3e6, cc: 1.8e7, t: 1480, v: 1.07e74, u: 0, m: 1.15, s: 'sunf', col: '#e040fb', glow: 1, pw: 1.23e13, nkx: 30000.0 },
+    lebtok: { n: 'Lebegő tök', loc: 'kepler', c: 4.3e76, ck: 7.2e6, cc: 2.4e7, t: 1620, v: 1.29e75, u: 0, m: 1.15, s: 'gourd', col: '#7e57c2', glow: 1, pw: 2.09e13, nkx: 30000.0 },
+    osfa: { n: 'Ősfa', loc: 'kepler', c: 7.74e78, ck: 8.1e6, cc: 3e7, t: 1760, v: 2.32e77, u: 0, m: 1.15, s: 'tree', col: '#ffd700', glow: 1, pw: 5.34e14, nkx: 30000.0, sz: 3 },
   };
   // helyszínek: mindegyiknek saját kertje és kínálata van; a nem látott helyszínek a háttérben termelnek
   const LOCS = {
     earth: { n: 'Föld', ic: '🌍', cost: 0, nk: 0 },
     station: { n: 'Űrállomás', ic: '🛰️', cost: 5e20, nk: 1500, tm: 1e17, pal: ['#4a5262', '#323a48'], sky: ['#0b1020', '#02040a'], ff: ['#5b6370', '#3a4250'], stars: 1, kind: 'metal' },
     hold: { n: 'Hold', ic: '🌙', cost: 1e28, nk: 2e4, tm: 1e25, pal: ['#a3a8b0', '#82878f'], sky: ['#05070c', '#000000'], ff: ['#6b7280', '#4b5563'], stars: 1, kind: 'crater' },
-    mars: { n: 'Mars', ic: '🔴', cost: 1e36, nk: 3e5, tm: 1e33, pal: ['#bb5a30', '#974222'], sky: ['#40200f', '#140805'], ff: ['#6a3a22', '#4a2414'], stars: 0, kind: 'crater' },
-    europa: { n: 'Európa', ic: '🧊', cost: 1e46, nk: 5e6, tm: 1e43, pal: ['#dcf0fa', '#b5d7ea'], sky: ['#061025', '#02040a'], ff: ['#7aa0b8', '#4a7088'], stars: 1, kind: 'ice' },
-    titan: { n: 'Titán', ic: '🟠', cost: 1e56, nk: 8e7, tm: 1e53, pal: ['#cf8f3c', '#a96d29'], sky: ['#4a2a0a', '#1a0e02'], ff: ['#7a5230', '#4a3018'], stars: 0, kind: 'dust' },
-    kepler: { n: 'Kepler-22b', ic: '🪐', cost: 1e68, nk: 1.5e9, tm: 1e65, pal: ['#4f2d82', '#3a1f5c'], sky: ['#120828', '#05020c'], ff: ['#6a4a9a', '#3a2a5a'], stars: 1, kind: 'alien' }
+    mars: { n: 'Mars', ic: '🔴', cost: 1e36, cc: 500, nk: 3e5, tm: 1e33, pal: ['#bb5a30', '#974222'], sky: ['#40200f', '#140805'], ff: ['#6a3a22', '#4a2414'], stars: 0, kind: 'crater' },
+    europa: { n: 'Európa', ic: '🧊', cost: 1e46, cc: 1e4, nk: 5e6, tm: 1e43, pal: ['#dcf0fa', '#b5d7ea'], sky: ['#061025', '#02040a'], ff: ['#7aa0b8', '#4a7088'], stars: 1, kind: 'ice' },
+    titan: { n: 'Titán', ic: '🟠', cost: 1e56, cc: 2e5, nk: 8e7, tm: 1e53, pal: ['#cf8f3c', '#a96d29'], sky: ['#4a2a0a', '#1a0e02'], ff: ['#7a5230', '#4a3018'], stars: 0, kind: 'dust' },
+    kepler: { n: 'Kepler-22b', ic: '🪐', cost: 1e68, cc: 4e6, nk: 1.5e9, tm: 1e65, pal: ['#4f2d82', '#3a1f5c'], sky: ['#120828', '#05020c'], ff: ['#6a4a9a', '#3a2a5a'], stars: 1, kind: 'alien' }
   };
   const LORD = Object.keys(LOCS);
   const SIZES = [[8, 6], [10, 7], [12, 8], [14, 9], [16, 10], [18, 11], [20, 12], [23, 14], [26, 15], [29, 17], [32, 19], [36, 21], [40, 24], [44, 27], [48, 30], [52, 32], [56, 35], [60, 37], [64, 40]];
@@ -1432,9 +1495,14 @@ const Birodalom = (() => {
     idohurok: { n: 'Időhurok', ic: '⏳', ck: n => 1e4 * 3 ** n, cost: n => 1e21 * 1500 ** n, max: Infinity, u: 1e21 },
     multiv: { n: 'Multiverzum-piac', ic: '🌌', ck: n => 5e4 * 3.5 ** n, cost: n => 1e25 * 1e5 ** n, max: Infinity, u: 1e25 },
     nektar: { n: 'Méhészet', ic: '🍯', cost: n => 5e4 * 3.2 ** n, max: Infinity, u: 5e4 },
+    kaptar: { n: 'Kaptárfejlesztés', ic: '🐝', ck: n => 20 * 2.2 ** n, cost: n => 1e7 * 4 ** n, max: Infinity, u: 1e7 },
     raketa: { n: 'Rakéta', ic: '🚀', ck: n => 1000, cost: n => 1e20, max: 1, u: 1e19 },
-    hajtomu: { n: 'Ionhajtómű', ic: '🔋', ck: n => 2000 * 8 ** n, cost: n => 2e21 * 50 ** n, max: 5, u: 1e20 },
-    szemelyzet: { n: 'Űrszemélyzet', ic: '👩‍🚀', ck: n => 1500 * 6 ** n, cost: n => 1e21 * 40 ** n, max: 4, u: 1e20 },
+    hajtomu: { n: 'Ionhajtómű', sp: 1, ic: '🔋', ck: n => 2000 * 8 ** n, cost: n => 2e21 * 50 ** n, max: 5, u: 1e20 },
+    szemelyzet: { n: 'Űrszemélyzet', sp: 1, ic: '👩‍🚀', ck: n => 1500 * 6 ** n, cost: n => 1e21 * 40 ** n, max: 4, u: 1e20 },
+    cpgy: { n: 'Gyűjtőhálózat', ic: '📡', sp: 1, cc: n => 50 * 2.5 ** n, cost: n => 1e21 * 30 ** n, max: Infinity, u: 1e20 },
+    kozar: { n: 'Kozmikus kereslet', ic: '💫', sp: 1, cc: n => 100 * 3 ** n, cost: n => 1e22 * 60 ** n, max: Infinity, u: 1e20 },
+    gravk: { n: 'Gravitációs kertészet', ic: '🌀', sp: 1, cc: n => 200 * 3 ** n, cost: n => 1e23 * 80 ** n, max: Infinity, u: 1e20 },
+    csmot: { n: 'Csillagmotor', ic: '☄️', sp: 1, cc: n => 80 * 2.6 ** n, cost: n => 1e22 * 50 ** n, max: Infinity, u: 1e20 },
     telek: { n: 'Telek', ic: '🏡', cost: n => SIZEC[n] * (LOCS[S.loc].tm || 1), max: SIZEC.length }
   };
   // állandó fejlesztések hírnév-csillagokért; új birtok után is megmaradnak (c: ár a következő szintre)
@@ -1460,7 +1528,7 @@ const Birodalom = (() => {
 
   const TABS = [['mod', 'MODULOK'], ['pl', 'NÖVÉNYEK'], ['up', 'FEJLESZTÉS'], ['bir', 'BIRTOK']];
   const COND = { src: 1, pipe: 1, pump: 1, spr: 1, drip: 1, rot: 1, hordo: 1, kod: 1, kut: 1, piv: 1, szelep: 1, fok: 1, szuro: 1, linx: 1, liny: 1, torony: 1,
-    mikro: 1, turbo: 1, szelk: 1, napel: 1, to: 1, giga: 1, sotal: 1, arany: 1, szivv: 1, kristr: 1, felho: 1, gejzir: 1, jeg: 1, portal: 1, mega: 1, hidro: 1, tenger: 1, ciklon: 1, csillkut: 1, nebula2: 1, flyuk: 1, idoforr: 1, vegtszor: 1, aurora: 1, csillagh: 1, esokir: 1, genezis: 1, univont: 1, vizrec: 1, urspr: 1, urgyuru: 1, ledk: 1, jegbanya: 1, holdspr: 1, kratero: 1, sarkijeg: 1, marsspr: 1, terraf: 1, kupola: 1, oceanf: 1, jegkod: 1, oceano: 1, bioreak: 1, metanto: 1, kodkor: 1, titcikl: 1, szervgy: 1, kettkut: 1, fenyperm: 1, vilagont: 1, eletfak: 1 };
+    mikro: 1, turbo: 1, szelk: 1, napel: 1, to: 1, giga: 1, sotal: 1, arany: 1, szivv: 1, kristr: 1, felho: 1, gejzir: 1, jeg: 1, portal: 1, mega: 1, hidro: 1, tenger: 1, ciklon: 1, csillkut: 1, nebula2: 1, flyuk: 1, idoforr: 1, vegtszor: 1, aurora: 1, csillagh: 1, esokir: 1, genezis: 1, univont: 1, vizrec: 1, urspr: 1, urgyuru: 1, ledk: 1, jegbanya: 1, holdspr: 1, kratero: 1, sarkijeg: 1, marsspr: 1, terraf: 1, kupola: 1, oceanf: 1, jegkod: 1, oceano: 1, bioreak: 1, metanto: 1, kodkor: 1, titcikl: 1, szervgy: 1, kettkut: 1, fenyperm: 1, vilagont: 1, eletfak: 1 , plazmaszo: 1, orbfarm: 1, holdkod: 1, holdkut: 1, marsrot: 1, jegsapka: 1, hoforr: 1, jegszo: 1, aramlas: 1, borkupola: 1, narszo: 1, krioforr: 1, kettszo: 1, csillforr: 1 };
   // több mezős elemek: a bal felső mező az „anyamező”, a többin '#<anyamező indexe>' jelölő áll
   const anc = i => { const k = S.k[i]; return k && k[0] === '#' ? +k.slice(1) : i; }, kAt = i => S.k[anc(i)], condAt = i => !!COND[kAt(i)];
   const szOf = k => (MOD[k] || PL[k] || {}).sz || 1;
@@ -1474,21 +1542,22 @@ const Birodalom = (() => {
   const idx = (c, r) => r * COLS + c;
   const size = () => SIZES[S.up.telek];
   const inside = (c, r) => c >= 0 && r >= 0 && c < size()[0] && r < size()[1];
-  const speed = () => (1 + .2 * S.up.tap) * (1 + .25 * pk('ptap')) * 1.25 ** S.up.klima * 1.8 ** S.up.idohurok * NET.fg,
-    price = () => 1.3 ** pk('pszorz') * (1 + .25 * S.up.piac) * (1 + .15 * S.up.talaj) * 1.25 ** S.up.export * 1.5 ** S.up.genlab * 1.8 ** S.up.urpiac * 2.5 ** S.up.csillag * 5 ** S.up.multiv * (1 + .3 * pk('ppiac')) * (1 + (.1 + .02 * pk('phir')) * S.star);
+  const speed = () => (1 + .2 * S.up.tap) * (1 + .25 * pk('ptap')) * 1.25 ** S.up.klima * 1.8 ** S.up.idohurok * 1.3 ** S.up.gravk * NET.fg,
+    price = () => 1.3 ** pk('pszorz') * (1 + .25 * S.up.piac) * (1 + .15 * S.up.talaj) * 1.25 ** S.up.export * 1.5 ** S.up.genlab * 1.8 ** S.up.urpiac * 2.5 ** S.up.csillag * 5 ** S.up.multiv * 1.4 ** S.up.kozar * (1 + .3 * pk('ppiac')) * (1 + (.1 + .02 * pk('phir')) * S.star);
   const goldP = () => Math.min(.6, .02 * S.up.szerencse + .01 * pk('pszer')), goldX = () => 5 + pk('pszer'), luck = () => 1 + goldP() * (goldX() - 1), ghW = () => .08 * S.up.uveghaz, cbBonus = () => 1.25 + .1 * S.up.tartaly;
   const auto = () => S.up.kertesz > 0 || S.up.kombajn > 0 || S.up.dron > 0;
   const offF = () => !auto() ? 0 : Math.min(.99, (S.up.kertesz ? .3 + .12 * (S.up.kertesz - 1) : 0) + .08 * S.up.kombajn + .06 * S.up.dron + .05 * S.up.raktar + .05 * pk('poff'));
   const offMax = () => (8 + 2 * S.up.ido + (S.perk.hosszu ? 16 : 0) + 8 * pk('poff')) * 3600;
   const unlocked = it => S.life >= (it.u || 0);
   const own = k => { let n = 0; for (const x of S.k) if (x === k) n++; return n; };
+  const ccOf = k => { const it = MOD[k] || PL[k]; return it && it.cc ? Math.ceil(it.cc * 1.08 ** own(k)) : 0; };
   const ckOf = k => { const it = MOD[k] || PL[k]; return it && it.ck ? Math.ceil(it.ck * 1.08 ** own(k)) : 0; };
   const costOf = (k, n = own(k)) => { const it = MOD[k] || PL[k]; return Math.round(it.c * it.m ** n * (1 - .06 * (S.up.vetomag || 0)) * (1 - .05 * pk('pkedv'))); };
   const starsAt = life => Math.floor(Math.cbrt(Math.max(0, life) / 1e5));
   const starGain = () => Math.max(0, Math.floor(starsAt(S.life) * (1 + .15 * pk('pcsill'))) - S.starT);
 
   function fresh(keep) {
-    const s = { money: 60, life: 0, up: Object.fromEntries(Object.keys(UP).map(k => [k, 0])), k: Array(COLS * ROWS).fill(''), g: Array(COLS * ROWS).fill(0), t: Date.now(), sent: 0, star: 0, starT: 0, perk: {}, runs: 0, vc: {}, nek: 0, loc: 'earth', locs: {}, unl: ['earth'], v3: 1 };
+    const s = { money: 60, life: 0, up: Object.fromEntries(Object.keys(UP).map(k => [k, 0])), k: Array(COLS * ROWS).fill(''), g: Array(COLS * ROWS).fill(0), t: Date.now(), sent: 0, star: 0, starT: 0, perk: {}, runs: 0, vc: {}, nek: 0, cp: 0, loc: 'earth', locs: {}, unl: ['earth'], v3: 1 };
     s.k[idx(...SRC)] = 'src';
     if (keep) Object.assign(s, keep);
     return s;
@@ -1521,12 +1590,14 @@ const Birodalom = (() => {
     for (let i = 0; i < N; i++) if (on[i]) { const k = S.k[i], m = MOD[k]; if (!m) continue;
       if (m.q) cap += m.q * (k === 'pump' || k === 'kut' || k === 'napel' ? pm : 1); if (m.w) dem += m.w * tk; if (m.fok) fok += m.fok; if (m.szuro) fg += m.szuro; }
     cap = Math.round(cap * fok * 2 ** S.up.fuzio * (1 + .15 * pk('pviz')) * 10) / 10;
-    const wet = new Float32Array(N), mwet = new Float32Array(N), gb = new Float32Array(N).fill(1), yb = new Float32Array(N).fill(1), mobs = [];
+    let hiveN = 0, cpR = 0; const wet = new Float32Array(N), mwet = new Float32Array(N), gb = new Float32Array(N).fill(1), yb = new Float32Array(N).fill(1), mobs = [];
     // terület egy (akár több mezős) elem körül, saját mezői nélkül
     const area = (c, r, R, f, sz = 1) => { for (let y = r - R; y < r + sz + R; y++) for (let x = c - R; x < c + sz + R; x++) { if (x >= c && x < c + sz && y >= r && y < r + sz) continue; if (x >= 0 && y >= 0 && x < cw && y < rh) f(idx(x, y)); } };
     // 1. lefedettség a teljes vízhozammal, 2. vízigény (a locsolt óriásnövényekkel), 3. visszaskálázás a hatásfokkal
     for (let r = 0; r < rh; r++) for (let c = 0; c < cw; c++) {
       const i = idx(c, r), m = MOD[S.k[i]]; if (!m) continue; const sz = m.sz || 1;
+      if (m.hive) { let pl = 0; area(c, r, m.aura || 2, j => { if (PL[kAt(j)]) pl++; }, sz); hiveN += m.hive * (1 + .05 * pl); }
+      if (m.cp) cpR += m.cp;
       if (m.aura) { area(c, r, m.aura, j => { if (m.gb) gb[j] += m.gb; if (m.yb) yb[j] += m.yb; }, sz); continue; }
       if (!on[i]) continue;
       if (m.boost) { area(c, r, m.boost, j => { gb[j] += m.gb; yb[j] += m.yb; }, sz); continue; }
@@ -1554,7 +1625,7 @@ const Birodalom = (() => {
     for (let i = 0; i < N; i++) { const p = PL[S.k[i]]; if (!p) continue; const w = netW(i); if (w) inc += p.v * price() * yb[i] * w * gb[i] * speed() / p.t * luck(); }
     NET.inc = inc; let nek = 0;
     for (let i = 0; i < N; i++) { const p = PL[S.k[i]]; if (!p) continue; const w = netW(i); if (w) nek += nekOf(S.k[i]) * w * gb[i] * speed() / p.t; }
-    NET.nek = nek;
+    NET.nek = nek; NET.nekH = hiveN * (1 + .25 * S.up.nektar) * (1 + .5 * S.up.kaptar); NET.cpR = cpR * (1 + .5 * S.up.cpgy);
   }
   // egy növény (több mezősnél a legjobban locsolt mezője) víz-ellátottsága a hálózat alapján
   const netW = i => { let w = ghW(); for (const j of cells(i)) w = Math.max(w, NET.wet[j], NET.mwet[j]); return w; };
@@ -1643,9 +1714,9 @@ const Birodalom = (() => {
 
   function items() {
     const here = it => (it.loc || 'earth') === S.loc;
-    if (S.tab === 'mod') return Object.keys(MOD).filter(k => k !== 'del' && (here(MOD[k]) || k === 'pipe' || k === 'szelep')).map(k => ({ k, kind: 'mod', ...MOD[k], c: costOf(k), ck: ckOf(k) }));
-    if (S.tab === 'pl') return Object.keys(PL).filter(k => here(PL[k])).map(k => ({ k, kind: 'pl', ...PL[k], c: costOf(k), ck: ckOf(k) }));
-    if (S.tab === 'up') return Object.keys(UP).filter(k => (k !== 'hajtomu' && k !== 'szemelyzet') || S.up.raketa).map(k => { const u = UP[k], n = S.up[k]; return { k, kind: 'up', n: u.n, ic: u.ic, lvl: n, u: u.u, c: n >= u.max ? Infinity : Math.round(u.cost(n)), ck: n >= u.max || !u.ck ? 0 : Math.ceil(u.ck(n)) }; });
+    if (S.tab === 'mod') return Object.keys(MOD).filter(k => k !== 'del' && (here(MOD[k]) || k === 'pipe' || k === 'szelep')).map(k => ({ k, kind: 'mod', ...MOD[k], c: costOf(k), ck: ckOf(k), cc: ccOf(k) }));
+    if (S.tab === 'pl') return Object.keys(PL).filter(k => here(PL[k])).map(k => ({ k, kind: 'pl', ...PL[k], c: costOf(k), ck: ckOf(k), cc: ccOf(k) }));
+    if (S.tab === 'up') return Object.keys(UP).filter(k => !UP[k].sp || S.up.raketa).map(k => { const u = UP[k], n = S.up[k]; return { k, kind: 'up', n: u.n, ic: u.ic, lvl: n, u: u.u, c: n >= u.max ? Infinity : Math.round(u.cost(n)), ck: n >= u.max || !u.ck ? 0 : Math.ceil(u.ck(n)), cc: n >= u.max || !u.cc ? 0 : Math.ceil(u.cc(n)) }; });
     const sg = starGain();
     return [{ k: 'reset', kind: 'reset', n: confirmT > 0 ? 'Biztos? Még egyszer!' : 'Új birtok', ic: '🌅', lbl: sg ? '+' + sg + ' ⭐' : '–', ok: sg > 0 },
       ...Object.keys(PERK).map(k => { const P = PERK[k], lv = pk(k), max = lv >= P.max, c = max ? 0 : P.c(lv);
@@ -1670,8 +1741,8 @@ const Birodalom = (() => {
     const it = MOD[tool] || PL[tool], c = costOf(tool), sz = it.sz || 1; if (!unlocked(it)) return;
     const c0 = i % COLS, r0 = Math.floor(i / COLS);
     if (sz > 1 && (!inside(c0 + sz - 1, r0 + sz - 1) || cells(i, sz).some(j => S.k[j]))) { if (first) { Sfx.blip(140, .1, 'square', .05); S.info = { it: { k: tool, kind: MOD[tool] ? 'mod' : 'pl', n: it.n, warn: 'Nincs elég szabad hely: ' + sz + '×' + sz + ' mező kell.' }, l: 3 }; } return; }
-    const ck = ckOf(tool); if (S.money < c || S.nek < ck) { Sfx.blip(140, .1, 'square', .05); return; }
-    S.money -= c; S.nek -= ck; for (const j of cells(i, sz)) { S.k[j] = j === i ? tool : '#' + i; S.g[j] = 0; } net();
+    const ck = ckOf(tool), cc = ccOf(tool); if (S.money < c || S.nek < ck || S.cp < cc) { Sfx.blip(140, .1, 'square', .05); return; }
+    S.money -= c; S.nek -= ck; S.cp -= cc; for (const j of cells(i, sz)) { S.k[j] = j === i ? tool : '#' + i; S.g[j] = 0; } net();
     PL[tool] ? Sfx.blip(520, .05, 'triangle', .06, 1.3) : Sfx.blip(380, .05, 'square', .04, 1.2);
   }
 
@@ -1702,13 +1773,13 @@ const Birodalom = (() => {
   }
   // egy másik helyszín bevétele és nektárja (a háttérben)
   function locRate(id) {
-    const keep = { k: S.k, g: S.g, vc: S.vc, telek: S.up.telek, loc: S.loc }, mob = new Map(MOB), n0 = NET, L0 = S.locs[id]; if (!L0) return [0, 0];
-    S.k = L0.k; S.g = L0.g; S.vc = L0.vc || {}; S.up.telek = L0.telek || 0; S.loc = id; net(); const r = [NET.inc, NET.nek];
+    const keep = { k: S.k, g: S.g, vc: S.vc, telek: S.up.telek, loc: S.loc }, mob = new Map(MOB), n0 = NET, L0 = S.locs[id]; if (!L0) return [0, 0, 0];
+    S.k = L0.k; S.g = L0.g; S.vc = L0.vc || {}; S.up.telek = L0.telek || 0; S.loc = id; net(); const r = [NET.inc, NET.nek + NET.nekH, NET.cpR];
     S.k = keep.k; S.g = keep.g; S.vc = keep.vc; S.up.telek = keep.telek; S.loc = keep.loc; MOB.clear(); mob.forEach((v, k) => MOB.set(k, v)); NET = n0; return r;
   }
   const crew = () => .6 + .1 * S.up.szemelyzet;
-  function lincAll() { let a = 0, b = 0; for (const id of S.unl) if (id !== S.loc) { const [x, y] = locRate(id); a += x; b += y; } S.linc = [a * crew(), b * crew()]; S.lincT = 0; }
-  const launchCost = id => LOCS[id].cost * (1 - .1 * S.up.hajtomu), launchNek = id => LOCS[id].nk * (1 - .1 * S.up.hajtomu);
+  function lincAll() { let a = 0, b = 0, q = 0; for (const id of S.unl) if (id !== S.loc) { const [x, y, z] = locRate(id); a += x; b += y; q += z; } S.linc = [a * crew(), b * crew(), q * crew()]; S.lincT = 0; }
+  const launchCost = id => LOCS[id].cost * (1 - .1 * S.up.hajtomu), launchNek = id => LOCS[id].nk * (1 - .1 * S.up.hajtomu), launchCp = id => (LOCS[id].cc || 0) * (1 - .1 * S.up.hajtomu);
   const nextLoc = () => LORD.find(id => !S.unl.includes(id));
   function syncCB() { while (CB.length < S.up.kombajn) CB.push({ x: SRC[0] + .5, y: SRC[1] + .5, a: 0, tgt: -1, run: 0 }); CB.length = S.up.kombajn;
     while (DR.length < S.up.dron) DR.push({ x: SRC[0] + .5, y: SRC[1] + .5, a: 0, tgt: -1, run: 0, fly: 1 }); DR.length = S.up.dron; }
@@ -1726,7 +1797,7 @@ const Birodalom = (() => {
     szuro: '+8% növekedés az egész kertben. Csőre kell kötni.',
     linx: 'Mozgó öntöző: tömlőn húzva oda-vissza járja a sort, 3 mező széles sávban. 3 L/s.',
     liny: 'Mozgó öntöző: tömlőn húzva oda-vissza járja az oszlopot, 3 mező széles sávban. 3 L/s.',
-    meh: 'Nem kell rá cső. 2 mezős körzetben +25% termést hoznak a növények.',
+    meh: n => autoDesc(MOD.meh),
     kut: '+14 L/s vízhozam (a Hatásfok is növeli), ha csőre van kötve.',
     piv: '3 mezős sugárban locsol egy forgó karral (7×7 terület). 6 L/s.',
     torony: '+30 L/s vízhozam, ha csőre van kötve.',
@@ -1783,6 +1854,14 @@ const Birodalom = (() => {
     raketa: n => n ? 'Kész! Fent, a kert tetején választhatsz helyszínt, és kilőheted a következőt.' : 'Megépíted az első rakétát: utána kilőheted az Űrállomást, majd a Holdat, a Marsot és tovább. Mindegyik új kert, saját modulokkal és növényekkel.',
     hajtomu: n => '−10% a kilövések árára (pénz és nektár) szintenként. Most: −' + 10 * n + '%.',
     szemelyzet: n => 'A nem látott helyszínek a háttérben is termelnek. Szintenként +10%. Most: ' + Math.round(crew() * 100) + '%.',
+    mehtelep: n => autoDesc(MOD.mehtelep),
+    mehgyar: n => autoDesc(MOD.mehgyar),
+    robotmeh: n => autoDesc(MOD.robotmeh),
+    kaptar: n => '+50% nektár a kaptárakból szintenként. Most: +' + 50 * n + '%.',
+    cpgy: n => '+50% csillagpor a bányákból szintenként. Most: +' + 50 * n + '%.',
+    kozar: n => '×1,4 termésár szintenként (szorzódik). Most: ×' + fmt(1.4 ** n) + '.',
+    gravk: n => '×1,3 növekedés szintenként (szorzódik). Most: ×' + fmt(1.3 ** n) + '.',
+    csmot: n => '×1,5 kombájn- és drónsebesség szintenként (szorzódik).',
     del: 'Lebont egy elemet vagy növényt, az ára felét visszakapod. Húzással többet is lebonthatsz.',
     mikro: 'A 4 szomszédos mezőt finom permettel locsolja: nagyon takarékos (0,15 L/s), +8% növekedés.',
     turbo: 'Erősebb szórófej: a körülötte lévő 8 mezőt locsolja, +25% növekedéssel. 1,6 L/s.',
@@ -1815,6 +1894,8 @@ const Birodalom = (() => {
     halo: 'Új birtok után a csövek, a modulok és a telekméret megmaradnak.'
   };
   function autoDesc(m) {
+    if (m.cp) return 'Csillagport bányászik: ' + nfmt(m.cp * (1 + .5 * S.up.cpgy)) + ' ✨/mp. Nem kell rá cső.';
+    if (m.hive) return 'Kaptár: nektárt termel (alap ' + nfmt(m.hive) + ' 🍯/mp, minden növény a körzetében +5%), és ' + m.aura + ' mezős körzetben +' + Math.round(m.yb * 100) + '% termés.';
     if (m.q) return '+' + fmt(m.q) + ' L/s vízhozam, ha csőre van kötve.';
     if (m.boost) return 'Csőre kell kötni. ' + m.boost + ' mezős körzetben ×' + (1 + m.gb) + ' növekedés és ×' + (1 + m.yb) + ' termés. Vízigény: ' + fmt(m.w) + ' L/s.';
     if (m.aura) return 'Nem kell rá cső. ' + m.aura + ' mezős körzetben' + (m.gb ? ' ×' + (1 + m.gb) + ' növekedés' : '') + (m.yb ? ' ×' + (1 + m.yb) + ' termés' : '') + '.';
@@ -1824,17 +1905,17 @@ const Birodalom = (() => {
   function descOf(it) {
     if (it.warn) return it.warn;
     const big = it.sz ? 'Méret: ' + it.sz + '×' + it.sz + ' mező. ' : '';
-    if (it.kind === 'pl') return big + (it.pw ? 'Vízigény: ' + fmt(it.pw) + ' L/s (locsolva). ' : '') + (it.ck ? 'Ültetéshez nektár is kell: ' + nfmt(it.ck) + ' 🍯. ' : '') + 'Aratásonként ' + nfmt(nekOf(it.k)) + ' 🍯. Locsolt mezőn ' + (it.t >= 120 ? (Math.round(it.t / 6) / 10).toLocaleString('hu-HU') + ' perc' : it.t + ' mp') + ' alatt érik be, és ' + fmt(Math.round(it.v * price())) + ' Ft termést hoz. ' + (S.up.uveghaz ? 'Víz nélkül csak lassan nő.' : 'Víz nélkül nem nő.');
+    if (it.kind === 'pl') return big + (it.pw ? 'Vízigény: ' + fmt(it.pw) + ' L/s (locsolva). ' : '') + (it.ck ? 'Ültetéshez nektár is kell: ' + nfmt(it.ck) + ' 🍯. ' : '') + (it.cc ? 'Csillagpor is kell: ' + nfmt(it.cc) + ' ✨. ' : '') + 'Aratásonként ' + nfmt(nekOf(it.k)) + ' 🍯. Locsolt mezőn ' + (it.t >= 120 ? (Math.round(it.t / 6) / 10).toLocaleString('hu-HU') + ' perc' : it.t + ' mp') + ' alatt érik be, és ' + fmt(Math.round(it.v * price())) + ' Ft termést hoz. ' + (S.up.uveghaz ? 'Víz nélkül csak lassan nő.' : 'Víz nélkül nem nő.');
     const d = DESC[it.k] || (MOD[it.k] ? autoDesc(MOD[it.k]) : ''), txt = typeof d === 'function' ? d(it.kind === 'perk' ? pk(it.k) : S.up[it.k]) : d || '';
-    const nk = it.ck ? ' Nektár is kell hozzá: ' + nfmt(it.ck) + ' 🍯.' : ''; return (it.kind === 'mod' ? big + txt : txt) + nk;
+    const nk = (it.ck ? ' Nektár is kell hozzá: ' + nfmt(it.ck) + ' 🍯.' : '') + (it.cc ? ' Csillagpor is kell: ' + nfmt(it.cc) + ' ✨.' : ''); return (it.kind === 'mod' ? big + txt : txt) + nk;
   }
   function buy(G, it) {
     S.info = { it, l: 5 };
     if (it.kind === 'mod' || it.kind === 'pl') { S.tool = S.tool === it.k ? null : it.k; Sfx.blip(700, .04, 'sine', .05); return; }
     if (it.kind === 'reset') { if (!it.ok) return Sfx.blip(140, .1, 'square', .05); if (confirmT > 0) { confirmT = 0; rebirth(G); } else { confirmT = 3; Sfx.blip(500, .05, 'square', .05); } return; }
     if (it.kind === 'perk') { if (!it.ok) return Sfx.blip(140, .1, 'square', .05); S.star -= it.c; S.perk[it.k] = pk(it.k) + 1; syncCB(); net(); Sfx.perfect(); save(); return; }
-    if (!unlocked(it) || !(S.money >= it.c) || S.nek < (it.ck || 0)) { Sfx.blip(140, .1, 'square', .05); return; }
-    S.money -= it.c; S.nek -= it.ck || 0; S.up[it.k]++; if (it.k === 'telek') layout(G); if (it.k === 'kombajn' || it.k === 'dron') syncCB(); net(); Sfx.perfect(); save();
+    if (!unlocked(it) || !(S.money >= it.c) || S.nek < (it.ck || 0) || S.cp < (it.cc || 0)) { Sfx.blip(140, .1, 'square', .05); return; }
+    S.money -= it.c; S.nek -= it.ck || 0; S.cp -= it.cc || 0; S.up[it.k]++; if (it.k === 'telek') layout(G); if (it.k === 'kombajn' || it.k === 'dron') syncCB(); net(); Sfx.perfect(); save();
   }
 
   /* ---------- rajz ---------- */
@@ -1895,8 +1976,9 @@ const Birodalom = (() => {
   }
   function drawMod(g, k, i, x, y, ts, t, on, eff) {
     const c = i % COLS, r = Math.floor(i / COLS), cx = x + ts / 2, cy = y + ts / 2, pw = ts * .26, m = MOD[k], ef = eff == null ? NET.eff : eff;
-    if (m && m.sz) return drawBig(g, k, i, x, y, ts, t, on || (m.aura && 1));
+    if (m && m.sz) return drawBig(g, k, i, x, y, ts, t, on || ((m.aura || m.cp) && 1));
     if (m && m.look) k = m.look;
+    if (m && m.cp) on = 1;
     if (m && m.aura) {
       shadow(g, cx + ts * .05, cy + ts * .3, ts * .36, ts * .1);
       if (k === 'komp') { const gr = g.createLinearGradient(x, y, x, y + ts); gr.addColorStop(0, '#7a5230'); gr.addColorStop(1, '#4a2f18'); g.fillStyle = gr; rr(x + ts * .15, y + ts * .25, ts * .7, ts * .6, ts * .08); g.fill(); g.fillStyle = '#3d2814'; for (let j = 0; j < 3; j++) g.fillRect(x + ts * .2, y + ts * (.35 + j * .16), ts * .6, ts * .05); g.fillStyle = '#6fcf6a'; g.fillRect(x + ts * .28, y + ts * .18, ts * .44, ts * .1); g.fillStyle = '#a0522d'; g.fillRect(x + ts * .4, y + ts * .2, ts * .08, ts * .06); }
@@ -2031,6 +2113,12 @@ const Birodalom = (() => {
   function drawBig(g, k0, i, x, y, ts, t, on) {
     const M0 = MOD[k0], k = M0.look || k0;
     const cx = x + ts / 2, cy = y + ts / 2;
+    if (M0.hive) { const n = M0.sz * M0.sz; shadow(g, cx + ts * .04, cy + ts * .32, ts * .42, ts * .1, .25);
+      for (let j = 0; j < Math.min(n, 9); j++) { const gx = x + ts * (.12 + (j % M0.sz) * (.76 / M0.sz)), gy = y + ts * (.12 + Math.floor(j / M0.sz) * (.76 / M0.sz)), w = ts * .76 / M0.sz * .86;
+        const gr = g.createLinearGradient(gx, 0, gx + w, 0); gr.addColorStop(0, '#f5cd6a'); gr.addColorStop(1, '#c99434'); g.fillStyle = gr; g.beginPath(); g.ellipse(gx + w / 2, gy + w * .45, w * .45, w * .42, 0, Math.PI, 0); g.fill(); g.fillRect(gx + w * .05, gy + w * .45, w * .9, w * .45);
+        g.fillStyle = '#8a5a1a'; for (let q = 0; q < 3; q++) g.fillRect(gx + w * .05, gy + w * (.32 + q * .16), w * .9, w * .03); g.fillStyle = '#3a2410'; g.beginPath(); g.arc(gx + w / 2, gy + w * .78, w * .07, 0, 6.283); g.fill(); }
+      if (i >= 0) for (let j = 0; j < 4 + M0.sz * 3; j++) { const a = t * 2.4 + j * 1.3 + i, bx = cx + Math.cos(a) * ts * .6, by2 = cy + Math.sin(a * 1.4) * ts * .5; g.fillStyle = 'rgba(255,255,255,.7)'; g.beginPath(); g.ellipse(bx, by2 - ts * .012, ts * .014, ts * .008, 0, 0, 6.283); g.fill(); g.fillStyle = '#ffd93b'; g.beginPath(); g.arc(bx, by2, ts * .012, 0, 6.283); g.fill(); }
+      return; }
     shadow(g, cx + ts * .04, cy + ts * .32, ts * .4, ts * .1, .3);
     g.fillStyle = '#2b3442'; rr(x + ts * .04, y + ts * .04, ts * .92, ts * .92, ts * .1); g.fill(); g.fillStyle = '#3a4250'; rr(x + ts * .08, y + ts * .08, ts * .84, ts * .84, ts * .08); g.fill();
     if (k === 'mega' || k === 'ciklon') {
@@ -2085,7 +2173,7 @@ const Birodalom = (() => {
     init(G) {
       S = load(); S.tab = S.tab || 'mod'; S.tool = S.tool === undefined ? 'pipe' : S.tool; fl = []; dust = []; drag = null; confirmT = 0;
       MO = new Float32Array(COLS * ROWS); RP = new Float32Array(COLS * ROWS); CB = []; DR = []; syncCB(); panS = null; pinch = null; PT.clear();
-      S.nek = S.nek || 0; S.loc = S.loc || 'earth'; S.locs = S.locs || {}; S.unl = S.unl || ['earth']; S.anim = null; S.lp = false;
+      S.nek = S.nek || 0; S.cp = S.cp || 0; S.loc = S.loc || 'earth'; S.locs = S.locs || {}; S.unl = S.unl || ['earth']; S.anim = null; S.lp = false;
       layout(G); net(); G.score = Math.min(CAP, Math.floor(S.life));
       if (!wheelOn) { wheelOn = 1; const on = () => G.running && G.game && G.game.id === 'birodalom' && L;
         gc.addEventListener('wheel', e => { if (!on()) return; e.preventDefault(); const [x, y] = P(e); if (y < L.barY) zoomAt(G, x, y, Math.exp(-Math.max(-60, Math.min(60, e.deltaY)) * .004)); }, { passive: false });
@@ -2098,7 +2186,7 @@ const Birodalom = (() => {
         for (let i = 0; i < S.k.length; i++) { const p = PL[S.k[i]]; if (!p) continue; const w = netW(i); if (!w) continue;
           const grow = away * rate(i, w) + S.g[i];
           if (auto()) { const n = Math.floor(grow); got += n * val(i) * offF() * luck(); S.nek += n * nekOf(S.k[i]) * offF(); S.g[i] = grow - n; } else S.g[i] = Math.min(1, grow); }
-        lincAll(); got += S.linc[0] * away; S.nek += S.linc[1] * away;
+        lincAll(); got += S.linc[0] * away; S.nek += (S.linc[1] + NET.nekH) * away; S.cp += ((S.linc[2] || 0) + NET.cpR) * away;
         got = Math.floor(got); if (got > 0) { earn(got); G.score = Math.min(CAP, Math.floor(S.life)); }
         S.away = { got, sec: away, l: 6 };
       }
@@ -2122,9 +2210,9 @@ const Birodalom = (() => {
       const lpb = locPill(G); if (lpb && hit(lpb)) { S.lp = !S.lp; Sfx.blip(600, .03, 'sine', .04); return; }
       if (S.lp) { const row = locRows(G).find(hit); S.lp = false; if (row) {
           if (S.unl.includes(row.id)) { if (row.id !== S.loc) { S.anim = { t: 0, dur: .7, to: row.id }; Sfx.blip(500, .06, 'sine', .05); } }
-          else { const c = launchCost(row.id), nk = launchNek(row.id);
-            if (S.money >= c && S.nek >= nk) { S.money -= c; S.nek -= nk; S.unl.push(row.id); S.locs[row.id] = newLoc(); S.anim = { t: 0, dur: 2.8, to: row.id, launch: 1 }; Sfx.perfect(); save(); }
-            else { Sfx.blip(140, .1, 'square', .05); S.info = { it: { k: 'x', kind: 'x', n: 'Kilövés', warn: LOCS[row.id].n + ': ' + fmt(c) + ' Ft és ' + nfmt(nk) + ' 🍯 kell hozzá.' }, l: 3 }; } } }
+          else { const c = launchCost(row.id), nk = launchNek(row.id), cq = launchCp(row.id);
+            if (S.money >= c && S.nek >= nk && S.cp >= cq) { S.money -= c; S.nek -= nk; S.cp -= cq; S.unl.push(row.id); S.locs[row.id] = newLoc(); S.anim = { t: 0, dur: 2.8, to: row.id, launch: 1 }; Sfx.perfect(); save(); }
+            else { Sfx.blip(140, .1, 'square', .05); S.info = { it: { k: 'x', kind: 'x', n: 'Kilövés', warn: LOCS[row.id].n + ': ' + fmt(c) + ' Ft, ' + nfmt(nk) + ' 🍯' + (cq ? ' és ' + nfmt(cq) + ' ✨' : '') + ' kell hozzá.' }, l: 3 }; } } }
         return; }
       const zb = zoomBtns(G).find(hit); if (zb) { zoomAt(G, L.fx + L.fw / 2, L.fy + L.fh / 2, zb.f); Sfx.blip(700, .03, 'sine', .04); return; }
       const mm = miniMap(); if (mm && hit(mm)) { CAM.cx = (x - mm.x) / mm.w * L.vw; CAM.cy = (y - mm.y) / mm.h * L.vh; layout(G); Sfx.blip(650, .03, 'sine', .04); return; }
@@ -2172,7 +2260,7 @@ const Birodalom = (() => {
           else if (n > 1) S.g[i] = 1;
           if (kert && RP[i] > (S.up.kombajn ? 12 : 1.5)) { const rest = S.g[i] - 1; harvest(G, i, 'k'); S.g[i] = rest; } } }
       // kombájnok
-      const cs0 = (1.8 + .35 * S.up.motor) * (1 + .2 * pk('pgyors')) * 1.6 ** S.up.robot * Math.min(dt, .5), UN = [...CB, ...DR], taken = new Set(UN.map(c => c.tgt));
+      const cs0 = (1.8 + .35 * S.up.motor) * (1 + .2 * pk('pgyors')) * 1.6 ** S.up.robot * 1.5 ** S.up.csmot * Math.min(dt, .5), UN = [...CB, ...DR], taken = new Set(UN.map(c => c.tgt));
       for (const cb of UN) { const cs = cs0 * (cb.fly ? 1.9 : 1);
         if (cb.tgt < 0 || !PL[S.k[cb.tgt]] || S.g[cb.tgt] < 1) {
           taken.delete(cb.tgt); cb.tgt = -1; let best = 1e9;
@@ -2186,7 +2274,8 @@ const Birodalom = (() => {
         else if (cb.tgt >= 0 && S.g[cb.tgt] >= 1) { const rest = S.g[cb.tgt] - 1; harvest(G, cb.tgt, 'cb'); S.g[cb.tgt] = rest; cb.tgt = -1; }
       }
       if ((S.lincT = (S.lincT || 0) + dt) > 3) lincAll();
-      if (S.linc) { earn(S.linc[0] * dt); S.nek += S.linc[1] * dt; }
+      if (S.linc) { earn(S.linc[0] * dt); S.nek += S.linc[1] * dt; S.cp += (S.linc[2] || 0) * dt; }
+      S.nek += NET.nekH * dt; S.cp += NET.cpR * dt;
       if (S.anim) { S.anim.t += dt; if (!S.anim.done && S.anim.t >= S.anim.dur * .55) { S.anim.done = 1; goLoc(G, S.anim.to); } if (S.anim.t >= S.anim.dur) S.anim = null; }
       const sc = Math.min(CAP, Math.floor(S.life));
       S.hudT -= dt; if (sc !== G.score && S.hudT <= 0) { G.score = sc; S.hudT = .25; if (sc > store.get('best_' + this.id)) store.set('best_' + this.id, sc); hud(); }
@@ -2249,7 +2338,7 @@ const Birodalom = (() => {
         g.strokeStyle = '#ffe29a'; g.lineWidth = 1.5 * d; g.strokeRect(mx + Math.max(0, (L.fx - L.bx) * sx), my + Math.max(0, (L.fy - L.by) * sy), Math.min(mw, L.fw * sx), Math.min(mh, L.fh * sy)); } }
       // felső sáv
       g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.font = `800 ${20 * d}px Inter, sans-serif`; g.fillStyle = '#ffe29a'; g.fillText('💰 ' + fmt(S.money) + ' Ft' + (S.star ? '   ⭐ ' + fmt(S.star) : '') + (S.nek >= .01 || S.life > 5e4 ? '   🍯 ' + nfmt(S.nek) : ''), G.W / 2, 78 * d);
+      g.font = `800 ${20 * d}px Inter, sans-serif`; g.fillStyle = '#ffe29a'; g.fillText('💰 ' + fmt(S.money) + ' Ft' + (S.star ? '   ⭐ ' + fmt(S.star) : '') + (S.nek >= .01 || S.life > 5e4 ? '   🍯 ' + nfmt(S.nek) : '') + (S.cp > 0 || S.unl.length > 1 ? '   ✨ ' + nfmt(S.cp) : ''), G.W / 2, 78 * d);
       g.font = `600 ${12 * d}px Inter, sans-serif`;
       { const totInc = NET.inc + (S.linc ? S.linc[0] : 0), t1 = `+${totInc < 1e4 ? totInc.toLocaleString('hu-HU', { maximumFractionDigits: 1 }) : fmt(totInc)} Ft/s   ·   `, t2 = `💧 ${NET.dem < 1e6 ? NET.dem.toLocaleString('hu-HU', { maximumFractionDigits: 1 }) : fmt(NET.dem)} / ${NET.cap < 1e6 ? NET.cap.toLocaleString('hu-HU') : fmt(NET.cap)} L/s`, w1 = g.measureText(t1).width, w2 = g.measureText(t2).width, x0 = G.W / 2 - (w1 + w2) / 2;
         g.textAlign = 'left'; g.fillStyle = 'rgba(255,255,255,.7)'; g.fillText(t1, x0, 99 * d); g.fillStyle = NET.dem > NET.cap ? '#ff8a7a' : '#9fd6f5'; g.fillText(t2, x0 + w1, 99 * d); g.textAlign = 'center'; }
@@ -2264,7 +2353,7 @@ const Birodalom = (() => {
         if (a.dir > 0) { g.font = `600 ${9 * d}px Inter, sans-serif`; g.fillStyle = 'rgba(255,255,255,.5)'; g.fillText((b.pg + 1) + '/' + b.pages, a.x + a.w / 2, a.y + a.h / 2 + 12 * d); } }
       for (const it of b.its) {
         const shop = it.kind === 'mod' || it.kind === 'pl', lock = (shop || it.kind === 'up') && !unlocked(it), sel = shop && S.tool === it.k;
-        const can = it.kind === 'reset' || it.kind === 'perk' ? it.ok : S.money >= it.c && S.nek >= (it.ck || 0);
+        const can = it.kind === 'reset' || it.kind === 'perk' ? it.ok : S.money >= it.c && S.nek >= (it.ck || 0) && S.cp >= (it.cc || 0);
         g.fillStyle = sel || (it.kind === 'reset' && confirmT > 0) ? 'rgba(232,182,86,.22)' : 'rgba(255,255,255,.05)'; g.strokeStyle = sel ? '#e8b656' : 'rgba(255,255,255,.1)'; g.lineWidth = 1.5 * d;
         rr(it.x + 3 * d, it.y, it.w - 6 * d, it.h, 10 * d); g.fill(); g.stroke();
         const ix = it.x + it.w / 2, ic = Math.min(it.w * .42, it.h * .42), iy = it.y + 4 * d;
@@ -2280,7 +2369,7 @@ const Birodalom = (() => {
         if (lock) { lbl = '🔒 ' + fmt(it.u); col = 'rgba(255,255,255,.4)'; }
         else if (it.lbl) { lbl = it.lbl; col = it.have ? '#86b86c' : can ? '#ffe29a' : 'rgba(255,255,255,.4)'; }
         else if (it.c === Infinity) { lbl = 'MAX'; col = '#86b86c'; }
-        else { lbl = it.c ? fmt(it.c) + ' Ft' + (it.ck ? ' + ' + nfmt(it.ck) + '🍯' : '') : '–'; col = can || !it.c ? '#ffe29a' : '#ff8a7a'; }
+        else { lbl = it.c ? fmt(it.c) + ' Ft' + (it.ck ? ' + ' + nfmt(it.ck) + '🍯' : '') + (it.cc ? ' + ' + nfmt(it.cc) + '✨' : '') : '–'; col = can || !it.c ? '#ffe29a' : '#ff8a7a'; }
         g.fillStyle = col; g.fillText(lbl, ix, it.y + it.h - 11 * d, it.w - 8 * d);
       }
       { const shownIt = S.hover || (S.info && S.info.l > 0 ? S.info.it : null) || (S.tool === 'del' ? { k: 'del', kind: 'del', n: 'Bontás' } : S.tool ? items().find(o => o.k === S.tool && (o.kind === 'mod' || o.kind === 'pl')) : null);
@@ -2307,11 +2396,11 @@ const Birodalom = (() => {
           g.textAlign = 'left'; g.textBaseline = 'middle'; lines.forEach((l, j) => { g.font = `${j ? 500 : 800} ${fs}px Inter, sans-serif`; g.fillStyle = j ? 'rgba(255,255,255,.82)' : '#ffe29a'; g.fillText(l, bx + pad, by + pad * .7 + fs * 1.35 * (j + .5)); }); g.textAlign = 'center'; } }
       { const lpb = locPill(G); if (lpb) { const LCc = LOCS[S.loc]; g.fillStyle = 'rgba(4,7,14,.82)'; g.strokeStyle = 'rgba(232,182,86,.6)'; g.lineWidth = d; rr(lpb.x, lpb.y, lpb.w, lpb.h, lpb.h / 2); g.fill(); g.stroke();
           g.fillStyle = '#ffe29a'; g.font = `800 ${12 * d}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(LCc.ic + ' ' + LCc.n + (S.lp ? '  ▴' : '  ▾'), lpb.x + lpb.w / 2, lpb.y + lpb.h / 2 + d);
-          for (const r of locRows(G)) { const L2 = LOCS[r.id], have = S.unl.includes(r.id), cur = r.id === S.loc, c = launchCost(r.id), nk = launchNek(r.id), ok = have || (S.money >= c && S.nek >= nk);
+          for (const r of locRows(G)) { const L2 = LOCS[r.id], have = S.unl.includes(r.id), cur = r.id === S.loc, c = launchCost(r.id), nk = launchNek(r.id), cq = launchCp(r.id), ok = have || (S.money >= c && S.nek >= nk && S.cp >= cq);
             g.fillStyle = cur ? 'rgba(232,182,86,.25)' : 'rgba(4,7,14,.92)'; g.strokeStyle = cur ? '#e8b656' : 'rgba(255,255,255,.15)'; rr(r.x, r.y, r.w, r.h, 10 * d); g.fill(); g.stroke();
             g.textAlign = 'left'; g.fillStyle = '#fff'; g.font = `700 ${13 * d}px Inter, sans-serif`; g.fillText(L2.ic + '  ' + L2.n, r.x + 12 * d, r.y + r.h / 2 + d);
             g.textAlign = 'right'; g.font = `700 ${11 * d}px Inter, sans-serif`; g.fillStyle = cur ? '#ffe29a' : have ? '#9fd6f5' : ok ? '#ffe29a' : '#ff8a7a';
-            g.fillText(cur ? 'Itt vagy' : have ? 'Átváltás' : '🚀 ' + fmt(c) + ' Ft + ' + nfmt(nk) + '🍯', r.x + r.w - 12 * d, r.y + r.h / 2 + d, r.w * .62); g.textAlign = 'center'; } } }
+            g.fillText(cur ? 'Itt vagy' : have ? 'Átváltás' : '🚀 ' + fmt(c) + ' Ft + ' + nfmt(nk) + '🍯' + (cq ? ' + ' + nfmt(cq) + '✨' : ''), r.x + r.w - 12 * d, r.y + r.h / 2 + d, r.w * .62); g.textAlign = 'center'; } } }
       if (S.anim) { const a = S.anim, k = a.t / a.dur, fade = Math.max(0, 1 - Math.abs(k - .55) / .3);
         if (a.launch) { const ry = G.H * 1.05 - (k ** 2.2) * (G.H * 1.4), rx = G.W / 2, s2 = 40 * d;
           g.fillStyle = `rgba(2,4,10,${Math.min(.85, k * 1.2)})`; g.fillRect(0, 0, G.W, G.H);
