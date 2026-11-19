@@ -5,7 +5,7 @@ window.HGZombi = function (env) {
   'use strict';
   const { G, Sfx, rr, hud } = env;
   const STEAM = 'https://store.steampowered.com/app/5185890/Zombies_Arent_Real/';
-  const MD = window.HGZMap, WW = MD.W, WH = MD.H, RW = 15, R_START = 760, R_GROW = 260;
+  const MD = window.HGZMap, WW = MD.W, WH = MD.H, RW = 15, R_START = 760, R_GROW = 260, HPZ = .25, GMAX = 20; // HPZ: egy zombi életereje; GMAX: legfeljebb ennyien mozognak egy egységként
   // u: melyik küldetéstől érhető el; on: 'b' épület, 'r' út, 'br' híd
   const TOOLS = [
     { k: 'zone', tab: 0, n: 'Fal', ic: '🧱', c: 0, u: 1, n2: 1, d: 'Húzz falat szabadon. Ami így el van vágva a várostól, az védett.' },
@@ -132,11 +132,12 @@ window.HGZombi = function (env) {
     const seen = new Set(); let best = []; for (const i of inn) { if (seen.has(i)) continue; const q = [i], o = [i]; seen.add(i); while (q.length) { const u = q.pop(); for (const a of S.N[u].adj) if (!seen.has(a.n)) { seen.add(a.n); q.push(a.n); o.push(a.n); } } if (o.length > best.length) best = o; }
     const keep = new Set(best); for (const i of inn) if (!keep.has(i)) S.N[i].adj = []; S.live = best; S.E = S.Eall.filter(e => keep.has(e.a) && keep.has(e.b)); S.B = S.Ball.filter(b => Math.hypot(b.x - sx, b.y - sy) < R0);
     S.box = [Math.max(0, sx - R0 - 20), Math.max(0, sy - R0 - 20), Math.min(WW, sx + R0 + 20), Math.min(WH, sy + R0 + 20)]; protCalc(); }
-  function spawn() { const n = Math.min(3200, 800 + 300 * S.m); S.civs = []; let pool = S.E.filter(e => !e.nob && !e.bridge); if (pool.length < 10) pool = S.E; for (let k = 0; k < n; k++) S.civs.push(agent(pool[Math.floor(Math.random() * pool.length)])); S.n0 = n; S.obj = Math.min(.6, .2 + .04 * S.m); }
+  function spawn() { const n = Math.min(32000, 8000 + 3000 * S.m); S.civs = []; let pool = S.E.filter(e => !e.nob && !e.bridge); if (pool.length < 10) pool = S.E; for (let left = n; left > 0;) { const a = agent(pool[Math.floor(Math.random() * pool.length)]); a.n = Math.min(left, 6 + Math.floor(Math.random() * 9)); left -= a.n; S.civs.push(a); } S.n0 = n; S.obj = Math.min(.6, .2 + .04 * S.m); }
   function setStart(x, y) { const n = nearNode(x, y, 700); if (n < 0) return say('Itt nincs település – válassz lakott helyet.'); S.start = [S.N[n].x, S.N[n].y]; region(); if (S.E.length < 30) { S.start = null; S.live = S.liveAll; for (const i of S.liveAll) S.N[i].adj = S.N[i].all; return say('Itt túl kevés az utca – válassz lakott helyet.'); } { let bt = null, bd = 1e9; for (const t of S.towns) { const d0 = Math.hypot(t.x - S.start[0], t.y - S.start[1]) - t.r; if (d0 < bd) { bd = d0; bt = t; } } S.name = inPoly(GEO.bp, S.start[0], S.start[1]) || !bt ? 'Budapest' : bt.n; }
     spawn(); S.phase = 'plan'; const old = { s: L.s, cx: L.cam.cx, cy: L.cam.cy }; L = null; layout(true); S.zin = { t: 0, ...old }; Sfx.perfect(); }
-  function agent(e, R = Math.random) { const a = { e, s: R() * e.len, dir: R() < .5 ? 1 : -1, off: (R() - .5) * (RW - 5), hp: 2, cd: R(), x: 0, y: 0, idle: 0 }; pos(a); return a; }
+  function agent(e, R = Math.random) { const a = { e, s: R() * e.len, dir: R() < .5 ? 1 : -1, off: (R() - .5) * (RW - 5), hp: 2, n: 1, cd: R(), x: 0, y: 0, idle: 0 }; pos(a); return a; }
   function pos(a) { const A = S.N[a.e.a], B = S.N[a.e.b], t = a.s / a.e.len, dx = (B.x - A.x) / a.e.len, dy = (B.y - A.y) / a.e.len; a.x = A.x + (B.x - A.x) * t - dy * a.off; a.y = A.y + (B.y - A.y) * t + dx * a.off; }
+  const cnt = l => { let n = 0; for (const a of l) n += a.n; return n; };
   const headN = a => a.dir > 0 ? a.e.b : a.e.a;
   function nearEdge(x, y, max = 40, f) { let b = null, bd = max; for (const e of S.E) { if (e.dead || (f && !f(e))) continue; const [d, t] = dseg(x, y, S.N[e.a].x, S.N[e.a].y, S.N[e.b].x, S.N[e.b].y); if (d < bd) { bd = d; b = { e, s: t * e.len, d }; } } return b; }
   const nearNode = (x, y, max = 1e9) => { let b = -1, bd = max; for (const i of S.live) { const d = Math.hypot(S.N[i].x - x, S.N[i].y - y); if (d < bd) { bd = d; b = i; } } return b; };
@@ -234,13 +235,13 @@ window.HGZombi = function (env) {
     for (const u of S.units.filter(u => u.k === 'c4')) { u.e.dead = 1; boom(u.x, u.y, 60, false); } S.units = S.units.filter(u => u.k !== 'c4');
     const rm = (x, y) => (S.units.some(u => u.k === 'rad' && Math.hypot(u.x - x, u.y - y) < TOOL.rad.R) ? 1.3 : 1) * RUN.rng;
     for (const u of S.units) { u.rm = rm(u.x, u.y); if (u.k === 'lift') u.node = nearNode(u.x, u.y); if (u.k === 'pol') for (let k = 0; k < 4; k++) soldier(u.x + (Math.random() - .5) * 60, u.y + (Math.random() - .5) * 60, { guard: 1, cop: 1 });
-      if (u.k === 'mil') { const near = S.civs.map(c => [Math.hypot(c.x - u.x, c.y - u.y), c]).filter(q => q[0] < TOOL.mil.R).sort((a, b) => a[0] - b[0]).slice(0, 8); for (const [, c] of near) { c.gone = 1; soldier(c.x, c.y, { guard: 1, r: 90 }); } S.civs = S.civs.filter(c => !c.gone); S.n0 -= near.length; } }
+      if (u.k === 'mil') { const near = S.civs.map(c => [Math.hypot(c.x - u.x, c.y - u.y), c]).filter(q => q[0] < TOOL.mil.R).sort((a, b) => a[0] - b[0]); let need = 8; for (const [, c] of near) { while (need > 0 && c.n > 0) { c.n--; need--; soldier(c.x + (Math.random() - .5) * 30, c.y + (Math.random() - .5) * 30, { guard: 1, r: 90 }); } if (!c.n) c.gone = 1; if (!need) break; } S.civs = S.civs.filter(c => !c.gone); S.n0 -= 8 - need; } }
     for (const s of S.sol) if (S.units.some(u => u.k === 'med' && Math.hypot(u.x - s.x, u.y - s.y) < TOOL.med.R)) s.hp = 2;
     // kitörések a zónáktól távol
     protCalc(); const pn = S.live.filter(i => S.prot[i]).map(i => [S.N[i].x, S.N[i].y]), zc = pn.length ? pn : [[WW / 2, WH / 2]], mid = e => [(S.N[e.a].x + S.N[e.b].x) / 2, (S.N[e.a].y + S.N[e.b].y) / 2];
     const cand = S.E.filter(e => !e.dead && !e.bridge && !e.bars.length && !S.prot[e.a] && !S.prot[e.b]).map(e => { const [x, y] = mid(e); return [Math.min(...zc.map(z => Math.hypot(z[0] - x, z[1] - y))) + Math.random() * 200, e]; }).sort((a, b) => b[0] - a[0]);
     const sites = 2 + Math.min(5, Math.floor(S.m / 2)), per = 6 + 3 * S.m;
-    for (let k = 0; k < sites && cand.length; k++) { const e = cand[Math.min(cand.length - 1, Math.floor(k * cand.length * .1 / sites + Math.random() * 6))][1]; for (let j = 0; j < per; j++) { const z = agent(e); z.cd = 1; S.zs.push(z); } S.fx.push({ k: 'ring', x: mid(e)[0], y: mid(e)[1], l: 1.5 }); }
+    for (let k = 0; k < sites && cand.length; k++) { const e = cand[Math.min(cand.length - 1, Math.floor(k * cand.length * .1 / sites + Math.random() * 6))][1]; for (let j = 0; j < per; j++) { const z = agent(e); z.cd = 1; z.n = 8; z.hp = 8 * HPZ; S.zs.push(z); } S.fx.push({ k: 'ring', x: mid(e)[0], y: mid(e)[1], l: 1.5 }); }
     layout(); fields(); flags();
   }
   function flags() { const bros = S.units.filter(u => u.k === 'bro'), lifts = S.units.filter(u => u.k === 'lift');
@@ -248,27 +249,30 @@ window.HGZombi = function (env) {
       c.lift = c.safe ? null : lifts.find(u => Math.hypot(u.x - c.x, u.y - c.y) < TOOL.lift.R) || null; } }
   function boom(x, y, rad, hurtAll = true) {
     S.fx.push({ k: 'boom', x, y, r: rad, l: .5 }); G.shake = Math.max(G.shake, 6 * G.d); Sfx.blip(90, .25, 'sawtooth', .08, .4);
-    const hit = e => Math.hypot(e.x - x, e.y - y) <= rad; for (const z of S.zs) if (!z.dead && hit(z)) { z.dead = 1; S.kills++; }
-    if (hurtAll) { const c0 = S.civs.length; S.civs = S.civs.filter(c => !hit(c)); S.lost += c0 - S.civs.length; S.sol = S.sol.filter(s => !hit(s)); }
+    const hit = e => Math.hypot(e.x - x, e.y - y) <= rad; for (const z of S.zs) if (!z.dead && hit(z)) { z.dead = 1; S.kills += z.n; }
+    if (hurtAll) { const c0 = cnt(S.civs); S.civs = S.civs.filter(c => !hit(c)); S.lost += c0 - cnt(S.civs); S.sol = S.sol.filter(s => !hit(s)); }
   }
   function zGrid() { const h = new Map(); for (const z of S.zs) { const k = (z.x / 100 | 0) * 64 + (z.y / 100 | 0), l = h.get(k); if (l) l.push(z); else h.set(k, [z]); } S.zg = h; }
   function nearestZ(x, y, r, rmin = 0) { if (!S.zg) zGrid(); let b = null, bd = r * r; const x0 = Math.max(0, (x - r) / 100 | 0), x1 = (x + r) / 100 | 0, y0 = Math.max(0, (y - r) / 100 | 0), y1 = (y + r) / 100 | 0, m2 = rmin * rmin;
     for (let gx = x0; gx <= x1; gx++) for (let gy = y0; gy <= y1; gy++) { const l = S.zg.get(gx * 64 + gy); if (!l) continue; for (const z of l) { if (z.dead) continue; const d2 = (z.x - x) ** 2 + (z.y - y) ** 2; if (d2 < bd && d2 >= m2) { bd = d2; b = z; } } } return b; }
-  function shoot(x, y, z, dmg, col) { z.hp -= dmg; S.fx.push({ k: 'shot', x, y, x2: z.x, y2: z.y, l: .08, col }); if (z.hp <= 0 && !z.dead) { z.dead = 1; S.kills++; } }
+  function hurtZ(z, dmg) { if (z.dead) return; z.hp -= dmg; const n1 = Math.max(0, Math.ceil(z.hp / HPZ - 1e-6)); if (n1 < z.n) { S.kills += z.n - n1; z.n = n1; } if (!n1) z.dead = 1; }
+  function shoot(x, y, z, dmg, col) { hurtZ(z, dmg); S.fx.push({ k: 'shot', x, y, x2: z.x, y2: z.y, l: .08, col }); }
   const hashOf = list => { const h = new Map(); for (const a of list) { const k = (a.x / 24 | 0) * 512 + (a.y / 24 | 0), l = h.get(k); if (l) l.push(a); else h.set(k, [a]); } return h; };
   const grab = (h, x, y, r) => { const gx = Math.floor(x / 24), gy = Math.floor(y / 24); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const l = h.get((gx + a) * 512 + gy + b); if (l) for (const o of l) if (!o.bit && Math.hypot(o.x - x, o.y - y) < r) return o; } return null; };
   function tick(dt) {
     S.t += dt; if ((S.fT -= dt) <= 0) { S.fT = .5; fields(); } if ((S.cT -= dt) <= 0) { S.cT = .3; flags(); }
+    if ((S.mT = (S.mT || 0) - dt) <= 0) { S.mT = 1; const by = new Map(); for (const z of S.zs) { if (z.n >= GMAX || z.dead) continue; const l = by.get(z.e); if (l) l.push(z); else by.set(z.e, [z]); }
+      for (const l of by.values()) if (l.length > 1) { l.sort((a, b) => a.s - b.s); for (let i = 1; i < l.length; i++) { const a = l[i - 1], b = l[i]; if (!a.dead && a.dir === b.dir && b.s - a.s < 16 && a.n + b.n <= GMAX) { b.n += a.n; b.hp += a.hp; a.n = 0; a.dead = 1; } } } S.zs = S.zs.filter(z => !z.dead); }
     zGrid(); const mines = S.units.filter(u => u.k === 'mine'), ch = hashOf(S.civs), sh = hashOf(S.sol), zsp = Math.min(52, 34 + S.m * 2.2), born = [], hitBars = new Map();
     for (const z of S.zs) { if (z.dead) continue; z.e.stain = Math.min(1, z.e.stain + dt * .08);
       for (const u of mines) if (!u.dead && Math.hypot(u.x - z.x, u.y - z.y) < 14) { u.dead = 1; boom(u.x, u.y, 55); } if (z.dead) continue;
-      if ((z.cd -= dt) <= 0) { const v = grab(ch, z.x, z.y, 9) || grab(sh, z.x, z.y, 9); if (v) { z.cd = 1.3; if (v.r && --v.hp > 0) continue; v.bit = 1; born.push(v); continue; } }
+      if ((z.cd -= dt) <= 0) { const v = grab(ch, z.x, z.y, 11) || grab(sh, z.x, z.y, 11); if (v) { z.cd = 1.3; if (v.r) { if (--v.hp > 0) continue; v.bit = 1; born.push([v, 1]); continue; } const k = Math.min(v.n, z.n); v.n -= k; S.lost += k; if (!v.n) v.bit = 1; born.push([v, k]); continue; } }
       if (S.zF && (z.rt = (z.rt || Math.random() * .4) - dt) <= 0) { z.rt = .4; zTurn(z); }
-      const r = advance(z, zsp, dt, () => true); if (r === 'node') { const a = S.zF ? zPick(headN(z)) : pick(headN(z), null); if (a) take(z, a, headN(z)); else z.dir *= -1; } else if (r) hitBars.set(r, (hitBars.get(r) || 0) + 1); }
-    for (const [b, n] of hitBars) { b.hp -= dt * .4 * Math.min(4, n); if (b.hp <= 0) { b.hp = 0; S.fx.push({ k: 'boom', x: b.x, y: b.y, r: 22, l: .4 }); Sfx.hit(); } }
+      const r = advance(z, zsp, dt, () => true); if (r === 'node') { const a = S.zF ? zPick(headN(z)) : pick(headN(z), null); if (a) take(z, a, headN(z)); else z.dir *= -1; } else if (r) hitBars.set(r, (hitBars.get(r) || 0) + z.n); }
+    for (const [b, n] of hitBars) { b.hp -= dt * .04 * Math.min(40, n); if (b.hp <= 0) { b.hp = 0; S.fx.push({ k: 'boom', x: b.x, y: b.y, r: 22, l: .4 }); Sfx.hit(); } }
     for (const u of S.units) if (u.k === 'rep') for (const z of S.zones) for (const b of z.bars) if (b.hp > 0 && b.hp < b.max && Math.hypot(b.x - u.x, b.y - u.y) < TOOL.rep.R) b.hp = Math.min(b.max, b.hp + 2 * dt);
     S.units = S.units.filter(u => !u.dead);
-    if (born.length) { S.civs = S.civs.filter(c => !c.bit); S.sol = S.sol.filter(s => !s.bit); for (const v of born) { if (!v.r) S.lost++; const z = agent(v.e); z.s = v.s; z.dir = v.dir; z.cd = 1.8; pos(z); S.zs.push(z); } }
+    if (born.length) { S.civs = S.civs.filter(c => !c.bit); S.sol = S.sol.filter(s => !s.bit); for (const [v, k] of born) { const z = agent(v.e); z.s = v.s; z.dir = v.dir; z.off = v.off; z.cd = 1.8; z.n = k; z.hp = k * HPZ; pos(z); S.zs.push(z); } }
     // civilek
     const blockC = (e, u, v) => wallBars(e) > 0 || S.N[v].hold;
     for (const c of S.civs) { if (c.idle > 0) { c.idle -= dt; continue; }
@@ -282,7 +286,7 @@ window.HGZombi = function (env) {
       else { if (Math.random() < .5) { c.idle = 1 + Math.random() * 3; c.dir *= -1; continue; } a = pick(n, null, blockC); }
       if (a) take(c, a, n); else { c.dir *= -1; c.idle = .4; } }
     // légihíd
-    for (const u of S.units) if (u.k === 'lift' && (u.cd -= dt) <= 0) { const w = S.civs.filter(c => c.wait === u).slice(0, 10); u.cd = 6; if (w.length) { for (const c of w) c.gone = 1; S.civs = S.civs.filter(c => !c.gone); S.evac += w.length; S.fx.push({ k: 'lift', x: u.x, y: u.y, l: 1.6, n: w.length }); Sfx.blip(520, .2, 'triangle', .05); } }
+    for (const u of S.units) if (u.k === 'lift' && (u.cd -= dt) <= 0) { const w = S.civs.filter(c => c.wait === u).slice(0, 10); u.cd = 6; if (w.length) { for (const c of w) c.gone = 1; S.civs = S.civs.filter(c => !c.gone); S.evac += cnt(w); S.fx.push({ k: 'lift', x: u.x, y: u.y, l: 1.6, n: cnt(w) }); Sfx.blip(520, .2, 'triangle', .05); } }
     // egységek
     for (const u of S.units) { const T = TOOL[u.k]; if (!T.r || (u.cd -= dt) > 0) continue; const R0 = T.r * (u.rm || 1);
       if (u.k === 'mor') { const z = nearestZ(u.x, u.y, R0, T.rmin); if (z) { u.cd = T.cd; S.strikes.push({ x: z.x, y: z.y, t: .9, r: 50, from: [u.x, u.y] }); } continue; }
@@ -291,16 +295,16 @@ window.HGZombi = function (env) {
       else if (!s.guard && S.zD) { const r = advance(s, 34, dt, b => !b.gate); if (r === 'node') { const a = pick(headN(s), S.zD, (e) => wallBars(e) > 0); if (a) take(s, a, headN(s)); } else if (r) s.dir *= -1; } }
     for (const h of S.helis) { h.t -= dt; h.a += dt * 1.2; h.x = h.cx + Math.cos(h.a) * 70; h.y = h.cy + Math.sin(h.a) * 70; if ((h.cd -= dt) <= 0) { const z = nearestZ(h.x, h.y, 170); if (z) { h.cd = .1; shoot(h.x, h.y, z, 1, '255,160,90'); } } } S.helis = S.helis.filter(h => h.t > 0);
     for (const a of S.apcs) { if (a.path.length) { const T = S.N[a.path[0]], dx = T.x - a.x, dy = T.y - a.y, dd = Math.hypot(dx, dy); if (dd < 4) a.path.shift(); else { a.x += dx / dd * 70 * dt; a.y += dy / dd * 70 * dt; a.ang = Math.atan2(dy, dx); } }
-      for (const z of S.zs) if (!z.dead && Math.hypot(z.x - a.x, z.y - a.y) < 13) { z.dead = 1; S.kills++; } if ((a.cd -= dt) <= 0) { const z = nearestZ(a.x, a.y, 170); if (z) { a.cd = .09; shoot(a.x, a.y, z, 1, '255,200,120'); } } }
-    for (const q of S.gas) { q.t -= dt; for (const z of S.zs) if (!z.dead && Math.hypot(z.x - q.x, z.y - q.y) < q.r) { z.hp -= 1.3 * dt; if (z.hp <= 0) { z.dead = 1; S.kills++; } }
-      const c0 = S.civs.length; for (const c of S.civs) if (Math.hypot(c.x - q.x, c.y - q.y) < q.r) { c.hp -= .5 * dt; if (c.hp <= 0) c.gone = 1; } S.civs = S.civs.filter(c => !c.gone); S.lost += c0 - S.civs.length; } S.gas = S.gas.filter(q => q.t > 0);
+      for (const z of S.zs) if (!z.dead && Math.hypot(z.x - a.x, z.y - a.y) < 13) { z.dead = 1; S.kills += z.n; } if ((a.cd -= dt) <= 0) { const z = nearestZ(a.x, a.y, 170); if (z) { a.cd = .09; shoot(a.x, a.y, z, 1, '255,200,120'); } } }
+    for (const q of S.gas) { q.t -= dt; for (const z of S.zs) if (!z.dead && Math.hypot(z.x - q.x, z.y - q.y) < q.r) hurtZ(z, z.n * HPZ * dt / 1.5 + 1e-4);
+      const c0 = cnt(S.civs); for (const c of S.civs) if (Math.hypot(c.x - q.x, c.y - q.y) < q.r) { c.hp -= .5 * dt; if (c.hp <= 0) c.gone = 1; } S.civs = S.civs.filter(c => !c.gone); S.lost += c0 - cnt(S.civs); } S.gas = S.gas.filter(q => q.t > 0);
     for (const st of S.strikes) if ((st.t -= dt) <= 0) boom(st.x, st.y, st.r); S.strikes = S.strikes.filter(s => s.t > 0); S.zs = S.zs.filter(z => !z.dead);
-    const alive = S.civs.length + S.evac, need = Math.ceil(S.n0 * S.obj);
+    const alive = cnt(S.civs) + S.evac, need = Math.ceil(S.n0 * S.obj);
     if (alive < need) return finish(false, 'Túl kevés civil maradt életben.');
     if (!S.zs.length && !S.strikes.length && S.t > 1) finish(true);
   }
   function finish(win, why) {
-    const saved = S.civs.length + S.evac, pct = saved / S.n0, pts = win ? Math.round(saved * 4 * S.m + S.budget + (pct > .8 ? 500 * S.m : pct > .6 ? 200 * S.m : 0)) : 0;
+    const saved = cnt(S.civs) + S.evac, pct = saved / S.n0, pts = win ? Math.round(saved * .4 * S.m + S.budget + (pct > .8 ? 500 * S.m : pct > .6 ? 200 * S.m : 0)) : 0;
     const pool = UPG.slice().sort(() => Math.random() - .5).slice(0, 3);
     S.phase = 'res'; S.res = { win, why, saved, pct, pts, pool, medal: pct > .8 ? '💎 Gyémánt' : pct > .6 ? '🥇 Arany' : pct > .4 ? '🥈 Ezüst' : '🥉 Bronz' };
     if (win) { RUN.total += pts; G.score = RUN.total; hud(); Sfx.perfect(); } else Sfx.hit();
@@ -385,8 +389,8 @@ window.HGZombi = function (env) {
     // emberek, zombik
     const rs = Math.max(1.6 * d, 2.6 * s);
     const vx0 = -L.ox / s - 8, vx1 = (G.W - L.ox) / s + 8, vy0 = (L.top - L.oy) / s - 8, vy1 = (L.top + L.vh - L.oy) / s + 8, vis = a => a.x > vx0 && a.x < vx1 && a.y > vy0 && a.y < vy1;
-    for (const [col, f] of [['#f3f5f8', c => !c.safe && !c.wait], ['#9fd6f5', c => c.safe], ['#ffd84a', c => !c.safe && c.wait]]) { g.fillStyle = col; g.beginPath(); for (const c of S.civs) if (f(c) && vis(c)) g.rect(X(c.x) - rs / 2, Y(c.y) - rs / 2, rs, rs); g.fill(); }
-    g.fillStyle = '#7dff4a'; g.beginPath(); for (const z of S.zs) if (vis(z)) g.rect(X(z.x) - rs * .65, Y(z.y) - rs * .65, rs * 1.3, rs * 1.3); g.fill();
+    for (const [col, f] of [['#f3f5f8', c => !c.safe && !c.wait], ['#9fd6f5', c => c.safe], ['#ffd84a', c => !c.safe && c.wait]]) { g.fillStyle = col; g.beginPath(); for (const c of S.civs) if (f(c) && vis(c)) { const w = rs * (.55 + .3 * Math.sqrt(c.n)); g.rect(X(c.x) - w / 2, Y(c.y) - w / 2, w, w); } g.fill(); }
+    g.fillStyle = '#7dff4a'; g.beginPath(); for (const z of S.zs) if (vis(z)) { const w = rs * (.7 + .33 * Math.sqrt(z.n)); g.rect(X(z.x) - w / 2, Y(z.y) - w / 2, w, w); } g.fill();
     for (const q of S.sol) { g.fillStyle = q.cop ? '#5aa0ff' : '#ffd84a'; g.beginPath(); g.arc(X(q.x), Y(q.y), rs * .9, 0, 6.283); g.fill(); g.strokeStyle = '#141018'; g.lineWidth = 1; g.stroke(); }
     for (const a of S.apcs) { g.save(); g.translate(X(a.x), Y(a.y)); g.rotate(a.ang); g.fillStyle = '#4b5a3a'; g.strokeStyle = '#141018'; g.lineWidth = 1.5; rr(-11 * s - 3, -6 * s - 2, 22 * s + 6, 12 * s + 4, 3); g.fill(); g.stroke(); g.fillStyle = '#2f3a24'; g.fillRect(0, -1.5 * s, 14 * s + 3, 3 * s); g.restore(); }
     g.strokeStyle = 'rgba(255,225,130,.8)'; g.lineWidth = Math.max(1, d); g.beginPath(); for (const f of S.fx) if (f.k === 'shot') { g.moveTo(X(f.x), Y(f.y)); g.lineTo(X(f.x2), Y(f.y2)); } g.stroke();
@@ -402,10 +406,10 @@ window.HGZombi = function (env) {
     if (!S.start && S.hover) { g.strokeStyle = '#ffe29a'; g.lineWidth = 2 * d; g.setLineDash([8 * d, 6 * d]); g.beginPath(); g.arc(X(S.hover[0]), Y(S.hover[1]), R_START * s, 0, 6.283); g.stroke(); g.setLineDash([]); g.fillStyle = 'rgba(255,226,154,.08)'; g.fill(); }
     g.restore();
     // felső sáv
-    const prot = S.civs.reduce((a, c) => a + (c.safe ? 1 : 0), 0), alive = S.civs.length + S.evac;
+    const prot = S.civs.reduce((a, c) => a + (c.safe ? c.n : 0), 0), alive = cnt(S.civs) + S.evac;
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `800 ${15 * d}px Inter, sans-serif`; g.fillStyle = '#ffe29a'; g.fillText(`${S.m}. küldetés · ${S.name}`, G.W / 2, 66 * d);
     g.font = `600 ${12 * d}px Inter, sans-serif`; g.fillStyle = 'rgba(255,255,255,.85)';
-    g.fillText(S.phase === 'pick' ? 'Válaszd ki, honnan indulsz – koppints a térképre' : S.phase === 'plan' ? `💰 ${S.budget}   👥 ${alive} civil   🎯 cél: ${Math.round(S.obj * 100)}% életben` : `👥 ${alive}/${S.n0} (${Math.round(alive / S.n0 * 100)}%, cél ${Math.round(S.obj * 100)}%)   🛡 ${prot}${S.evac ? '   🚁 ' + S.evac : ''}   🧟 ${S.zs.length}`, G.W / 2, 84 * d, G.W - 16 * d);
+    g.fillText(S.phase === 'pick' ? 'Válaszd ki, honnan indulsz – koppints a térképre' : S.phase === 'plan' ? `💰 ${S.budget}   👥 ${alive} civil   🎯 cél: ${Math.round(S.obj * 100)}% életben` : `👥 ${alive}/${S.n0} (${Math.round(alive / S.n0 * 100)}%, cél ${Math.round(S.obj * 100)}%)   🛡 ${prot}${S.evac ? '   🚁 ' + S.evac : ''}   🧟 ${cnt(S.zs)}`, G.W / 2, 84 * d, G.W - 16 * d);
     // alsó sáv
     g.fillStyle = 'rgba(10,8,14,.97)'; g.fillRect(0, L.barY, G.W, L.barH); g.fillStyle = 'rgba(125,255,74,.35)'; g.fillRect(0, L.barY, G.W, d);
     for (const tb of L.tabs) { const on = S.tab === tb.k; g.fillStyle = on ? 'rgba(232,182,86,.9)' : 'rgba(255,255,255,.07)'; rr(tb.x, tb.y, tb.w, tb.h, tb.h / 2); g.fill(); g.fillStyle = on ? '#1a1004' : '#fff'; g.font = `700 ${Math.min(11, tb.w / d / 9) * d}px Inter, sans-serif`; g.fillText(tb.n, tb.x + tb.w / 2, tb.y + tb.h / 2 + 1); }
