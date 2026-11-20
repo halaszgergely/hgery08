@@ -111,6 +111,16 @@ service cloud.firestore {
                 && request.resource.data.pv[request.auth.uid] < resource.data.poll.opts.size())));
     }
 
+    // ---------- vendégek jelenléte (Online lista) – a vendég csak a saját becenevét és idejét írhatja ----------
+    match /guests/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == uid && request.auth.token.firebase.sign_in_provider == 'anonymous'
+        && request.resource.data.keys().hasOnly(['nick', 'lastSeen'])
+        && request.resource.data.nick is string && request.resource.data.nick.size() >= 2 && request.resource.data.nick.size() <= 20 && request.resource.data.nick.matches('^[^<>&"]+$')
+        && request.resource.data.lastSeen == request.time;
+      allow delete: if request.auth.uid == uid || perm('publishMedia');
+    }
+
     // ---------- felhasználók ----------
     match /users/{uid} {
       // a nevek a hozzászólásokhoz kellenek, ezért a vendégek is olvashatják
