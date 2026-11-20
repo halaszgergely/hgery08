@@ -277,7 +277,7 @@ function over() {
   setTimeout(() => { UI.pOver.hidden = false; }, 450); hud(); renderCards();
   if (window.top !== window && G.score > 0) parent.postMessage({ hgws: 'score', game: G.game.id, score: G.score, win: !!G.win }, location.origin);
 }
-function close() { if (G.game && G.game.leave) G.game.leave(G); if (G.running && G.game.quit && G.score > 0) over(); G.running = false; cancelAnimationFrame(G.raf); gEl.classList.remove('open'); document.body.classList.remove('locked'); renderCards(); }
+function close() { if (G.game && G.game.leave) G.game.leave(G); if (G.running && G.score > 0) over(); /* kilépéskor is számít az addig elért pontszám */ G.running = false; cancelAnimationFrame(G.raf); gEl.classList.remove('open'); document.body.classList.remove('locked'); renderCards(); }
 $('#gQuit').onclick = () => { if (G.running) over(); };
 $('#pGo').onclick = start; $('#oAgain').onclick = start; $('#oExit').onclick = close; $('#gClose').onclick = close;
 addEventListener('keydown', e => { if (!gEl.classList.contains('open')) return; if (e.key === 'Escape') close();

@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611201941';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611201941';
-import * as Player from './player.js?v=202611201941';
-import * as Party from './party.js?v=202611201941';
-import * as VP from './vplayer.js?v=202611201941';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611201941';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611201944';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611201944';
+import * as Player from './player.js?v=202611201944';
+import * as Party from './party.js?v=202611201944';
+import * as VP from './vplayer.js?v=202611201944';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611201944';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -404,13 +404,13 @@ async function saveScore(game, score, win, sync) {
       if (sc > ob || win) await FB.setDoc(ref, { best: Math.max(sc, ob), at: FB.serverTimestamp(), ...(win || o.wins ? { wins: (o.wins || 0) + (win ? 1 : 0) } : {}), ...nick }); } catch (e) { console.warn('ranglista', e); }
   }
 }
-let synced = false;
+let synced = false; const syncBest = {}; // az első szinkron (régi helyi rekordok) csak az örök listára megy, a munkamenet közbeni új rekord a hetire is
 addEventListener('message', async e => {
   if (e.origin !== location.origin || !e.data?.hgws) return;
   const fr = $('.arcframe'); if (!fr || e.source !== fr.contentWindow) return;
   if (e.data.hgws === 'score') { await saveScore(e.data.game, e.data.score, !!e.data.win); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbreq') sendBoards(fr.contentWindow);
-  if (e.data.hgws === 'sync' && !guest() && C.uid() && !synced) { synced = true; for (const [g, v] of Object.entries(e.data.bests || {})) await saveScore(g, v, false, true); sendBoards(fr.contentWindow); }
+  if (e.data.hgws === 'sync' && !guest() && C.uid()) { const first = !synced; synced = true; let ch = 0; for (const [g, v] of Object.entries(e.data.bests || {})) if (v > (syncBest[g] || 0)) { syncBest[g] = v; ch = 1; await saveScore(g, v, false, first); } if (ch) sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'nickreq') { await renameNick(); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbdel') { await delScore(e.data.game, e.data.uid); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'ghostreq') fr.contentWindow.postMessage({ hgws: 'ghosts', data: await ghostList(e.data.tracks), guest: guest() }, location.origin);
