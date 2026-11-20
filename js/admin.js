@@ -1,9 +1,12 @@
 // HGWS – kezelőfelület: tagok és rangok, tagek, filmek, zenék, csatornák, jóváhagyások, rangok szerkesztése
-import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG } from './core.js?v=202611202217';
-import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611202217';
-import { githubRepo } from '../firebase-config.js?v=202611202217';
+import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG } from './core.js?v=202611202234';
+import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611202234';
+import { githubRepo } from '../firebase-config.js?v=202611202234';
 
 let C = null, current = null;
+/* e-mail címek: csak adminok és a tulaj olvashatják (emails/{uid}); a lista megnyitásakor egyszer töltjük be */
+const EMAILS = new Map(); let emailsAt = 0;
+function loadEmails() { if (!C.isAdmin() || Date.now() - emailsAt < 60e3) return; emailsAt = Date.now(); FB.getDocs(FB.collection(db, 'emails')).then(s => { let ch = EMAILS.size !== s.size; s.docs.forEach(d => { const e = d.data().email; if (EMAILS.get(d.id) !== e) { EMAILS.set(d.id, e); ch = true; } }); if (ch) refresh(); }).catch(e => console.warn('e-mail címek', e)); }
 export function init(ctx) { C = ctx; }
 export function refresh() { if (current && C.S.route.view === 'admin') render(current, true); }
 
@@ -79,7 +82,7 @@ function members(v, again) {
         <span>${bad.map(u => `<b data-u="${esc(u.id)}">${esc(u.name)}</b>`).join(', ')}. Belépéskor kötelezően új nevet kell választaniuk – vagy itt azonnal átnevezheted őket.</span></div>
         ${fixable.length ? `<button class="btn danger sm" data-fixbad>Átnevezés (${fixable.length}) → Tag-xxxxx</button>` : ''}</div>`; })()}
     <div class="search" style="margin:1.2rem 0 0;max-width:380px"><input type="search" id="aq" placeholder="Keresés név szerint…" value="${esc(mq)}"></div>
-    <div class="atable">${list.map(u => {
+    <div class="atable">${(loadEmails(), list).map(u => {
       const muted = toDate(u.mutedUntil) > new Date(), self = u.id === me, own = u.id === OWNER_UID, k = C.roleKey(u);
       const lower = C.rankOfUser(u) < C.myRank();
       const canMod = !self && !own && C.can('moderate') && lower;
@@ -92,7 +95,7 @@ function members(v, again) {
       else ctl = C.roleBadge(u) || '<span class="tg">TAG</span>';
       return `<div class="arow"><span class="avw">${avatar(u, 42)}<i class="on${isOnline(u) ? ' y' : ''}" style="border-color:#0d1830"></i></span>
         <div class="who"><b data-u="${esc(u.id)}" style="cursor:pointer;color:${k !== 'user' ? roleOf(k).color : 'inherit'}">${esc(u.name)}</b>${self ? ' <span class="hint">(te)</span>' : ''}
-          <small>${u.createdAt ? 'Tag ' + toDate(u.createdAt).toLocaleDateString('hu-HU') + ' óta' : ''}${u.lastSeen ? ' · ' + (isOnline(u) ? '<span class="odot"></span>online' : 'utoljára ' + timeLabel(u.lastSeen)) : ''}</small>
+          <small>${u.createdAt ? 'Tag ' + toDate(u.createdAt).toLocaleDateString('hu-HU') + ' óta' : ''}${u.lastSeen ? ' · ' + (isOnline(u) ? '<span class="odot"></span>online' : 'utoljára ' + timeLabel(u.lastSeen)) : ''}</small>${C.isAdmin() && EMAILS.get(u.id) ? `<small style="user-select:all"><i class="ic ic-mail"></i> ${esc(EMAILS.get(u.id))}</small>` : ''}
           <div>${C.tagPills(u, 6)}${badName(u.name) ? '<span class="tg red"><i class="ic ic-triangle-alert"></i> NEM MEGFELELŐ NÉV</span>' : ''}${u.banned ? '<span class="tg red"><i class="ic ic-ban"></i> KITILTVA</span>' : ''}${muted ? `<span class="tg red"><i class="ic ic-volume-x"></i> NÉMÍTVA ${esc(timeLabel(u.mutedUntil))}-IG</span>` : ''}</div></div>
         <div class="ac">${ctl}
           ${C.can('manageTags') && (!own || C.isOwner()) ? `<button class="btn plain sm" data-tagu="${esc(u.id)}"><i class="ic ic-tag"></i> Tagek</button>` : ''}
@@ -740,7 +743,7 @@ async function statsPage(v) {
     const st = { nyitott: ['Nyitott', '#6cc6ff'], folyamatban: ['Folyamatban', '#ffa94d'], kesz: ['Kész', '#5ee08a'], elutasitva: ['Elutasítva', '#ff7a6e'] };
     $('#stIdea').innerHTML = s.size ? hbars(Object.entries(st).map(([k, [l, c]]) => [l, s.docs.filter(d => d.data().status === k).length, c]), ' db') : '<div class="estate"><i class="ic ic-lightbulb"></i><b>Még nincs beküldött ötlet</b></div>';
   }).catch(() => { $('#stIdea').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
-  import('./browse.js?v=202611202217').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
+  import('./browse.js?v=202611202234').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
     .then(l => { $('#stArc').innerHTML = hbars(l, ' játékos'); });
 }
 const lbScores = g => FB.collection(db, 'leaderboards', g, 'scores');
