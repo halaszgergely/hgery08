@@ -66,8 +66,16 @@ service cloud.firestore {
         || s.matches('(.*[^a-z]|)h[^a-z]+' + '[g69]' + sep + E + sep + 'r' + sep + '[g69]' + sep + E + sep + 'l' + sep + '[yií1].*')
         || s.matches('.*h' + sep + A + sep + 'l' + sep + A + sep + 's' + sep + 'z[^a-z]+[g69]([^a-z].*|)');
     }
+    // NEVSZURO-START – generálva a js/nevszuro.js listájából (node tools/nevszuro.mjs), kézzel ne írd át
+    function badName(n) {
+      let s = n.lower().replace('[áàâä]', 'a').replace('[éèêë]', 'e').replace('[íìîï]', 'i').replace('[óòôöő]', 'o').replace('[úùûüű]', 'u')
+        .replace('[4@]', 'a').replace('3', 'e').replace('[1!|]', 'i').replace('0', 'o').replace('[5$]', 's').replace('7', 't')
+        .replace('[^a-z]', '');
+      return s.matches('.*(k+u+r+v+a+|k+u+r+v+a+n+y+|f+a+s+z+|p+i+n+a+$|p+i+n+a+j+|p+i+n+a+s+|p+i+n+a+d+|p+i+n+a+f+e+j+|p+u+n+c+i+|p+i+c+s+a+|g+e+c+i+|b+u+z+i+|k+o+c+s+o+g+|s+e+g+g+|b+a+s+z+[dmoaq]+|b+a+s+s+z+|s+z+a+r+o+s+|s+z+a+r+h+a+z+i+|s+z+a+r+f+e+j+|s+z+a+r+z+s+a+k+|a+n+y+a+d+|a+n+y+a+d+a+t+|r+i+b+a+n+c+|l+o+t+y+o+|r+o+h+a+d+e+k+|c+s+i+c+s+k+a+|n+y+o+m+o+r+e+k+|h+u+l+y+e+|i+d+i+o+t+a+|r+e+t+a+r+d+|d+e+b+i+l+|s+z+o+p+o+|s+z+o+p+j+|s+z+o+p+d+|p+o+c+s+f+e+j+|f+u+t+y+i+|t+e+t+u+|c+i+g+a+n+y+|n+e+g+e+r+|n+i+g+g+e+r+|n+i+g+g+a+|m+a+j+o+m+|b+a+r+o+m+|p+a+r+a+s+z+t+|k+u+t+y+a+s+z+a+r+|b+a+z+m+e+g+|b+a+z+d+m+e+g+|b+a+s+z+k+i+|k+i+b+a+s+z+|e+l+b+a+s+z+|f+a+s+z+k+a+l+a+p+|f+a+s+z+f+e+j+|f+u+c+k+|f+u+k+|s+h+i+t+|b+i+t+c+h+|c+u+n+t+s+|c+u+n+t+y+|w+h+o+r+e+|s+l+u+t+|p+u+s+s+y+|a+s+s+h+o+l+e+|d+i+c+k+h+e+a+d+|f+a+g+g+o+t+|f+a+g+o+t+|r+e+t+a+r+d+|m+o+t+h+e+r+f+|p+o+r+n+|p+e+n+i+s+|v+a+g+i+n+a+|b+o+o+b+|t+i+t+s+|w+a+n+k+|b+a+s+t+a+r+d+|n+i+g+g+).*');
+    }
+    // NEVSZURO-END
     // a név akkor jó, ha nem foglalt – vagy ha a tulaj fiókjáról van szó
-    function nameAllowed(uid, n) { return !reservedName(n) || uid == ownerId(); }
+    function nameAllowed(uid, n) { return (!reservedName(n) || uid == ownerId()) && !badName(n); }
 
     // HGWS matricák és saját emojik – csak ezek az azonosítók küldhetők (img/stickers/hgws/stickers.json)
     function stickerIds() { return ['szilard_nevet', 'szilard_duhos', 'szilard_azott', 'szilard_megszaritalak', 'szilard_laza', 'locsolofej_ragyog', 'locsolofej_megvan', 'locsolofej_sziv', 'csepp_boldog', 'csepp_sir', 'csepp_szivszem', 'csepp_nevet', 'csepp_gondolkodik', 'csepp_alszik', 'csepp_plusz1', 'novenyke', 'kaktusz_rip', 'hgws_approved', 'szlogen', 'locsolj', 'gg']; }
@@ -157,7 +165,7 @@ service cloud.firestore {
           && request.resource.data.at == request.time
           && request.resource.data.text is string && request.resource.data.text.size() <= 200
           && request.resource.data.link is string && request.resource.data.link.size() <= 200
-          && request.resource.data.type in ['mention', 'idea', 'approve', 'reject', 'role', 'tag', 'premiere', 'party', 'vote', 'badge']
+          && request.resource.data.type in ['mention', 'idea', 'approve', 'reject', 'role', 'tag', 'premiere', 'party', 'vote', 'badge', 'friend']
           && (request.resource.data.type != 'badge' || request.auth.uid == uid);   // kitüntetésről csak saját magának írhat
       }
     }
@@ -276,7 +284,7 @@ service cloud.firestore {
     // ---------- Arcade ranglista + Drift: vendégek (névtelen belépés) is felkerülhetnek ----------
     // Nekik kötelező a „nick” (becenév) mező, a regisztráltaknál a profilnév látszik
     function isGuest() { return signedIn() && request.auth.token.firebase.sign_in_provider == 'anonymous'; }
-    function okNick(n) { return n is string && n.size() >= 2 && n.size() <= 20 && n.matches('^[^<>&"]+$') && !reservedName(n); }
+    function okNick(n) { return n is string && n.size() >= 2 && n.size() <= 20 && n.matches('^[^<>&"]+$') && !reservedName(n) && !badName(n); }
     function lbWriter(uid, extra) {
       return request.auth.uid == uid && (
         (active() && request.resource.data.keys().hasOnly(extra))
@@ -369,24 +377,66 @@ service cloud.firestore {
       }
     }
 
+    // ---------- barátok ----------
+    // friends/{a_b}: a két uid ábécérendben. Kérelem: from → to, 'pending'; csak a címzett fogadhatja el.
+    // Bármelyik fél törölheti (elutasítás, visszavonás, barát eltávolítása).
+    function pairId(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
+    function friendPath(a, b) { return /databases/$(db)/documents/friends/$(pairId(a, b)); }
+    // csak get(): ha nincs ilyen dokumentum, a kifejezés hibára fut = nem barátok (így 1 olvasás / ellenőrzés)
+    function areFriends(a, b) { return get(friendPath(a, b)).data.status == 'accepted'; }
+    function friendOrMe(m) { return m == request.auth.uid || areFriends(request.auth.uid, m); }
+    // legfeljebb 8 új tag egy lépésben (a szabályok dokumentum-olvasási kerete miatt)
+    function allFriends(l) {
+      return l.size() <= 8
+        && (l.size() < 1 || friendOrMe(l[0])) && (l.size() < 2 || friendOrMe(l[1])) && (l.size() < 3 || friendOrMe(l[2]))
+        && (l.size() < 4 || friendOrMe(l[3])) && (l.size() < 5 || friendOrMe(l[4])) && (l.size() < 6 || friendOrMe(l[5]))
+        && (l.size() < 7 || friendOrMe(l[6])) && (l.size() < 8 || friendOrMe(l[7]));
+    }
+    match /friends/{fid} {
+      allow read: if signedIn() && request.auth.uid in resource.data.users;
+      allow create: if active()
+        && request.resource.data.keys().hasOnly(['users', 'from', 'to', 'status', 'createdAt'])
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.to is string && request.resource.data.to != request.auth.uid
+        && fid == pairId(request.auth.uid, request.resource.data.to)
+        && request.resource.data.users == (request.auth.uid < request.resource.data.to
+              ? [request.auth.uid, request.resource.data.to] : [request.resource.data.to, request.auth.uid])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time
+        && exists(/databases/$(db)/documents/users/$(request.resource.data.to))
+        && get(/databases/$(db)/documents/users/$(request.resource.data.to)).data.get('banned', false) != true;
+      allow update: if active() && request.auth.uid == resource.data.to
+        && resource.data.status == 'pending'
+        && changed().hasOnly(['status', 'acceptedAt'])
+        && request.resource.data.status == 'accepted'
+        && request.resource.data.acceptedAt == request.time;
+      allow delete: if signedIn() && request.auth.uid in resource.data.users;
+    }
+
     // ---------- privát üzenetek és csoportok ----------
+    // Privát (dm) beszélgetést csak barátok indíthatnak és csak barátok írhatnak bele;
+    // csoportba csak a meghívó barátai kerülhetnek.
     match /conversations/{cid} {
+      function dmOk(d) { return d.type != 'dm' || areFriends(d.members[0], d.members[1]); }
       allow read: if active() && request.auth.uid in resource.data.members;
 
       allow create: if canPost()
         && request.auth.uid in request.resource.data.members
         && request.resource.data.members.size() >= 2 && request.resource.data.members.size() <= 50
         && request.resource.data.type in ['dm', 'group']
-        && (request.resource.data.type == 'group'
+        && ((request.resource.data.type == 'group' && allFriends(request.resource.data.members.removeAll([request.auth.uid])))
             || (request.resource.data.members.size() == 2
-                && cid == request.resource.data.members[0] + '_' + request.resource.data.members[1]));
+                && cid == request.resource.data.members[0] + '_' + request.resource.data.members[1]
+                && areFriends(request.resource.data.members[0], request.resource.data.members[1])));
 
       allow update: if active() && request.auth.uid in resource.data.members && (
-        changed().hasOnly(['lastMessage', 'updatedAt', 'reads'])
+        changed().hasOnly(['reads'])
+        || (dmOk(resource.data) && changed().hasOnly(['lastMessage', 'updatedAt', 'reads']))
         || (resource.data.type == 'group'
           && changed().hasOnly(['name', 'members', 'updatedAt', 'lastMessage', 'reads'])
           && request.resource.data.members.size() <= 50
-          && (request.resource.data.members.hasAll(resource.data.members)                         // tag hozzáadása
+          && ((request.resource.data.members.hasAll(resource.data.members)                        // tag hozzáadása (csak barát)
+                && allFriends(request.resource.data.members.removeAll(resource.data.members)))
               || (!(request.auth.uid in request.resource.data.members)                            // kilépés
                   && resource.data.members.hasAll(request.resource.data.members)
                   && request.resource.data.members.size() == resource.data.members.size() - 1)
@@ -399,7 +449,8 @@ service cloud.firestore {
       match /messages/{mid} {
         function members() { return getAfter(/databases/$(db)/documents/conversations/$(cid)).data.members; }
         allow read: if active() && request.auth.uid in get(/databases/$(db)/documents/conversations/$(cid)).data.members;
-        allow create: if canPost() && request.auth.uid in members() && validMsg();
+        allow create: if canPost() && request.auth.uid in members() && validMsg()
+          && dmOk(getAfter(/databases/$(db)/documents/conversations/$(cid)).data);
         allow update: if request.auth.uid in members() && msgUpdate();
         allow delete: if active() && resource.data.uid == request.auth.uid;
       }

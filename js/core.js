@@ -1,6 +1,6 @@
 // HGWS – közös Firebase-indítás és segédfüggvények
-import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611201707';
-import * as FB from './firebase.js?v=202611201707';
+import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611201709';
+import * as FB from './firebase.js?v=202611201709';
 
 export { FB, notConfigured };
 
@@ -142,6 +142,7 @@ export const errText = e => ({
 }[e?.code] || (e?.message || String(e)));
 
 /* Foglalt nevek – ugyanaz a szabály, mint a firestore.rules-ban (ott is ellenőrizve van) */
+import { badName } from './nevszuro.js?v=202611201709';
 export function reservedName(n) {
   const s = String(n || '').toLowerCase(), A = '[aáà4@]', E = '[eéè3]', sep = '[^a-z0-9áéíóöőúüű]*';
   const full = r => new RegExp('^(?:' + r + ')$').test(s);
@@ -151,6 +152,7 @@ export function reservedName(n) {
     || full('(.*[^a-z]|)h[^a-z]+[g69]' + sep + E + sep + 'r' + sep + '[g69]' + sep + E + sep + 'l' + sep + '[yií1].*')
     || full('.*h' + sep + A + sep + 'l' + sep + A + sep + 's' + sep + 'z[^a-z]+[g69]([^a-z].*|)');
 }
+export { badName, BAD_MSG } from './nevszuro.js?v=202611201709';
 export const RESERVED_MSG = 'Ez a név foglalt (a HGWS tulajdonosáé). Válassz másikat!';
 
 /* Bejelentkezett felhasználó profiljának létrehozása (ha még nincs) */
@@ -163,6 +165,7 @@ export async function ensureProfile(user) {
     let owner = null; try { owner = (await FB.getDoc(FB.doc(db, 'meta', 'owner'))).data()?.uid; } catch (_) {}
     if (owner && owner !== user.uid) name = 'Tag-' + user.uid.slice(0, 5);
   }
+  if (badName(name)) name = 'Tag-' + user.uid.slice(0, 5);
   const data = { name, nameLower: name.toLowerCase(), color: pickColor(user.uid), role: 'user', banned: false,
     createdAt: FB.serverTimestamp(), lastSeen: FB.serverTimestamp(), photoURL: user.photoURL || '', bio: '' };
   await FB.setDoc(ref, data);

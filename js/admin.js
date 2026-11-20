@@ -1,7 +1,7 @@
 // HGWS – kezelőfelület: tagok és rangok, tagek, filmek, zenék, csatornák, jóváhagyások, rangok szerkesztése
-import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG } from './core.js?v=202611201707';
-import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611201707';
-import { githubRepo } from '../firebase-config.js?v=202611201707';
+import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG } from './core.js?v=202611201709';
+import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611201709';
+import { githubRepo } from '../firebase-config.js?v=202611201709';
 
 let C = null, current = null;
 export function init(ctx) { C = ctx; }
@@ -72,6 +72,12 @@ function members(v, again) {
   v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div>${tabs()}<h1 class="gold">Tagok és rangok</h1>
     <p class="lead">${C.isOwner() ? '<i class="ic ic-crown"></i> <b>Tulajként</b> bármilyen rangot közvetlenül kioszthatsz. Az adminok által kért rangokat a <a href="#/admin/jovahagyas">Jóváhagyások</a> fülön fogadhatod el.'
       : C.can('assignRoles') ? 'A rangváltoztatás kérelemként megy a <b>tulajhoz</b>, ő hagyja jóvá. Admint csak a tulaj adhat.' : 'Az alacsonyabb rangú tagokat némíthatod vagy tilthatod ki.'}</p>
+    ${(() => { const bad = [...C.S.users.values()].filter(u => badName(u.name));
+      if (!bad.length) return '';
+      const fixable = bad.filter(u => u.id !== me && u.id !== OWNER_UID && C.can('moderate') && C.rankOfUser(u) < C.myRank());
+      return `<div class="badnames"><i class="ic ic-triangle-alert"></i><div><b>${bad.length} tag neve trágár vagy sértő szót tartalmaz</b>
+        <span>${bad.map(u => `<b data-u="${esc(u.id)}">${esc(u.name)}</b>`).join(', ')}. Belépéskor kötelezően új nevet kell választaniuk – vagy itt azonnal átnevezheted őket.</span></div>
+        ${fixable.length ? `<button class="btn danger sm" data-fixbad>Átnevezés (${fixable.length}) → Tag-xxxxx</button>` : ''}</div>`; })()}
     <div class="search" style="margin:1.2rem 0 0;max-width:380px"><input type="search" id="aq" placeholder="Keresés név szerint…" value="${esc(mq)}"></div>
     <div class="atable">${list.map(u => {
       const muted = toDate(u.mutedUntil) > new Date(), self = u.id === me, own = u.id === OWNER_UID, k = C.roleKey(u);
@@ -87,13 +93,24 @@ function members(v, again) {
       return `<div class="arow"><span class="avw">${avatar(u, 42)}<i class="on${isOnline(u) ? ' y' : ''}" style="border-color:#0d1830"></i></span>
         <div class="who"><b data-u="${esc(u.id)}" style="cursor:pointer;color:${k !== 'user' ? roleOf(k).color : 'inherit'}">${esc(u.name)}</b>${self ? ' <span class="hint">(te)</span>' : ''}
           <small>${u.createdAt ? 'Tag ' + toDate(u.createdAt).toLocaleDateString('hu-HU') + ' óta' : ''}${u.lastSeen ? ' · ' + (isOnline(u) ? '<span class="odot"></span>online' : 'utoljára ' + timeLabel(u.lastSeen)) : ''}</small>
-          <div>${C.tagPills(u, 6)}${u.banned ? '<span class="tg red"><i class="ic ic-ban"></i> KITILTVA</span>' : ''}${muted ? `<span class="tg red"><i class="ic ic-volume-x"></i> NÉMÍTVA ${esc(timeLabel(u.mutedUntil))}-IG</span>` : ''}</div></div>
+          <div>${C.tagPills(u, 6)}${badName(u.name) ? '<span class="tg red"><i class="ic ic-triangle-alert"></i> NEM MEGFELELŐ NÉV</span>' : ''}${u.banned ? '<span class="tg red"><i class="ic ic-ban"></i> KITILTVA</span>' : ''}${muted ? `<span class="tg red"><i class="ic ic-volume-x"></i> NÉMÍTVA ${esc(timeLabel(u.mutedUntil))}-IG</span>` : ''}</div></div>
         <div class="ac">${ctl}
           ${C.can('manageTags') && (!own || C.isOwner()) ? `<button class="btn plain sm" data-tagu="${esc(u.id)}"><i class="ic ic-tag"></i> Tagek</button>` : ''}
           ${canMod ? `<button class="btn plain sm" data-mod="${esc(u.id)}"><i class="ic ic-shield"></i> Moderálás</button>` : ''}
         </div></div>`;
     }).join('')}</div></div>`;
   const q = $('#aq'); q.oninput = () => { mq = q.value.toLowerCase(); members(v, true); };
+  const fb = v.querySelector('[data-fixbad]');
+  if (fb) fb.onclick = async () => {
+    const l = [...C.S.users.values()].filter(u => badName(u.name) && u.id !== me && u.id !== OWNER_UID && C.rankOfUser(u) < C.myRank());
+    if (!await confirmBox(`${l.length} tag nevét átírod „Tag-xxxxx” formára: ${l.map(u => u.name).join(', ')}. Mehet?`, 'Átnevezés')) return;
+    let ok = 0;
+    for (const u of l) {
+      const name = 'Tag-' + u.id.slice(0, 5);
+      try { await FB.updateDoc(FB.doc(db, 'users', u.id), { name, nameLower: name.toLowerCase() }); audit('user.rename', u.name, '→ ' + name + ' (trágár név)'); ok++; } catch (e) { console.warn(e); }
+    }
+    toast(`${ok} / ${l.length} tag átnevezve ✓`, ok < l.length);
+  };
   if (focus) { const n = $('#aq'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }
   // tulaj: közvetlen rangállítás
   $$('[data-role]', v).forEach(s => s.onchange = async () => {
@@ -221,6 +238,7 @@ export function modModal(id) {
     name = name.trim();
     if (name.length < 2) return toast('A név legalább 2 karakter legyen.', true);
     if (reservedName(name) && C.S.owner?.uid !== id) return toast(RESERVED_MSG, true);
+    if (badName(name)) return toast(BAD_MSG, true);
     try { await FB.updateDoc(ref, { name, nameLower: name.toLowerCase() }); audit('user.rename', u.name, '→ ' + name); toast('Név módosítva ✓'); el.close(); } catch (e) { toast(errText(e), true); }
   };
   const rn = el.querySelector('[data-rn]'); if (rn) rn.onclick = () => setName(el.querySelector('[name=nm]').value);
@@ -722,7 +740,7 @@ async function statsPage(v) {
     const st = { nyitott: ['Nyitott', '#6cc6ff'], folyamatban: ['Folyamatban', '#ffa94d'], kesz: ['Kész', '#5ee08a'], elutasitva: ['Elutasítva', '#ff7a6e'] };
     $('#stIdea').innerHTML = s.size ? hbars(Object.entries(st).map(([k, [l, c]]) => [l, s.docs.filter(d => d.data().status === k).length, c]), ' db') : '<div class="estate"><i class="ic ic-lightbulb"></i><b>Még nincs beküldött ötlet</b></div>';
   }).catch(() => { $('#stIdea').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
-  import('./browse.js?v=202611201707').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
+  import('./browse.js?v=202611201709').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
     .then(l => { $('#stArc').innerHTML = hbars(l, ' játékos'); });
 }
 const lbScores = g => FB.collection(db, 'leaderboards', g, 'scores');

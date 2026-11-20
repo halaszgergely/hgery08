@@ -15,6 +15,7 @@ await env.withSecurityRulesDisabled(async c => {
   await setDoc(doc(db, 'channels', 'c'), { name: 'általános', type: 'text', order: 0 });
   await setDoc(doc(db, 'channels', 'c', 'messages', 'stk1'), { uid: 'anna', text: '', sticker: 'gg', createdAt: Timestamp.now() });
   await setDoc(doc(db, 'channels', 'c', 'messages', 'own'), { uid: OWNER, text: '', sticker: 'gg', createdAt: Timestamp.now() });
+  await setDoc(doc(db, 'friends', 'anna_mod'), { users: ['anna', 'mod'], from: 'anna', to: 'mod', status: 'accepted' });   // privát üzenet csak barátnak
   await setDoc(doc(db, 'conversations', 'anna_mod'), { type: 'dm', members: ['anna', 'mod'], reads: {}, lastMessage: null });
 });
 const as = id => env.authenticatedContext(id, { email_verified: true }).firestore();

@@ -1,17 +1,18 @@
 // HGWS Közösség – csatornák, privát üzenetek, csoportok, filmtár
 import { FB, auth, db, notConfigured, $, $$, esc, ROLES, roleOf, applyRoles, OWNER_UID, notify, audit, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
-  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG } from './core.js?v=202611201707';
-import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611201707';
-import * as Admin from './admin.js?v=202611201707';
-import * as Browse from './browse.js?v=202611201707';
-import * as Notif from './notif.js?v=202611201707';
-import * as Profile from './profile.js?v=202611201707';
-import * as Party from './party.js?v=202611201707';
-import * as Ideas from './ideas.js?v=202611201707';
-import * as Player from './player.js?v=202611201707';
-import * as Cmdk from './cmdk.js?v=202611201707';
-import * as Stk from './stickers.js?v=202611201707';
-import { bootOut, pageIn, I } from './fx.js?v=202611201707';
+  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG, badName, BAD_MSG } from './core.js?v=202611201709';
+import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611201709';
+import * as Admin from './admin.js?v=202611201709';
+import * as Browse from './browse.js?v=202611201709';
+import * as Notif from './notif.js?v=202611201709';
+import * as Profile from './profile.js?v=202611201709';
+import * as Party from './party.js?v=202611201709';
+import * as Ideas from './ideas.js?v=202611201709';
+import * as Player from './player.js?v=202611201709';
+import * as Cmdk from './cmdk.js?v=202611201709';
+import * as Stk from './stickers.js?v=202611201709';
+import * as Friends from './friends.js?v=202611201709';
+import { bootOut, pageIn, I } from './fx.js?v=202611201709';
 
 const S = {
   user: null, me: null, users: new Map(), channels: [], convs: [], convsLoaded: false, videos: [], reads: { ch: {} },
@@ -95,6 +96,7 @@ function start() {
   watchTags(); watchRoles();
   if (S.guest) return startGuest();
   Notif.start();
+  Friends.watch();
   const me = FB.doc(db, 'users', uid());
   FB.onSnapshot(me, s => {
     const was = S.me; S.me = { id: uid(), ...s.data() };
@@ -102,12 +104,13 @@ function start() {
     if (isOwner() && S.me.role !== 'owner') FB.updateDoc(me, { role: 'owner' }).catch(e => console.warn(e));
     renderMe();
     if (S.me.banned) return banned();
+    if (badName(S.me.name)) forceRename();
     if (was?.role !== S.me.role || ms(was?.mutedUntil) !== ms(S.me.mutedUntil)) { renderSide(); S.chat?.renderComposer(); }
   });
   FB.onSnapshot(FB.collection(db, 'users'), s => {
     s.docs.forEach(d => S.users.set(d.id, { id: d.id, ...d.data() }));
     s.docChanges().forEach(c => c.type === 'removed' && S.users.delete(c.doc.id));
-    soon('users', () => { renderMembers(); renderOnline(); if (S.route.sec === 'dm') renderSide(); S.chat?.rerender(); if (S.route.view === 'dmhome') renderDmHome(); Admin.refresh(); Browse.updateComm(); });
+    soon('users', () => { renderMembers(); renderOnline(); if (S.route.sec === 'dm') renderSide(); S.chat?.rerender(); if (S.route.view === 'dmhome' && S.mode === 'chat') renderDmHome(true); Admin.refresh(); Browse.updateComm(); });
   }, e => console.warn(e));
   FB.onSnapshot(FB.query(FB.collection(db, 'channels'), FB.orderBy('order')), s => {
     S.channels = s.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -234,14 +237,15 @@ function route(force) {
   closePop();
   $$('.modal').forEach(m => m.close ? m.close() : m.remove());
   let [a, b] = h, pend = '';
-  if (S.guest && ['dm', 'c', 'chat', 'u', 'admin', 'otletek'].includes(a)) {
+  if (S.guest && ['dm', 'c', 'chat', 'u', 'admin', 'otletek', 'baratok'].includes(a)) {
     pend = a === 'admin' ? 'A kezelőfelület csak adminoknak érhető el.' : 'A közösségi rész (csevegés, üzenetek) csak regisztrált tagoknak érhető el.';
     history.replaceState(null, '', '#/'); a = ''; b = undefined; force = true;
   }
   if (a === 'filmek') { location.replace(b ? '#/film/' + b : '#/tar'); return; }
   if (a === 'u' && b) return openDm(b);
   let r;
-  if (a === 'dm') r = b ? { sec: 'dm', view: 'conv', id: b } : { sec: 'dm', view: 'dmhome' };
+  if (a === 'dm') r = b ? { sec: 'dm', view: 'conv', id: b } : { sec: 'dm', view: 'dmhome', id: 'online' };
+  else if (a === 'baratok') r = { sec: 'dm', view: 'dmhome', id: b || 'online' };
   else if (a === 'c' && b) r = { sec: 'srv', view: 'chan', id: b };
   else if (a === 'chat') {
     const c = S.channels.find(c => c.type !== 'announce') || S.channels[0];
@@ -375,7 +379,8 @@ function renderSide() {
     const q = (S.dmq || '').toLowerCase();
     const list = S.convs.filter(c => c.type === 'group' || c.lastMessage || c.id === r.id).filter(c => !q || convName(c).toLowerCase().includes(q));
     $('#sBody').innerHTML = `<div class="search"><input type="search" id="dmq" placeholder="Keresés…" value="${esc(S.dmq || '')}"></div>
-      <a class="si${r.view === 'dmhome' ? ' on' : ''}" href="#/dm"><span class="hash"><i class="ic ic-users"></i></span><span class="nm">Tagok · új beszélgetés</span></a>
+      <a class="si frsi${r.view === 'dmhome' ? ' on' : ''}" href="#/baratok"><span class="hash"><i class="ic ic-users"></i></span><span class="nm">Barátok</span>${Friends.pendingCount() ? `<span class="pill">${Friends.pendingCount()}</span>` : ''}</a>
+      <a class="si" href="#/baratok/hozzaadas"><span class="hash"><i class="ic ic-user-plus"></i></span><span class="nm">Barát hozzáadása</span></a>
       <div class="cat">Beszélgetések</div>
       ${list.map(c => {
         const lm = c.lastMessage, un = convUnread(c);
@@ -383,7 +388,7 @@ function renderSide() {
         return `<a class="ci${r.id === c.id ? ' on' : ''}${un ? ' unread' : ''}" href="#/dm/${esc(c.id)}">${convAv(c)}
           <div class="tx"><b><span>${esc(convName(c))}</span><time>${lm ? shortTime(c.updatedAt) : ''}</time></b>
           <small>${lm ? esc(pre + lm.text) : c.type === 'group' ? c.members.length + ' tag' : 'Új beszélgetés'}</small></div>${un ? '<span class="pill">•</span>' : ''}</a>`;
-      }).join('') || '<p class="hint" style="padding:.5rem .6rem">Még nincs beszélgetésed. Válassz valakit a tagok közül!</p>'}`;
+      }).join('') || '<p class="hint" style="padding:.5rem .6rem">Még nincs beszélgetésed. Jelölj be valakit barátnak, és írj neki!</p>'}`;
     const inp = $('#dmq'); inp.oninput = () => { S.dmq = inp.value; renderSide(); const n = $('#dmq'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); };
     return;
   }
@@ -399,7 +404,7 @@ function renderSide() {
 }
 
 function badges() {
-  const n = S.convs.filter(convUnread).length, t = n > 9 ? '9+' : String(n);
+  const n = S.convs.filter(convUnread).length + (S.guest ? 0 : Friends.pendingCount()), t = n > 9 ? '9+' : String(n);
   ['#dmBadge', '#dmBadge2', '#chatBadge', '#chatBadge2'].forEach(k => { const b = $(k); if (b) { b.hidden = !n; b.textContent = t; } });
   const base = document.title.replace(/^\(\d+\+?\) /, '');
   document.title = (n ? `(${n}) ` : '') + base;
@@ -459,6 +464,7 @@ function notifyConv(c) {
 
 /* ===================== GLOBÁLIS KATTINTÁSOK ===================== */
 function globalClick(e) {
+  if (!S.guest && e.target.closest('[data-fr]:not([data-fr=msg]):not([data-fr=more])')) { Friends.onAction(e); return; }
   const u = e.target.closest('[data-u]');
   if (u && !e.target.closest('.pop')) { e.preventDefault(); return profile(u.dataset.u, u); }
   if (Browse.onClick(e)) return;
@@ -478,7 +484,7 @@ function profile(id, anchor) {
     ${u.bio ? `<div class="bio">${esc(u.bio)}</div>` : ''}
     ${userTags(u).length || can('manageTags') ? `<div class="ptags"><small>TAGEK</small><div>${userTags(u).map(t => `<span class="utag lg" style="--tc:${esc(t.color)}">${esc(t.name)}</span>`).join('')}${can('manageTags') && (id !== OWNER_UID || isOwner()) ? '<button class="utag add" data-a="tags" title="Tagek kiosztása"><i class="ic ic-plus"></i></button>' : ''}</div></div>` : ''}
     ${u.banned ? '<div class="stat"><i class="ic ic-ban"></i> Kitiltva</div>' : muted ? `<div class="stat"><i class="ic ic-volume-x"></i> Némítva eddig: ${timeLabel(u.mutedUntil)}</div>` : ''}
-    <div class="sec"><a class="btn plain sm" href="#/profil/${esc(id)}" data-a="prof"><i class="ic ic-user"></i> Profil</a>${self ? '<button class="btn plain sm" data-a="set">Profil szerkesztése</button>' : S.guest ? '' : `<button class="btn primary sm" data-a="dm"><i class="ic ic-message-circle"></i> Üzenet</button>`}
+    <div class="sec"><a class="btn plain sm" href="#/profil/${esc(id)}" data-a="prof"><i class="ic ic-user"></i> Profil</a>${self ? '<button class="btn plain sm" data-a="set">Profil szerkesztése</button>' : S.guest ? '' : Friends.actionHtml(id)}
       ${canMod ? `<button class="btn plain sm" data-a="mod"><i class="ic ic-shield"></i> Moderálás</button>` : ''}</div>
   </div></div>`);
   p.addEventListener('click', e => {
@@ -604,14 +610,44 @@ function settings() {
     const name = el.querySelector('[name=name]').value.trim(), bio = el.querySelector('[name=bio]').value.trim();
     if (name.length < 2) return toast('A név legalább 2 karakter legyen.', true);
     if (reservedName(name) && !isOwner()) return toast(RESERVED_MSG, true);
+    if (badName(name)) return toast(BAD_MSG, true);
     try { await FB.updateDoc(FB.doc(db, 'users', uid()), { name, nameLower: name.toLowerCase(), bio, color }); FB.updateProfile(S.user, { displayName: name }).catch(() => {}); toast('Mentve ✓'); el.close(); }
     catch (e) { toast(errText(e), true); }
   };
 }
 
+/* ===================== KÖTELEZŐ ÁTNEVEZÉS (trágár / sértő név) ===================== */
+let renaming = false;
+function forceRename() {
+  if (renaming) return; renaming = true;
+  const el = modal({ title: 'Válassz új felhasználónevet', cls: 'frename', body: `<div style="text-align:center"><div class="big"><i class="ic ic-triangle-alert"></i></div>
+    <p style="line-height:1.6;color:var(--ink2);margin:.6rem 0 1rem">A jelenlegi neved (<b>${esc(S.me.name)}</b>) trágár vagy sértő szót tartalmaz, ezért a HGWS-en nem használható.<br>Adj meg egy újat a folytatáshoz.</p></div>
+    <div class="field"><label>Új felhasználónév</label><input class="inp" name="nn" maxlength="32" placeholder="pl. Locsolómester"></div><p class="hint" id="nnErr" style="color:var(--red);min-height:1.2em"></p>`,
+    foot: `<button class="btn goldb" data-ok>Mentés</button>`,
+    onClose: () => { renaming = false; if (badName(S.me?.name)) setTimeout(forceRename, 400); } });
+  el.querySelector('[data-x]')?.remove();
+  const inp = el.querySelector('[name=nn]'), err = el.querySelector('#nnErr');
+  const save = async () => {
+    const name = inp.value.trim(); err.textContent = '';
+    if (name.length < 2) return err.textContent = 'A név legalább 2 karakter legyen.';
+    if (badName(name)) return err.textContent = BAD_MSG;
+    if (reservedName(name) && !isOwner()) return err.textContent = RESERVED_MSG;
+    try { await FB.updateDoc(FB.doc(db, 'users', uid()), { name, nameLower: name.toLowerCase() }); FB.updateProfile(S.user, { displayName: name }).catch(() => {}); S.me.name = name; toast('Új név mentve ✓'); el.close(); }
+    catch (e) { err.textContent = errText(e); }
+  };
+  el.querySelector('[data-ok]').onclick = save;
+  inp.onkeydown = e => { if (e.key === 'Enter') save(); };
+}
+
 /* ===================== PRIVÁT ÜZENETEK ===================== */
 async function openDm(other) {
-  if (other === uid()) { location.replace('#/dm'); return; }
+  if (other === uid()) { location.replace('#/baratok'); return; }
+  const id0 = [uid(), other].sort().join('_');
+  if (!Friends.isFriend(other)) {
+    // régi beszélgetés megnyitható (csak olvasásra), új viszont csak barátnak indítható
+    if (S.convs.some(c => c.id === id0)) { location.replace('#/dm/' + id0); return; }
+    toast(`Csak barátnak írhatsz. Küldj barátkérelmet neki: ${U(other).name}`, true); location.replace('#/baratok/hozzaadas'); return;
+  }
   const members = [uid(), other].sort(), id = members.join('_');
   if (!S.convs.some(c => c.id === id)) {
     try { await FB.setDoc(FB.doc(db, 'conversations', id), { type: 'dm', members, createdAt: FB.serverTimestamp(), updatedAt: FB.serverTimestamp(), reads: {}, lastMessage: null }); }
@@ -620,42 +656,50 @@ async function openDm(other) {
   location.replace('#/dm/' + id);
 }
 
-function renderDmHome() {
-  setTitle('<i class="ic ic-users"></i>', 'Tagok');
-  const q = (S.homeq || '').toLowerCase();
-  const list = [...S.users.values()].filter(u => u.id !== uid() && !u.banned && (!q || u.name.toLowerCase().includes(q)))
-    .sort((a, b) => (isOnline(b) - isOnline(a)) || a.name.localeCompare(b.name, 'hu'));
-  $('#view').innerHTML = `<div class="page"><h1 class="gold">Kivel beszélgetnél?</h1><p class="lead">Kattints valakire a privát üzenethez, vagy csinálj csoportot többekkel.</p>
-    <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1.2rem;align-items:center"><div class="search" style="flex:1;min-width:220px;margin:0"><input type="search" id="hq" placeholder="Tag keresése…" value="${esc(S.homeq || '')}"></div><button class="btn goldb" id="ng"><i class="ic ic-users"></i> Új csoport</button></div>
-    <div class="atable">${list.map(u => `<div class="arow"><span class="avw">${avatar(u, 42)}<i class="on${isOnline(u) ? ' y' : ''}" style="border-color:#0d1830"></i></span>
-      <div class="who"><b data-u="${esc(u.id)}" style="cursor:pointer">${esc(u.name)}</b> ${roleBadge(u)}${tagPills(u)}<small>${isOnline(u) ? '<span class="odot"></span>Online' : u.lastSeen ? 'Utoljára ' + timeLabel(u.lastSeen) : ''}</small></div>
-      <div class="ac"><a class="btn primary sm" href="#/u/${esc(u.id)}"><i class="ic ic-message-circle"></i> Üzenet</a></div></div>`).join('') || '<div class="empty">Nincs találat.</div>'}</div></div>`;
-  $('#ng').onclick = newGroup;
-  const i = $('#hq'); i.oninput = () => { S.homeq = i.value; renderDmHome(); const n = $('#hq'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); };
+let lastFrTab = '';
+function renderDmHome(auto) {
+  // automatikus frissítésnél ne rántsuk ki a fókuszt a gépelő alól
+  if (auto && document.activeElement?.matches?.('#view input')) return;
+  const tab = S.route.id || 'online';
+  if (tab !== lastFrTab) { Friends.resetAdd(); lastFrTab = tab; }
+  Friends.render(tab);
+}
+/* barátkapcsolat változott: oldalsáv, jelvények, nyitott nézetek frissítése */
+function friendsChanged() {
+  badges();
+  if (S.route.sec === 'dm' && S.mode === 'chat') renderSide();
+  if (S.route.view === 'dmhome' && S.mode === 'chat') renderDmHome(true);
+  if (S.chat?.conv?.type === 'dm') S.chat.renderComposer();
+  const pf = $('#pFr'); if (pf) pf.innerHTML = Friends.actionHtml(pf.dataset.id, 'pbtn');
 }
 
 function pickUsers(el, chosen, exclude = []) {
   const draw = () => {
     const q = (el.querySelector('[data-q]').value || '').toLowerCase();
     el.querySelector('.chips').innerHTML = [...chosen].map(id => `<span class="chip">${avatar(U(id), 20)}${esc(U(id).name)}<button data-rm="${esc(id)}"><i class="ic ic-x"></i></button></span>`).join('');
-    el.querySelector('.pick').innerHTML = [...S.users.values()].filter(u => u.id !== uid() && !exclude.includes(u.id) && !u.banned && u.name.toLowerCase().includes(q))
+    el.querySelector('.pick').innerHTML = Friends.friends().filter(u => !exclude.includes(u.id) && u.name.toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name, 'hu'))
-      .map(u => `<label><input type="checkbox" value="${esc(u.id)}" ${chosen.has(u.id) ? 'checked' : ''}>${avatar(u, 30)}<span>${esc(u.name)}</span></label>`).join('') || '<p class="hint" style="padding:.6rem">Nincs találat.</p>';
+      .map(u => `<label><input type="checkbox" value="${esc(u.id)}" ${chosen.has(u.id) ? 'checked' : ''}>${avatar(u, 30)}<span>${esc(u.name)}</span></label>`).join('') || (Friends.friends().length ? '<p class="hint" style="padding:.6rem">Nincs találat.</p>' : '<p class="hint" style="padding:.6rem">Csak a barátaidat hívhatod meg. <a href="#/baratok/hozzaadas" data-x>Barát hozzáadása →</a></p>');
   };
   el.querySelector('[data-q]').oninput = draw;
-  el.querySelector('.pick').onchange = e => { const v = e.target.value; e.target.checked ? chosen.add(v) : chosen.delete(v); draw(); };
+  el.querySelector('.pick').onchange = e => {
+    const v = e.target.value;
+    if (e.target.checked && chosen.size >= MAX_ADD) { e.target.checked = false; return toast(`Egyszerre legfeljebb ${MAX_ADD} barátot adhatsz hozzá.`, true); }
+    e.target.checked ? chosen.add(v) : chosen.delete(v); draw();
+  };
   el.querySelector('.chips').onclick = e => { const b = e.target.closest('[data-rm]'); if (b) { chosen.delete(b.dataset.rm); draw(); } };
   draw();
 }
-const pickerHtml = `<div class="chips"></div><div class="search" style="margin:0"><input type="search" data-q placeholder="Tagok keresése…"></div><div class="pick"></div>`;
+const MAX_ADD = 8;   // a szabályok egy lépésben ennyi barátság-ellenőrzést engednek
+const pickerHtml = `<div class="chips"></div><div class="search" style="margin:0"><input type="search" data-q placeholder="Barátok keresése…"></div><div class="pick"></div>`;
 
 function newGroup() {
   const chosen = new Set();
-  const el = modal({ title: 'Új csoport', body: `<div class="field"><label>Csoport neve</label><input class="inp" name="n" maxlength="60" placeholder="pl. Locsolóbrigád 💧"></div><div class="field"><label>Tagok</label>${pickerHtml}</div>`,
+  const el = modal({ title: 'Új csoport', body: `<div class="field"><label>Csoport neve</label><input class="inp" name="n" maxlength="60" placeholder="pl. Locsolóbrigád 💧"></div><div class="field"><label>Tagok <span class="hint">(csak barátok)</span></label>${pickerHtml}</div>`,
     foot: `<button class="btn plain" data-x>Mégse</button><button class="btn goldb" data-ok>Létrehozás</button>` });
   pickUsers(el, chosen);
   el.querySelector('[data-ok]').onclick = async () => {
-    if (!chosen.size) return toast('Válassz legalább egy tagot.', true);
+    if (!chosen.size) return toast('Válassz legalább egy barátot.', true);
     const name = el.querySelector('[name=n]').value.trim();
     try {
       const ref = FB.doc(FB.collection(db, 'conversations'));
@@ -670,7 +714,7 @@ function groupSettings(c) {
   const el = modal({ title: 'Csoport beállításai', body: `
     <div class="field"><label>Csoport neve</label><div style="display:flex;gap:.5rem"><input class="inp" name="n" maxlength="60" value="${esc(c.name || '')}" placeholder="${esc(convName(c))}"><button class="btn plain sm" data-rn>Mentés</button></div></div>
     <div class="field"><label>Tagok (${c.members.length})</label><div class="pick" style="max-height:30vh">${c.members.map(m => `<div style="display:flex;align-items:center;gap:.7rem;padding:.4rem .55rem">${avatar(U(m), 30)}<span style="flex:1">${esc(U(m).name)}${m === c.owner ? ' <i class="ic ic-crown"></i>' : ''}${m === uid() ? ' <span class="hint">(te)</span>' : ''}</span>${owner && m !== uid() ? `<button class="btn danger sm" data-kick="${esc(m)}">Eltávolítás</button>` : ''}</div>`).join('')}</div></div>
-    <div class="field"><label>Tagok hozzáadása</label>${pickerHtml}<button class="btn plain sm" data-add style="align-self:flex-start">Hozzáadás</button></div>`,
+    <div class="field"><label>Barátok hozzáadása</label>${pickerHtml}<button class="btn plain sm" data-add style="align-self:flex-start">Hozzáadás</button></div>`,
     foot: `${owner ? '<button class="btn danger l" data-del>Csoport törlése</button>' : ''}<button class="btn danger" data-leave>Kilépés</button><button class="btn plain" data-x>Bezárás</button>` });
   const chosen = new Set(); pickUsers(el, chosen, c.members);
   const ref = FB.doc(db, 'conversations', c.id);
@@ -880,6 +924,10 @@ class Chat {
     let note = '';
     if (mu) note = `<i class="ic ic-volume-x"></i> Némítva vagy eddig: ${timeLabel(mu)}`;
     else if (this.kind === 'chan' && this.chan.type === 'announce' && !can('announce')) note = '<i class="ic ic-megaphone"></i> Ide csak az adminok és moderátorok írhatnak.';
+    else if (this.kind === 'conv' && this.conv?.type === 'dm') {
+      const o = this.conv.members.find(m => m !== uid());
+      if (!Friends.isFriend(o)) note = `<span class="frlock"><i class="ic ic-lock"></i> <span>Nem vagytok barátok, ezért nem írhatsz <b>${esc(U(o).name)}</b> részére. Privát üzenetet csak barátnak lehet küldeni – a régi üzeneteket továbbra is látod.</span>${Friends.actionHtml(o)}</span>`;
+    }
     if (note) { c.innerHTML = `<div class="cnote">${note}</div>`; return; }
     const ph = this.kind === 'chan' ? `Üzenet a #${this.chan.name} csatornára` : `Üzenet ${this.conv ? (this.conv.type === 'group' ? 'a csoportnak' : '@' + convName(this.conv) + ' részére') : ''}`;
     const prevText = $('#mtext')?.value || '';
@@ -1040,6 +1088,7 @@ async function postTo(kind, id, data, conv) {
 }
 
 /* ===================== FILM MEGOSZTÁSA ===================== */
+const convWritable = c => c.type !== 'dm' || Friends.isFriend(c.members.find(m => m !== uid()));
 function shareFilm(filmId, chat, trackId) {
   const music = !!trackId, items = music ? S.music.filter(t => t.visible !== false) : S.videos.filter(v => v.visible !== false);
   if (!items.length) return toast(music ? 'Még nincs zene feltöltve.' : 'Még nincs film a tárban.', true);
@@ -1051,7 +1100,7 @@ function shareFilm(filmId, chat, trackId) {
       : `<span class="fthumb" style="width:72px">${v.poster ? `<img src="${esc(v.poster)}" alt="">` : ''}</span><span>${esc(v.title)}</span>`}</label>`).join('')}</div></div>`}
     ${chat ? '' : `<div class="field"><label>Hova küldjük?</label><div class="pick">
       ${S.channels.filter(canChan).length ? '<div class="grp">CSATORNÁK</div>' : ''}${S.channels.filter(canChan).map(c => `<label><input type="radio" name="t" value="chan:${esc(c.id)}"><span class="hash" style="width:30px;text-align:center">#</span><span>${esc(c.name)}</span></label>`).join('')}
-      ${S.convs.length ? '<div class="grp">BESZÉLGETÉSEK</div>' : ''}${S.convs.map(c => `<label><input type="radio" name="t" value="conv:${esc(c.id)}">${convAv(c, 30)}<span>${esc(convName(c))}</span></label>`).join('')}
+      ${S.convs.filter(convWritable).length ? '<div class="grp">BESZÉLGETÉSEK</div>' : ''}${S.convs.filter(convWritable).map(c => `<label><input type="radio" name="t" value="conv:${esc(c.id)}">${convAv(c, 30)}<span>${esc(convName(c))}</span></label>`).join('')}
     </div></div>`}
     <div class="field"><label>Üzenet <em>(nem kötelező)</em></label><input class="inp" name="m" maxlength="500" placeholder="${music ? 'Ezt hallgasd meg! 🎧' : 'Ezt nézd meg! 🍿'}"></div>`,
     foot: `<button class="btn plain" data-x>Mégse</button><button class="btn goldb" data-ok>Küldés</button>` });
@@ -1075,7 +1124,8 @@ function shareFilm(filmId, chat, trackId) {
 Admin.init({ S, uid, isAdmin, isMod, can, isOwner, myRank, rankOfUser, roleKey, roleBadge, U, setTitle, renderSide, route, tagPills, userTags });
 Ideas.init({ S, uid, can, isOwner, U, roleBadge, tagPills });
 Notif.init({ S, uid, U });
-Profile.init({ S, uid, can, isOwner, U, roleBadge, tagPills, userTags, roleKey, rankOfUser, myRank, openDm: id => location.hash = '#/u/' + id });
+Friends.init({ S, uid, U, roleBadge, setTitle, changed: () => soon('friends', friendsChanged) });
+Profile.init({ S, uid, friendBtn: id => `<span id="pFr" data-id="${esc(id)}">${Friends.actionHtml(id, 'pbtn')}</span>`, can, isOwner, U, roleBadge, tagPills, userTags, roleKey, rankOfUser, myRank, openDm: id => location.hash = '#/u/' + id });
 Party.init({ S, uid, can, U, roleBadge });
 Browse.init({ S, uid, isAdmin, isMod, can, isOwner, U, shareFilm, renderOwnerBar, convUnread, guestPrompt, guestLeave, tagPills });
 setInterval(() => S.users.size && renderOnline(), 60e3);

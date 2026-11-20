@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611201707';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611201707';
-import * as Player from './player.js?v=202611201707';
-import * as Party from './party.js?v=202611201707';
-import * as VP from './vplayer.js?v=202611201707';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611201707';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611201709';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611201709';
+import * as Player from './player.js?v=202611201709';
+import * as Party from './party.js?v=202611201709';
+import * as VP from './vplayer.js?v=202611201709';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611201709';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -342,6 +342,7 @@ function nickError(n) {
   if (n.length < 2 || n.length > 20) return 'A becenév 2–20 karakter legyen.';
   if (/[<>&"]/.test(n)) return 'Ezek a karakterek nem használhatók: < > & "';
   if (reservedName(n)) return RESERVED_MSG;
+  if (badName(n)) return BAD_MSG;
   if ([...S().users.values()].some(u => (u.name || '').trim().toLowerCase() === n.toLowerCase())) return 'Ezt a nevet már egy regisztrált tag használja. Válassz másikat!';
   return '';
 }

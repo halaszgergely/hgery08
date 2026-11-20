@@ -1,8 +1,8 @@
 // HGWS – tag profiloldala (#/profil/<uid>): rang, tagek, bemutatkozás, Arcade-rekordok, értékelései
-import { FB, db, $, esc, bigNum, lbDec, avatar, toDate, timeLabel, isOnline, roleOf, OWNER_UID, notify } from './core.js?v=202611201707';
-import { I, bgOf } from './fx.js?v=202611201707';
-import * as Admin from './admin.js?v=202611201707';
-import { GAMES } from './browse.js?v=202611201707';
+import { FB, db, $, esc, bigNum, lbDec, avatar, toDate, timeLabel, isOnline, roleOf, OWNER_UID, notify } from './core.js?v=202611201709';
+import { I, bgOf } from './fx.js?v=202611201709';
+import * as Admin from './admin.js?v=202611201709';
+import { GAMES } from './browse.js?v=202611201709';
 
 let C = null, gen = 0;
 export function init(ctx) { C = ctx; }
@@ -75,7 +75,7 @@ export async function render(id) {
         <div class="prow">${C.roleBadge(u) || '<span class="rb">Tag</span>'}${u.banned ? '<span class="tg red"><i class="ic ic-ban"></i> KITILTVA</span>' : ''}</div>
         ${tags.length ? `<div class="ptagl">${tags.map(t => `<span class="utag lg" style="--tc:${esc(t.color)}">${esc(t.name)}</span>`).join('')}</div>` : ''}
         ${u.bio ? `<p class="pbio">${esc(u.bio)}</p>` : self ? '<p class="pbio hint">Még nem írtál bemutatkozást – a Beállításokban megteheted.</p>' : ''}
-        <div class="pbtns">${self ? '<a class="pbtn info" href="#/" data-set><i class="ic ic-settings"></i>Profil szerkesztése</a>' : C.S.guest ? '' : `<a class="pbtn play" href="#/u/${esc(id)}"><i class="ic ic-message-circle"></i>Üzenet</a>`}
+        <div class="pbtns">${self ? '<a class="pbtn info" href="#/" data-set><i class="ic ic-settings"></i>Profil szerkesztése</a>' : C.S.guest ? '' : C.friendBtn(id)}
           ${C.can('manageTags') && (id !== OWNER_UID || C.isOwner()) ? '<button class="pbtn info" data-tags><i class="ic ic-tag"></i>Tagek</button>' : ''}
           ${canMod ? '<button class="pbtn info" data-mod><i class="ic ic-shield"></i>Moderálás</button>' : ''}</div></div></div>
     <div class="pstats">

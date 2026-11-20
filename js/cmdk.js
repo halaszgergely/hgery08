@@ -1,6 +1,6 @@
 // HGWS – gyorskereső (Ctrl+K vagy /): filmek, zenék, tagok és oldalak egy helyen, billentyűzettel is
-import { $, esc, avatar } from './core.js?v=202611201707';
-import { bgOf, I } from './fx.js?v=202611201707';
+import { $, esc, avatar } from './core.js?v=202611201709';
+import { bgOf, I } from './fx.js?v=202611201709';
 
 let C = null, el = null, items = [], cur = 0;
 export function init(ctx) {
@@ -21,7 +21,7 @@ function pages() {
   const S = C.S, g = !!S.guest, l = [
     ['Főoldal', 'house', '#/'], ['Filmtár', 'clapperboard', '#/tar'], ['Zene', 'music', '#/zene'], ['Arcade', 'gamepad-2', '#/arcade'],
     ['Saját lista', 'plus', '#/lista'], ['Kapcsolat', 'mail', '#/kapcsolat']];
-  if (!g) l.push(['Ötletek', 'lightbulb', '#/otletek'], ['Közösség', 'users', '#/chat'], ['Üzenetek', 'message-circle', '#/dm'],
+  if (!g) l.push(['Ötletek', 'lightbulb', '#/otletek'], ['Közösség', 'users', '#/chat'], ['Üzenetek', 'message-circle', '#/dm'], ['Barátok', 'users', '#/baratok'], ['Barát hozzáadása', 'user-plus', '#/baratok/hozzaadas'],
     ['Profilom', 'circle-user', '#/profil/' + C.uid()], ['Beállítások', 'settings', () => C.settings()]);
   if (!g && C.isStaff()) l.push(['Kezelés', 'shield', '#/admin']);
   if (!g && (C.isOwner() || C.can('publishMedia'))) l.push(['Statisztika', 'chart-column', '#/admin/stat']);
