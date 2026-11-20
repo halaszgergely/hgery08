@@ -137,13 +137,14 @@ window.HGZombi = function (env) {
     for (const e of prev.E) { e.dead = 0; e.stain = 0; } for (const z of prev.zones) for (const b of z.bars) b.hp = b.max;
     const units = prev.units.filter(u => !u.lost).map(u => ({ k: u.k, x: u.x, y: u.y, b: u.b, e: u.e, s: u.s, paid: u.paid, cd: Math.random(), ammo: TOOL[u.k].ammo || 0, lv: u.lv || 1 })), old = { s: L.s, cx: L.cam.cx, cy: L.cam.cy };
     S = { ...prev, ...fresh(), m, budget: prev.budget, units }; region(); spawn();
-    { const inc = Math.max(Math.round((400 + 160 * m) * RUN.bud), Math.round(S.n0 * .022 * RUN.bud)); S.budget += inc; S.msg = { t: '+' + inc + ' keret a(z) ' + S.n0.toLocaleString('hu-HU') + ' lakos után', l: 4, ok: 1 }; } // a körönkénti keret a terület lakosságához igazodik L = null; layout(true); S.zin = { t: 0, ...old };
+    // a körönkénti keret a terület lakosságához igazodik
+    { const inc = Math.max(Math.round((400 + 160 * m) * RUN.bud), Math.round(S.n0 * .022 * RUN.bud)); S.budget += inc; S.msg = { t: '+' + inc + ' keret a(z) ' + S.n0.toLocaleString('hu-HU') + ' lakos után', l: 4, ok: 1 }; } L = null; layout(true); S.zin = { t: 0, ...old };
   }
   function region() { const [sx, sy] = S.start, R0 = R_START + R_GROW * (S.m - 1); S.R = R0; S.ensure(sx - R0 - 150, sy - R0 - 150, sx + R0 + 150, sy + R0 + 150);
     for (const i of S.live) S.N[i].adj = []; const inn = new Set(S.nodesIn(sx, sy, R0)); for (const i of inn) S.N[i].adj = S.N[i].all.filter(a => inn.has(a.n));
     const seen = new Set(); let best = []; for (const i of inn) { if (seen.has(i)) continue; const q = [i], o = [i]; seen.add(i); while (q.length) { const u = q.pop(); for (const a of S.N[u].adj) if (!seen.has(a.n)) { seen.add(a.n); q.push(a.n); o.push(a.n); } } if (o.length > best.length) best = o; }
     const keep = new Set(best); for (const i of inn) if (!keep.has(i)) S.N[i].adj = []; S.live = best; S.E = []; for (const i of best) for (const a of S.N[i].adj) if (i < a.n) S.E.push(a.e); S.B = S.bldIn(sx, sy, R0).concat(S.built || []); railsIn();
-    S.box = [Math.max(0, sx - R0 - 20), Math.max(0, sy - R0 - 20), Math.min(WW, sx + R0 + 20), Math.min(WH, sy + R0 + 20)]; protCalc(); }
+    S.box = [Math.max(0, sx - R0 - 20), Math.max(0, sy - R0 - 20), Math.min(WW, sx + R0 + 20), Math.min(WH, sy + R0 + 20)]; for (const z of S.zones) zoneBars(z, S.E); protCalc(); }
   function mkTrack(pts, o) { const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])); return { pts, cum, len: cum[cum.length - 1], cars: [], ...o }; }
   function trackPos(tr, p) { p = Math.max(0, Math.min(tr.len, p)); let i = 1; while (i < tr.cum.length - 1 && tr.cum[i] < p) i++; const a = tr.pts[i - 1], b = tr.pts[i], l = tr.cum[i] - tr.cum[i - 1] || 1, t = (p - tr.cum[i - 1]) / l; return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, Math.atan2(b[1] - a[1], b[0] - a[0])]; }
   function nearTrack(x, y, max) { let best = null, bd = max; for (const tr of S.tracks) for (let i = 1; i < tr.pts.length; i++) { const a = tr.pts[i - 1], b = tr.pts[i], [d0, t] = dseg(x, y, a[0], a[1], b[0], b[1]); if (d0 < bd) { bd = d0; best = { tr, p: tr.cum[i - 1] + t * (tr.cum[i] - tr.cum[i - 1]), d: d0, x: a[0] + (b[0] - a[0]) * t, y: a[1] + (b[1] - a[1]) * t }; } } return best; }
@@ -249,19 +250,21 @@ window.HGZombi = function (env) {
   // mozgás az élen; visszaadja az elzáró akadályt (ha a `stops` szerint megállítja) vagy 'node'-ot, ha csomóponthoz ért
   function advance(a, sp, dt, stops) {
     if (a.e.dead) { a.s = a.s < a.e.len / 2 ? 0 : a.e.len; a.dir = a.s ? 1 : -1; return 'node'; }
-    let ds = sp * dt; for (const b of a.e.bars) if (b.hp > 0 && stops(b)) { const gap = (b.s - a.s) * a.dir; if (gap > -1 && gap <= ds + 4) { a.s = b.s - a.dir * 4; pos(a); return b; } }
+    let ds = sp * dt; for (const b of a.e.bars) if (b.hp > 0 && stops(b)) { const gap = (b.s - a.s) * a.dir; if (gap > -1 && gap <= ds + 4) { a.s = Math.max(0, Math.min(a.e.len, b.s - a.dir * 4)); pos(a); return b; } }
     a.s += a.dir * ds; if (a.s <= 0 || a.s >= a.e.len) { a.s = Math.max(0, Math.min(a.e.len, a.s)); pos(a); return 'node'; } pos(a); return null;
   }
 
   /* ---------------- tervezés ---------------- */
   function say(t) { S.msg = { t, l: 2.5 }; Sfx.blip(150, .08, 'square', .05); }
   const discount = (k, x, y) => ['gar', 'snp', 'tur', 'mor', 'mine'].includes(k) && S.units.some(u => u.k === 'bud' && Math.hypot(u.x - x, u.y - y) < TOOL.bud.R) ? .75 : 1;
+  // útzár mindenhol, ahol a fal utat keresztez; később megjelenő utakra (új út, táguló pálya) is pótolható
+  function zoneBars(z, edges) { const P = z.poly, m = z.closed ? P.length : P.length - 1; let add = 0; for (const e of edges) { const A = [S.N[e.a].x, S.N[e.a].y], B = [S.N[e.b].x, S.N[e.b].y]; for (let i = 0; i < m; i++) { const u = segInt(P[i], P[(i + 1) % P.length], A, B); if (u >= 0 && !e.bars.some(q => Math.abs(q.s - u * e.len) < 12)) { const b = { e, s: u * e.len, hp: HP_WALL, max: HP_WALL, gate: 0, x: A[0] + (B[0] - A[0]) * u, y: A[1] + (B[1] - A[1]) * u, z, pi: i }; e.bars.push(b); z.bars.push(b); add++; } } } return add; }
   function makeZone(pts) {
-    if (pts.length < 2) return; const f = pts[0], l = pts[pts.length - 1], closed = pts.length > 6 && Math.hypot(f[0] - l[0], f[1] - l[1]) < 70, m = closed ? pts.length : pts.length - 1; let per = 0; for (let i = 0; i < m; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; per += Math.hypot(a[0] - b[0], a[1] - b[1]); }
+    if (pts.length < 2) return; const f = pts[0], l = pts[pts.length - 1], closed = pts.length > 6 && Math.hypot(f[0] - l[0], f[1] - l[1]) < 160, m = closed ? pts.length : pts.length - 1; let per = 0; for (let i = 0; i < m; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; per += Math.hypot(a[0] - b[0], a[1] - b[1]); }
     const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]); if (per < 30) return;
     const cost = Math.round(per * .22); if (cost > S.budget) return say('Nincs rá keret: ' + cost + ' kellene.');
     const z = { poly: pts, closed, bars: [], cost, cx: xs.reduce((a, b) => a + b) / xs.length, cy: ys.reduce((a, b) => a + b) / ys.length };
-    for (const e of S.E) { const A = [S.N[e.a].x, S.N[e.a].y], B = [S.N[e.b].x, S.N[e.b].y]; for (let i = 0; i < m; i++) { const u = segInt(pts[i], pts[(i + 1) % pts.length], A, B); if (u >= 0 && !e.bars.some(q => Math.abs(q.s - u * e.len) < 12)) { const b = { e, s: u * e.len, hp: HP_WALL, max: HP_WALL, gate: 0, x: A[0] + (B[0] - A[0]) * u, y: A[1] + (B[1] - A[1]) * u, z, pi: i }; e.bars.push(b); z.bars.push(b); } } }
+    zoneBars(z, S.E);
     S.budget -= cost; S.zones.push(z); S.hist.push({ t: 'z', z }); protCalc(); Sfx.blip(420, .06, 'square', .05);
   }
   function delZone(z) { S.budget += z.cost; for (const b of z.bars) { if (b.gate) S.budget += TOOL.gate.c; b.e.bars = b.e.bars.filter(q => q !== b); } S.zones = S.zones.filter(q => q !== z); protCalc(); }
@@ -338,7 +341,7 @@ window.HGZombi = function (env) {
   function flank(z, b) {
     const zo = b.z, P = zo.poly, n = P.length; if (!zo.cum) { zo.cum = [0]; for (let i = 1; i <= n; i++) zo.cum.push(zo.cum[i - 1] + Math.hypot(P[i % n][0] - P[i - 1][0], P[i % n][1] - P[i - 1][1])); }
     const per = zo.cum[n], at = zo.cum[b.pi], opts = [], add = (i, o) => { const d0 = zo.cum[i] - at; if (zo.closed) { const f = ((d0 % per) + per) % per; opts.push(f <= per - f ? { d: f, dir: 1, i, ...o } : { d: per - f, dir: -1, i, ...o }); } else opts.push({ d: Math.abs(d0), dir: d0 >= 0 ? 1 : -1, i, ...o }); };
-    for (const q of zo.bars) if (q !== b && (q.gate || q.hp <= 0)) add(q.pi, { bar: q }); if (!zo.closed) { add(0, { tip: -1 }); add(n - 1, { tip: 1 }); }
+    for (const q of zo.bars) if (q !== b && (q.gate || q.hp <= 0)) add(q.pi, { bar: q }); if (!zo.closed) for (const tip of [-1, 1]) { const e0 = tip < 0 ? P[0] : P[n - 1], e1 = tip < 0 ? P[1] : P[n - 2], l0 = Math.hypot(e0[0] - e1[0], e0[1] - e1[1]) || 1, bx = e0[0] + (e0[0] - e1[0]) / l0 * 26, by = e0[1] + (e0[1] - e1[1]) / l0 * 26; if (!S.wet(bx, by, 10) && !S.wet(e0[0], e0[1], 10) && Math.hypot(bx - S.start[0], by - S.start[1]) < S.R && !S.B.some(q => Math.hypot(q.x - bx, q.y - by) < q.rad + 14 || Math.hypot(q.x - e0[0], q.y - e0[1]) < q.rad + 8)) add(tip < 0 ? 0 : n - 1, { tip }); }
     let best = null; for (const o of opts) if (o.d > 10 && o.d < 950 && (!best || o.d - (o.bar && o.bar.hp > 0 ? 0 : 60) < best.d)) best = o; if (!best) return false;
     const A = P[b.pi], B = P[(b.pi + 1) % n], sgn = ((B[0] - A[0]) * (z.y - A[1]) - (B[1] - A[1]) * (z.x - A[0])) >= 0 ? 1 : -1, off = 13 + Math.random() * 16;
     const wp = i => { const a = P[((i % n) + n) % n], c = P[(((i + 1) % n) + n) % n], l = Math.hypot(c[0] - a[0], c[1] - a[1]) || 1; return [a[0] - (c[1] - a[1]) / l * sgn * off, a[1] + (c[0] - a[0]) / l * sgn * off]; };
@@ -367,7 +370,7 @@ window.HGZombi = function (env) {
       if (z.free) { if (!z.free.length) { if (z.atk && z.atk.hp > 0) { if (z.ty === 3) blast(z, z.atk); else hitBars.set(z.atk, (hitBars.get(z.atk) || 0) + z.n * (z.ty === 2 ? 3 : 1)); } else landZ(z); continue; }
         const w = z.free[0], dx = w[0] - z.x, dy = w[1] - z.y, dd = Math.hypot(dx, dy), st = zsp * z.sp * dt; if (dd <= st + 1) { z.x = w[0]; z.y = w[1]; z.free.shift(); } else { z.x += dx / dd * st; z.y += dy / dd * st; } continue; }
       { const d0 = z.dir; if (S.zF && (z.rt = (z.rt || Math.random() * .4) - dt) <= 0) { z.rt = .4; zTurn(z); } if (z.dir !== d0) z.q = null; }
-      if (z.q) { if (z.q.hp > 0) { const k = barQ.get(z.q) || 0; barQ.set(z.q, k + 1); const row = Math.min(14, Math.floor(k / 3)); z.s = z.q.s - z.dir * (4 + row * 5.5); z.off = ((k % 3) - 1) * 4.6; pos(z); if (z.ty === 3) blast(z, z.q); else hitBars.set(z.q, (hitBars.get(z.q) || 0) + z.n * (z.ty === 2 ? 3 : 1)); continue; } z.q = null; }
+      if (z.q) { if (z.q.hp > 0) { const k = barQ.get(z.q) || 0; barQ.set(z.q, k + 1); const room = Math.max(0, (z.dir > 0 ? z.q.s : z.e.len - z.q.s) - 6), rows = Math.max(1, Math.floor(room / 5.5) + 1), row = Math.floor(k / 3) % rows, lane = Math.floor(k / 3 / rows); z.s = Math.max(0, Math.min(z.e.len, z.q.s - z.dir * (4 + row * 5.5))); z.off = ((k % 3) - 1) * 4.6 * (1 + lane * .25) % (RW / 2); pos(z); if (z.ty === 3) blast(z, z.q); else hitBars.set(z.q, (hitBars.get(z.q) || 0) + z.n * (z.ty === 2 ? 3 : 1)); continue; } z.q = null; }
       const r = advance(z, zsp * z.sp, dt, () => true); if (r === 'node') { const a = S.zF ? zPick(headN(z)) : pick(headN(z), null); if (a) take(z, a, headN(z)); else z.dir *= -1; }
       else if (r) { if (!r.gate && z.tried !== r) { z.tried = r; if (Math.random() < .75 && flank(z, r)) continue; } z.q = r; if (z.ty === 3) blast(z, r); else hitBars.set(r, (hitBars.get(r) || 0) + z.n * (z.ty === 2 ? 3 : 1)); } }
     for (const [b, n] of hitBars) { b.hp -= dt * .03 * Math.min(40, n * 20 / S.gmax); if (b.hp <= 0) { b.hp = 0; S.broke++; S.fx.push({ k: 'boom', x: b.x, y: b.y, r: 22, l: .4 }); Sfx.hit(); } }
@@ -624,7 +627,7 @@ window.HGZombi = function (env) {
   function sideBtns() { const d = L.d, o = []; if (S.phase === 'plan') o.push({ k: 'save', ic: '💾' }); if (S.phase === 'plan' && S.hist.length) o.push({ k: 'undo', ic: '↩️' }); if ((S.phase === 'plan' || S.phase === 'pick') && saved) o.push({ k: 'load', ic: '📂' }); if (S.start && S.phase !== 'res') o.push({ k: 'home', ic: '🎯' }); return o.map((b, j) => ({ ...b, x: G.W - 44 * d, y: L.top + 8 * d + j * 42 * d, w: 36 * d, h: 36 * d })); }
   function resBox() { const d = L.d, w = Math.min(G.W - 24 * d, 380 * d), h = 240 * d, x = (G.W - w) / 2, y = (G.H - h) / 2, bw = (w - 36 * d) / 3; const lk = saved ? ['load', 'end'] : ['end'], lw = (w - 24 * d - (lk.length - 1) * 8 * d) / lk.length; return { x, y, w, h, lose: lk.map((k, j) => ({ k, x: x + 12 * d + j * (lw + 8 * d), y: y + 172 * d, w: lw, h: 42 * d })), btns: S.res.pool.map((u, j) => ({ u, x: x + 12 * d + j * (bw + 6 * d), y: y + 168 * d, w: bw, h: 60 * d })) }; }
   const P2 = e => [e.clientX * G.d, e.clientY * G.d];
-  window.__hv = () => ({ S, L, RUN, undo, order, vehTap, makeTrack, makeRoad, callShip, GEO: () => GEO, skipTut() { TUT = null; }, begin, makeZone, place, setStart, saveGame, loadGame });
+  window.__hv = () => ({ S, L, RUN, sideN, undo, order, vehTap, makeTrack, makeRoad, callShip, GEO: () => GEO, skipTut() { TUT = null; }, begin, makeZone, place, setStart, saveGame, loadGame });
 
   return {
     id: 'holtvaros', name: 'HOLTVÁROS', lives: 0, quit: true, sponsor: 'A Zerosites támogatásával', overTitle: 'A JÁRVÁNY GYŐZÖTT',
