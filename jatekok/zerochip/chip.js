@@ -1,0 +1,169 @@
+/* ZERO CHIP – áramkörépítő játék: a tranzisztortól a számlálóig. Rácsos szerkesztő + kapcsolószintű szimuláció. */
+'use strict';
+const $ = s => document.querySelector(s), SAVE = 'hgws_zerochip_v1';
+/* ---------- alkatrészek ---------- */
+const DEF = {};
+function chip(t, name, ins, outs, ev, init) { const n = Math.max(ins.length, outs.length), h = n <= 2 ? 2 : n + 1, w = n > 2 ? 4 : 3, row = (k, c) => c === 1 ? h / 2 : c === 2 && h === 2 ? k * 2 : 1 + k;
+  DEF[t] = { t, name, w, h, ev, init, pins: [...ins.map((p, k) => ({ n: p, dx: 0, dy: row(k, ins.length), d: 'in' })), ...outs.map((p, k) => ({ n: p, dx: w, dy: row(k, outs.length), d: 'out' }))], nin: ins.length }; }
+DEF.in = { t: 'in', name: 'Kapcsoló', w: 2, h: 2, pins: [{ n: '', dx: 2, dy: 1, d: 'out' }] };
+DEF.out = { t: 'out', name: 'LED', w: 2, h: 2, pins: [{ n: '', dx: 0, dy: 1, d: 'in' }] };
+DEF.vcc = { t: 'vcc', name: 'Táp (+)', w: 2, h: 2, pins: [{ n: '', dx: 1, dy: 2, d: 'out' }] };
+DEF.gnd = { t: 'gnd', name: 'Föld (−)', w: 2, h: 2, pins: [{ n: '', dx: 1, dy: 0, d: 'out' }] };
+DEF.nmos = { t: 'nmos', name: 'N-tranzisztor', w: 2, h: 2, pins: [{ n: 'G', dx: 0, dy: 1, d: 'in' }, { n: '', dx: 1, dy: 0, d: 'io' }, { n: '', dx: 1, dy: 2, d: 'io' }] };
+DEF.pmos = { ...DEF.nmos, t: 'pmos', name: 'P-tranzisztor' };
+chip('not', 'NEM', ['A'], ['Q'], i => [1 - i[0]]);
+chip('nand', 'NAND', ['A', 'B'], ['Q'], i => [1 - (i[0] & i[1])]);
+chip('nor', 'NOR', ['A', 'B'], ['Q'], i => [1 - (i[0] | i[1])]);
+chip('and', 'ÉS', ['A', 'B'], ['Q'], i => [i[0] & i[1]]);
+chip('or', 'VAGY', ['A', 'B'], ['Q'], i => [i[0] | i[1]]);
+chip('xor', 'XOR', ['A', 'B'], ['Q'], i => [i[0] ^ i[1]]);
+chip('xnor', 'EGYENLŐ', ['A', 'B'], ['Q'], i => [1 - (i[0] ^ i[1])]);
+chip('ha', 'FÉL+', ['A', 'B'], ['S', 'C'], i => [i[0] ^ i[1], i[0] & i[1]]);
+chip('fa', 'TELJES+', ['A', 'B', 'Ci'], ['S', 'Co'], i => { const s = i[0] + i[1] + i[2]; return [s & 1, s >> 1]; });
+chip('add4', 'ÖSSZEADÓ', ['A0', 'A1', 'A2', 'A3', 'B0', 'B1', 'B2', 'B3'], ['S0', 'S1', 'S2', 'S3', 'C'], i => { const s = (i[0] | i[1] << 1 | i[2] << 2 | i[3] << 3) + (i[4] | i[5] << 1 | i[6] << 2 | i[7] << 3); return [s & 1, s >> 1 & 1, s >> 2 & 1, s >> 3 & 1, s >> 4 & 1]; });
+chip('mux', 'VÁLASZTÓ', ['A', 'B', 'S'], ['Q'], i => [i[2] ? i[1] : i[0]]);
+chip('dlatch', 'D-TÁROLÓ', ['D', 'E'], ['Q'], (i, s) => { if (i[1]) s.q = i[0]; return [s.q]; }, () => ({ q: 0 }));
+chip('dff', 'FLIP-FLOP', ['D', 'CLK'], ['Q'], (i, s) => { if (i[1] && !s.c) s.q = i[0]; s.c = i[1]; return [s.q]; }, () => ({ q: 0, c: 0 }));
+chip('reg4', 'REGISZTER', ['D0', 'D1', 'D2', 'D3', 'CLK'], ['Q0', 'Q1', 'Q2', 'Q3'], (i, s) => { if (i[4] && !s.c) s.q = i.slice(0, 4); s.c = i[4]; return s.q; }, () => ({ q: [0, 0, 0, 0], c: 0 }));
+
+/* ---------- pályák ---------- */
+const bits = (v, n) => Array.from({ length: n }, (_, k) => v >> k & 1), pulse = (base, exp) => [{ i: { ...base, CLK: 0 }, o: {} }, { i: { ...base, CLK: 1 }, o: exp }];
+const LV = [
+  { ch: 'ÁRAMKÖR', name: 'Első áramkör', desc: 'Húzz vezetéket a kapcsolótól a LED-ig. A kapcsolóra koppintva ki-be kapcsolhatod.', ins: ['A'], outs: ['L'], fn: i => [i[0]], parts: [] },
+  { name: 'Tápfeszültség', desc: 'A LED világítson folyamatosan – kösd rá a tápot.', ins: [], outs: ['L'], fn: () => [1], parts: ['vcc', 'gnd'] },
+  { name: 'Elágazás', desc: 'Egy kapcsoló két LED-et is vezérelhet: ágaztasd el a vezetéket.', ins: ['A'], outs: ['L1', 'L2'], fn: i => [i[0], i[0]], parts: [] },
+  { name: 'Kereszteződés', desc: 'A felső kapcsoló az alsó LED-et, az alsó a felsőt kapcsolja. Ahol két vezeték keresztezi egymást, nem érnek össze – ha össze akarod kötni őket, koppints a kereszteződésre.', ins: ['A', 'B'], outs: ['L1', 'L2'], fn: i => [i[1], i[0]], parts: [] },
+  { ch: 'SZILÍCIUM', wafer: 1, name: 'N-tranzisztor', desc: 'A tranzisztor egy kapcsoló, amit feszültség vezérel. Az N-típus akkor vezet, ha a kapuja (G) 1. Érd el, hogy A = 1-nél a föld jusson Q-ra.', ins: ['A'], outs: ['Q'], fn: i => [i[0] ? 0 : null], parts: ['nmos', 'vcc', 'gnd'] },
+  { wafer: 1, name: 'P-tranzisztor', desc: 'A P-típus fordítva működik: akkor vezet, ha a kapuja 0. Érd el, hogy A = 0-nál a táp jusson Q-ra.', ins: ['A'], outs: ['Q'], fn: i => [i[0] ? null : 1], parts: ['pmos', 'vcc', 'gnd'] },
+  { wafer: 1, name: 'Inverter', desc: 'Most a kettő együtt: Q legyen mindig A ellentéte. Így a kimenet sosem lebeg – vagy a táp, vagy a föld hajtja.', ins: ['A'], outs: ['Q'], fn: i => [1 - i[0]], parts: ['pmos', 'nmos', 'vcc', 'gnd'], un: 'not' },
+  { wafer: 1, name: 'NAND kapu', desc: 'Q csak akkor 0, ha A és B is 1. Két P párhuzamosan a táp felé, két N sorban a föld felé.', ins: ['A', 'B'], outs: ['Q'], fn: i => [1 - (i[0] & i[1])], parts: ['pmos', 'nmos', 'vcc', 'gnd'], un: 'nand' },
+  { wafer: 1, name: 'NOR kapu', desc: 'Q csak akkor 1, ha A és B is 0.', ins: ['A', 'B'], outs: ['Q'], fn: i => [1 - (i[0] | i[1])], parts: ['pmos', 'nmos', 'vcc', 'gnd'], un: 'nor' },
+  { ch: 'KAPUK', name: 'NEM kapu NAND-ból', desc: 'Mostantól a kész kapuidból építkezel. A NAND-ból minden más kapu kirakható – kezdd a NEM-mel, egyetlen NAND-ból.', ins: ['A'], outs: ['Q'], fn: i => [1 - i[0]], parts: ['nand'] },
+  { name: 'ÉS kapu', desc: 'Q akkor 1, ha A és B is 1.', ins: ['A', 'B'], outs: ['Q'], fn: i => [i[0] & i[1]], parts: ['nand', 'not'], un: 'and' },
+  { name: 'VAGY kapu', desc: 'Q akkor 1, ha A vagy B (vagy mindkettő) 1.', ins: ['A', 'B'], outs: ['Q'], fn: i => [i[0] | i[1]], parts: ['nand', 'nor', 'not'], un: 'or' },
+  { name: 'XOR kapu', desc: 'Q akkor 1, ha A és B különbözik.', ins: ['A', 'B'], outs: ['Q'], fn: i => [i[0] ^ i[1]], parts: ['nand', 'and', 'or', 'not'], un: 'xor' },
+  { name: 'Egyenlőség', desc: 'Q akkor 1, ha A és B megegyezik.', ins: ['A', 'B'], outs: ['Q'], fn: i => [1 - (i[0] ^ i[1])], parts: ['xor', 'not', 'and', 'or', 'nand'], un: 'xnor' },
+  { name: 'Három bemenetű ÉS', desc: 'Q csak akkor 1, ha A, B és C is 1.', ins: ['A', 'B', 'C'], outs: ['Q'], fn: i => [i[0] & i[1] & i[2]], parts: ['and', 'or', 'not'] },
+  { name: 'Többségi szavazás', desc: 'Q akkor 1, ha a három bemenetből legalább kettő 1.', ins: ['A', 'B', 'C'], outs: ['Q'], fn: i => [i[0] + i[1] + i[2] > 1 ? 1 : 0], parts: ['and', 'or', 'not', 'xor'] },
+  { ch: 'ARITMETIKA', name: 'Félösszeadó', desc: 'Adj össze két bitet: S az összeg, C az átvitel.', ins: ['A', 'B'], outs: ['S', 'C'], fn: i => [i[0] ^ i[1], i[0] & i[1]], parts: ['xor', 'and', 'or', 'not'], un: 'ha' },
+  { name: 'Teljes összeadó', desc: 'Három bit összege (A + B + bejövő átvitel): S és kimenő átvitel.', ins: ['A', 'B', 'Ci'], outs: ['S', 'Co'], fn: i => { const s = i[0] + i[1] + i[2]; return [s & 1, s >> 1]; }, parts: ['ha', 'xor', 'and', 'or'], un: 'fa' },
+  { name: '2 bites összeadó', desc: 'Két 2 bites szám összege: az alsó bit átvitele a felső bit összeadójába megy.', ins: ['A0', 'A1', 'B0', 'B1'], outs: ['S0', 'S1', 'C'], fn: i => { const v = (i[0] | i[1] << 1) + (i[2] | i[3] << 1); return [v & 1, v >> 1 & 1, v >> 2]; }, parts: ['fa', 'ha'], size: [32, 20] },
+  { name: '4 bites összeadó', desc: 'Két 4 bites szám összege. Az átvitel bitről bitre halad tovább; C a legfelső átvitel.', ins: ['A0', 'A1', 'A2', 'A3', 'B0', 'B1', 'B2', 'B3'], outs: ['S0', 'S1', 'S2', 'S3', 'C'], fn: i => DEF.add4.ev(i), parts: ['fa', 'ha'], un: 'add4', size: [40, 28] },
+  { ch: 'MEMÓRIA', name: 'Választó', desc: 'Ha S = 0, Q = A; ha S = 1, Q = B.', ins: ['A', 'B', 'S'], outs: ['Q'], fn: i => [i[2] ? i[1] : i[0]], parts: ['and', 'or', 'not', 'nand'], un: 'mux' },
+  { name: 'Dekóder', desc: 'A két bemenet egy 0–3 közötti számot ad (A0 az alsó bit). Mindig pontosan az a kimenet legyen 1, amelyik a számnak felel meg.', ins: ['A0', 'A1'], outs: ['Y0', 'Y1', 'Y2', 'Y3'], fn: i => { const v = i[0] | i[1] << 1; return [0, 1, 2, 3].map(k => v === k ? 1 : 0); }, parts: ['and', 'not', 'nor', 'or'], size: [32, 20] },
+  { name: 'SR tároló', desc: 'Az első áramkör, ami emlékszik: S beállítja Q-t 1-re, R törli, és ha mindkettő 0, Q megőrzi az értékét. Két kapu, egymás kimenetére visszakötve.', ins: ['S', 'R'], outs: ['Q'], seq: [[1, 0, 1], [0, 0, 1], [0, 1, 0], [0, 0, 0], [1, 0, 1], [0, 0, 1], [0, 1, 0]].map(r => ({ i: { S: r[0], R: r[1] }, o: { Q: r[2] } })), parts: ['nor', 'nand', 'not'] },
+  { name: 'D tároló', desc: 'Amíg E = 1, Q követi D-t; ha E = 0, Q megőrzi az utolsó értéket.', ins: ['D', 'E'], outs: ['Q'], seq: [[1, 1, 1], [1, 0, 1], [0, 0, 1], [0, 1, 0], [0, 0, 0], [1, 0, 0], [1, 1, 1], [0, 1, 0]].map(r => ({ i: { D: r[0], E: r[1] }, o: { Q: r[2] } })), parts: ['nand', 'nor', 'and', 'not'], un: 'dlatch' },
+  { name: 'Flip-flop', desc: 'Q csak az órajel (CLK) felfutó élén veszi át D értékét – közben hiába változik D. Két D tároló egymás után, ellentétes engedélyezéssel.', ins: ['D', 'CLK'], outs: ['Q'], seq: [[1, 0, null], [1, 1, 1], [0, 1, 1], [0, 0, 1], [0, 1, 0], [1, 1, 0], [1, 0, 0], [1, 1, 1], [0, 1, 1], [0, 0, 1]].map(r => ({ i: { D: r[0], CLK: r[1] }, o: r[2] == null ? {} : { Q: r[2] } })), parts: ['dlatch', 'not'], un: 'dff' },
+  { name: 'Írható bit', desc: 'A flip-flop csak akkor vegye át D-t az órajelre, ha W = 1; különben tartsa meg, ami benne van.', ins: ['D', 'W', 'CLK'], outs: ['Q'], seq: [[1, 1, 1], [0, 0, 1], [0, 1, 0], [1, 0, 0], [1, 1, 1], [0, 0, 1]].flatMap(r => pulse({ D: r[0], W: r[1] }, { Q: r[2] })), parts: ['dff', 'mux', 'and', 'not'] },
+  { name: '4 bites regiszter', desc: 'Négy bit tárolása közös órajellel.', ins: ['D0', 'D1', 'D2', 'D3', 'CLK'], outs: ['Q0', 'Q1', 'Q2', 'Q3'], seq: [5, 10, 15, 0, 9].flatMap(v => { const b = bits(v, 4), I = { D0: b[0], D1: b[1], D2: b[2], D3: b[3] }, O = { Q0: b[0], Q1: b[1], Q2: b[2], Q3: b[3] }; return pulse(I, O); }), parts: ['dff'], un: 'reg4', size: [34, 22] },
+  { ch: 'PROCESSZOR', name: '1 bites műveletvégző', desc: 'Az ALU egy szelete: OP választja ki a műveletet. 00: A ÉS B, 01: A VAGY B, 10: A XOR B, 11: A + B + Ci (ekkor Co az átvitel, egyébként 0).', ins: ['A', 'B', 'Ci', 'OP0', 'OP1'], outs: ['Q', 'Co'], fn: i => { const op = i[3] | i[4] << 1, s2 = i[0] + i[1] + i[2]; return op === 0 ? [i[0] & i[1], 0] : op === 1 ? [i[0] | i[1], 0] : op === 2 ? [i[0] ^ i[1], 0] : [s2 & 1, s2 >> 1]; }, parts: ['and', 'or', 'xor', 'fa', 'mux', 'not'], size: [40, 24] },
+  { name: 'Számláló', desc: 'A processzor szíve, a programszámláló: minden órajelre eggyel nő, RST = 1-nél nullázódik. A regiszter kimenetét az összeadón át vezesd vissza a bemenetére.', ins: ['CLK', 'RST'], outs: ['Q0', 'Q1', 'Q2', 'Q3'], seq: [...pulse({ RST: 1 }, { Q0: 0, Q1: 0, Q2: 0, Q3: 0 }), ...Array.from({ length: 17 }, (_, k) => { const b = bits((k + 1) & 15, 4); return pulse({ RST: 0 }, { Q0: b[0], Q1: b[1], Q2: b[2], Q3: b[3] }); }).flat(), ...pulse({ RST: 1 }, { Q0: 0, Q1: 0, Q2: 0, Q3: 0 })], parts: ['reg4', 'add4', 'mux', 'and', 'not', 'vcc', 'gnd'], size: [44, 26] },
+  { ch: 'MŰHELY', name: 'Szabad tervezés', desc: 'Minden feloldott alkatrészed itt van – építs, amit akarsz.', ins: ['A', 'B', 'C', 'D', 'CLK'], outs: ['L0', 'L1', 'L2', 'L3'], free: 1, parts: ['*'], size: [48, 28] }
+];
+LV.forEach((l, k) => { l.id = k; if (!l.ch) l.ch2 = 1; });
+
+/* ---------- állapot ---------- */
+let DB = { solved: {}, designs: {} }; try { DB = { ...DB, ...JSON.parse(localStorage.getItem(SAVE) || '{}') }; } catch (_) {}
+const store = () => { try { localStorage.setItem(SAVE, JSON.stringify(DB)); } catch (_) {} };
+let L = null, B = null, tool = 'wire', NET = null, dirty = true, CS = 24, COLS = 30, ROWS = 18, results = null, drag = null, hover = null, T = 0;
+const cv = $('#c'), g = cv.getContext('2d');
+const unlocked = k => k === 0 || DB.solved[k - 1] || LV[k].free && Object.keys(DB.solved).length > 2;
+const parts = () => L.parts[0] === '*' ? ['vcc', 'gnd', 'nmos', 'pmos', ...LV.filter(l => l.un && DB.solved[l.id]).map(l => l.un)] : L.parts;
+function say(t, cls = '') { const el = $('#toast'); el.textContent = t; el.className = 'on ' + cls; clearTimeout(say.t); say.t = setTimeout(() => el.className = cls, 2400); }
+function open(k) { L = LV[k]; [COLS, ROWS] = L.size || [30, 18]; const d = DB.designs[k]; results = null; tool = 'wire';
+  if (d) B = { comps: d.comps.map(c => ({ ...c })), edges: new Set(d.edges), dots: new Set(d.dots) };
+  else { B = { comps: [], edges: new Set(), dots: new Set() }; const place = (list, t, x) => list.forEach((n, i) => B.comps.push({ t, x, y: Math.round((ROWS - 2) * (i + 1) / (list.length + 1)), label: n, fixed: 1, v: 0 })); place(L.ins, 'in', 1); place(L.outs, 'out', COLS - 3); }
+  dirty = true; ui(); fit(); }
+function keep() { DB.designs[L.id] = { comps: B.comps.map(({ t, x, y, label, fixed }) => ({ t, x, y, label, fixed, v: 0 })), edges: [...B.edges], dots: [...B.dots] }; store(); }
+
+/* ---------- hálózat és szimuláció ---------- */
+const pk = (x, y) => x + ',' + y, ends = e => { const [x, y, d] = e.split(','); return d === 'h' ? [[+x, +y], [+x + 1, +y]] : [[+x, +y], [+x, +y + 1]]; };
+function build() { const deg = new Map(), pinAt = new Set(); for (const e of B.edges) for (const p of ends(e)) deg.set(pk(...p), (deg.get(pk(...p)) || 0) + 1); for (const c of B.comps) for (const p of DEF[c.t].pins) pinAt.add(pk(c.x + p.dx, c.y + p.dy));
+  const bridge = k => deg.get(k) === 4 && !B.dots.has(k) && !pinAt.has(k), par = new Map(), find = a => { let r = a; while (par.get(r) !== r) r = par.get(r); while (par.get(a) !== r) { const n = par.get(a); par.set(a, r); a = n; } return r; }, node = (k, ax) => { const id = bridge(k) ? k + ax : k; if (!par.has(id)) par.set(id, id); return id; };
+  for (const e of B.edges) { const ax = e.endsWith('h') ? 'h' : 'v', [p, q] = ends(e), a = find(node(pk(...p), ax)), b = find(node(pk(...q), ax)); if (a !== b) par.set(a, b); }
+  const ids = new Map(), net = id => { const r = find(id); if (!ids.has(r)) ids.set(r, ids.size); return ids.get(r); }, pinNet = (c, p) => net(node(pk(c.x + p.dx, c.y + p.dy), 'h'));
+  const N = { fix: [], ins: [], outs: [], tr: [], chips: [], edge: new Map() };
+  for (const c of B.comps) { const D = DEF[c.t], pn = D.pins.map(p => pinNet(c, p)); if (c.t === 'vcc') N.fix.push([pn[0], 1]); else if (c.t === 'gnd') N.fix.push([pn[0], 0]); else if (c.t === 'in') N.ins.push({ c, n: pn[0] }); else if (c.t === 'out') N.outs.push({ c, n: pn[0] });
+    else if (c.t === 'nmos' || c.t === 'pmos') N.tr.push({ c, p: c.t === 'pmos', g: pn[0], a: pn[1], b: pn[2] }); else { c.st = D.init ? D.init() : null; N.chips.push({ c, D, i: pn.slice(0, D.nin), o: pn.slice(D.nin), out: null }); } }
+  for (const e of B.edges) N.edge.set(e, net(node(pk(...ends(e)[0]), e.endsWith('h') ? 'h' : 'v'))); N.n = ids.size; N.val = new Int8Array(N.n).fill(-1); N.short = new Uint8Array(N.n); return N; }
+function settle(N) { const n = N.n, grp = new Int32Array(n); let short = false;
+  for (let it = 0; it < 60; it++) { for (let i = 0; i < n; i++) grp[i] = i; const find = a => { while (grp[a] !== a) a = grp[a] = grp[grp[a]]; return a; };
+    for (const t of N.tr) { t.on = t.p ? N.val[t.g] === 0 : N.val[t.g] === 1; if (t.on) { const a = find(t.a), b = find(t.b); if (a !== b) grp[a] = b; } }
+    const d1 = new Uint8Array(n), d0 = new Uint8Array(n), drive = (k, v) => { (v ? d1 : d0)[find(k)] = 1; };
+    for (const [k, v] of N.fix) drive(k, v); for (const s of N.ins) drive(s.n, s.c.v ? 1 : 0);
+    for (const c of N.chips) { c.out = c.D.ev(c.i.map(k => N.val[k] === 1 ? 1 : 0), c.c.st); c.o.forEach((k, j) => drive(k, c.out[j])); }
+    let ch = false; short = false; for (let i = 0; i < n; i++) { const r = find(i), s = d1[r] && d0[r], v = s ? 0 : d1[r] ? 1 : d0[r] ? 0 : N.val[i]; N.short[i] = s ? 1 : 0; if (s) short = true; if (v !== N.val[i]) { N.val[i] = v; ch = true; } }
+    if (!ch) break; } return short; }
+function sim() { if (dirty) { NET = build(); dirty = false; } NET.shorted = settle(NET); for (const o of NET.outs) o.c.v = NET.val[o.n]; }
+function runTests() { if (L.free) return; keep(); NET = build(); dirty = false; const steps = L.seq || Array.from({ length: 1 << L.ins.length }, (_, v) => { const b = bits(v, L.ins.length), o = L.fn(b); return { i: Object.fromEntries(L.ins.map((n, k) => [n, b[k]])), o: Object.fromEntries(L.outs.map((n, k) => [n, o[k]])) }; });
+  let hold = {}, fail = -1, why = ''; const rows = [];
+  for (let s = 0; s < steps.length; s++) { const st = steps[s]; hold = { ...hold, ...st.i }; if (!L.seq) NET.val.fill(-1); for (const q of NET.ins) q.c.v = hold[q.c.label] || 0; const sh = settle(NET), got = {}; let ok = !sh; if (sh) why = 'Rövidzár: ugyanarra a vezetékre egyszerre 1 és 0 kerül (táp és föld, vagy két kimenet).';
+    for (const o of NET.outs) { const v = NET.val[o.n]; got[o.c.label] = v; o.c.v = v; const e = st.o[o.c.label]; if (e != null && v !== e) { ok = false; if (!why) why = v < 0 ? `A(z) ${o.c.label} kimenet lebeg – se a táp, se a föld nem hajtja.` : `A(z) ${o.c.label} kimenet ${v}, de ${e} kellene.`; } }
+    rows.push({ i: { ...hold }, e: st.o, got, ok }); if (!ok) { fail = s; break; } }
+  results = { rows, fail, why, total: steps.length };
+  if (fail < 0) { const first = !DB.solved[L.id]; DB.solved[L.id] = 1; store(); say(L.un && first ? 'Kész! Új alkatrész: ' + DEF[L.un].name : 'Minden teszt átment ✓', 'ok'); } else say(why, 'bad'); ui(); }
+
+/* ---------- felület ---------- */
+function ui() { const quests = LV.filter(l => !l.free), nd = quests.filter(l => DB.solved[l.id]).length; let h = `<h1>ZERO CHIP<small>A TRANZISZTORTÓL A PROCESSZORIG</small></h1><div class="ch" style="margin-top:10px;color:#e8b656">KÜLDETÉSEK ${nd} / ${quests.length}</div>`; LV.forEach((l, k) => { if (l.ch) h += `<div class="ch">${l.ch}</div>`; h += `<button class="lv${L === l ? ' on' : ''}${DB.solved[k] ? ' done' : ''}" data-l="${k}"${unlocked(k) ? '' : ' disabled'}><i>${DB.solved[k] ? '✓' : unlocked(k) ? k + 1 : '🔒'}</i>${l.name}</button>`; }); $('#side').innerHTML = h;
+  $('#head').innerHTML = `<b>${L.name}</b><p>${L.desc}</p>`;
+  let b = `<button class="b${tool === 'wire' ? ' on' : ''}" data-t="wire">〰 Vezeték</button><button class="b${tool === 'erase' ? ' on' : ''}" data-t="erase">✕ Törlés</button><span class="sep"></span>`;
+  for (const p of parts()) b += `<button class="b${tool === p ? ' on' : ''}" data-t="${p}">${DEF[p].name}</button>`;
+  b += `<button class="b" data-a="clear" style="margin-left:auto">Üres lap</button>`; if (!L.free) b += `<button class="b go" data-a="test" style="margin-left:0">▶ Teszt</button>`; if (DB.solved[L.id] && LV[L.id + 1]) b += `<button class="b nx" data-a="next">Következő ›</button>`; $('#bar').innerHTML = b;
+  let t = ''; if (!L.free) { const cols = [...L.ins, ...L.outs], head = `<tr>${L.ins.map(n => `<th>${n}</th>`).join('')}${L.outs.map((n, k) => `<th class="${k ? '' : 's'}">${n}</th>`).join('')}<th></th></tr>`;
+    const row = (i, o, cls = '', mark = '') => `<tr class="${cls}">${L.ins.map(n => `<td>${i[n] ?? 0}</td>`).join('')}${L.outs.map((n, k) => `<td class="o${k ? '' : ' s'}">${o[n] == null ? '·' : o[n] < 0 ? '?' : o[n]}</td>`).join('')}<td>${mark}</td></tr>`;
+    if (results) { const rs = results.rows.slice(-14); t = `<h3>TESZT</h3><table>${head}${rs.map(r => row(r.i, r.ok ? r.e : r.got, r.ok ? 'ok' : 'bad', r.ok ? '✓' : '✗')).join('')}</table><div id="res">${results.fail < 0 ? `<b>${results.total} / ${results.total}</b> eset rendben.` : `<b>${results.fail + 1}. eset:</b> ${results.why}`}</div>`; }
+    else if (L.seq) t = `<h3>LÉPÉSEK</h3><table>${head}${L.seq.slice(0, 14).reduce((a, s) => { a.h = { ...a.h, ...s.i }; a.s += row(a.h, s.o); return a; }, { h: {}, s: '' }).s}</table>${L.seq.length > 14 ? `<div id="res">… összesen ${L.seq.length} lépés</div>` : ''}`;
+    else if (L.ins.length <= 4) t = `<h3>IGAZSÁGTÁBLA</h3><table>${head}${Array.from({ length: 1 << L.ins.length }, (_, v) => { const bb = bits(v, L.ins.length), o = L.fn(bb); return row(Object.fromEntries(L.ins.map((n, k) => [n, bb[k]])), Object.fromEntries(L.outs.map((n, k) => [n, o[k]]))); }).join('')}</table>`;
+    else t = `<h3>IGAZSÁGTÁBLA</h3><div id="res">${1 << L.ins.length} eset – a teszt mindet végigpróbálja.</div>`; }
+  $('#info').innerHTML = t; }
+document.addEventListener('click', e => { const l = e.target.closest('[data-l]'); if (l && !l.disabled) return open(+l.dataset.l); const t = e.target.closest('[data-t]'); if (t) { tool = t.dataset.t; return ui(); }
+  const a = e.target.closest('[data-a]'); if (!a) return; if (a.dataset.a === 'test') runTests(); else if (a.dataset.a === 'next') open(L.id + 1); else if (a.dataset.a === 'clear') { if (a.dataset.sure) { delete DB.designs[L.id]; store(); open(L.id); } else { a.dataset.sure = 1; a.textContent = 'Biztos?'; setTimeout(() => { if (a.isConnected) { delete a.dataset.sure; a.textContent = 'Üres lap'; } }, 2500); } } });
+addEventListener('keydown', e => { if (e.key === 'Escape') { tool = 'wire'; ui(); } });
+function fit() { const w = $('#wrap'), dpr = Math.min(2, devicePixelRatio || 1); CS = Math.max(10, Math.floor(Math.min((w.clientWidth - 16) / COLS, (w.clientHeight - 16) / ROWS))); cv.style.width = COLS * CS + 'px'; cv.style.height = ROWS * CS + 'px'; cv.width = COLS * CS * dpr; cv.height = ROWS * CS * dpr; cv.dpr = dpr; }
+addEventListener('resize', fit);
+
+/* ---------- szerkesztés ---------- */
+const gp = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / CS, (e.clientY - r.top) / CS]; }, compAt = (x, y) => B.comps.find(c => x > c.x + .25 && x < c.x + DEF[c.t].w - .25 && y > c.y + .15 && y < c.y + DEF[c.t].h - .15);
+const inside = (c, x, y) => x >= 0 && y >= 0 && x + DEF[c.t].w <= COLS && y + DEF[c.t].h <= ROWS, clash = (c, x, y) => B.comps.some(o => o !== c && x < o.x + DEF[o.t].w && o.x < x + DEF[c.t].w && y < o.y + DEF[o.t].h && o.y < y + DEF[c.t].h);
+const ekey = (a, b) => a[0] !== b[0] ? pk(Math.min(a[0], b[0]), a[1]) + ',h' : pk(a[0], Math.min(a[1], b[1])) + ',v';
+function wipe(p) { for (const e of [pk(p[0], p[1]) + ',h', pk(p[0], p[1]) + ',v', pk(p[0] - 1, p[1]) + ',h', pk(p[0], p[1] - 1) + ',v']) B.edges.delete(e); B.dots.delete(pk(...p)); }
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); const [fx, fy] = gp(e), p = [Math.round(fx), Math.round(fy)], er = tool === 'erase' || e.button === 2, c = compAt(fx, fy); results = null;
+  if (DEF[tool] && !er) { const d = DEF[tool], nc = { t: tool, x: Math.round(fx - d.w / 2), y: Math.round(fy - d.h / 2) }; if (!inside(nc, nc.x, nc.y) || clash(nc, nc.x, nc.y)) return say('Ide nem fér.', 'bad'); B.comps.push(nc); dirty = true; keep(); return; }
+  if (c) { if (er) { if (c.fixed) return say('A pálya be- és kimenetei nem törölhetők.', 'bad'); B.comps = B.comps.filter(q => q !== c); dirty = true; keep(); return; } drag = { c, ox: fx - c.x, oy: fy - c.y, moved: 0 }; return; }
+  drag = { last: p, er, moved: 0, start: p }; if (er) { wipe(p); dirty = true; } });
+cv.addEventListener('pointermove', e => { const [fx, fy] = gp(e); hover = [fx, fy]; if (!drag) return;
+  if (drag.c) { const x = Math.round(fx - drag.ox), y = Math.round(fy - drag.oy), c = drag.c; if ((x !== c.x || y !== c.y) && inside(c, x, y) && !clash(c, x, y)) { c.x = x; c.y = y; drag.moved = 1; dirty = true; } return; }
+  const t = [Math.max(0, Math.min(COLS, Math.round(fx))), Math.max(0, Math.min(ROWS, Math.round(fy)))]; let n = 0;
+  while ((drag.last[0] !== t[0] || drag.last[1] !== t[1]) && n++ < 200) { const a = drag.last, dx = t[0] - a[0], dy = t[1] - a[1], b = Math.abs(dx) >= Math.abs(dy) ? [a[0] + Math.sign(dx), a[1]] : [a[0], a[1] + Math.sign(dy)]; if (drag.er) wipe(b); else { const k = ekey(a, b); B.edges.has(k) && drag.back === k ? B.edges.delete(k) : B.edges.add(k); drag.back = k; } drag.last = b; drag.moved = 1; dirty = true; } });
+const up = () => { if (!drag) return; const d = drag; drag = null; if (d.c && !d.moved && d.c.t === 'in') { d.c.v = d.c.v ? 0 : 1; } else if (!d.c && !d.moved && !d.er) { const k = pk(...d.start); let deg = 0; for (const e of B.edges) for (const q of ends(e)) if (pk(...q) === k) deg++; if (deg === 4) { B.dots.has(k) ? B.dots.delete(k) : B.dots.add(k); dirty = true; } } if (d.moved || dirty) keep(); };
+cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); cv.addEventListener('pointerleave', () => { hover = null; });
+
+/* ---------- rajz ---------- */
+const COL = v => v === 1 ? '#ffd35a' : v === 0 ? '#3f6f9a' : '#6b7480';
+function draw() { T += 1 / 60; sim(); const s = CS, dpr = cv.dpr || 1; g.setTransform(dpr, 0, 0, dpr, 0, 0); const W = COLS * s, H = ROWS * s, wafer = L.wafer;
+  const bg = g.createLinearGradient(0, 0, W, H); if (wafer) { bg.addColorStop(0, '#1b1436'); bg.addColorStop(.5, '#2a1f52'); bg.addColorStop(1, '#141030'); } else { bg.addColorStop(0, '#0d3b2c'); bg.addColorStop(1, '#082a20'); } g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  if (wafer) { for (let k = 0; k < 5; k++) { const x = (k * .23 + .08) * W, gr = g.createLinearGradient(x - W * .3, 0, x + W * .3, H); gr.addColorStop(0, 'rgba(120,200,255,0)'); gr.addColorStop(.5, `rgba(${k & 1 ? '255,120,220' : '120,220,255'},.07)`); gr.addColorStop(1, 'rgba(120,200,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, W, H); } }
+  g.fillStyle = wafer ? 'rgba(190,170,255,.22)' : 'rgba(160,230,190,.2)'; for (let x = 0; x <= COLS; x++) for (let y = 0; y <= ROWS; y++) g.fillRect(x * s - 1, y * s - 1, 2, 2);
+  /* vezetékek */
+  g.lineCap = 'round'; for (const pass of [0, 1]) for (const e of B.edges) { const [a, b] = ends(e), n = NET.edge.get(e), v = NET.val[n], sh = NET.short[n]; g.strokeStyle = pass ? (sh ? (Math.sin(T * 14) > 0 ? '#ff5a4d' : '#7a1f1a') : COL(v)) : 'rgba(0,0,0,.45)'; g.lineWidth = pass ? Math.max(2.4, s * .16) : Math.max(4.5, s * .3); if (pass && v < 0 && !sh) g.setLineDash([s * .2, s * .22]); g.beginPath(); g.moveTo(a[0] * s, a[1] * s); g.lineTo(b[0] * s, b[1] * s); g.stroke(); g.setLineDash([]); }
+  for (const k of B.dots) { const [x, y] = k.split(',').map(Number); g.fillStyle = '#fff'; g.beginPath(); g.arc(x * s, y * s, s * .17, 0, 6.283); g.fill(); }
+  /* alkatrészek */
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (const c of B.comps) { const D = DEF[c.t], x = c.x * s, y = c.y * s, w = D.w * s, h = D.h * s, cx = x + w / 2, cy = y + h / 2, pv = p => { const N = NET, k = c.t === 'out' ? N.outs.find(o => o.c === c) : null; return k ? N.val[k.n] : -1; };
+    for (const p of D.pins) { g.fillStyle = '#c9d2dc'; g.beginPath(); g.arc((c.x + p.dx) * s, (c.y + p.dy) * s, Math.max(2.5, s * .13), 0, 6.283); g.fill(); }
+    if (c.t === 'in') { g.strokeStyle = '#c9d2dc'; g.lineWidth = 2; g.beginPath(); g.moveTo(x + w * .75, cy); g.lineTo(x + w, cy); g.stroke(); g.fillStyle = c.v ? '#ffd35a' : '#22303f'; rr(x + s * .15, y + s * .35, w * .68, h - s * .7, s * .3); g.fill(); g.strokeStyle = c.v ? '#fff3c9' : '#5b6f86'; g.lineWidth = 1.5; g.stroke(); g.fillStyle = c.v ? '#2a1a06' : '#c5cfdd'; g.font = `800 ${s * (c.label.length > 2 ? .42 : .55)}px system-ui`; g.fillText(c.label, x + s * .15 + w * .34, cy - s * .16); g.font = `700 ${s * .36}px ui-monospace,monospace`; g.fillText(c.v ? '1' : '0', x + s * .15 + w * .34, cy + s * .34); }
+    else if (c.t === 'out') { const v = pv(); g.strokeStyle = '#c9d2dc'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, cy); g.lineTo(x + w * .3, cy); g.stroke(); if (v === 1) { const gl = g.createRadialGradient(cx + s * .15, cy, 2, cx + s * .15, cy, s * 1.5); gl.addColorStop(0, 'rgba(255,90,70,.75)'); gl.addColorStop(1, 'rgba(255,90,70,0)'); g.fillStyle = gl; g.fillRect(x - s, y - s, w + s * 2, h + s * 2); }
+      g.fillStyle = v === 1 ? '#ff5a4d' : v === 0 ? '#4a1f1c' : '#3a3f47'; g.beginPath(); g.arc(cx + s * .15, cy, s * .6, 0, 6.283); g.fill(); g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1.5; g.stroke(); g.fillStyle = '#fff'; g.font = `800 ${s * (c.label.length > 2 ? .38 : .48)}px system-ui`; g.fillText(c.label, cx + s * .15, cy + 1); }
+    else if (c.t === 'vcc' || c.t === 'gnd') { const up2 = c.t === 'vcc', px = x + s, py = up2 ? y + h : y; g.strokeStyle = up2 ? '#ffd35a' : '#7fb2de'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(px, py); g.lineTo(px, cy + (up2 ? s * .1 : -s * .1)); g.stroke(); if (up2) { g.beginPath(); g.arc(px, cy - s * .25, s * .42, 0, 6.283); g.stroke(); g.fillStyle = '#ffd35a'; g.font = `800 ${s * .6}px system-ui`; g.fillText('+', px, cy - s * .24); } else for (let k = 0; k < 3; k++) { g.beginPath(); g.moveTo(px - s * (.6 - k * .2), cy - s * .1 + k * s * .22); g.lineTo(px + s * (.6 - k * .2), cy - s * .1 + k * s * .22); g.stroke(); } }
+    else if (c.t === 'nmos' || c.t === 'pmos') { const t = NET.tr.find(q => q.c === c), on = t && t.on, px = x + s, P = c.t === 'pmos'; g.strokeStyle = on ? '#ffd35a' : '#c9d2dc'; g.lineWidth = 2.2; g.beginPath(); g.moveTo(px, y); g.lineTo(px, y + s * .55); g.lineTo(px - s * .28, y + s * .55); g.moveTo(px, y + h); g.lineTo(px, y + h - s * .55); g.lineTo(px - s * .28, y + h - s * .55); g.moveTo(px - s * .28, y + s * .4); g.lineTo(px - s * .28, y + h - s * .4); g.stroke();
+      g.strokeStyle = '#c9d2dc'; g.beginPath(); g.moveTo(px - s * .46, y + s * .45); g.lineTo(px - s * .46, y + h - s * .45); g.moveTo(x, cy); g.lineTo(px - s * (P ? .74 : .46), cy); g.stroke(); if (P) { g.fillStyle = '#1b1436'; g.beginPath(); g.arc(px - s * .6, cy, s * .13, 0, 6.283); g.fill(); g.stroke(); } g.fillStyle = P ? '#ff9ad5' : '#8fe0ff'; g.font = `800 ${s * .5}px system-ui`; g.fillText(P ? 'P' : 'N', x + w - s * .45, cy); }
+    else { g.fillStyle = 'rgba(0,0,0,.35)'; rr(x + s * .5 + 2, y + s * .15 + 3, w - s, h - s * .3, s * .22); g.fill(); const cg = g.createLinearGradient(0, y, 0, y + h); cg.addColorStop(0, '#2b3442'); cg.addColorStop(1, '#161c26'); g.fillStyle = cg; rr(x + s * .5, y + s * .15, w - s, h - s * .3, s * .22); g.fill(); g.strokeStyle = '#6f8196'; g.lineWidth = 1.5; g.stroke();
+      g.strokeStyle = '#c9d2dc'; g.lineWidth = 2; g.font = `600 ${s * .34}px system-ui`; for (const p of D.pins) { const py = (c.y + p.dy) * s, L0 = p.d === 'in'; g.beginPath(); g.moveTo((c.x + p.dx) * s, py); g.lineTo(L0 ? x + s * .5 : x + w - s * .5, py); g.stroke(); if (D.pins.length > 3) { g.fillStyle = '#9fb0c4'; g.textAlign = L0 ? 'left' : 'right'; g.fillText(p.n, L0 ? x + s * .62 : x + w - s * .62, py); } } g.textAlign = 'center';
+      g.fillStyle = '#ffe29a'; g.font = `800 ${Math.min(s * .46, (w - s * 1.2) / D.name.length * 1.5)}px system-ui`; if (D.pins.length > 3) { g.save(); g.translate(cx, cy); if (D.h > 4) g.rotate(-Math.PI / 2); g.fillText(D.name, 0, 0); g.restore(); } else g.fillText(D.name, cx, cy); } }
+  /* elhelyezés előnézete */
+  if (hover && DEF[tool]) { const d = DEF[tool], x = Math.round(hover[0] - d.w / 2), y = Math.round(hover[1] - d.h / 2), ok = inside({ t: tool }, x, y) && !clash({ t: tool }, x, y); g.strokeStyle = ok ? 'rgba(255,226,154,.9)' : 'rgba(255,90,77,.9)'; g.setLineDash([5, 4]); g.lineWidth = 1.5; g.strokeRect(x * s + 2, y * s + 2, d.w * s - 4, d.h * s - 4); g.setLineDash([]); }
+  requestAnimationFrame(draw); }
+function rr(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+open(Math.min(LV.length - 1, LV.findIndex((l, k) => !DB.solved[k] && unlocked(k)) < 0 ? 0 : LV.findIndex((l, k) => !DB.solved[k] && unlocked(k)))); requestAnimationFrame(draw);
+window.__zc = () => ({ B, L, LV, DB, open, runTests, get results() { return results; }, set dirty(v) { dirty = v; }, keep });
