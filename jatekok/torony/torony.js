@@ -149,8 +149,8 @@ const Torony = (() => {
         if (!was && landed) this.land(G, landed);
         if (p.ground && walk) S.walkT += h;
       }
-      const scr = Math.max(0, Math.floor(-(p.y + PH / 2) / SH));
-      S.cam += (-(scr + 1) * SH - S.cam) * Math.min(1, dt * 14);
+      // a kamera folyamatosan követi a karaktert (kicsit a közép alatt tartja, hogy fölfelé többet láss), a talajnál megáll
+      S.cam += (Math.min(-SH, p.y + PH / 2 - SH * .58) - S.cam) * Math.min(1, dt * 7);
       S.wo += windAt(S.cam + SH / 2, G.t) * dt * 1.6;
       if (S.banner) { S.banner.l -= dt; if (S.banner.l <= 0) S.banner = null; }
     },
