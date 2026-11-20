@@ -5,14 +5,17 @@ const Nyomas = {
   desc: 'A PLC rád bízta a szivattyút. Állítsd meg a mutatót a zöld zónában! Minden sikeres beállítás után gyorsabb és szűkebb lesz. Középre lőve PERFEKT bónusz.',
   how: 'KOPPINTÁS / SZÓKÖZ · 3 ÉLET',
   ranks: [[0, 'Gyakornok'], [300, 'Szivattyúkezelő'], [900, 'Nyomásfelelős'], [2000, 'PLC-programozó'], [4000, 'Főgépész-legenda']],
-  init(G) { this.a = 0; this.dir = 1; this.sp = .9; this.lvl = 1; this.newZone(); this.flash = 0; this.lock = 0; this.burst = 0; },
+  /* választható műszer-külsők – valódi nyomásmérő-típusok alapján */
+  designs: ['HGWS vezérlőpult', 'Bourdon-csöves ipari', 'Glicerines rozsdamentes', 'Sárgaréz gőzmanométer', 'Digitális manométer'],
+  init(G) { this.ds = Math.min(this.designs.length - 1, store.get('nyomas_design') | 0); this.a = 0; this.dir = 1; this.sp = .9; this.lvl = 1; this.newZone(); this.flash = 0; this.lock = 0; this.burst = 0; },
   newZone() { this.zw = Math.max(.045, .2 - this.lvl * .012); this.zc = .15 + Math.random() * .7; },
   update(G, dt) {
     if (this.lock > 0) { this.lock -= dt; return; }
     this.a += this.dir * this.sp * dt; if (this.a > 1) { this.a = 1; this.dir = -1; } if (this.a < 0) { this.a = 0; this.dir = 1; }
     this.flash = Math.max(0, this.flash - dt * 2); this.burst = Math.max(0, this.burst - dt * 1.5);
   },
-  down(G) {
+  down(G, x, y, e) {
+    const b = this.sel; if (b && e !== true && x != null && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) { const n = this.designs.length; this.ds = (this.ds + (x < b.x + b.w / 2 ? n - 1 : 1)) % n; store.set('nyomas_design', this.ds); Sfx.blip(660, .05, 'triangle', .05); return; }
     if (this.lock > 0) return;
     const d = Math.abs(this.a - this.zc), cx = G.W / 2, cy = G.H * .58;
     if (d <= this.zw / 2) {
@@ -24,6 +27,7 @@ const Nyomas = {
   },
   draw(g, G, t) {
     bg('#0b1424', '#050a12');
+    if (this.ds) { this.drawReal(g, G, t); return this.selector(g, G); }
     const cx = G.W / 2, cy = G.H * .58, R = Math.min(G.W * .42, G.H * .4), d = G.d;
     // pipes
     g.fillStyle = '#2a3646'; g.fillRect(0, cy + R * .25, G.W, R * .18);
@@ -50,7 +54,53 @@ const Nyomas = {
     g.font = `400 ${30 * d}px Inter, sans-serif`; g.fillText((this.a * 10).toFixed(1) + ' BAR', cx, cy + R * .02 - R * .25);
     g.font = `600 ${14 * d}px Inter, sans-serif`; g.fillStyle = '#8fa6bf'; g.fillText('SZINT ' + this.lvl, cx, cy - R * .92);
     if (this.burst > 0) { G.splash(cx + (Math.random() - .5) * G.W * .6, cy + R * .3, '150,215,255', 2, 8); }
-  }
+    this.selector(g, G);
+  },
+  selector(g, G) { const d = G.d, w = Math.min(G.W - 24 * d, 330 * d), h = 38 * d, x = G.W / 2 - w / 2, y = G.H - h - 14 * d; this.sel = { x, y, w, h };
+    g.fillStyle = 'rgba(10,16,28,.85)'; rr(x, y, w, h, h / 2); g.fill(); g.strokeStyle = 'rgba(232,182,86,.45)'; g.lineWidth = 1.5 * d; g.stroke();
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffe29a'; g.font = `700 ${13 * d}px Inter, sans-serif`; g.fillText(this.designs[this.ds], G.W / 2, y + h / 2 + d); g.font = `700 ${15 * d}px Inter, sans-serif`; g.fillStyle = '#e8b656'; g.fillText('◀', x + 20 * d, y + h / 2); g.fillText('▶', x + w - 20 * d, y + h / 2); },
+  drawReal(g, G, t) { const D = this.ds, d = G.d, cx = G.W / 2, cy = G.H * .47, R = Math.min(G.W * .4, G.H * .33), A0 = Math.PI * .75, A1 = Math.PI * 2.25, ang = v => A0 + (A1 - A0) * v, P = (a, r) => [cx + Math.cos(a) * r, cy + Math.sin(a) * r];
+    const z0 = Math.max(0, this.zc - this.zw / 2), z1 = Math.min(1, this.zc + this.zw / 2), pulse = .75 + .25 * Math.sin(t * 8), brass = D === 3, dig = D === 4;
+    /* csővezeték és csatlakozó csonk */
+    g.fillStyle = '#2a3646'; g.fillRect(0, cy + R * 1.42, G.W, R * .2); g.fillStyle = '#3b4a5e'; for (let x = (t * 60 * d) % (90 * d) - 90 * d; x < G.W; x += 90 * d) g.fillRect(x, cy + R * 1.39, 14 * d, R * .26);
+    const sg = g.createLinearGradient(cx - R * .16, 0, cx + R * .16, 0); sg.addColorStop(0, brass ? '#7a5a1e' : '#6d7682'); sg.addColorStop(.45, brass ? '#e8c46a' : '#dfe5ec'); sg.addColorStop(1, brass ? '#6a4c16' : '#59616c'); g.fillStyle = sg; g.fillRect(cx - R * .1, cy + R * .9, R * .2, R * .52); g.fillRect(cx - R * .17, cy + R * 1.08, R * .34, R * .16); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1.5 * d; for (const k of [-.06, .06]) { g.beginPath(); g.moveTo(cx + R * k, cy + R * 1.08); g.lineTo(cx + R * k, cy + R * 1.24); g.stroke(); }
+    /* ház és perem */
+    g.fillStyle = 'rgba(0,0,0,.4)'; g.beginPath(); g.arc(cx + 5 * d, cy + 8 * d, R * 1.04, 0, 6.283); g.fill();
+    const cg = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R); if (D === 1) { cg.addColorStop(0, '#3a3d42'); cg.addColorStop(.5, '#15171a'); cg.addColorStop(1, '#2a2c30'); } else if (D === 2) { cg.addColorStop(0, '#f2f5f8'); cg.addColorStop(.3, '#9aa4ae'); cg.addColorStop(.55, '#e6ebf0'); cg.addColorStop(1, '#727c87'); } else if (brass) { cg.addColorStop(0, '#f6dc8c'); cg.addColorStop(.35, '#b98a2c'); cg.addColorStop(.6, '#edca6e'); cg.addColorStop(1, '#7a5a1e'); } else { cg.addColorStop(0, '#2f3d52'); cg.addColorStop(1, '#141c28'); }
+    g.fillStyle = cg; g.beginPath(); if (dig) rr(cx - R * 1.02, cy - R * 1.02, R * 2.04, R * 2.04, R * .34); else g.arc(cx, cy, R * 1.02, 0, 6.283); g.fill(); g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 2 * d; g.stroke();
+    if (brass) for (let k = 0; k < 8; k++) { const [x, y] = P(k / 8 * 6.283 + .39, R * .955); g.fillStyle = '#6a4c16'; g.beginPath(); g.arc(x, y, R * .028, 0, 6.283); g.fill(); g.fillStyle = '#f6dc8c'; g.beginPath(); g.arc(x - d, y - d, R * .014, 0, 6.283); g.fill(); }
+    if (dig) return this.drawDigital(g, G, t, cx, cy, R, z0, z1, pulse);
+    /* számlap */
+    const ink = brass ? '#2b2118' : '#16181c', face = g.createRadialGradient(cx - R * .3, cy - R * .35, R * .1, cx, cy, R * .9); face.addColorStop(0, brass ? '#fbf3dc' : '#ffffff'); face.addColorStop(1, brass ? '#e6d6ac' : '#e4e7ea'); g.fillStyle = face; g.beginPath(); g.arc(cx, cy, R * .88, 0, 6.283); g.fill(); g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = 1.5 * d; g.stroke();
+    g.lineCap = 'butt'; g.lineWidth = R * .11; g.strokeStyle = 'rgba(214,48,40,.8)'; g.beginPath(); g.arc(cx, cy, R * .735, ang(.88), A1); g.stroke();
+    g.strokeStyle = `rgba(40,170,84,${pulse})`; g.beginPath(); g.arc(cx, cy, R * .735, ang(z0), ang(z1)); g.stroke(); g.strokeStyle = '#0d5a2a'; g.beginPath(); g.arc(cx, cy, R * .735, ang(this.zc) - .006, ang(this.zc) + .006); g.stroke();
+    g.strokeStyle = ink; g.lineWidth = 1.6 * d; g.beginPath(); g.arc(cx, cy, R * .8, A0, A1); g.stroke();
+    for (let i = 0; i <= 50; i++) { const a = ang(i / 50), maj = i % 5 === 0, [x0, y0] = P(a, R * .8), [x1, y1] = P(a, R * (maj ? .69 : .75)); g.lineWidth = (maj ? 2.6 : 1.3) * d; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }
+    g.fillStyle = ink; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `${brass ? '700' : '600'} ${R * .1}px ${brass ? 'Georgia, serif' : 'Inter, sans-serif'}`; for (let i = 0; i <= 10; i++) { const [x, y] = P(ang(i / 10), R * .59); g.fillText(i, x, y); }
+    if (D === 2) { g.strokeStyle = '#c0392b'; g.fillStyle = '#c0392b'; g.lineWidth = 1.2 * d; g.beginPath(); g.arc(cx, cy, R * .46, A0, A1); g.stroke(); g.font = `600 ${R * .058}px Inter, sans-serif`; for (let p = 0; p <= 140; p += 10) { const a = ang(p / 145), [x0, y0] = P(a, R * .46), [x1, y1] = P(a, R * (p % 20 ? .435 : .41)); g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); if (p % 20 === 0) { const [x, y] = P(a, R * .345); g.fillText(p, x, y); } } g.fillText('psi', cx, cy + R * .3); }
+    g.fillStyle = ink; g.font = `700 ${R * .085}px ${brass ? 'Georgia, serif' : 'Inter, sans-serif'}`; g.fillText('bar', cx, cy + R * (D === 2 ? .44 : .36)); g.font = `500 ${R * .05}px ${brass ? 'Georgia, serif' : 'Inter, sans-serif'}`;
+    g.fillText(D === 1 ? 'EN 837-1  ·  Kl. 1,6' : D === 2 ? 'Kl. 1,0  ·  316L  ·  glicerin' : 'GŐZNYOMÁS', cx, cy + R * .58); if (brass) { g.font = `italic 600 ${R * .06}px Georgia, serif`; g.fillText('HGWS Gépgyár · 1898', cx, cy - R * .3); }
+    /* mutató */
+    const na = ang(this.a) + (D === 2 ? 0 : Math.sin(t * 40) * .004); g.save(); g.translate(cx, cy); g.rotate(na); g.fillStyle = this.burst > 0 ? '#d63028' : brass ? '#1d2f52' : ink; g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = 6 * d; g.shadowOffsetY = 3 * d;
+    g.beginPath(); g.moveTo(-R * .2, -R * .028); g.lineTo(R * .1, -R * .022); g.lineTo(R * .77, 0); g.lineTo(R * .1, R * .022); g.lineTo(-R * .2, R * .028); g.closePath(); g.fill(); if (brass) { g.beginPath(); g.arc(-R * .2, 0, R * .06, 0, 6.283); g.arc(-R * .2, 0, R * .034, 0, 6.283, true); g.fill('evenodd'); g.beginPath(); g.arc(R * .5, 0, R * .03, 0, 6.283); g.fill(); } g.restore();
+    g.fillStyle = brass ? '#b98a2c' : D === 2 ? '#aab2ba' : '#2a2c30'; g.beginPath(); g.arc(cx, cy, R * .07, 0, 6.283); g.fill(); g.fillStyle = 'rgba(255,255,255,.5)'; g.beginPath(); g.arc(cx - R * .02, cy - R * .02, R * .025, 0, 6.283); g.fill();
+    /* glicerintöltet légbuborékkal, üvegcsillogás */
+    if (D === 2) { g.save(); g.beginPath(); g.arc(cx, cy, R * .88, 0, 6.283); g.clip(); const lv = cy - R * .66 + Math.sin(t * 1.7) * R * .008; g.fillStyle = 'rgba(190,215,235,.16)'; g.fillRect(cx - R, lv, R * 2, R * 2); g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 1.5 * d; g.beginPath(); for (let x = -R; x <= R; x += R / 12) { const y = lv + Math.sin(x / R * 9 + t * 2.4) * R * .008; x === -R ? g.moveTo(cx + x, y) : g.lineTo(cx + x, y); } g.stroke(); g.restore(); }
+    const gl = g.createLinearGradient(cx - R, cy - R, cx + R * .4, cy + R * .4); gl.addColorStop(0, 'rgba(255,255,255,.32)'); gl.addColorStop(.4, 'rgba(255,255,255,0)'); g.fillStyle = gl; g.beginPath(); g.arc(cx, cy, R * .88, 0, 6.283); g.fill();
+    this.readout(g, G, cx, cy - R * 1.14, R); if (this.burst > 0) G.splash(cx + (Math.random() - .5) * G.W * .6, cy + R * 1.4, '150,215,255', 2, 8); },
+  readout(g, G, cx, y, R) { const d = G.d; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = this.flash > 0 ? `rgba(94,224,138,${.5 + this.flash * .5})` : '#7fd8ff'; g.font = `600 ${14 * d}px Inter, sans-serif`; g.fillText('SZINT ' + this.lvl, cx, y); },
+  drawDigital(g, G, t, cx, cy, R, z0, z1, pulse) { const d = G.d, A0 = Math.PI * .75, A1 = Math.PI * 2.25, N = 60;
+    g.fillStyle = '#0c1118'; g.beginPath(); g.arc(cx, cy, R * .9, 0, 6.283); g.fill(); g.strokeStyle = '#3d4d63'; g.lineWidth = 2 * d; g.stroke();
+    for (let i = 0; i < N; i++) { const v = (i + .5) / N, a0 = A0 + (A1 - A0) * (i / N) + .008, a1 = A0 + (A1 - A0) * ((i + 1) / N) - .008, inZ = v >= z0 && v <= z1, on = v <= this.a; g.lineWidth = R * .1; g.lineCap = 'butt';
+      g.strokeStyle = inZ ? (on ? '#5ee08a' : `rgba(94,224,138,${.3 + .25 * pulse})`) : v > .88 ? (on ? '#ff5a4d' : 'rgba(255,90,77,.22)') : on ? '#7fd8ff' : 'rgba(127,216,255,.13)'; g.beginPath(); g.arc(cx, cy, R * .76, a0, a1); g.stroke(); }
+    g.fillStyle = '#8fa6bf'; g.font = `600 ${R * .07}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; for (let i = 2; i <= 8; i += 2) { const a = A0 + (A1 - A0) * i / 10; g.fillText(i, cx + Math.cos(a) * R * .6, cy + Math.sin(a) * R * .6); }
+    /* LCD */
+    const w = R * .98, h = R * .44, x = cx - w / 2, y = cy - h * .62; g.fillStyle = '#1a222c'; rr(x - 5 * d, y - 5 * d, w + 10 * d, h + 10 * d, 8 * d); g.fill(); const lg = g.createLinearGradient(0, y, 0, y + h); lg.addColorStop(0, '#c3d0b0'); lg.addColorStop(1, '#a9b896'); g.fillStyle = lg; rr(x, y, w, h, 5 * d); g.fill();
+    g.fillStyle = 'rgba(20,28,18,.12)'; g.font = `700 ${h * .72}px ui-monospace, Menlo, Consolas, monospace`; g.textAlign = 'right'; g.fillText('88.8', x + w * .74, y + h * .54); g.fillStyle = this.burst > 0 ? '#7a1410' : '#141c12'; g.fillText((this.a * 10).toFixed(1), x + w * .74, y + h * .54);
+    g.font = `700 ${h * .24}px Inter, sans-serif`; g.textAlign = 'left'; g.fillText('bar', x + w * .78, y + h * .7); g.font = `600 ${h * .16}px Inter, sans-serif`; g.fillText(this.a >= z0 && this.a <= z1 ? '● OK' : this.a > .88 ? '▲ MAX' : '', x + w * .78, y + h * .3);
+    g.textAlign = 'center'; for (const [k, lab] of [[-1, 'ZERO'], [0, 'UNIT'], [1, 'ON']]) { const bx = cx + k * R * .3, by = cy + R * .4; g.fillStyle = '#243247'; rr(bx - R * .12, by - R * .055, R * .24, R * .11, R * .05); g.fill(); g.fillStyle = '#8fa6bf'; g.font = `700 ${R * .055}px Inter, sans-serif`; g.fillText(lab, bx, by + d); }
+    g.fillStyle = '#5c6f88'; g.font = `600 ${R * .05}px Inter, sans-serif`; g.fillText('0…10 bar  ·  ±0,5% FS  ·  IP65', cx, cy - R * .47);
+    this.readout(g, G, cx, cy - R * 1.14, R); if (this.burst > 0) G.splash(cx + (Math.random() - .5) * G.W * .6, cy + R * 1.4, '150,215,255', 2, 8); }
 };
 
 /* =================== GAME 3: Vízágyú =================== */
