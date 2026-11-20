@@ -1,9 +1,17 @@
-# Holtváros – nyers térképadat
+# Holtváros – térképadat
 
-Magyarország OpenStreetMap-kivonata: `hungary-261119.osm.pbf` (forrás: download.geofabrik.de, © OpenStreetMap-közreműködők, ODbL).
+A játék térképei Magyarország OpenStreetMap-kivonatából készülnek (© OpenStreetMap-közreműködők, ODbL; forrás: download.geofabrik.de).
 
-A GitHub 100 MB-os fájlkorlátja miatt 4 részben van itt (`.part1` … `.part4`, egyenként kb. 79 MB).
-Összefűzés: `python3 tools/terkep_osszefuz.py` (ellenőrzőösszeggel), vagy kézzel: `cat hungary-261119.osm.pbf.part1 … part4 > hungary-261119.osm.pbf`.
-Az összefűzött fájl nincs a repóban (`.gitignore`).
+| Fájl | Mi ez |
+|---|---|
+| `megyek.js` | országos áttekintő: vármegyehatárok és székhelyek (a megyeválasztó képernyő) |
+| `<megye>.json` | áttekintő rétegek: határ, vizek, erdők, parkok, főutak, vasút, települések, beépítettség |
+| `<megye>.bin` | a vármegye teljes úthálózata 2048 m-es csempékben (a játék ezt tölti le megyeválasztáskor) |
+| `hungary-261119.osm.pbf.part1…4` | a nyers OSM-kivonat 4 részben (a GitHub 100 MB-os fájlkorlátja miatt) |
 
-A játék nem ezt tölti be: a `tools/holtvaros_terkep.py` készít belőle kicsi, játékba való adatot (`jatekok/holtvaros/terkepadat.js`).
+Újragenerálás:
+
+```
+python3 tools/terkep_osszefuz.py        # a 4 részből összefűzi a .osm.pbf-et (nem kerül a repóba)
+python3 tools/holtvaros_terkep.py       # kb. 6 perc; csak numpy és PIL kell hozzá
+```
