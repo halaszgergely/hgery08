@@ -1,4 +1,4 @@
-/* HGWS Arcade – Drift Király: felülnézetes drift-verseny (klasszikus szkript, az arcade.html tölti be) */
+/* HGWS Arcade – Drift Király: felülnézetes drift-verseny (klasszikus szkript, az arcade.html tölti be; a keret a jatekok/arcade/mag.js) */
 window.HGDrift = function (env) {
   'use strict';
   const { G, Sfx, rr, store, hud } = env;
