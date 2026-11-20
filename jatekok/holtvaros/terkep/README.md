@@ -7,6 +7,7 @@ A játék térképei Magyarország OpenStreetMap-kivonatából készülnek (© O
 | `megyek.js` | országos áttekintő: vármegyehatárok és székhelyek (a megyeválasztó képernyő) |
 | `<megye>.json` | áttekintő rétegek: határ, vizek, erdők, parkok, főutak, vasút, települések, beépítettség |
 | `<megye>.bin` | a vármegye teljes úthálózata 2048 m-es csempékben (a játék ezt tölti le megyeválasztáskor) |
+| `<megye>.haz` | a vármegye épületei: alaprajz (téglalap vagy sokszög) és magasság |
 | `hungary-261119.osm.pbf.part1…4` | a nyers OSM-kivonat 4 részben (a GitHub 100 MB-os fájlkorlátja miatt) |
 
 Újragenerálás:

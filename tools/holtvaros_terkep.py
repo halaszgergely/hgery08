@@ -21,7 +21,7 @@ PBF = os.path.join(OUT, 'hungary-261119.osm.pbf')
 WORK = sys.argv[1] if len(sys.argv) > 1 else '/tmp/holtvaros-osm'
 ROAD = {b'motorway': 5, b'motorway_link': 5, b'trunk': 4, b'trunk_link': 4, b'primary': 3, b'primary_link': 3, b'secondary': 2, b'secondary_link': 2, b'tertiary': 1, b'tertiary_link': 1,
         b'unclassified': 0, b'residential': 0, b'living_street': 0, b'pedestrian': 0}
-KEYS = [b'highway', b'railway', b'waterway', b'natural', b'landuse', b'leisure', b'building', b'bridge', b'tunnel', b'name', b'service', b'area', b'boundary', b'admin_level', b'type', b'place', b'population', b'usage']
+KEYS = [b'highway', b'railway', b'waterway', b'natural', b'landuse', b'leisure', b'building', b'bridge', b'tunnel', b'name', b'service', b'area', b'boundary', b'admin_level', b'type', b'place', b'population', b'usage', b'height', b'building:levels']
 
 # ---------- .osm.pbf olvasó ----------
 def varint(b, i):
@@ -88,7 +88,7 @@ def tags_of(st, ki, kb, vb):
     if not ki.intersection(ks): return None
     vs = pk(vb); return {st[k]: st[v] for k, v in zip(ks, vs) if k in ki}
 def work(a):
-    mode, off, size = a; st, groups, gran, lato, lono = block(off, size); out = []
+    mode, off, size = a; st, groups, gran, lato, lono = block(off, size); out = []; br, bl, bh = [], [], []
     ki = {i for i, s in enumerate(st) if s in KEYS}
     for g in groups:
         for gk, gv in fields(g):
@@ -118,7 +118,10 @@ def work(a):
                 t = tags_of(st, ki, kb, vb) if len(kb) else None
                 if not t: continue
                 if b'building' in t: 
-                    if len(rb): v0 = varint(rb, 0)[0]; out.append(('b', (v0 >> 1) ^ -(v0 & 1)))
+                    r = zzl(pk(rb)); hv = 0
+                    try: hv = float(t[b'height'].split()[0].replace(b',', b'.')) if b'height' in t else float(t[b'building:levels']) * 3 + 1 if b'building:levels' in t else 0
+                    except (ValueError, IndexError): hv = 0
+                    if len(r) >= 4 and r[0] == r[-1]: br += r; bl.append(len(r)); bh.append(max(0, min(255, int(round(hv)))))
                     continue
                 refs = None; hw = t.get(b'highway')
                 if hw in ROAD and t.get(b'area') != b'yes':
@@ -148,23 +151,24 @@ def work(a):
                         if pi in t:
                             tt = {st[k]: st[v] for k, v in t.items()}
                             out.append(('p', tt.get(b'place', b'').decode(), tt.get(b'name', b'').decode(), tt.get(b'population', b'').decode(), 1e-9 * (lato + gran * int(lat[ni])), 1e-9 * (lono + gran * int(lon[ni]))))
+    if bl: out.append(('B', np.array(br, np.int64), np.array(bl, np.int32), np.array(bh, np.uint8)))
     return out
 
 def extract():
     global MEMB, NEED
-    cache = os.path.join(WORK, 'kinyert.pkl')
+    cache = os.path.join(WORK, 'kinyert2.pkl')
     if os.path.exists(cache): return pickle.load(open(cache, 'rb'))
     bl = blobs(); print(len(bl), 'blokk'); t0 = time.time()
     with Pool(2) as p: rel = [r for o in p.imap_unordered(work, [('R',) + b for b in bl], 8) for r in o]
     print('relációk', len(rel), round(time.time() - t0)); MEMB = {m for r in rel for m in r[2]}
     with Pool(2) as p: ways = [r for o in p.imap_unordered(work, [('W',) + b for b in bl], 8) for r in o]
     print('utak', len(ways), round(time.time() - t0))
-    bld = np.array([w[1] for w in ways if w[0] == 'b'], np.int64); ways = [w for w in ways if w[0] != 'b']
-    NEED = np.unique(np.concatenate([bld] + [w[-1] for w in ways]))
+    B = [w for w in ways if w[0] == 'B']; ways = [w for w in ways if w[0] != 'B']; bref = np.concatenate([w[1] for w in B]); blen = np.concatenate([w[2] for w in B]); bh = np.concatenate([w[3] for w in B]); del B
+    NEED = np.unique(np.concatenate([bref] + [w[-1] for w in ways]))
     with Pool(2) as p: nd = [r for o in p.imap_unordered(work, [('N',) + b for b in bl], 8) for r in o]
     print('csomópontok', round(time.time() - t0))
     ids = np.concatenate([n[1] for n in nd if n[0] == 'n']); lat = np.concatenate([n[2] for n in nd if n[0] == 'n']); lon = np.concatenate([n[3] for n in nd if n[0] == 'n'])
-    o = np.argsort(ids); d = dict(rel=rel, ways=ways, bld=bld, ids=ids[o], lat=lat[o], lon=lon[o], places=[n[1:] for n in nd if n[0] == 'p'])
+    o = np.argsort(ids); d = dict(rel=rel, ways=ways, bref=bref, blen=blen, bh=bh, ids=ids[o], lat=lat[o], lon=lon[o], places=[n[1:] for n in nd if n[0] == 'p'])
     os.makedirs(WORK, exist_ok=True); pickle.dump(d, open(cache, 'wb'), 4); return d
 
 # ---------- feldolgozás ----------
@@ -236,7 +240,24 @@ def build(D):
     NL = np.concatenate([lon, np.array(exl)]); NA = np.concatenate([lat, np.array(exa)]); ea = np.array(ea); eb = np.array(eb); ef = np.array(ef, np.uint8)
     print('élek', len(ea), round(time.time() - t0))
     # --- beépítettség: az él „lakott”, ha a közelében épület áll
-    bi = ix(D['bld']); BL, BA = lon[bi], lat[bi]; cell = lambda lo, la, dx=0, dy=0: (np.floor(lo * GKX / 32).astype(np.int64) + dx) * 400000 + np.floor(la * GKY / 32).astype(np.int64) + dy
+    bref, blen = D['bref'], D['blen']; st = np.cumsum(blen) - blen; bi = np.searchsorted(ids, bref); bi[bi >= len(ids)] = 0; okn = ids[bi] == bref
+    x = lon[bi] * GKX; y = -lat[bi] * GKY; x0 = np.repeat(x[st], blen); y0 = np.repeat(y[st], blen); x -= x0; y -= y0
+    last = np.zeros(len(x), bool); last[st + blen - 1] = True; dx = np.diff(x, append=x[-1]); dy = np.diff(y, append=y[-1]); dx[last] = 0; dy[last] = 0; l2 = dx * dx + dy * dy
+    cr = x * np.roll(y, -1) - np.roll(x, -1) * y; cr[last] = 0; barea = np.abs(np.add.reduceat(cr, st)) / 2
+    mx = np.maximum.reduceat(l2, st); grp = np.repeat(np.arange(len(st)), blen); cand = np.flatnonzero(l2 == np.repeat(mx, blen)); _, first = np.unique(grp[cand], return_index=True); li = cand[first]
+    ang = np.arctan2(dy[li], dx[li]); ca = np.repeat(np.cos(ang), blen); sa = np.repeat(np.sin(ang), blen); u = x * ca + y * sa; v = -x * sa + y * ca
+    u0, u1, v0, v1 = np.minimum.reduceat(u, st), np.maximum.reduceat(u, st), np.minimum.reduceat(v, st), np.maximum.reduceat(v, st); uc, vc = (u0 + u1) / 2, (v0 + v1) / 2; bhw, bhd = (u1 - u0) / 2, (v1 - v0) / 2
+    bcx = x0[st] + uc * np.cos(ang) - vc * np.sin(ang); bcy = y0[st] + uc * np.sin(ang) + vc * np.cos(ang); BL, BA = bcx / GKX, -bcy / GKY
+    bok = np.logical_and.reduceat(okn, st) & (barea >= 12) & (bhw > .8) & (bhd > .8); bhh = D['bh'].astype(float); bhh = np.where(bhh > 0, bhh, np.where(barea > 400, 10, np.where(barea > 150, 7, 4.5)))
+    bang = (np.round(np.mod(ang, math.pi) / math.pi * 256).astype(int) % 256).astype(np.uint8)
+    # a nagy, nem téglalap alakú épületek sokszögként maradnak meg
+    bpoly = {}
+    for k in np.flatnonzero(bok & (barea > 500) & (barea / (4 * bhw * bhd + 1e-9) < .72) & (blen <= 80)).tolist():
+        sl = slice(st[k], st[k] + blen[k]); px = (x[sl] + x0[sl] - bcx[k]).tolist(); py = (y[sl] + y0[sl] - bcy[k]).tolist(); kk = dp(px, py, 1.5)
+        if len(kk) > 17: kk = dp(px, py, 4)
+        if 4 <= len(kk) <= 25 and max(max(abs(px[i]), abs(py[i])) for i in kk) < 8000: bpoly[k] = np.array([[px[i], py[i]] for i in kk[:-1]])
+    print('épületek', int(bok.sum()), 'ebből sokszög', len(bpoly), round(time.time() - t0)); del x, y, x0, y0, u, v, ca, sa, dx, dy, l2, cr, grp
+    BL0, BA0 = BL, BA; BL, BA = BL[bok], BA[bok]; cell = lambda lo, la, dx=0, dy=0: (np.floor(lo * GKX / 32).astype(np.int64) + dx) * 400000 + np.floor(la * GKY / 32).astype(np.int64) + dy
     bc = np.unique(cell(BL, BA)); built = np.zeros(len(ea), bool)
     for t in (0, .5, 1):
         lo = NL[ea] + (NL[eb] - NL[ea]) * t; la = NA[ea] + (NA[eb] - NA[ea]) * t
@@ -304,6 +325,19 @@ def build(D):
             if not nn[k]: idx += struct.pack('<IHHI', 0, 0, 0, 0); continue
             nb = nrec[st[k]:st[k] + nn[k]].tobytes(); ebt = erec[es[k]:es[k] + ne[k]].tobytes(); idx += struct.pack('<IHHI', off, int(nn[k]), 0, int(ne[k])); body += [nb, ebt]; off += len(nb) + len(ebt)
         open(os.path.join(OUT, cid + '.bin'), 'wb').write(struct.pack('<4sHH', b'HVG1', TXN, TYN) + bytes(idx) + b''.join(body))
+        # épületek: csempénként téglalapok (8 bájt) és sokszögek
+        hx = PX(BL0); hy = PY(BA0); hok = bok & (hx >= 0) & (hy >= 0) & (hx < W) & (hy < H); hk = np.flatnonzero(hok); htx = (hx[hk] // T).astype(int); hty = (hy[hk] // T).astype(int); m2 = tm[htx, hty]; hk, htx, hty = hk[m2], htx[m2], hty[m2]
+        ht = htx * TYN + hty; o = np.argsort(ht, kind='stable'); hk, ht = hk[o], ht[o]; isp = np.array([k in bpoly for k in hk.tolist()], bool)
+        rec = np.zeros(len(hk), [('x', '<u2'), ('y', '<u2'), ('w', 'u1'), ('d', 'u1'), ('a', 'u1'), ('h', 'u1')]); rec['x'] = np.clip((hx[hk] - (ht // TYN) * T) * 32, 0, 65535); rec['y'] = np.clip((hy[hk] - (ht % TYN) * T) * 32, 0, 65535)
+        rec['w'] = np.clip(np.round(bhw[hk] * 2), 2, 255); rec['d'] = np.clip(np.round(bhd[hk] * 2), 2, 255); rec['a'] = bang[hk]; rec['h'] = np.clip(np.round(bhh[hk]), 3, 255)
+        hidx = bytearray(); hbody = []; hoff = 8 + 12 * TXN * TYN; cntT = np.bincount(ht, minlength=TXN * TYN); stT = np.concatenate([[0], np.cumsum(cntT)[:-1]]); kxs = KX / GKX
+        for k in range(TXN * TYN):
+            if not cntT[k]: hidx += struct.pack('<III', 0, 0, 0); continue
+            sl = slice(stT[k], stT[k] + cntT[k]); rp = isp[sl]; rb = rec[sl][~rp].tobytes(); pb = bytearray()
+            for j in np.flatnonzero(rp).tolist():
+                r0 = rec[sl][j]; pts = bpoly[int(hk[sl][j])]; pb += struct.pack('<HHBB', int(r0['x']), int(r0['y']), len(pts), int(r0['h'])) + np.clip(np.round(pts * [kxs, 1] * 4), -32767, 32767).astype('<i2').tobytes()
+            hidx += struct.pack('<III', hoff, int((~rp).sum()), len(pb)); hbody += [rb, bytes(pb)]; hoff += len(rb) + len(pb)
+        open(os.path.join(OUT, cid + '.haz'), 'wb').write(struct.pack('<4sHH', b'HVH1', TXN, TYN) + bytes(hidx) + b''.join(hbody))
         # beépítettségi raszter (256 m)
         bx = PX(BL); by = PY(BA); ok = (bx >= 0) & (by >= 0) & (bx < W) & (by < H); MW, MH = W // 256 + 1, H // 256 + 1
         mk = np.bincount((by[ok] // 256).astype(int) * MW + (bx[ok] // 256).astype(int), minlength=MW * MH) >= 3
@@ -324,7 +358,7 @@ def build(D):
         json.dump(meta, open(os.path.join(OUT, cid + '.json'), 'w'), ensure_ascii=False, separators=(',', ':'))
         index.append(dict(id=cid, title=meta['title'], cap=cap[0], capxy=[round((LON0 + cap[1] / KX - C0[0]) * GKX / 1000 * IK), round((C0[1] - (LAT1 - cap[2] / KY)) * GKY / 1000 * IK)],
                           out=[np.stack([np.round((g[0][k] - C0[0]) * GKX / 1000 * IK), np.round((C0[1] - g[1][k]) * GKY / 1000 * IK)], 1).astype(int).ravel().tolist() for g in rs for k in [dp((g[0] * GKX).tolist(), (g[1] * GKY).tolist(), 250)]]))
-        print(cid, W, H, 'csomópont', len(used), 'él', len(A), 'bin', off // 1024, 'kB · json', os.path.getsize(os.path.join(OUT, cid + '.json')) // 1024, 'kB', cap[0])
+        print(cid, W, H, 'csomópont', len(used), 'él', len(A), 'bin', off // 1024, 'kB · json', os.path.getsize(os.path.join(OUT, cid + '.json')) // 1024, 'kB · házak', len(hk), hoff // 1024, 'kB', cap[0])
     IW = max(max(r[0::2]) for q in index for r in q['out']) + 60; IH = max(max(r[1::2]) for q in index for r in q['out']) + 60
     open(os.path.join(OUT, 'megyek.js'), 'w').write('/* Holtváros – országos áttekintő. Generálta: tools/holtvaros_terkep.py · adat: © OpenStreetMap-közreműködők (ODbL) */\nwindow.HGZIndex = ' + json.dumps(dict(W=IW, H=IH, v=stamp, maps=index), ensure_ascii=False, separators=(',', ':')) + ';\n')
 
