@@ -402,6 +402,7 @@ window.HGZombi = function (env) {
   }
   /* Megkerülés: a falnak ütköző horda letér az útról, és a fal mentén a legközelebbi kapuhoz, réshez vagy a fal végéhez megy. */
   // túl nagy tömeg egy bejáratnál: a horda egy része a fal mentén a legkevésbé zsúfolt másik kapuhoz vagy réshez megy
+  function blast(z, b) { b.hp = Math.max(0, b.hp - 34); S.fx.push({ k: 'boom', x: b.x, y: b.y, r: 30, l: .5 }); G.shake = Math.max(G.shake, 4 * G.d); Sfx.blip(90, .2, 'sawtooth', .07, .4); z.dead = 1; if (b.hp <= 0) S.broke++; }
   function spread(z, b, dt) { if ((z.spT = (z.spT == null ? Math.random() * 3 : z.spT) - dt) > 0) return false; z.spT = 2 + Math.random() * 3; const here = S.bl.get(b) || 0; let best = null, bv = here / 1.6 - z.n;
     for (const q of b.z.bars) { if (q === b || !(q.gate || q.hp <= 0)) continue; const v = q.hp <= 0 ? -1 : S.bl.get(q) || 0; if (v < bv) { bv = v; best = q; } } return !!best && flank(z, b, best); }
   function flank(z, b, only) {
