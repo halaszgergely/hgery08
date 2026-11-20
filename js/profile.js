@@ -1,8 +1,8 @@
 // HGWS – tag profiloldala (#/profil/<uid>): rang, tagek, bemutatkozás, Arcade-rekordok, értékelései
-import { FB, db, $, esc, bigNum, avatar, toDate, timeLabel, isOnline, roleOf, OWNER_UID, notify } from './core.js?v=202611191904';
-import { I, bgOf } from './fx.js?v=202611191904';
-import * as Admin from './admin.js?v=202611191904';
-import { GAMES } from './browse.js?v=202611191904';
+import { FB, db, $, esc, bigNum, lbDec, avatar, toDate, timeLabel, isOnline, roleOf, OWNER_UID, notify } from './core.js?v=202611200904';
+import { I, bgOf } from './fx.js?v=202611200904';
+import * as Admin from './admin.js?v=202611200904';
+import { GAMES } from './browse.js?v=202611200904';
 
 let C = null, gen = 0;
 export function init(ctx) { C = ctx; }
@@ -26,7 +26,7 @@ async function facts(id) {
   const u = C.S.users.get(id) || {}, self = id === C.uid();
   const [rates, games, ideas, hosts] = await Promise.all([
     FB.getDocs(FB.collectionGroup(db, 'ratings')).then(s => s.docs.filter(d => d.id === id).length).catch(() => 0),
-    Promise.all(GAMES.map(g => FB.getDoc(FB.doc(db, 'leaderboards', g.id, 'scores', id)).then(s => s.data()?.best || 0).catch(() => 0))),
+    Promise.all(GAMES.map(g => FB.getDoc(FB.doc(db, 'leaderboards', g.id, 'scores', id)).then(s => lbDec(s.data()?.best || 0)).catch(() => 0))),
     FB.getDocs(self ? FB.query(FB.collection(db, 'ideas'), FB.where('uid', '==', id)) : FB.query(FB.collection(db, 'ideas'), FB.where('uid', '==', id), FB.where('public', '==', true))).then(s => s.size).catch(() => 0),
     FB.getDocs(FB.query(FB.collection(db, 'parties'), FB.where('host', '==', id))).then(s => s.size).catch(() => 0)
   ]);
@@ -100,7 +100,7 @@ export async function render(id) {
     $('#pAch').innerHTML = [...on, ...BADGES.filter(b => !b.ok(x))].map(b => achHtml(b, b.ok(x), fresh.includes(b.id))).join('');
   });
   // Arcade-rekordok
-  Promise.all(GAMES.map(g => FB.getDoc(FB.doc(db, 'leaderboards', g.id, 'scores', id)).then(s => [g, s.data()?.best || 0, s.data()?.wins || 0]).catch(() => [g, 0, 0]))).then(l => {
+  Promise.all(GAMES.map(g => FB.getDoc(FB.doc(db, 'leaderboards', g.id, 'scores', id)).then(s => [g, lbDec(s.data()?.best || 0), s.data()?.wins || 0]).catch(() => [g, 0, 0]))).then(l => {
     if (my !== gen) return;
     $('#pArc').innerHTML = l.map(([g, b, w]) => `<a class="pag" href="#/arcade/${g.id}" style="--c:${g.c}"><span>${g.icon}</span><div><b>${esc(g.name)}</b><small>${b ? bigNum(b) + ' ' + (g.unit || 'pont') + (w ? ' · 🏆×' + w : '') : 'Még nem játszott'}</small></div></a>`).join('');
   });

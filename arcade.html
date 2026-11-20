@@ -378,9 +378,9 @@ body.embed .scroll{display:none}
   </div>
 </div>
 
-<script src="js/arcade-drift.js?v=202611191904"></script>
-<script src="js/arcade-zombi-map.js?v=202611191904"></script>
-<script src="js/arcade-zombi.js?v=202611191904"></script>
+<script src="js/arcade-drift.js?v=202611200904"></script>
+<script src="js/arcade-zombi-map.js?v=202611200904"></script>
+<script src="js/arcade-zombi.js?v=202611200904"></script>
 <script>
 (() => {
 'use strict';
@@ -2486,7 +2486,7 @@ const Birodalom = (() => {
       const sc = Math.min(CAP, Math.floor(S.life));
       S.hudT -= dt; if (sc !== G.score && S.hudT <= 0) { G.score = sc; S.hudT = .25; if (sc > store.get('best_' + this.id)) store.set('best_' + this.id, sc); hud(); }
       if ((S.saveT += dt) > 5) { S.saveT = 0; save(); }
-      if ((S.syncT += dt) > 45) { S.syncT = 0; this.sync(G); }
+      if ((S.syncT += dt) > 60) { S.syncT = 0; this.sync(G); }
       if (S.away) S.away.l -= dt; if (S.info) S.info.l -= dt;
       if (confirmT > 0) confirmT -= dt;
       for (const f of fl) { f.y -= 22 * L.d * dt; f.l -= dt * .9; } fl = fl.filter(f => f.l > 0);
