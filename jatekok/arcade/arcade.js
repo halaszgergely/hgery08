@@ -99,8 +99,8 @@ $('#lbw').addEventListener('click', e => { if (e.target.closest('[data-nick]')) 
 addEventListener('message', e => { if (e.origin !== location.origin || e.data?.hgws !== 'lb') return; LB = e.data; lbDraw();
   window.HGZQ_SEEN = true; window.HGZQ_OK = LB.beta === true; document.querySelectorAll('#games [data-lock]').forEach(el => { el.hidden = !window.HGZQ_OK; }); if (zqWait) { zqWait = false; if (window.HGZQ_OK) openExt(ZeroQuest); } });
 if (window.top !== window) parent.postMessage({ hgws: 'lbreq' }, location.origin);
-// a helyi rekordok felszinkronizálása a ranglistára: betöltéskor, utána percenként azokat, amelyek közben változtak
+// a helyi rekordok felszinkronizálása a ranglistára: betöltéskor (a játékok a kör/játék végén maguk küldik az új eredményt)
 if (window.top !== window) { const sent = {}; const syncB = () => { const bests = {}; for (const gm of GAMES) if (!gm.ext) { const v = store.get('best_' + gm.id); if (v > 0 && v !== sent[gm.id]) bests[gm.id] = sent[gm.id] = v; } if (Object.keys(bests).length) parent.postMessage({ hgws: 'sync', bests }, location.origin); };
-  syncB(); setInterval(syncB, 60000);
+  syncB();
   // a tábla frissítése mások eredményeivel: kétpercenként, csak ha a ranglista látszik és nincs nyitva játék
   let lbVis = false; new IntersectionObserver(e => { lbVis = e[0].isIntersecting; }).observe($('#lbw')); setInterval(() => { if (lbVis && !document.hidden && !gEl.classList.contains('open') && EXT.hidden) parent.postMessage({ hgws: 'lbreq' }, location.origin); }, 120000); }
