@@ -2,11 +2,15 @@
 'use strict';
 const ZeroSpace = { id: 'zerospace', name: 'ZERO SPACE DEMO', ext: 'jatekok/zerospace/index.html', tag: 'DEMO',
   desc: 'Tervezd meg a saját űrhajódat modulról modulra, és vezesd csatába a végtelen űrben. Korai demó – az egyjátékos sandbox már elérhető.' };
+/* zárt béta: csak adminok és „Béta-tesztelő” taggel rendelkezők látják és indíthatják (a jogosultságot a főoldal küldi) */
+const ZeroQuest = { id: 'zeroquest', name: 'ZERO QUEST', ext: 'jatekok/zeroquest/index.html', tag: 'ZÁRT BÉTA', lock: 1,
+  desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében: küldetések, szintlépés, felszerelés és egy ébredő őr a romok alatt. Zárt béta.' };
 const Drift = window.HGDrift ? window.HGDrift({ G, Sfx, rr, store, hud }) : null;
 const Zombi = window.HGZombi ? window.HGZombi({ G, Sfx, rr, store, hud }) : null;
-const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Torony, Birodalom, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), ZeroSpace];
+const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Torony, Birodalom, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), ZeroSpace, ZeroQuest];
 const EXT = $('#ext'), EXF = $('#extf');
-function openExt(gm) { EXF.src = gm.ext + '?v=' + Date.now().toString(36).slice(0, 5); EXT.hidden = false; document.body.classList.add('locked'); setTimeout(() => { try { EXF.focus(); } catch (_) {} }, 300); }
+let zqWait = false;
+function openExt(gm) { if (gm.lock && !window.HGZQ_OK) { zqWait = !window.HGZQ_SEEN; return; } EXF.src = gm.ext + '?v=' + Date.now().toString(36).slice(0, 5); EXT.hidden = false; document.body.classList.add('locked'); setTimeout(() => { try { EXF.focus(); } catch (_) {} }, 300); }
 function closeExt() { EXT.hidden = true; EXF.src = 'about:blank'; document.body.classList.remove('locked'); }
 $('#extX').onclick = closeExt;
 const ARTS = {
@@ -20,6 +24,11 @@ const ARTS = {
       x.strokeStyle = `rgba(150,215,255,${.35 + .2 * Math.sin(t * 6)})`; for (let j = 0; j < 8; j++) { const a = j * .785, rr2 = s * (.6 + .6 * ((t + j * .3) % 1)); x.beginPath(); x.arc(cx, cy, rr2, a - .2, a + .2); x.stroke(); } }
     for (const [q, r, col] of [[2, 0, '#e5533d'], [4, 0, '#e5533d'], [2, 2, '#ff6fa8'], [4, 1, '#9be36a'], [6, 3, '#ffa531'], [8, 4, '#8e5bd6'], [6, 2, '#ffa531'], [8, 2, '#8e5bd6']]) {
       const cx = ox + q * s + s / 2, cy = oy + r * s + s / 2, k = .7 + .3 * Math.sin(t * 2 + q); x.fillStyle = '#4fae46'; x.beginPath(); x.arc(cx, cy, 7 * k, 0, 6.283); x.fill(); x.fillStyle = col; x.beginPath(); x.arc(cx + 2, cy - 2, 2.6 * k, 0, 6.283); x.fill(); } },
+  zeroquest: (c, x, t) => { const W = c.width, H = c.height, g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#14261c'); g.addColorStop(1, '#2f5a34'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    for (let i = 0; i < 9; i++) { const px = (i * 41 + 12) % W, py = 30 + (i * 53) % (H - 50); x.fillStyle = 'rgba(0,0,0,.25)'; x.beginPath(); x.ellipse(px + 3, py + 14, 13, 4, 0, 0, 6.283); x.fill(); x.fillStyle = i & 1 ? '#2f6b34' : '#3f8a3f'; x.beginPath(); x.arc(px, py, 13, 0, 6.283); x.fill(); x.fillStyle = 'rgba(160,220,120,.35)'; x.beginPath(); x.arc(px - 4, py - 4, 6, 0, 6.283); x.fill(); }
+    const cx = W / 2, cy = H / 2 + 8, a = Math.sin(t * 3) * 1.2; x.fillStyle = 'rgba(0,0,0,.3)'; x.beginPath(); x.ellipse(cx, cy + 18, 14, 5, 0, 0, 6.283); x.fill(); x.fillStyle = '#3f6fb5'; x.beginPath(); x.ellipse(cx, cy + 2, 10, 13, 0, 0, 6.283); x.fill(); x.fillStyle = '#f0c9a4'; x.beginPath(); x.arc(cx, cy - 15, 8, 0, 6.283); x.fill(); x.fillStyle = '#6b3f1f'; x.beginPath(); x.arc(cx, cy - 17, 8, 3.14, 6.283); x.fill();
+    x.save(); x.translate(cx + 10, cy + 2); x.rotate(a - .6); x.fillStyle = '#e3ebf2'; x.fillRect(2, -1.6, 30, 3.2); x.fillStyle = '#e8b656'; x.fillRect(0, -5, 3, 10); x.restore(); x.strokeStyle = `rgba(255,255,255,${.5 + .4 * Math.sin(t * 3)})`; x.lineWidth = 3; x.beginPath(); x.arc(cx + 10, cy + 2, 34, a - 1.2, a - .2); x.stroke();
+    const sx = cx + 70, sy = cy + 10 - Math.abs(Math.sin(t * 5)) * 6; x.fillStyle = '#6fc24a'; x.beginPath(); x.moveTo(sx - 15, sy + 10); x.bezierCurveTo(sx - 16, sy - 14, sx + 16, sy - 14, sx + 15, sy + 10); x.fill(); x.fillStyle = '#12301a'; x.fillRect(sx - 6, sy - 2, 3, 5); x.fillRect(sx + 3, sy - 2, 3, 5); },
   zerospace: (c, x, t) => { const W = c.width, H = c.height; x.fillStyle = '#07070a'; x.fillRect(0, 0, W, H);
     for (let i = 0; i < 60; i++) { const sx = (i * 97.3 + t * (6 + i % 4 * 6)) % W, sy = (i * 53.7) % H; x.fillStyle = `rgba(230,224,208,${.25 + (i % 5) * .12})`; x.fillRect(W - sx, sy, i % 7 ? 1 : 2, i % 7 ? 1 : 2); }
     const cx = W * .5 + Math.sin(t * .7) * 30, cy = H * .5 + Math.sin(t * 1.1) * 8; x.save(); x.translate(cx, cy);
@@ -56,14 +65,14 @@ function renderCards() {
       const el = document.createElement('article'); el.className = 'card reveal'; el.tabIndex = 0; el.setAttribute('role', 'button');
       el.innerHTML = `<span class="tag">${String(i + 1).padStart(2, '0')}</span><div class="art"><canvas width="320" height="140"></canvas></div><h3>${gm.name}</h3>${gm.sponsor ? `<span class="spon">${gm.sponsor}</span>` : ''}<p>${gm.desc.split('.')[0]}.</p><div class="foot"><span class="best" data-id="${gm.id}"${gm.ext ? ' data-ext="1"' : ''}></span><span class="play">JÁTÉK ▶</span></div>`;
       el.addEventListener('click', () => openGame(gm)); el.addEventListener('keydown', e => { if (e.key === 'Enter') openGame(gm); });
-      wrap.appendChild(el); io.observe(el);
+      if (gm.lock) { el.hidden = true; el.dataset.lock = '1'; } wrap.appendChild(el); io.observe(el);
     });
     const arts = [...wrap.querySelectorAll('canvas')];
     let vis = false; new IntersectionObserver(e => vis = e[0].isIntersecting).observe(wrap);
     (function anim(now) { requestAnimationFrame(anim); if (!vis || document.hidden || gEl.classList.contains('open')) return;
       arts.forEach((c, i) => ARTS[GAMES[i].id](c, c.getContext('2d'), now / 1000)); })(0);
   }
-  wrap.querySelectorAll('.best').forEach(b => { if (b.dataset.ext) { b.textContent = 'DEMO'; return; } const v = store.get('best_' + b.dataset.id), gm = GAMES.find(x => x.id === b.dataset.id), w = store.get('wins_' + b.dataset.id); b.textContent = 'REKORD: ' + bigNum(v) + (gm.lb ? ' ' + gm.lb : '') + (w ? ' · 🏆×' + w : ''); });
+  wrap.querySelectorAll('.best').forEach(b => { if (b.dataset.ext) { b.textContent = b.dataset.id === 'zeroquest' ? 'ZÁRT BÉTA' : 'DEMO'; return; } const v = store.get('best_' + b.dataset.id), gm = GAMES.find(x => x.id === b.dataset.id), w = store.get('wins_' + b.dataset.id); b.textContent = 'REKORD: ' + bigNum(v) + (gm.lb ? ' ' + gm.lb : '') + (w ? ' · 🏆×' + w : ''); });
 }
 renderCards();
 $('#yr').textContent = new Date().getFullYear();
@@ -87,7 +96,8 @@ $('#lbw').addEventListener('click', e => { if (e.target.closest('[data-nick]')) 
   const del = e.target.closest('[data-del]');
   if (del) { if (!del.classList.contains('sure')) { document.querySelectorAll('.lbdel.sure').forEach(x => { x.classList.remove('sure'); x.textContent = '🗑'; }); del.classList.add('sure'); del.textContent = 'Biztos?'; clearTimeout(del._t); del._t = setTimeout(() => { del.classList.remove('sure'); del.textContent = '🗑'; }, 3000); return; }
     const [game, uid] = del.dataset.del.split('|'); del.disabled = true; del.textContent = '…'; parent.postMessage({ hgws: 'lbdel', game, uid }, location.origin); return; } const b = e.target.closest('[data-lbt]'); if (!b) return; lbt = b.dataset.lbt; document.querySelectorAll('[data-lbt]').forEach(x => x.classList.toggle('on', x === b)); lbDraw(); });
-addEventListener('message', e => { if (e.origin !== location.origin || e.data?.hgws !== 'lb') return; LB = e.data; lbDraw(); });
+addEventListener('message', e => { if (e.origin !== location.origin || e.data?.hgws !== 'lb') return; LB = e.data; lbDraw();
+  window.HGZQ_SEEN = true; window.HGZQ_OK = LB.beta === true; document.querySelectorAll('#games [data-lock]').forEach(el => { el.hidden = !window.HGZQ_OK; }); if (zqWait) { zqWait = false; if (window.HGZQ_OK) openExt(ZeroQuest); } });
 if (window.top !== window) parent.postMessage({ hgws: 'lbreq' }, location.origin);
 // a helyi rekordok felszinkronizálása a ranglistára (nem vendég fióknál, akkor is, ha az eredményt korábban törölték)
 if (window.top !== window) { const bests = {}; for (const gm of GAMES) if (!gm.ext) { const v = store.get('best_' + gm.id); if (v > 0) bests[gm.id] = v; }
