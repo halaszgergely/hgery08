@@ -13,7 +13,7 @@ Statikus oldal (GitHub Pages + Cloudflare), háttér: Firebase (`hgws-7629e`).
 | `js/` | a közösségi oldal moduljai (chat, profil, admin, Firebase…) |
 | `jatekok/` | az Arcade játékai, mindegyik a saját mappájában |
 | `jatekok/arcade/` | az Arcade közös kerete (`mag.js`) és a játéklista, ranglista (`arcade.js`) |
-| `jatekok/holtvaros/terkep/` | a nyers OSM-térkép 4 részben (összefűzés: `python3 tools/terkep_osszefuz.py`) |
+| `jatekok/holtvaros/terkep/` | a Holtváros térképei vármegyénként (OpenStreetMap-ból generálva) és a nyers OSM-kivonat 4 részben |
 | `oldalak/` | önálló oldalak (Ma miért igyál?, vizsgagyakorló) |
 | `adat/` | kezdő adatok (filmlista) |
 | `zene/` | feltöltött mp3-ak (az admin innen listázza) |
