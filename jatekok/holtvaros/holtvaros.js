@@ -184,9 +184,20 @@ window.HGZombi = function (env) {
   const carsCost = tr => tr.cars.reduce((a, k) => a + CARS[k].c, 0), staOf = tr => S.units.filter(u => u.k === 'sta' && u.tr === tr).sort((a, b) => a.tp - b.tp);
   function delTrack(tr) { if (staOf(tr).length) return say('Előbb az állomásokat töröld.'); S.budget += (tr.cost || 0) + carsCost(tr); S.ptracks = S.ptracks.filter(q => q !== tr); S.tracks = S.tracks.filter(q => q !== tr); }
   // a népesség a játszható terület utcahosszával arányos, felső határ nélkül; nagy tömegnél a csoportok nőnek, nem az egységek száma
+  // mellékküldetések: körönként két választható cél, győzelemkor a teljesítettek plusz keretet adnak
+  const QUESTS = [
+    { k: 'save', m: 1.2, mk: () => ({ v: Math.min(.9, Math.round((S.obj + .3) * 20) / 20) }), t: q => `Legalább ${Math.round(q.v * 100)}% maradjon életben`, ok: (q, r) => r.pct >= q.v },
+    { k: 'wall', m: 1, mk: () => ({}), t: () => 'Egyetlen útzárat se törjenek át', ok: () => S.broke === 0 && S.zones.length > 0 },
+    { k: 'fast', m: 1, goal: 'clear', mk: () => ({ v: 150 + 20 * S.m }), t: q => `Végezz ${mmss(q.v)} alatt`, ok: q => S.t <= q.v },
+    { k: 'noab', m: .8, mk: () => ({}), t: () => 'Ne vess be csatabeli képességet', ok: () => !S.usedAbil },
+    { k: 'evac', m: 1.3, mk: () => ({ v: Math.max(50, Math.round(S.n0 * .05 / 10) * 10) }), t: q => `Menekíts ki ${q.v.toLocaleString('hu-HU')} civilt (vonat, légihíd)`, ok: q => S.evac >= q.v },
+    { k: 'kill', m: .9, mk: () => ({ v: Math.max(100, Math.round(S.n0 * .12 / 50) * 50) }), t: q => `Lőj ki ${q.v.toLocaleString('hu-HU')} zombit`, ok: q => S.kills >= q.v }];
+  function questsNew() { const goal = S.m % 3 === 0 ? 'hold' : S.m % 4 === 2 ? 'hosp' : 'clear', base = Math.max(300, S.n0 * .012) * RUN.bud; S.usedAbil = 0;
+    S.quests = QUESTS.filter(Q => !Q.goal || Q.goal === goal).sort(() => Math.random() - .5).slice(0, 2).map(Q => { const q = { Q, ...Q.mk() }; q.rew = Math.round(base * Q.m / 10) * 10; q.t = Q.t(q); return q; }); }
   function spawn() { let pool = S.E.filter(e => !e.nob && !e.bridge); if (pool.length < 10) pool = S.E; const cum = []; let tot = 0; for (const e of pool) { tot += e.len; cum.push(tot); }
     const n = Math.max(120, popB(S.B)), avg = Math.max(10, n / 3200), pickE = () => { const v = Math.random() * tot; let lo = 0, hi = cum.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (cum[m] < v) lo = m + 1; else hi = m; } return pool[lo]; };
     S.gmax = Math.round(avg * 2); S.civs = []; for (let left = n; left > 0;) { const a = agent(pickE()); a.n = Math.min(left, Math.max(1, Math.round(avg * (.6 + Math.random() * .8)))); left -= a.n; S.civs.push(a); } S.n0 = n; S.obj = Math.min(.4, .08 + .02 * S.m);
+    questsNew();
     S.goal = S.m % 3 === 0 ? 'hold' : S.m % 4 === 2 ? 'hosp' : 'clear'; S.holdT = 90 + 8 * S.m; S.hosp = null;
     if (S.goal === 'hosp') { const [sx, sy] = S.start, c = S.B.filter(b => { const d0 = Math.hypot(b.x - sx, b.y - sy); return d0 > 170 && d0 < Math.min(520, S.R * .6); }), l = c.length ? c : S.B; S.hosp = l[Math.floor(Math.random() * l.length)] || null; if (!S.hosp) S.goal = 'clear'; } }
   const SK = 'hgws_holtvaros_mentes', note = t => { S.msg = { t, l: 2.2, ok: 1 }; Sfx.blip(620, .08, 'triangle', .05); };
@@ -459,6 +470,7 @@ window.HGZombi = function (env) {
     const saved = cnt(S.civs) + S.evac, pct = saved / S.n0, pts = win ? Math.round(saved * .4 * S.m + S.budget + (pct > .8 ? 500 * S.m : pct > .6 ? 200 * S.m : 0)) : 0;
     const pool = UPG.slice().sort(() => Math.random() - .5).slice(0, 3);
     S.phase = 'res'; S.res = { win, why, saved, pct, pts, pool, medal: pct > .8 ? '💎 Gyémánt' : pct > .6 ? '🥇 Arany' : pct > .4 ? '🥈 Ezüst' : '🥉 Bronz' };
+    if (win) { let bonus = 0; S.res.q = (S.quests || []).map(q => { const ok = !!q.Q.ok(q, S.res); if (ok) bonus += q.rew; return { t: q.t, ok, rew: q.rew }; }); S.res.bonus = bonus; S.budget += bonus; }
     if (win) { RUN.total += pts; G.score = RUN.total; hud(); Sfx.perfect(); try { if (store && G.score > store.get('best_holtvaros')) store.set('best_holtvaros', G.score); if (window.top !== window) parent.postMessage({ hgws: 'score', game: 'holtvaros', score: G.score }, location.origin); } catch (e) {} } else Sfx.hit();
   }
   // járműparancs: útvonal a kijelölt pontig (falon nem megy át, kapun igen)
@@ -469,7 +481,7 @@ window.HGZombi = function (env) {
     if (!best || bd > best.w.w / 2 + 40) { say('Hajót csak vízre hívhatsz.'); return false; } const w = best.w; if (!w.tk) w.tk = mkTrack(w.p, {}); const tp = w.tk.cum[best.i - 1] + best.t * (w.tk.cum[best.i] - w.tk.cum[best.i - 1]), from = tp > 1400 ? tp - 1400 : Math.min(w.tk.len, tp + 1400);
     S.ships.push({ k, w: w.tk, p: from, tp, x: 0, y: 0, ang: 0, cd: 0, gcd: 1 }); Sfx.blip(300, .3, 'sawtooth', .04, .5); return true; }
   function useAbil(x, y, x2, y2) {
-    const a = S.abil; if (!a || S.uses[a] <= 0) return; if ((a === 'boat' || a === 'ship') && !callShip(a, x, y)) return; S.uses[a]--; S.abil = null;
+    const a = S.abil; if (!a || S.uses[a] <= 0) return; if ((a === 'boat' || a === 'ship') && !callShip(a, x, y)) return; S.uses[a]--; S.usedAbil = 1; S.abil = null;
     if (a === 'air') { let dx = x2 - x, dy = y2 - y, dl = Math.hypot(dx, dy); if (dl < 40) { dx = 1; dy = 0; dl = 1; x -= 120; } const len = Math.max(240, Math.min(520, dl)); for (let k = 0; k < 5; k++) S.strikes.push({ x: x + dx / dl * len * k / 4, y: y + dy / dl * len * k / 4, t: 1 + k * .16, r: 55, pw: 70, plane: k === 0 }); Sfx.blip(300, .4, 'sawtooth', .05, .5); }
     else if (a === 'mis') S.strikes.push({ x, y, t: .7, r: 95, pw: 240, mis: 1 });
     else if (a === 'gas') S.gas.push({ x, y, r: 95, t: 14 });
@@ -609,6 +621,8 @@ window.HGZombi = function (env) {
     g.font = `600 ${12 * d}px Inter, sans-serif`; g.fillStyle = 'rgba(255,255,255,.85)';
     g.fillText(S.phase === 'country' ? 'Válassz vármegyét – koppints a térképre' : S.phase === 'load' ? 'Térkép betöltése…' : S.phase === 'pick' ? 'Válassz kezdőterületet: települést vagy városrészt' : S.phase === 'expand' ? 'Válaszd ki, melyik szomszédos területet oldod fel' : S.phase === 'plan' ? `💰 ${S.budget}   👥 ${alive} civil   🎯 cél: ${Math.round(S.obj * 100)}% életben${S.goal === 'hold' ? ' · ⏱ tarts ki ' + mmss(S.holdT) : S.goal === 'hosp' ? ' · 🏥 védd a kórházat' : ''}` : `👥 ${alive}/${S.n0} (${Math.round(alive / S.n0 * 100)}%, cél ${Math.round(S.obj * 100)}%)   🛡 ${prot}${S.evac ? '   🚁 ' + S.evac : ''}   🧟 ${cnt(S.zs)}${S.goal === 'hold' ? '   ⏱ ' + mmss(Math.max(0, S.holdT - S.t)) : S.goal === 'hosp' ? '   🏥' : ''}`, G.W / 2, 84 * d, G.W - 16 * d);
     if (S.start && (S.phase === 'plan' || S.phase === 'battle')) drawMini(g);
+    if (S.start && (S.phase === 'plan' || S.phase === 'battle') && S.quests && S.quests.length) { const M = mini(), qx = M.x, qy = M.y + M.h + 6 * d; g.textAlign = 'left'; g.textBaseline = 'middle'; g.font = `600 ${10.5 * d}px Inter, sans-serif`; const lines = S.quests.map(q => { const done = S.phase === 'battle' && ['evac', 'kill'].includes(q.Q.k) && q.Q.ok(q, {}), fail = S.phase === 'battle' && ((q.Q.k === 'wall' && S.broke > 0) || (q.Q.k === 'noab' && S.usedAbil) || (q.Q.k === 'fast' && S.t > q.v)); return [(fail ? '✖ ' : done ? '✔ ' : '⭐ ') + q.t + '  +' + q.rew, fail ? 'rgba(255,255,255,.4)' : done ? '#7dff4a' : '#ffe29a']; });
+      const w = Math.min(G.W - 60 * d, Math.max(...lines.map(l => g.measureText(l[0]).width)) + 16 * d); g.fillStyle = 'rgba(8,12,22,.82)'; rr(qx, qy, w, (lines.length * 17 + 8) * d, 8 * d); g.fill(); lines.forEach((l, i) => { g.fillStyle = l[1]; g.fillText(l[0], qx + 8 * d, qy + (13 + i * 17) * d, w - 14 * d); }); g.textAlign = 'center'; }
     for (const b of sideBtns()) { g.fillStyle = 'rgba(8,12,22,.88)'; g.strokeStyle = 'rgba(255,226,154,.5)'; g.lineWidth = 1.5 * d; rr(b.x, b.y, b.w, b.h, 9 * d); g.fill(); g.stroke(); g.font = `${17 * d}px sans-serif`; g.fillStyle = '#fff'; g.fillText(b.ic, b.x + b.w / 2, b.y + b.h / 2 + 1); }
     // alsó sáv
     g.fillStyle = 'rgba(10,8,14,.97)'; g.fillRect(0, L.barY, G.W, L.barH); g.fillStyle = 'rgba(125,255,74,.35)'; g.fillRect(0, L.barY, G.W, d);
@@ -634,7 +648,8 @@ window.HGZombi = function (env) {
       g.fillText(R0.win ? R0.medal : R0.why, G.W / 2, B0.y + 92 * d, B0.w - 20 * d);
       g.fillStyle = 'rgba(255,255,255,.6)'; g.font = `600 ${10.5 * d}px Inter, sans-serif`; g.fillText(`Idő ${mmss(S.t)} · Kilőtt zombi: ${S.kills} · Elveszett civil: ${S.lost} · Áttört útzár: ${S.broke}`, G.W / 2, B0.y + 107 * d, B0.w - 20 * d);
       g.fillStyle = '#ffe29a'; g.font = `800 ${18 * d}px Inter, sans-serif`; g.fillText(R0.win ? '+' + R0.pts.toLocaleString('hu-HU') + ' pont' : 'Összesen: ' + RUN.total.toLocaleString('hu-HU') + ' pont', G.W / 2, B0.y + 122 * d);
-      if (R0.win) { g.fillStyle = 'rgba(255,255,255,.7)'; g.font = `600 ${12 * d}px Inter, sans-serif`; g.fillText('Válassz fejlesztést a következő városhoz:', G.W / 2, B0.y + 152 * d);
+      if (R0.win) { (R0.q || []).forEach((q, i) => { g.font = `600 ${11.5 * d}px Inter, sans-serif`; g.fillStyle = q.ok ? '#7dff4a' : 'rgba(255,255,255,.45)'; g.fillText((q.ok ? '✔ ' : '✖ ') + q.t + (q.ok ? '  +' + q.rew + ' 💰' : ''), G.W / 2, B0.y + (143 + i * 17) * d, B0.w - 20 * d); });
+        g.fillStyle = 'rgba(255,255,255,.7)'; g.font = `600 ${12 * d}px Inter, sans-serif`; g.fillText('Válassz fejlesztést a következő városhoz:', G.W / 2, B0.y + 152 * d + B0.qh);
         for (const b of B0.btns) { g.fillStyle = 'rgba(232,182,86,.16)'; g.strokeStyle = '#e8b656'; g.lineWidth = 1.5 * d; rr(b.x, b.y, b.w, b.h, 10 * d); g.fill(); g.stroke(); g.font = `${20 * d}px sans-serif`; g.fillStyle = '#fff'; g.fillText(b.u[2], b.x + b.w / 2, b.y + 20 * d); g.font = `700 ${10.5 * d}px Inter, sans-serif`; g.fillText(b.u[1], b.x + b.w / 2, b.y + 44 * d, b.w - 6 * d); } }
       else for (const b of B0.lose) { g.fillStyle = b.k === 'load' ? '#7dff4a' : 'rgba(255,255,255,.1)'; rr(b.x, b.y, b.w, b.h, b.h / 2); g.fill(); g.fillStyle = b.k === 'load' ? '#0b1a05' : '#fff'; g.font = `800 ${12.5 * d}px Inter, sans-serif`; g.fillText(b.k === 'load' ? '📂 Újra a mentésből' : 'Befejezés', b.x + b.w / 2, b.y + b.h / 2 + 1, b.w - 10 * d); } }
   }
@@ -674,7 +689,7 @@ window.HGZombi = function (env) {
       g.fillText(o ? `${o.m}. küldetés · ${o.name || ''}${o.title ? ', ' + o.title : ''}${o.t ? ' · ' + new Date(o.t).toLocaleString('hu-HU', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}` : 'üres', r.x + 12 * d, r.y + 35 * d, r.w - 24 * d); }
     g.textAlign = 'center'; g.fillStyle = 'rgba(255,255,255,.1)'; rr(B.ok.x, B.ok.y, B.ok.w, B.ok.h, B.ok.h / 2); g.fill(); g.fillStyle = '#fff'; g.font = `700 ${13 * d}px Inter, sans-serif`; g.fillText('Mégse', B.ok.x + B.ok.w / 2, B.ok.y + B.ok.h / 2 + 1); }
   function sideBtns() { const d = L.d, o = []; if (S.phase === 'plan') o.push({ k: 'save', ic: '💾' }); if (S.phase === 'plan' && S.hist.length) o.push({ k: 'undo', ic: '↩️' }); if (S.phase === 'pick') o.push({ k: 'maps', ic: '🗺️' }); if ((S.phase === 'plan' || S.phase === 'pick' || S.phase === 'country') && saved) o.push({ k: 'load', ic: '📂' }); if (S.start && S.phase !== 'res') o.push({ k: 'home', ic: '🎯' }); return o.map((b, j) => ({ ...b, x: G.W - 44 * d, y: L.top + 8 * d + j * 42 * d, w: 36 * d, h: 36 * d })); }
-  function resBox() { const d = L.d, w = Math.min(G.W - 24 * d, 380 * d), h = 240 * d, x = (G.W - w) / 2, y = (G.H - h) / 2, bw = (w - 36 * d) / 3; const lk = slotInfo('auto') ? ['load', 'end'] : ['end'], lw = (w - 24 * d - (lk.length - 1) * 8 * d) / lk.length; return { x, y, w, h, lose: lk.map((k, j) => ({ k, x: x + 12 * d + j * (lw + 8 * d), y: y + 172 * d, w: lw, h: 42 * d })), btns: S.res.pool.map((u, j) => ({ u, x: x + 12 * d + j * (bw + 6 * d), y: y + 168 * d, w: bw, h: 60 * d })) }; }
+  function resBox() { const d = L.d, w = Math.min(G.W - 24 * d, 380 * d), qh = S.res.win && S.res.q && S.res.q.length ? (S.res.q.length * 17 + 8) * d : 0, h = 240 * d + qh, x = (G.W - w) / 2, y = (G.H - h) / 2, bw = (w - 36 * d) / 3; const lk = slotInfo('auto') ? ['load', 'end'] : ['end'], lw = (w - 24 * d - (lk.length - 1) * 8 * d) / lk.length; return { x, y, w, h, lose: lk.map((k, j) => ({ k, x: x + 12 * d + j * (lw + 8 * d), y: y + 172 * d, w: lw, h: 42 * d })), btns: S.res.pool.map((u, j) => ({ u, x: x + 12 * d + j * (bw + 6 * d), y: y + 168 * d + qh, w: bw, h: 60 * d })), qh }; }
   const P2 = e => [e.clientX * G.d, e.clientY * G.d];
   window.__hv = () => ({ S, L, RUN, tapBlock, popOf, MD, openMap, startCountry, sideN, undo, order, vehTap, makeTrack, makeRoad, callShip, GEO: () => GEO, skipTut() { TUT = null; }, begin, makeZone, place, setStart, saveGame, loadGame });
 
