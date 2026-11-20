@@ -421,7 +421,11 @@ window.HGZombi = function (env) {
       pts.push([e0[0] + tx * 26 + nx * sd * off, e0[1] + ty * 26 + ny * sd * off], [e0[0] + tx * 26 - nx * sd * 22, e0[1] + ty * 26 - ny * sd * 22], [e0[0] - tx * 30 - nx * sd * 34, e0[1] - ty * 30 - ny * sd * 34]); z.land = null; z.atk = null; }
     z.free = pts; return true;
   }
-  function landZ(z) { z.free = null; z.atk = null; z.rt = 0; if (z.land) { z.e = z.land.e; z.s = z.land.s; z.dir = z.land.dir; z.land = null; } else { const ne = nearEdge(z.x, z.y, 320); if (ne) { z.e = ne.e; z.s = ne.s; } } z.off = (Math.random() - .5) * (RW - 5); z.tried = null; }
+  // a falat megkerülő zombi visszatér az úthálózatra: ha nincs alatta út, a legközelebbihez GYALOGOL (nem ugrik vissza oda, ahonnan indult)
+  function landZ(z) { z.atk = null; z.rt = 0;
+    if (!z.land) { const ne = nearEdge(z.x, z.y, 1e9); if (ne) { if (ne.d > 24) { const A = S.N[ne.e.a], B = S.N[ne.e.b], t = ne.s / ne.e.len; z.land = { e: ne.e, s: ne.s, dir: Math.random() < .5 ? 1 : -1 }; z.free = [[A.x + (B.x - A.x) * t, A.y + (B.y - A.y) * t]]; return; } z.e = ne.e; z.s = ne.s; } }
+    else { z.e = z.land.e; z.s = z.land.s; z.dir = z.land.dir; z.land = null; }
+    z.free = null; z.off = (Math.random() - .5) * (RW - 5); z.tried = null; }
   function zGrid() { const h = new Map(); for (const z of S.zs) { const k = (z.x / 100 | 0) * 64 + (z.y / 100 | 0), l = h.get(k); if (l) l.push(z); else h.set(k, [z]); } S.zg = h; }
   function nearestZ(x, y, r, rmin = 0) { if (!S.zg) zGrid(); let b = null, bd = r * r; const x0 = Math.max(0, (x - r) / 100 | 0), x1 = (x + r) / 100 | 0, y0 = Math.max(0, (y - r) / 100 | 0), y1 = (y + r) / 100 | 0, m2 = rmin * rmin;
     for (let gx = x0; gx <= x1; gx++) for (let gy = y0; gy <= y1; gy++) { const l = S.zg.get(gx * 64 + gy); if (!l) continue; for (const z of l) { if (z.dead) continue; const d2 = (z.x - x) ** 2 + (z.y - y) ** 2; if (d2 < bd && d2 >= m2) { bd = d2; b = z; } } } return b; }
