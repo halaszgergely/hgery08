@@ -182,10 +182,6 @@ window.HGZombi = function (env) {
   const roadCost = pts => { let len = 0, br = 0, w0 = 0; for (let i = 1; i < pts.length; i++) { len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); const w = S.crossW(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]) ? 1 : 0; if (w && !w0) br++; w0 = w; } return Math.round(len * .25) + 150 * br; };
   function delRoad(rp) { const es = S.roadEdges(rp); if (es.some(e => e.bars.length || S.units.some(u => u.e === e)) || S.zones.some(z => z.bars.some(b => es.includes(b.e)))) return say('Előbb töröld róla, ami rajta van.');
     S.dropEdges(es); S.roads = S.roads.filter(q => q !== rp); S.redges = S.redges.filter(e => !es.includes(e)); S.budget += roadCost(rp); region(); protCalc(); S.hist.length = 0; Sfx.blip(250, .05, 'square', .05); }
-  /* ranglista: percenként felküldi az aktív munkamenet pontszámát, ha az előző küldés óta nőtt (betöltött mentésnél is) */
-  let lbAt = 0, lbSent = 0;
-  function lbTick() { const now = Date.now(); if (now - lbAt < 60000) return; lbAt = now; const sc = Math.floor(G.score || 0); if (sc <= lbSent) return; lbSent = sc;
-    try { if (store && sc > store.get('best_holtvaros')) store.set('best_holtvaros', sc); if (window.top !== window) parent.postMessage({ hgws: 'score', game: 'holtvaros', score: sc }, location.origin); } catch (e) {} }
   function makeRoad(raw) { const pts = [raw[0]]; for (const q of raw) { const l = pts[pts.length - 1]; if (Math.hypot(q[0] - l[0], q[1] - l[1]) >= 28) pts.push(q); } const e0 = raw[raw.length - 1], l0 = pts[pts.length - 1]; if (Math.hypot(e0[0] - l0[0], e0[1] - l0[1]) > 12) pts.push(e0); if (pts.length < 2) return;
     // a szabad vég a legközelebbi meglévő csomópontba köt be
     for (const end of [0, 1]) { const q = end ? pts[pts.length - 1] : pts[0]; if (S.nearAny(q[0], q[1], 70) >= 0) continue; const n = S.nearAny(q[0], q[1], 280); if (n < 0) continue; const N0 = S.N[n]; if (!S.blocks.has(S.blockOf(N0.x, N0.y))) continue; end ? pts.push([N0.x, N0.y]) : pts.unshift([N0.x, N0.y]); }
@@ -742,7 +738,7 @@ window.HGZombi = function (env) {
     credit: 'A játékmenetet a Jogamedev „Zombies Aren\'t Real” című játéka ihlette.', link: { url: STEAM, label: 'Zombies Aren\'t Real a Steamen ↗' },
     how: 'SZÓKÖZ: INDÍTÁS / SZÜNET · GÖRGŐ / CSÍPÉS: NAGYÍTÁS · JOBB GOMB / KÉT UJJ: MOZGATÁS',
     ranks: [[0, 'Újonc'], [3000, 'Őrmester'], [10000, 'Százados'], [30000, 'Ezredes'], [80000, 'Karantén-parancsnok']],
-    init() { lbSent = 0; RUN = { total: 0, uses: { air: 1, mis: 0, gas: 0, heli: 0, para: 1, apc: 0, boat: 1, ship: 0 }, bud: 1, rng: 1 }; PT.clear(); pinch = panS = null; SLOT = null; TUT = 0; startCountry();
+    init() { RUN = { total: 0, uses: { air: 1, mis: 0, gas: 0, heli: 0, para: 1, apc: 0, boat: 1, ship: 0 }, bud: 1, rng: 1 }; PT.clear(); pinch = panS = null; SLOT = null; TUT = 0; startCountry();
       if (!keyOn) { keyOn = 1; const on = () => G.running && G.game && G.game.id === 'holtvaros' && S && L, gc = document.getElementById('gc');
         addEventListener('keydown', e => { if (!on()) return; const pan = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], a: [-1, 0], d: [1, 0], w: [0, -1], s: [0, 1] }[e.key];
           if (TUT != null) { if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') { e.preventDefault(); TUT = TUT + 1 < TUT_STEPS.length ? TUT + 1 : null; } else if (e.key === 'Escape') TUT = null; return; }
@@ -782,7 +778,7 @@ window.HGZombi = function (env) {
     up(G2, x, y, e) { if (!S) return; const id = e && e.pointerId != null ? e.pointerId : 0; PT.delete(id); if (pinch) { if (PT.size < 2) pinch = null; S.draw = null; S.tap = null; return; } panS = null;
       if (S.tap) { const t = S.tap; S.tap = null; if (S.phase === 'plan') place(t.wx, t.wy); else if (S.phase === 'pick' || S.phase === 'expand') tapBlock(t.wx, t.wy); else if (S.phase === 'battle') vehTap(t.wx, t.wy); else if (S.phase === 'country') { const c = countyAt(t.wx, t.wy); if (c) openMap(c.id); } }
       if (S.draw) { const dr = S.draw; S.draw = null; if (dr.k === 'zone') makeZone(dr.pts); else if (dr.k === 'rail') makeTrack(dr.pts); else if (dr.k === 'road') makeRoad(dr.pts); else if (dr.k === 'air') { const a = dr.pts[0], b = dr.pts[1] || a; useAbil(a[0], a[1], b[0], b[1]); } } },
-    update(G2, dt) { if (!S) return; if (S.msg) S.msg.l -= dt; lbTick();
+    update(G2, dt) { if (!S) return; if (S.msg) S.msg.l -= dt;
       if (S.zin && L) { const z = S.zin; z.t += dt; clampCam(); if (z.t < 1.3) { const k = 1 - (1 - z.t / 1.3) ** 3, sc = z.s + (L.s - z.s) * k, cx = z.cx + (L.cam.cx - z.cx) * k, cy = z.cy + (L.cam.cy - z.cy) * k; L.s = sc; L.ox = L.vw / 2 - cx * sc; L.oy = L.top + L.vh / 2 - cy * sc; } else S.zin = null; }
       for (const f of S.fx) f.l -= dt * (S.speed || 1); S.fx = S.fx.filter(f => f.l > 0); if (S.fx.length > 220) S.fx.splice(0, S.fx.length - 220);
       if (S.phase === 'battle') for (let k = 0; k < S.speed && S.phase === 'battle'; k++) tick(dt); },
