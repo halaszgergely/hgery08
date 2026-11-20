@@ -1,6 +1,9 @@
 /* HGWS Arcade – Torony (klasszikus szkript, az arcade.html tölti be; a közös keret a jatekok/arcade/mag.js) */
 'use strict';
 const Torony = (() => {
+  /* a legmagasabb elért pont azonnal rekord (kilépésnél, lapbezárásnál se vesszen el), a ranglistára legfeljebb 20 mp-enként megy fel */
+  let recAt = 0;
+  function recSync() { try { if (G.score > store.get('best_viztorony')) store.set('best_viztorony', G.score); const now = Date.now(); if (now - recAt > 20000 && window.top !== window) { recAt = now; parent.postMessage({ hgws: 'score', game: 'viztorony', score: G.score }, location.origin); } } catch (_) {} }
   const T = 12, COLS = 40, ROWS = 30, WW = T * COLS, SH = T * ROWS, PW = 14, PH = 18, S2 = Math.SQRT1_2,
     GRAV = 1500, MAXF = 1000, WALK = 95, CHMAX = .62, JV0 = 260, JV1 = 760, JVX = 175, BOUNCE = .5, STEP = 1 / 240, WIND = 240;
   const ZONES = [
@@ -158,7 +161,7 @@ const Torony = (() => {
       if (fall > SH * .75) { S.stun = .6; G.shake = 16 * G.d; Sfx.hit(); G.float(sx, sy - 40 * G.d, 'PLATTY!', true); G.splash(sx, sy, '150,215,255', 26, 5); if (navigator.vibrate) navigator.vibrate(50); }
       else { Sfx.blip(180, .05, 'triangle', .08); if (fall > 40) G.splash(sx, sy, '150,215,255', 6, 2); }
       const m = Math.floor(-t.y / 10);
-      if (m > G.score) { G.score = m; hud(); }
+      if (m > G.score) { G.score = m; hud(); recSync(); }
       const z = zi(t.y); if (z > S.zone) { S.zone = z; S.banner = { t: ZONES[z].n, l: 2.4 }; Sfx.coin(); }
       if (t.ch === 'G' && !S.won) {
         S.won = 1; G.win = 1; this.overTitle = 'CSÚCSON VAGY!';
