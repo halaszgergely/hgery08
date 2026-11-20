@@ -7,7 +7,7 @@ window.HGZombi = function (env) {
   const STEAM = 'https://store.steampowered.com/app/5185890/Zombies_Arent_Real/';
   const IDX = window.HGZIndex, MAPDIR = 'jatekok/holtvaros/terkep/', MCACHE = new Map(), NOMAP = { id: '', K: 1000, title: 'Magyarország' }; let MD = NOMAP, BIN = null, HAZ = null, WW = IDX.W, WH = IDX.H, GEO = null;
   for (const m of IDX.maps) { m.R = m.out.map(f => { const o = []; for (let i = 0; i < f.length; i += 2) o.push([f[i], f[i + 1]]); return o; }); }
-  const RW = 15, R_START = 760, R_GROW = 520, HPZ = .32, DENS = .8, HP_WALL = 170, HP_GATE = 28, HP_BGATE = 110, gHP = g => g === 2 ? HP_BGATE : g ? HP_GATE : HP_WALL, barC = b => b.gate === 2 ? 300 : b.gate ? 160 : 520;
+  const RW = 15, BR = 1800, HPZ = .32, HP_WALL = 170, HP_GATE = 28, HP_BGATE = 110, gHP = g => g === 2 ? HP_BGATE : g ? HP_GATE : HP_WALL, barC = b => b.gate === 2 ? 300 : b.gate ? 160 : 520;
   const VEH = { jeep: { hp: 70, spd: 95, r: 130, cd: .3, sz: .8, col: '#7d8a55' }, apcu: { hp: 170, spd: 70, r: 150, cd: .2, sz: 1, col: '#56663f' }, tank: { hp: 360, spd: 46, r: 230, cd: .25, gun: 2.8, sz: 1.3, col: '#46523a' }, apc: { hp: 100, spd: 70, r: 140, cd: .27, sz: 1, col: '#4b5a3a' } }; // HPZ: egy zombi életereje; DENS: lakos / utcaképpont
   // u: melyik küldetéstől érhető el; on: 'b' épület, 'r' út, 'br' híd
   const TOOLS = [
@@ -65,7 +65,7 @@ window.HGZombi = function (env) {
   // a megye adatai (áttekintő rétegek + teljes úthálózat) csak akkor töltődnek le, amikor a játékos kiválasztja
   function loadMap(id) { if (MCACHE.has(id)) { setMap(...MCACHE.get(id)); return Promise.resolve(); } const q = '?v=' + IDX.v;
     return Promise.all([fetch(MAPDIR + id + '.json' + q).then(r => { if (!r.ok) throw 0; return r.json(); }), fetch(MAPDIR + id + '.bin' + q).then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); }), fetch(MAPDIR + id + '.haz' + q).then(r => r.ok ? r.arrayBuffer() : null, () => null)]).then(v => { MCACHE.set(id, v); setMap(...v); }); }
-  function startCountry() { MD = NOMAP; WW = IDX.W; WH = IDX.H; S = { ...fresh(), phase: 'country', m: 1, name: 'Magyarország', box: [0, 0, WW, WH], start: null, E: [], live: [], N: [], B: [], built: [], zones: [], units: [], tracks: [], ptracks: [], redges: [], roads: [], budget: 0, n0: 1, obj: 0 }; MAP = null; L = null; layout(true); }
+  function startCountry() { MD = NOMAP; WW = IDX.W; WH = IDX.H; S = { ...fresh(), phase: 'country', m: 1, name: 'Magyarország', cells: [], cand: [], box: [0, 0, WW, WH], start: null, E: [], live: [], N: [], B: [], built: [], zones: [], units: [], tracks: [], ptracks: [], redges: [], roads: [], budget: 0, n0: 1, obj: 0 }; MAP = null; L = null; layout(true); }
   function openMap(id, then) { const m = IDX.maps.find(q => q.id === id); if (!m) return; if (S.phase !== 'country') startCountry(); S.phase = 'load'; S.loading = m.title; MAP = null; Sfx.blip(700, .03, 'sine', .04);
     loadMap(id).then(() => { newMission(1, null); if (then) then(); }, () => { startCountry(); say('Nem sikerült betölteni a térképet.'); }); }
   const countyAt = (x, y) => IDX.maps.find(m => m.R.some(r => pip(r, x, y)));
@@ -104,7 +104,7 @@ window.HGZombi = function (env) {
           if (!ok) continue; const hw = w / 2, hd = dp / 2, poly = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(([u, v]) => [cx + dx * u - dy * v, cy + dy * u + dx * v]);
           const b = { x: cx, y: cy, rad, poly, h: hh, sh }; Ball.push(b); hput(bh, 60, cx, cy, b); hput(BG, 512, cx, cy, b); } } }
     // valódi épületek az OSM-ből: téglalapok (közép, félméretek, irány, magasság) és a nagyobb, tagolt épületek sokszögei
-    const HV = HAZ ? new DataView(HAZ) : null, addB = b => { b.sh = ((Math.imul(Math.round(b.x * 3), 73856093) ^ Math.imul(Math.round(b.y * 3), 19349663)) >>> 0) % 1000 / 1000; Ball.push(b); hput(BG, 512, b.x, b.y, b); };
+    const HV = HAZ ? new DataView(HAZ) : null, addB = b => { let ar = 0; for (let i = 0, n = b.poly.length; i < n; i++) { const p = b.poly[i], q = b.poly[(i + 1) % n]; ar += p[0] * q[1] - q[0] * p[1]; } b.ar = Math.abs(ar) / 2; b.sh = ((Math.imul(Math.round(b.x * 3), 73856093) ^ Math.imul(Math.round(b.y * 3), 19349663)) >>> 0) % 1000 / 1000; Ball.push(b); hput(BG, 512, b.x, b.y, b); };
     function realBld(t) { const io = 8 + 12 * t, off = HV.getUint32(io, true), nr = HV.getUint32(io + 4, true), pb = HV.getUint32(io + 8, true); if (!off) return; const bx = Math.floor(t / TYN) * TS, by = (t % TYN) * TS;
       for (let i = 0, o = off; i < nr; i++, o += 8) { const x = bx + HV.getUint16(o, true) / 32, y = by + HV.getUint16(o + 2, true) / 32, hw = HV.getUint8(o + 4) / 2, hd = HV.getUint8(o + 5) / 2, a = HV.getUint8(o + 6) / 256 * Math.PI, c = Math.cos(a), sn = Math.sin(a);
         addB({ x, y, rad: Math.max(hw, hd), h: HV.getUint8(o + 7), poly: [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(([u, v]) => [x + c * u - sn * v, y + sn * u + c * v]) }); }
@@ -113,29 +113,48 @@ window.HGZombi = function (env) {
     function genBld(tx, ty) { if (tx < 0 || ty < 0 || tx >= TXN || ty >= TYN) return; const t = tx * TYN + ty; if (bdone[t]) return; for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) if (tx + a >= 0 && ty + b >= 0 && tx + a < TXN && ty + b < TYN) mat((tx + a) * TYN + ty + b); bdone[t] = 1; if (HV) return realBld(t); const l = ownE.get(t); if (l) for (const e of l.slice()) buildEdge(e); }
     const ensure = (x0, y0, x1, y1) => { for (let tx = Math.floor(Math.max(0, x0) / TS); tx <= Math.floor(Math.min(WW - 1, x1) / TS); tx++) for (let ty = Math.floor(Math.max(0, y0) / TS); ty <= Math.floor(Math.min(WH - 1, y1) / TS); ty++) genBld(tx, ty); };
     const inCircle = (H, c, get, x, y, r) => { const o = []; for (let gx = Math.floor((x - r) / c); gx <= Math.floor((x + r) / c); gx++) for (let gy = Math.floor((y - r) / c); gy <= Math.floor((y + r) / c); gy++) { const l = H.get(gx * K4 + gy); if (l) for (const v of l) { const q = get(v); if ((q.x - x) ** 2 + (q.y - y) ** 2 < r * r) o.push(v); } } return o; };
+    // tömbök: minden település és városrész a hozzá legközelebbi utcákkal (legfeljebb BR sugárban) egy feloldható terület
+    const seeds = [], sgrid = new Map(), cellC = new Map(); for (const q of [...towns.map(t => [t.x, t.y, t.n]), ...MD.labels.filter(l => l[3] > 20).map(l => [l[0], l[1], l[2]])]) { let dup = false; for (let a = -1; a <= 1 && !dup; a++) for (let b = -1; b <= 1 && !dup; b++) { const l = sgrid.get((Math.floor(q[0] / 2048) + a) * K4 + Math.floor(q[1] / 2048) + b); if (l) for (const j of l) if (Math.hypot(seeds[j].x - q[0], seeds[j].y - q[1]) < 1100) { dup = true; break; } } if (!dup) { hput(sgrid, 2048, q[0], q[1], seeds.length); seeds.push({ x: q[0], y: q[1], n: q[2] }); } }
+    const seedsNear = (x, y, r, skip) => { const o = [], c = Math.ceil(r / 2048); for (let a = -c; a <= c; a++) for (let b = -c; b <= c; b++) { const l = sgrid.get((Math.floor(x / 2048) + a) * K4 + Math.floor(y / 2048) + b); if (l) for (const j of l) if (j !== skip && Math.hypot(seeds[j].x - x, seeds[j].y - y) < r) o.push(j); } return o; };
+    const blockOf = (x, y) => { let best = -1, bd = BR; for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const l = sgrid.get((Math.floor(x / 2048) + a) * K4 + Math.floor(y / 2048) + b); if (l) for (const j of l) { const d = Math.hypot(seeds[j].x - x, seeds[j].y - y); if (d < bd) { bd = d; best = j; } } } return best; };
+    const cellPoly = id => { let P = cellC.get(id); if (P) return P; const c = seeds[id]; P = []; for (let k = 0; k < 28; k++) P.push([c.x + Math.cos(k / 28 * 6.2832) * BR, c.y + Math.sin(k / 28 * 6.2832) * BR]);
+      for (const j of seedsNear(c.x, c.y, 2 * BR, id)) { const o = seeds[j], nx = o.x - c.x, ny = o.y - c.y, mx = (o.x + c.x) / 2, my = (o.y + c.y) / 2, sd = q => (q[0] - mx) * nx + (q[1] - my) * ny, Q = []; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length], da = sd(a), db = sd(b); if (da <= 0) Q.push(a); if ((da < 0) !== (db < 0) && da !== db) { const t = da / (da - db); Q.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); } } P = Q; if (P.length < 3) break; }
+      cellC.set(id, P); return P; };
     const RK = new Map(); let rc = 0; // saját építésű utak: a végpontok a közeli csomóponthoz csatlakoznak
     function addRoad(pts) { const k = rc++, ns = []; pts.forEach((q, i) => { let n = nearIn(NH, q[0], q[1], i === 0 || i === pts.length - 1 ? 70 : 35); if (n < 0) { n = put(q[0], q[1]); g.N[n].id = 'r' + k + ',' + i; RK.set(g.N[n].id, n); } ns.push(n); });
       const es = []; for (let i = 1; i < ns.length; i++) { if (ns[i] === ns[i - 1]) continue; const A = g.N[ns[i - 1]], B = g.N[ns[i]], e = raw(ns[i - 1], ns[i], { big: 1, built: 1, nob: 1, bridge: crossW(A.x, A.y, B.x, B.y) ? 1 : 0 }); if (e) es.push(e); } return es; }
-    return { ...g, Efull: allE, wet, towns, townsByPop: towns.slice().sort((a, b) => b.pop - a.pop), labels: MD.labels, EG, BG, ensure, addRoad, crossW,
+    return { ...g, Efull: allE, wet, towns, townsByPop: towns.slice().sort((a, b) => b.pop - a.pop), labels: MD.labels, EG, BG, ensure, addRoad, crossW, seeds, blockOf, cellPoly, seedsNear,
       nearAny: (x, y, r) => nearIn(NH, x, y, r), nodesIn: (x, y, r) => inCircle(NH, 128, n => g.N[n], x, y, r), bldIn: (x, y, r) => inCircle(BG, 512, b => b, x, y, r),
       nodeOf: k => { k = String(k); if (k[0] === 'r') return RK.has(k) ? RK.get(k) : null; if (k[0] !== 't') return null; const [t, i] = k.slice(1).split(',').map(Number); if (!(t >= 0 && t < nT)) return null; mat(t); return i < DV.getUint16(8 + 12 * t + 4, true) ? tb[t] + i : null; } };
   }
   const fresh = () => ({ phase: 'plan', t: 0, speed: 1, tool: 'zone', tab: 0, abil: null, civs: [], zs: [], sol: [], apcs: [], fx: [], gas: [], helis: [], strikes: [], uses: { ...RUN.uses }, draw: null, hover: null, res: null, kills: 0, lost: 0, evac: 0, fT: 0, cT: 0, hist: [], broke: 0, wT: 8, sel: null, trains: [], ships: [], modal: null });
   function newMission(m, prev) {
     if (!prev) { const c = world();
-      S = { ...c, ...fresh(), E: [], live: [], built: [], ptracks: [], tracks: [], railCfg: {}, roads: [], redges: [], name: MD.title, B: [], m: 1, phase: 'pick', budget: Math.round(1400 * RUN.bud), zones: [], units: [], mort: 0, start: null, box: [0, 0, WW, WH], n0: 1, obj: .1 };
+      S = { ...c, ...fresh(), E: [], live: [], blocks: new Set(), cells: [], cand: [], selB: null, built: [], ptracks: [], tracks: [], railCfg: {}, roads: [], redges: [], name: MD.title, B: [], m: 1, phase: 'pick', budget: Math.round(1400 * RUN.bud), zones: [], units: [], mort: 0, start: null, box: [0, 0, WW, WH], n0: 1, obj: .1 };
       MAP = null; L = null; layout(true); return; }
     // megnyert kör után a védelem megmarad (falak kijavítva, hidak helyreállítva), a pálya pedig kijjebb tágul
     for (const e of prev.E) { e.dead = 0; e.stain = 0; } for (const z of prev.zones) for (const b of z.bars) b.hp = b.max;
     const units = prev.units.filter(u => !u.lost).map(u => ({ k: u.k, x: u.x, y: u.y, b: u.b, e: u.e, s: u.s, paid: u.paid, cd: Math.random(), ammo: TOOL[u.k].ammo || 0, lv: u.lv || 1 })), old = { s: L.s, cx: L.cam.cx, cy: L.cam.cy };
-    S = { ...prev, ...fresh(), m, budget: prev.budget, units }; region(); spawn();
-    // a körönkénti keret a terület lakosságához igazodik
-    { const inc = Math.max(Math.round((400 + 160 * m) * RUN.bud), Math.round(S.n0 * .022 * RUN.bud)); S.budget += inc; S.msg = { t: '+' + inc + ' keret a(z) ' + S.n0.toLocaleString('hu-HU') + ' lakos után', l: 4, ok: 1 }; } L = null; layout(true); S.zin = { t: 0, ...old };
+    S = { ...prev, ...fresh(), m, budget: prev.budget, units }; S.cand = candidates(); S.selB = null; if (!S.cand.length) return finishExpand();
+    S.phase = 'expand'; { const [sx, sy] = S.start, R2 = S.R + 2 * BR; S.box = [Math.max(0, sx - R2), Math.max(0, sy - R2), Math.min(WW, sx + R2), Math.min(WH, sy + R2)]; } L = null; layout(true); S.zin = { t: 0, ...old };
   }
-  function region() { const [sx, sy] = S.start, R0 = R_START + R_GROW * (S.m - 1); S.R = R0; S.ensure(sx - R0 - 150, sy - R0 - 150, sx + R0 + 150, sy + R0 + 150);
-    for (const i of S.live) S.N[i].adj = []; const inn = new Set(S.nodesIn(sx, sy, R0)); for (const i of inn) S.N[i].adj = S.N[i].all.filter(a => inn.has(a.n));
+  const inBlock = (id, x, y) => S.blockOf(x, y) === id, bldOf = id => { const c = S.seeds[id]; S.ensure(c.x - BR, c.y - BR, c.x + BR, c.y + BR); return S.bldIn(c.x, c.y, BR).filter(b => inBlock(id, b.x, b.y)); };
+  // lakosság az épületek alapterületéből és magasságából: nagyjából 60 m² szintterület jut egy főre
+  const popB = l => { let v = 0; for (const b of l) v += (b.ar || 600) * Math.max(1, (b.h || 4) / 3); return Math.round(v / 60); }, popOf = id => popB(bldOf(id));
+  // feloldható: ami szomszédos egy már feloldott tömbbel, és úton el is érhető belőle
+  function candidates() { const o = new Set(), live = new Set(S.live); for (const id of S.blocks) { const c = S.seeds[id]; for (const j of S.seedsNear(c.x, c.y, 2 * BR, id)) { if (S.blocks.has(j)) continue; const q = S.seeds[j], mb = S.blockOf((c.x + q.x) / 2, (c.y + q.y) / 2); if (mb === id || mb === j) o.add(j); } }
+    return [...o].filter(j => { const c = S.seeds[j]; S.ensure(c.x - BR, c.y - BR, c.x + BR, c.y + BR); const ns = S.nodesIn(c.x, c.y, BR).filter(n => inBlock(j, S.N[n].x, S.N[n].y)); return ns.length > 12 && ns.some(n => S.N[n].all.some(a => live.has(a.n))); }); }
+  function tapBlock(x, y) { const id = S.blockOf(x, y); if (id < 0) return say('Itt nincs lakott terület – válassz települést vagy városrészt.'); if (S.phase === 'expand' && !S.cand.includes(id)) return say('Csak a már védett területtel szomszédos részt választhatod.');
+    if (S.selB !== id) { S.selB = id; return note(S.seeds[id].n + ' · kb. ' + popOf(id).toLocaleString('hu-HU') + ' lakos – koppints újra a kiválasztáshoz'); } S.selB = null; if (S.phase === 'pick') startAt(id); else { S.blocks.add(id); finishExpand(); } }
+  function finishExpand() { const old = { s: L.s, cx: L.cam.cx, cy: L.cam.cy }; region(); spawn(); S.phase = 'plan';
+    // a körönkénti keret a terület lakosságához igazodik
+    { const inc = Math.max(Math.round((400 + 160 * S.m) * RUN.bud), Math.round(S.n0 * .022 * RUN.bud)); S.budget += inc; S.msg = { t: '+' + inc + ' keret a(z) ' + S.n0.toLocaleString('hu-HU') + ' lakos után', l: 4, ok: 1 }; } L = null; layout(true); S.zin = { t: 0, ...old };
+  }
+  function region() { const ids = [...S.blocks], sd = ids.map(id => S.seeds[id]), sx = sd.reduce((a, c) => a + c.x, 0) / sd.length, sy = sd.reduce((a, c) => a + c.y, 0) / sd.length, R0 = Math.max(...sd.map(c => Math.hypot(c.x - sx, c.y - sy))) + BR; S.start = [sx, sy]; S.R = R0; S.cells = ids.map(S.cellPoly);
+    for (const c of sd) S.ensure(c.x - BR - 150, c.y - BR - 150, c.x + BR + 150, c.y + BR + 150);
+    for (const i of S.live) S.N[i].adj = []; const inn = new Set(); ids.forEach((id, k) => { for (const n of S.nodesIn(sd[k].x, sd[k].y, BR)) if (inBlock(id, S.N[n].x, S.N[n].y)) inn.add(n); }); for (const i of inn) S.N[i].adj = S.N[i].all.filter(a => inn.has(a.n));
     const seen = new Set(); let best = []; for (const i of inn) { if (seen.has(i)) continue; const q = [i], o = [i]; seen.add(i); while (q.length) { const u = q.pop(); for (const a of S.N[u].adj) if (!seen.has(a.n)) { seen.add(a.n); q.push(a.n); o.push(a.n); } } if (o.length > best.length) best = o; }
-    const keep = new Set(best); for (const i of inn) if (!keep.has(i)) S.N[i].adj = []; S.live = best; S.E = []; for (const i of best) for (const a of S.N[i].adj) if (i < a.n) S.E.push(a.e); S.B = S.bldIn(sx, sy, R0).concat(S.built || []); railsIn();
+    const keep = new Set(best); for (const i of inn) if (!keep.has(i)) S.N[i].adj = []; S.live = best; S.E = []; for (const i of best) for (const a of S.N[i].adj) if (i < a.n) S.E.push(a.e); S.B = [].concat(...ids.map(bldOf), S.built || []); railsIn();
     S.box = [Math.max(0, sx - R0 - 20), Math.max(0, sy - R0 - 20), Math.min(WW, sx + R0 + 20), Math.min(WH, sy + R0 + 20)]; for (const z of S.zones) zoneBars(z, S.E); protCalc(); }
   function mkTrack(pts, o) { const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])); return { pts, cum, len: cum[cum.length - 1], cars: [], ...o }; }
   function trackPos(tr, p) { p = Math.max(0, Math.min(tr.len, p)); let i = 1; while (i < tr.cum.length - 1 && tr.cum[i] < p) i++; const a = tr.pts[i - 1], b = tr.pts[i], l = tr.cum[i] - tr.cum[i - 1] || 1, t = (p - tr.cum[i - 1]) / l; return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, Math.atan2(b[1] - a[1], b[0] - a[0])]; }
@@ -146,7 +165,7 @@ window.HGZombi = function (env) {
         const p0 = [a[0] + dx * t0, a[1] + dy * t0], p1 = [a[0] + dx * t1, a[1] + dy * t1]; if (!cur.length || t0 > 0) { flush(); cur.push(p0); } cur.push(p1); if (t1 < 1) flush(); } flush(); });
     S.tracks = (S.ptracks || []).concat(real); for (const u of S.units) if (u.k === 'sta') { const nt = nearTrack(u.x, u.y, 60); u.tr = nt ? nt.tr : null; u.tp = nt ? nt.p : 0; } }
   function makeRoad(raw) { const pts = [raw[0]]; for (const q of raw) { const l = pts[pts.length - 1]; if (Math.hypot(q[0] - l[0], q[1] - l[1]) >= 90) pts.push(q); } const e0 = raw[raw.length - 1], l0 = pts[pts.length - 1]; if (Math.hypot(e0[0] - l0[0], e0[1] - l0[1]) > 25) pts.push(e0); if (pts.length < 2) return;
-    let len = 0, br = 0; for (let i = 1; i < pts.length; i++) { len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); if (S.crossW(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1])) br++; } if (len < 60) return; if (pts.some(q => Math.hypot(q[0] - S.start[0], q[1] - S.start[1]) > S.R)) return say('Csak a játszható területen belül építhetsz.');
+    let len = 0, br = 0; for (let i = 1; i < pts.length; i++) { len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); if (S.crossW(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1])) br++; } if (len < 60) return; if (pts.some(q => !S.blocks.has(S.blockOf(q[0], q[1])))) return say('Csak a játszható területen belül építhetsz.');
     const c = Math.round(len * .25) + 150 * br; if (c > S.budget) return say('Nincs rá keret: ' + c + ' kellene.'); const rp = pts.map(q => [Math.round(q[0]), Math.round(q[1])]), es = S.addRoad(rp); if (!es.length) return say('Itt már van út.');
     S.budget -= c; S.roads.push(rp); S.redges.push(...es); region(); S.hist.length = 0; note('Út megépítve (−' + c + ')'); }
   function makeTrack(raw) { const pts = [raw[0]]; for (const q of raw) { const l = pts[pts.length - 1]; if (Math.hypot(q[0] - l[0], q[1] - l[1]) >= 30) pts.push(q); } if (pts.length < 2) return; const tr = mkTrack(pts, {}); if (tr.len < 150) return say('Túl rövid sín.'); const c = Math.round(tr.len * .12); if (c > S.budget) return say('Nincs rá keret: ' + c + ' kellene.');
@@ -155,21 +174,21 @@ window.HGZombi = function (env) {
   function delTrack(tr) { if (staOf(tr).length) return say('Előbb az állomásokat töröld.'); S.budget += (tr.cost || 0) + carsCost(tr); S.ptracks = S.ptracks.filter(q => q !== tr); S.tracks = S.tracks.filter(q => q !== tr); }
   // a népesség a játszható terület utcahosszával arányos, felső határ nélkül; nagy tömegnél a csoportok nőnek, nem az egységek száma
   function spawn() { let pool = S.E.filter(e => !e.nob && !e.bridge); if (pool.length < 10) pool = S.E; const cum = []; let tot = 0; for (const e of pool) { tot += e.len; cum.push(tot); }
-    const n = Math.max(400, Math.round(tot * DENS)), avg = Math.max(10, n / 3200), pickE = () => { const v = Math.random() * tot; let lo = 0, hi = cum.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (cum[m] < v) lo = m + 1; else hi = m; } return pool[lo]; };
+    const n = Math.max(120, popB(S.B)), avg = Math.max(10, n / 3200), pickE = () => { const v = Math.random() * tot; let lo = 0, hi = cum.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (cum[m] < v) lo = m + 1; else hi = m; } return pool[lo]; };
     S.gmax = Math.round(avg * 2); S.civs = []; for (let left = n; left > 0;) { const a = agent(pickE()); a.n = Math.min(left, Math.max(1, Math.round(avg * (.6 + Math.random() * .8)))); left -= a.n; S.civs.push(a); } S.n0 = n; S.obj = Math.min(.4, .08 + .02 * S.m);
     S.goal = S.m % 3 === 0 ? 'hold' : S.m % 4 === 2 ? 'hosp' : 'clear'; S.holdT = 90 + 8 * S.m; S.hosp = null;
     if (S.goal === 'hosp') { const [sx, sy] = S.start, c = S.B.filter(b => { const d0 = Math.hypot(b.x - sx, b.y - sy); return d0 > 170 && d0 < Math.min(520, S.R * .6); }), l = c.length ? c : S.B; S.hosp = l[Math.floor(Math.random() * l.length)] || null; if (!S.hosp) S.goal = 'clear'; } }
   const SK = 'hgws_holtvaros_mentes', note = t => { S.msg = { t, l: 2.2, ok: 1 }; Sfx.blip(620, .08, 'triangle', .05); };
   let saved = false; try { saved = !!localStorage.getItem(SK); } catch (e) {}
-  function nameIt() { let bt = null, bd = 1e9; for (const t of S.towns) { const d0 = Math.hypot(t.x - S.start[0], t.y - S.start[1]) - t.r; if (d0 < bd) { bd = d0; bt = t; } } S.name = bt && bd < 6000 ? bt.n : MD.title; }
+  function nameIt() { S.name = S.seeds[[...S.blocks][0]].n; }
   function saveGame(silent) { if (S.phase !== 'plan') return; const nk = i => S.N[i].id, ek = e => [nk(e.a), nk(e.b)];
-    const o = { v: 4, map: MD.id, W: WW, m: S.m, start: S.start, budget: S.budget, mort: S.mort, run: RUN,
+    const o = { v: 5, map: MD.id, W: WW, m: S.m, blocks: [...S.blocks], budget: S.budget, mort: S.mort, run: RUN,
       zones: S.zones.map(z => ({ p: z.poly.map(q => [Math.round(q[0] * 10) / 10, Math.round(q[1] * 10) / 10]), c: z.closed ? 1 : 0, cost: z.cost, bars: z.bars.map(b => [...ek(b.e), b.s, b.gate, b.pi]) })),
       roads: S.roads, tracks: S.ptracks.map(tr => ({ p: tr.pts.map(q => [Math.round(q[0]), Math.round(q[1])]), cars: tr.cars, cost: tr.cost })), railCfg: S.railCfg, built: S.built.map(b => [b.x, b.y, b.ang]), units: S.units.map(u => [u.k, u.x, u.y, u.paid, u.b ? (u.b.built ? -2 - S.built.indexOf(u.b) : 1) : -1, u.e ? ek(u.e) : null, u.s || 0, u.lv || 1]), hold: S.live.filter(i => S.N[i].hold).map(nk), cor: S.E.filter(e => e.cor).map(ek) };
     try { localStorage.setItem(SK, JSON.stringify(o)); saved = true; if (!silent) note('Mentve · ' + S.m + '. küldetés, ' + S.name); } catch (e) { say('Nem sikerült menteni.'); } }
-  function loadGame() { let o = null; try { o = JSON.parse(localStorage.getItem(SK)); } catch (e) {} if (!o || !o.map) return say('Nincs betölthető mentés.'); if (o.v !== 4) return say('A mentés régebbi térképhez készült.'); if (o.map !== MD.id) return openMap(o.map, loadGame);
+  function loadGame() { let o = null; try { o = JSON.parse(localStorage.getItem(SK)); } catch (e) {} if (!o || !o.map) return say('Nincs betölthető mentés.'); if (o.v !== 5) return say('A mentés régebbi térképhez készült.'); if (o.map !== MD.id) return openMap(o.map, loadGame);
     for (const e of S.Efull) { if (e.bars.length) e.bars = []; e.cor = 0; e.dead = 0; e.stain = 0; } for (const n of S.N) n.hold = 0;
-    const R0 = R_START + R_GROW * (o.m - 1); S.ensure(o.start[0] - R0 - 150, o.start[1] - R0 - 150, o.start[0] + R0 + 150, o.start[1] + R0 + 150);
+    S.blocks = new Set(o.blocks.filter(id => S.seeds[id])); for (const id of S.blocks) bldOf(id);
     const roads = o.roads || [], redges = S.redges.slice(); for (const r of roads) redges.push(...S.addRoad(r));
     const edgeOf = (ka, kb) => { const a = S.nodeOf(ka), b = S.nodeOf(kb); if (a == null || b == null) return null; const q = S.N[a].all.find(v => v.n === b); return q ? q.e : null; };
     for (const k of o.hold) { const n = S.nodeOf(k); if (n != null) S.N[n].hold = 1; } for (const [ka, kb] of o.cor) { const e = edgeOf(ka, kb); if (e) e.cor = 1; }
@@ -179,9 +198,10 @@ window.HGZombi = function (env) {
     const units = o.units.filter(u => TOOL[u[0]]).map(u => { const q = { k: u[0], x: u[1], y: u[2], paid: u[3], lv: u[7] || 1, cd: Math.random(), ammo: TOOL[u[0]].ammo || 0 };
       if (u[4] <= -2) q.b = built[-2 - u[4]]; else if (u[4] >= 0) { let bb = null, bd = 14; for (const c of S.bldIn(q.x, q.y, 40)) { const d0 = Math.hypot(c.x - q.x, c.y - q.y); if (d0 < bd) { bd = d0; bb = c; } } if (!bb) { refund += q.paid; return null; } q.b = bb; }
       if (u[5]) { const e = edgeOf(u[5][0], u[5][1]); if (!e) { refund += q.paid; return null; } q.e = e; q.s = u[6]; } return q; }).filter(Boolean);
-    const old = { s: L.s, cx: L.cam.cx, cy: L.cam.cy }; S = { ...S, ...fresh(), m: o.m, start: o.start, budget: o.budget + refund, mort: units.filter(u => u.k === 'mor').length, zones, units, built, ptracks, railCfg: o.railCfg || {}, roads, redges }; G.score = RUN.total; hud(); region(); nameIt(); spawn(); L = null; layout(true); S.zin = { t: 0, ...old }; note('Betöltve · ' + S.m + '. küldetés, ' + S.name); }
-  function setStart(x, y) { S.ensure(x - 900, y - 900, x + 900, y + 900); const n = S.nearAny(x, y, 700); if (n < 0) return say('Itt nincs település – válassz lakott helyet.'); S.start = [S.N[n].x, S.N[n].y]; region(); if (S.E.length < 30) { S.start = null; for (const i of S.live) S.N[i].adj = []; S.live = []; S.E = []; return say('Itt túl kevés az utca – válassz lakott helyet.'); } nameIt();
-    spawn(); S.phase = 'plan'; const old = { s: L.s, cx: L.cam.cx, cy: L.cam.cy }; L = null; layout(true); S.zin = { t: 0, ...old }; Sfx.perfect(); }
+    const old = { s: L.s, cx: L.cam.cx, cy: L.cam.cy }; S = { ...S, ...fresh(), m: o.m, budget: o.budget + refund, mort: units.filter(u => u.k === 'mor').length, zones, units, built, ptracks, railCfg: o.railCfg || {}, roads, redges }; G.score = RUN.total; hud(); region(); nameIt(); spawn(); L = null; layout(true); S.zin = { t: 0, ...old }; note('Betöltve · ' + S.m + '. küldetés, ' + S.name); }
+  function setStart(x, y) { const id = S.blockOf(x, y); if (id < 0) return say('Itt nincs lakott terület – válassz települést vagy városrészt.'); startAt(id); }
+  function startAt(id) { S.blocks = new Set([id]); region(); if (S.E.length < 20) { for (const i of S.live) S.N[i].adj = []; S.live = []; S.E = []; S.blocks = new Set(); S.start = null; S.cells = []; return say('Itt túl kevés az utca – válassz másik részt.'); } nameIt();
+    spawn(); S.budget = Math.max(S.budget, Math.round(S.n0 * .05 * RUN.bud)); S.phase = 'plan'; const old = { s: L.s, cx: L.cam.cx, cy: L.cam.cy }; L = null; layout(true); S.zin = { t: 0, ...old }; Sfx.perfect(); }
   function agent(e, R = Math.random) { const a = { e, s: R() * e.len, dir: R() < .5 ? 1 : -1, off: (R() - .5) * (RW - 5), hp: 2, n: 1, ty: 0, hpp: HPZ, sp: .8 + Math.random() * .4, cd: R(), x: 0, y: 0, idle: 0 }; pos(a); return a; }
   function pos(a) { const A = S.N[a.e.a], B = S.N[a.e.b], t = a.s / a.e.len, dx = (B.x - A.x) / a.e.len, dy = (B.y - A.y) / a.e.len; a.x = A.x + (B.x - A.x) * t - dy * a.off; a.y = A.y + (B.y - A.y) * t + dx * a.off; }
   const cnt = l => { let n = 0; for (const a of l) n += a.n; return n; };
@@ -196,7 +216,7 @@ window.HGZombi = function (env) {
   /* ---------------- elrendezés, kamera ---------------- */
   const unlocked = t => S.m >= t.u;
   function barItems() {
-    if (S.phase === 'pick' || S.phase === 'country' || S.phase === 'load') return [];
+    if (S.phase === 'pick' || S.phase === 'expand' || S.phase === 'country' || S.phase === 'load') return [];
     if (S.phase === 'plan') return TOOLS.filter(t => t.tab === S.tab || t.k === 'del').map(t => ({ ...t, kind: 'tool' }));
     return [...ABIL.filter(a => RUN.uses[a.k] > 0).map(a => ({ ...a, kind: 'abil' })), { k: 'spd', kind: 'spd', n: '', ic: S.speed ? '⏩' : '⏸' }];
   }
@@ -298,7 +318,7 @@ window.HGZombi = function (env) {
   // zombifajták: 0 sima, 1 futó (gyors, törékeny), 2 behemót (lassú, szívós, faltörő), 3 robbanó (útzárnál felrobban)
   function setType(z, ty) { z.ty = ty; if (ty === 1) { z.sp *= 1.7; z.hpp = HPZ * .6; } else if (ty === 2) { z.sp *= .62; z.hpp = HPZ * 4; } else if (ty === 3) z.sp *= 1.15; z.hp = z.n * z.hpp; return z; }
   const rollType = () => { const r = Math.random(), m = S.m; return m >= 4 && r < .08 ? 3 : m >= 3 && r < .2 ? 2 : m >= 2 && r < .38 ? 1 : 0; };
-  function wave() { const [sx, sy] = S.start, rim = S.live.filter(i => !S.prot[i] && Math.hypot(S.N[i].x - sx, S.N[i].y - sy) > S.R - 280 && S.N[i].adj.length); if (!rim.length) return; const zn = Math.max(8, Math.round(S.gmax * .4));
+  function wave() { let rim = S.live.filter(i => !S.prot[i] && S.N[i].adj.length && S.N[i].all.length > S.N[i].adj.length); if (!rim.length) rim = S.live.filter(i => !S.prot[i] && S.N[i].adj.length); if (!rim.length) return; const zn = Math.max(8, Math.round(S.gmax * .4));
     for (let k = 0; k < 2 + Math.floor(S.m / 2); k++) { const n = S.N[rim[Math.floor(Math.random() * rim.length)]], a = n.adj[Math.floor(Math.random() * n.adj.length)]; if (a.e.dead || a.e.bars.length) continue; const z = agent(a.e); z.cd = 1; z.n = zn; setType(z, rollType()); S.zs.push(z); } }
   function blast(z, b) { b.hp = Math.max(0, b.hp - 34); S.fx.push({ k: 'boom', x: b.x, y: b.y, r: 30, l: .5 }); G.shake = Math.max(G.shake, 4 * G.d); Sfx.blip(90, .2, 'sawtooth', .07, .4); z.dead = 1; if (b.hp <= 0) S.broke++; }
   function soldier(x, y, o = {}) { const ne = nearEdge(x, y, 400); if (!ne) return; const a = agent(ne.e); a.s = ne.s; pos(a); Object.assign(a, { hp: 1, cd: Math.random() * .3, r: 110, ...o }); S.sol.push(a); if (S.phase === 'battle') toGate(a); return a; }
@@ -459,7 +479,7 @@ window.HGZombi = function (env) {
     const fillP = (o, col) => { if (!hit(o.b)) return; x.fillStyle = col; x.beginPath(); o.p.forEach((p, i) => i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1])); x.fill(); };
     const fillM = (q, col) => { x.fillStyle = col; x.beginPath(); for (const r of q.r) { r.forEach((p, i) => i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1])); x.closePath(); } x.fill('evenodd'); };
     for (const o of GEO.outl) fillP(o, '#1d1f24');
-    if (Lv > 2) { const M = GEO.mask, c = M.c; x.fillStyle = Lv <= 4 ? blockPat(x) : '#4b463b'; for (let cy = Math.max(0, Math.floor(Y0 / c)); cy <= Math.min(M.h - 1, Math.floor(Y1 / c)); cy++) for (let cx = Math.max(0, Math.floor(X0 / c)); cx <= Math.min(M.w - 1, Math.floor(X1 / c)); cx++) { const i = cy * M.w + cx; if (M.bits[i >> 3] & (128 >> (i & 7))) x.fillRect(cx * c, cy * c, c + .6 / q, c + .6 / q); } }
+    if (Lv > 2) { const M = GEO.mask, c = M.c; x.fillStyle = '#3d3a33'; for (let cy = Math.max(0, Math.floor(Y0 / c)); cy <= Math.min(M.h - 1, Math.floor(Y1 / c)); cy++) for (let cx = Math.max(0, Math.floor(X0 / c)); cx <= Math.min(M.w - 1, Math.floor(X1 / c)); cx++) { const i = cy * M.w + cx; if (M.bits[i >> 3] & (128 >> (i & 7))) x.fillRect(cx * c, cy * c, c + .6 / q, c + .6 / q); } }
     for (const o of GEO.green) if (hit(o.b)) fillM(o, o.k ? '#3f7a3c' : 'rgba(44,92,50,.6)');
     const poly = (p, w, col) => { x.strokeStyle = col; x.lineWidth = w; x.beginPath(); p.forEach((v, i) => i ? x.lineTo(v[0], v[1]) : x.moveTo(v[0], v[1])); x.stroke(); };
     for (const w of GEO.water) if (hit(w.b)) poly(w.p, Math.max(w.w, 1.4 / q), '#1f63b0');
@@ -498,7 +518,7 @@ window.HGZombi = function (env) {
         const sd = s / d * (MD.K / 180), thr = sd < .035 ? 15 : sd < .07 ? 7 : sd < .15 ? 2.4 : 0; if (sd < .12) txt(MD.cap[0], MD.cap[1], MD.cap[2], 15, '#ffe29a', 1);
         for (const t of S.townsByPop) if (t.pop >= thr) txt(t.n, t.x, t.y, t.pop > 25 ? 12 : t.pop > 8 ? 11 : 10, 'rgba(255,255,255,.85)');
         if (sd >= .12) for (const l of S.labels) if (l[3] > 20 ? sd < 4 : sd > .3) txt(l[2], l[0], l[1], l[3] > 20 ? 13 : 10, l[3] > 20 ? 'rgba(255,226,154,.75)' : 'rgba(255,255,255,.7)', l[3] > 20);
-        if (S.start) { x.fillStyle = 'rgba(9,7,13,.5)'; x.beginPath(); x.rect(0, 0, G.W, vh); x.arc(X(S.start[0]), Y(S.start[1]) - y0, S.R * s, 0, 6.283); x.fill('evenodd'); } } }
+        if (S.start) { x.fillStyle = 'rgba(9,7,13,.5)'; x.beginPath(); x.rect(0, 0, G.W, vh); for (const P of S.cells) { P.forEach((q, i) => i ? x.lineTo(X(q[0]), Y(q[1]) - y0) : x.moveTo(X(q[0]), Y(q[1]) - y0)); x.closePath(); } x.fill('evenodd'); x.strokeStyle = 'rgba(255,226,154,.35)'; x.lineWidth = 1.5 * d; x.stroke(); } } }
       g.drawImage(vc, 0, y0); g.font = `500 ${9 * d}px Inter, sans-serif`; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.fillStyle = 'rgba(255,255,255,.45)'; g.fillText('© OpenStreetMap-közreműködők', 8 * d, L.top + L.vh - 6 * d); }
     g.lineCap = 'round'; g.lineJoin = 'round';
     const ln = (e, w, col) => { g.strokeStyle = col; g.lineWidth = w; g.beginPath(); g.moveTo(X(S.N[e.a].x), Y(S.N[e.a].y)); g.lineTo(X(S.N[e.b].x), Y(S.N[e.b].y)); g.stroke(); };
@@ -556,13 +576,15 @@ window.HGZombi = function (env) {
       g.fillStyle = '#0d0e11'; g.beginPath(); g.moveTo(17 * kk, 0); g.lineTo(9 * kk, -6.5 * kk); g.lineTo(-15 * kk, -6.5 * kk); g.lineTo(-15 * kk, 6.5 * kk); g.lineTo(9 * kk, 6.5 * kk); g.closePath(); g.fill(); g.fillStyle = sh.k === 'ship' ? '#7f8a96' : '#9aa5b0'; g.beginPath(); g.moveTo(15 * kk, 0); g.lineTo(8 * kk, -5 * kk); g.lineTo(-13.5 * kk, -5 * kk); g.lineTo(-13.5 * kk, 5 * kk); g.lineTo(8 * kk, 5 * kk); g.closePath(); g.fill();
       g.fillStyle = '#4d5661'; g.fillRect(-7 * kk, -2.8 * kk, 9 * kk, 5.6 * kk); g.fillStyle = '#20262d'; g.fillRect(4 * kk, -.8 * kk, 8 * kk, 1.6 * kk); if (sh.k === 'ship') g.fillRect(-13 * kk, -.8 * kk, 6 * kk, 1.6 * kk); g.restore(); }
     for (const h of S.helis) { g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(X(h.x) + 6 * d, Y(h.y) + 10 * d, 12 * d, 5 * d, 0, 0, 6.283); g.fill(); g.font = `${24 * d}px sans-serif`; g.fillText('🚁', X(h.x), Y(h.y)); }
-    if (S.phase === 'pick' && S.hover) { g.strokeStyle = '#ffe29a'; g.lineWidth = 2 * d; g.setLineDash([8 * d, 6 * d]); g.beginPath(); g.arc(X(S.hover[0]), Y(S.hover[1]), R_START * s, 0, 6.283); g.stroke(); g.setLineDash([]); g.fillStyle = 'rgba(255,226,154,.08)'; g.fill(); }
+    if (S.phase === 'pick' || S.phase === 'expand') { const cp = (id, fill) => { const P = S.cellPoly(id); if (P.length < 3) return; g.beginPath(); P.forEach((q, i) => i ? g.lineTo(X(q[0]), Y(q[1])) : g.moveTo(X(q[0]), Y(q[1]))); g.closePath(); if (fill) { g.fillStyle = fill; g.fill(); } g.stroke(); const c = S.seeds[id]; g.font = `700 ${11 * d}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffe29a'; g.fillText(c.n, X(c.x), Y(c.y)); };
+      g.strokeStyle = '#ffe29a'; g.lineWidth = 2 * d; g.setLineDash([8 * d, 6 * d]); const hid = S.hover ? S.blockOf(S.hover[0], S.hover[1]) : -1; if (S.phase === 'expand') for (const id of S.cand) if (id !== hid && id !== S.selB) cp(id, 'rgba(255,226,154,.07)');
+      if (hid >= 0 && hid !== S.selB && (S.phase === 'pick' || S.cand.includes(hid))) cp(hid, 'rgba(255,226,154,.14)'); g.setLineDash([]); if (S.selB != null) cp(S.selB, 'rgba(125,255,74,.2)'); }
     g.restore();
     // felső sáv
     const prot = S.civs.reduce((a, c) => a + (c.safe ? c.n : 0), 0), alive = cnt(S.civs) + S.evac;
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `800 ${15 * d}px Inter, sans-serif`; g.fillStyle = '#ffe29a'; g.fillText(`${S.m}. küldetés · ${S.name}`, G.W / 2, 66 * d);
     g.font = `600 ${12 * d}px Inter, sans-serif`; g.fillStyle = 'rgba(255,255,255,.85)';
-    g.fillText(S.phase === 'country' ? 'Válassz vármegyét – koppints a térképre' : S.phase === 'load' ? 'Térkép betöltése…' : S.phase === 'pick' ? 'Válaszd ki, honnan indulsz – koppints a térképre' : S.phase === 'plan' ? `💰 ${S.budget}   👥 ${alive} civil   🎯 cél: ${Math.round(S.obj * 100)}% életben${S.goal === 'hold' ? ' · ⏱ tarts ki ' + mmss(S.holdT) : S.goal === 'hosp' ? ' · 🏥 védd a kórházat' : ''}` : `👥 ${alive}/${S.n0} (${Math.round(alive / S.n0 * 100)}%, cél ${Math.round(S.obj * 100)}%)   🛡 ${prot}${S.evac ? '   🚁 ' + S.evac : ''}   🧟 ${cnt(S.zs)}${S.goal === 'hold' ? '   ⏱ ' + mmss(Math.max(0, S.holdT - S.t)) : S.goal === 'hosp' ? '   🏥' : ''}`, G.W / 2, 84 * d, G.W - 16 * d);
+    g.fillText(S.phase === 'country' ? 'Válassz vármegyét – koppints a térképre' : S.phase === 'load' ? 'Térkép betöltése…' : S.phase === 'pick' ? 'Válassz kezdőterületet: települést vagy városrészt' : S.phase === 'expand' ? 'Válaszd ki, melyik szomszédos területet oldod fel' : S.phase === 'plan' ? `💰 ${S.budget}   👥 ${alive} civil   🎯 cél: ${Math.round(S.obj * 100)}% életben${S.goal === 'hold' ? ' · ⏱ tarts ki ' + mmss(S.holdT) : S.goal === 'hosp' ? ' · 🏥 védd a kórházat' : ''}` : `👥 ${alive}/${S.n0} (${Math.round(alive / S.n0 * 100)}%, cél ${Math.round(S.obj * 100)}%)   🛡 ${prot}${S.evac ? '   🚁 ' + S.evac : ''}   🧟 ${cnt(S.zs)}${S.goal === 'hold' ? '   ⏱ ' + mmss(Math.max(0, S.holdT - S.t)) : S.goal === 'hosp' ? '   🏥' : ''}`, G.W / 2, 84 * d, G.W - 16 * d);
     if (S.start && (S.phase === 'plan' || S.phase === 'battle')) drawMini(g);
     for (const b of sideBtns()) { g.fillStyle = 'rgba(8,12,22,.88)'; g.strokeStyle = 'rgba(255,226,154,.5)'; g.lineWidth = 1.5 * d; rr(b.x, b.y, b.w, b.h, 9 * d); g.fill(); g.stroke(); g.font = `${17 * d}px sans-serif`; g.fillStyle = '#fff'; g.fillText(b.ic, b.x + b.w / 2, b.y + b.h / 2 + 1); }
     // alsó sáv
@@ -594,13 +616,13 @@ window.HGZombi = function (env) {
       else for (const b of B0.lose) { g.fillStyle = b.k === 'load' ? '#7dff4a' : 'rgba(255,255,255,.1)'; rr(b.x, b.y, b.w, b.h, b.h / 2); g.fill(); g.fillStyle = b.k === 'load' ? '#0b1a05' : '#fff'; g.font = `800 ${12.5 * d}px Inter, sans-serif`; g.fillText(b.k === 'load' ? '📂 Újra a mentésből' : 'Befejezés', b.x + b.w / 2, b.y + b.h / 2 + 1, b.w - 10 * d); } }
   }
   // rövid bevezető minden új játék elején, kihagyható
-  const TUT_STEPS = [['🗺️', 'Válassz helyet', 'Az országtérképen válassz vármegyét, aztán egy lakott részre koppintva jelöld ki, honnan indulsz. A térkép a valódi utcákat mutatja; görgővel vagy csípéssel nagyíthatsz.'],
+  const TUT_STEPS = [['🗺️', 'Válassz helyet', 'Az országtérképen válassz vármegyét, aztán válassz kezdőterületet: egy települést vagy városrészt (első koppintás mutatja, a második kiválasztja). A térkép a valódi utcákat mutatja; görgővel vagy csípéssel nagyíthatsz.'],
     ['🧱', 'Húzz falat', 'Rajzolj falat az utcákon keresztül. Amit a fal elvág a város többi részétől, az védett terület – kékkel látod.'],
     ['🚪', 'Nyiss kaput', 'Kapun át jutnak be a civilek a védett részre. A kapu jóval gyengébb a falnál, a horda azt keresi meg és azt töri be először.'],
     ['🪖', 'Állíts védelmet', 'Őrséget és mesterlövészt épületbe, gépágyút és aknát útra tehetsz – főleg a kapuk köré. A Különleges fülön terelőút és hangosbemondó, az Építés fülön őrház és vasút van. A vonattal érkező járművet csatában kijelölöd, aztán koppintasz, hová menjen.'],
     ['🧟', 'Indítsd a kört', 'Indítás után kitör a járvány a védett részen kívül. Irtsd ki az összes zombit úgy, hogy a civilek előírt hányada életben marad. Lent légicsapást és más képességeket vethetsz be.'],
     ['🚆', 'Vasút és hajók', 'Az Építés fülön sínt húzhatsz és állomást tehetsz rá; a Vonat eszközzel összeállítod a szerelvényt (menekítő, fegyveres és járműszállító kocsik). Csatában naszádot és hadihajót hívhatsz a vízre.'],
-    ['🏆', 'Kör után', 'Győzelemkor a védelmed megmarad, a pálya kitágul, és választhatsz egy fejlesztést. A jobb felső 💾 gombbal menthetsz a tervezés közben.']];
+    ['🏆', 'Kör után', 'Győzelemkor a védelmed megmarad, választhatsz egy fejlesztést, és te döntöd el, melyik szomszédos települést vagy városrészt oldod fel. A jobb felső 💾 gombbal menthetsz a tervezés közben.']];
   let TUT = null;
   function wrap(g, t, w) { const out = []; let cur = ''; for (const word of t.split(' ')) { const nx = cur ? cur + ' ' + word : word; if (cur && g.measureText(nx).width > w) { out.push(cur); cur = word; } else cur = nx; } if (cur) out.push(cur); return out; }
   function tutBox() { const d = L.d, w = Math.min(G.W - 24 * d, 430 * d), h = 272 * d, x = (G.W - w) / 2, y = (G.H - h) / 2, bh = 38 * d, bw = (w - 36 * d) / 2; return { x, y, w, h, skip: { x: x + 12 * d, y: y + h - bh - 12 * d, w: bw, h: bh }, next: { x: x + 24 * d + bw, y: y + h - bh - 12 * d, w: bw, h: bh } }; }
@@ -624,7 +646,7 @@ window.HGZombi = function (env) {
   function sideBtns() { const d = L.d, o = []; if (S.phase === 'plan') o.push({ k: 'save', ic: '💾' }); if (S.phase === 'plan' && S.hist.length) o.push({ k: 'undo', ic: '↩️' }); if (S.phase === 'pick') o.push({ k: 'maps', ic: '🗺️' }); if ((S.phase === 'plan' || S.phase === 'pick' || S.phase === 'country') && saved) o.push({ k: 'load', ic: '📂' }); if (S.start && S.phase !== 'res') o.push({ k: 'home', ic: '🎯' }); return o.map((b, j) => ({ ...b, x: G.W - 44 * d, y: L.top + 8 * d + j * 42 * d, w: 36 * d, h: 36 * d })); }
   function resBox() { const d = L.d, w = Math.min(G.W - 24 * d, 380 * d), h = 240 * d, x = (G.W - w) / 2, y = (G.H - h) / 2, bw = (w - 36 * d) / 3; const lk = saved ? ['load', 'end'] : ['end'], lw = (w - 24 * d - (lk.length - 1) * 8 * d) / lk.length; return { x, y, w, h, lose: lk.map((k, j) => ({ k, x: x + 12 * d + j * (lw + 8 * d), y: y + 172 * d, w: lw, h: 42 * d })), btns: S.res.pool.map((u, j) => ({ u, x: x + 12 * d + j * (bw + 6 * d), y: y + 168 * d, w: bw, h: 60 * d })) }; }
   const P2 = e => [e.clientX * G.d, e.clientY * G.d];
-  window.__hv = () => ({ S, L, RUN, MD, openMap, startCountry, sideN, undo, order, vehTap, makeTrack, makeRoad, callShip, GEO: () => GEO, skipTut() { TUT = null; }, begin, makeZone, place, setStart, saveGame, loadGame });
+  window.__hv = () => ({ S, L, RUN, tapBlock, popOf, MD, openMap, startCountry, sideN, undo, order, vehTap, makeTrack, makeRoad, callShip, GEO: () => GEO, skipTut() { TUT = null; }, begin, makeZone, place, setStart, saveGame, loadGame });
 
   return {
     id: 'holtvaros', name: 'HOLTVÁROS', lives: 0, quit: true, sponsor: 'A Zerosites támogatásával', overTitle: 'A JÁRVÁNY GYŐZÖTT',
@@ -658,7 +680,7 @@ window.HGZombi = function (env) {
       const [wx, wy] = toW(x, y); S.hover = [wx, wy];
       if (e && (e.button === 1 || e.button === 2)) { panS = { x, y }; return; }
       if (S.phase === 'load') return;
-      if (S.phase === 'pick' || S.phase === 'country') S.tap = { x, y, wx, wy };
+      if (S.phase === 'pick' || S.phase === 'expand' || S.phase === 'country') S.tap = { x, y, wx, wy };
       else if (S.phase === 'plan') { if (S.tool === 'zone' || S.tool === 'rail' || S.tool === 'road') S.draw = { k: S.tool, pts: [[wx, wy]] }; else if (S.tool === 'cor') { S.draw = { k: 'cor', pts: [[wx, wy]] }; corridor(wx, wy); } else S.tap = { x, y, wx, wy }; }
       else if (S.phase === 'battle') { if (S.abil === 'air') S.draw = { k: 'air', pts: [[wx, wy]] }; else if (S.abil) useAbil(wx, wy); else S.tap = { x, y, wx, wy }; }
     },
@@ -669,7 +691,7 @@ window.HGZombi = function (env) {
       if (S.tap && Math.hypot(x - S.tap.x, y - S.tap.y) > 10 * L.d) { panS = { x, y }; S.tap = null; }
       if (S.draw && btn) { const p = S.draw.pts, q = p[p.length - 1]; if (S.draw.k === 'air') p[1] = [wx, wy]; else if (Math.hypot(wx - q[0], wy - q[1]) > 10) { p.push([wx, wy]); if (S.draw.k === 'cor') corridor(wx, wy); } } },
     up(G2, x, y, e) { if (!S) return; const id = e && e.pointerId != null ? e.pointerId : 0; PT.delete(id); if (pinch) { if (PT.size < 2) pinch = null; S.draw = null; S.tap = null; return; } panS = null;
-      if (S.tap) { const t = S.tap; S.tap = null; if (S.phase === 'plan') place(t.wx, t.wy); else if (S.phase === 'pick') setStart(t.wx, t.wy); else if (S.phase === 'battle') vehTap(t.wx, t.wy); else if (S.phase === 'country') { const c = countyAt(t.wx, t.wy); if (c) openMap(c.id); } }
+      if (S.tap) { const t = S.tap; S.tap = null; if (S.phase === 'plan') place(t.wx, t.wy); else if (S.phase === 'pick' || S.phase === 'expand') tapBlock(t.wx, t.wy); else if (S.phase === 'battle') vehTap(t.wx, t.wy); else if (S.phase === 'country') { const c = countyAt(t.wx, t.wy); if (c) openMap(c.id); } }
       if (S.draw) { const dr = S.draw; S.draw = null; if (dr.k === 'zone') makeZone(dr.pts); else if (dr.k === 'rail') makeTrack(dr.pts); else if (dr.k === 'road') makeRoad(dr.pts); else if (dr.k === 'air') { const a = dr.pts[0], b = dr.pts[1] || a; useAbil(a[0], a[1], b[0], b[1]); } } },
     update(G2, dt) { if (!S) return; if (S.msg) S.msg.l -= dt;
       if (S.zin && L) { const z = S.zin; z.t += dt; clampCam(); if (z.t < 1.3) { const k = 1 - (1 - z.t / 1.3) ** 3, sc = z.s + (L.s - z.s) * k, cx = z.cx + (L.cam.cx - z.cx) * k, cy = z.cy + (L.cam.cy - z.cy) * k; L.s = sc; L.ox = L.vw / 2 - cx * sc; L.oy = L.top + L.vh / 2 - cy * sc; } else S.zin = null; }
