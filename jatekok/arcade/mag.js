@@ -284,7 +284,7 @@ addEventListener('pagehide', () => { try { if (G.running && G.game && !G.game.ex
 $('#pGo').onclick = start; $('#oAgain').onclick = start; $('#oExit').onclick = close; $('#gClose').onclick = close;
 addEventListener('keydown', e => { if (!gEl.classList.contains('open')) return; if (e.key === 'Escape') close();
   // R: teljes újrakezdés (a rövid ügyességi játékoknál); halál után vagy a kezdőképernyőn bármelyik akciógomb indít
-  if (!e.repeat && (e.key === 'r' || e.key === 'R') && G.game && ['locsolo', 'nyomas', 'vizagyu', 'csepp'].includes(G.game.id)) { e.preventDefault(); return start(); }
+  if (!e.repeat && (e.key === 'r' || e.key === 'R') && G.game && ['locsolo', 'nyomas', 'vizagyu', 'csepp', 'ugro'].includes(G.game.id)) { e.preventDefault(); return start(); }
   if (!e.repeat && !G.running && G.game && (!UI.pOver.hidden || !UI.pStart.hidden) && [' ', 'Enter', 'ArrowUp', 'w', 'W'].includes(e.key)) { e.preventDefault(); return start(); }
   if ((e.key === ' ' || e.key === 'ArrowUp') && G.running && G.game.down) { e.preventDefault(); G.game.down(G, G.W / 2, G.H / 2, true); } });
 const P = e => [e.clientX * G.d, e.clientY * G.d];
