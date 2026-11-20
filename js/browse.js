@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611202017';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611202017';
-import * as Player from './player.js?v=202611202017';
-import * as Party from './party.js?v=202611202017';
-import * as VP from './vplayer.js?v=202611202017';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611202017';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611202019';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611202019';
+import * as Player from './player.js?v=202611202019';
+import * as Party from './party.js?v=202611202019';
+import * as VP from './vplayer.js?v=202611202019';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611202019';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -297,7 +297,7 @@ async function sendBoards(win) {
   const wk = weekKey(), boards = {};
   await Promise.all(GAMES.map(async g => {
     const [all, week] = await Promise.all([topOf(g.id), topOf(g.id + '_' + wk)]);
-    const adm = C.isAdmin(), fmt = l => l.map(r => ({ name: lbName(r.uid, r.nick), guest: !!r.nick, score: r.score, wins: r.wins, me: r.uid === C.uid(), ...(adm ? { uid: r.uid } : {}) }));
+    const adm = C.isAdmin(), fmt = l => l.map(r => ({ name: lbName(r.uid, r.nick), guest: !!r.nick, score: r.score, wins: r.wins, me: r.uid === C.uid(), uid: r.uid }));
     boards[g.id] = { all: fmt(all), week: fmt(week) };
   }));
   win?.postMessage({ hgws: 'lb', boards, week: wk.replace('-W', '. év ') + '. hét', guest: guest(), nick: guest() ? getNick() : '', admin: C.isAdmin(), beta: betaOk() }, location.origin);
@@ -404,7 +404,20 @@ async function saveScore(game, score, win, sync) {
       if (sc > ob || win) await FB.setDoc(ref, { best: Math.max(sc, ob), at: FB.serverTimestamp(), ...(win || o.wins ? { wins: (o.wins || 0) + (win ? 1 : 0) } : {}), ...nick }); } catch (e) { console.warn('ranglista', e); if (!lbErr[game]) { lbErr[game] = 1; toast(`Ranglista – ${GAMES.find(g => g.id === game)?.name || game}: nem sikerült menteni (${e?.code || e?.message || 'ismeretlen hiba'}, érték: ${bigNum(score)})`, true); } }
   }
 }
-const lbErr = {}; let synced = false; const syncBest = {}; // az első szinkron (régi helyi rekordok) csak az örök listára megy, a munkamenet közbeni új rekord a hetire is
+const lbErr = {}; /* ranglista-profil: a névre kattintva a játékos (vendég is) összes rekordja egy ablakban */
+async function lbProfile(uid, nick) {
+  if (typeof uid !== 'string' || !/^[\w-]{6,128}$/.test(uid)) return;
+  const u = S().users.get(uid), name = u ? u.name : (typeof nick === 'string' && nick.trim().slice(0, 20)) || 'Vendég', wk = weekKey();
+  const el = modal({ title: 'Ranglista-profil', body: `<div style="display:flex;align-items:center;gap:.9rem;margin-bottom:1rem">${u ? avatar(u, 56) : '<span style="width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--bg3);font-size:1.6rem">🎮</span>'}
+      <div><b style="font-size:1.15rem">${esc(name)}</b> ${u ? C.tagPills(u, 4) : '<span class="utag" style="--tc:#8f8a7e">Vendég</span>'}</div></div><div data-rec><div class="empty">Betöltés…</div></div>`,
+    foot: `${u ? `<a class="btn plain" href="#/profil/${esc(uid)}" data-x><i class="ic ic-user"></i> Teljes profil</a>` : ''}<button class="btn goldb" data-x>Bezárás</button>` });
+  const get = async lb => { try { return (await FB.getDoc(FB.doc(db, 'leaderboards', lb, 'scores', uid))).data() || null; } catch (_) { return null; } };
+  const rows = await Promise.all(GAMES.map(async g => { const [a, w] = await Promise.all([get(g.id), get(g.id + '_' + wk)]); return { g, a, w }; })), has = rows.filter(r => r.a || r.w);
+  const box = el.querySelector('[data-rec]'); if (!box) return; const num = (d, g) => d ? bigNum(lbDec(d.best)) + (g.unit ? ' ' + g.unit : '') : '–';
+  box.innerHTML = has.length ? `<div style="display:grid;grid-template-columns:1fr auto auto;gap:.45rem 1.1rem;align-items:center"><small style="opacity:.6">JÁTÉK</small><small style="opacity:.6;text-align:right">MINDEN IDŐK</small><small style="opacity:.6;text-align:right">E HÉT</small>
+    ${has.map(r => `<span>${r.g.icon} ${esc(r.g.name)}${r.a?.wins ? ` <span class="utag" style="--tc:#e8b656">🏆×${r.a.wins}</span>` : ''}</span><b style="text-align:right">${num(r.a, r.g)}</b><span style="text-align:right;opacity:.85">${num(r.w, r.g)}</span>`).join('')}</div>` : '<div class="empty">Még nincs rekordja.</div>';
+}
+let synced = false; const syncBest = {}; // az első szinkron (régi helyi rekordok) csak az örök listára megy, a munkamenet közbeni új rekord a hetire is
 addEventListener('message', async e => {
   if (e.origin !== location.origin || !e.data?.hgws) return;
   const fr = $('.arcframe'); if (!fr || e.source !== fr.contentWindow) return;
@@ -412,6 +425,7 @@ addEventListener('message', async e => {
   if (e.data.hgws === 'lbreq') sendBoards(fr.contentWindow);
   if (e.data.hgws === 'sync' && !guest() && C.uid()) { const first = !synced; synced = true; let ch = 0; for (const [g, v] of Object.entries(e.data.bests || {})) if (v > (syncBest[g] || 0)) { syncBest[g] = v; ch = 1; await saveScore(g, v, false, first); } if (ch) sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'nickreq') { await renameNick(); sendBoards(fr.contentWindow); }
+  if (e.data.hgws === 'lbprof') lbProfile(e.data.uid, e.data.nick);
   if (e.data.hgws === 'lbdel') { await delScore(e.data.game, e.data.uid); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'ghostreq') fr.contentWindow.postMessage({ hgws: 'ghosts', data: await ghostList(e.data.tracks), guest: guest() }, location.origin);
   if (e.data.hgws === 'ghostsave') await ghostSave(e.data);
