@@ -1,6 +1,6 @@
 // HGWS – közös Firebase-indítás és segédfüggvények
-import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611191904';
-import * as FB from './firebase.js?v=202611191904';
+import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611200904';
+import * as FB from './firebase.js?v=202611200904';
 
 export { FB, notConfigured };
 
@@ -107,6 +107,11 @@ export function toast(msg, err) {
 }
 
 /* nagy számok rövidítve (idle-játékos jelölés): 1,5 M · 12,3 B (milliárd) · 4 T · 2 Qa … */
+/* Ranglista-pontszám tömörítve: a hatalmas számok (Öntöző Birodalom) nem férnek el egész számként, ezért 8·10^15 fölött
+   a nagyságrendjüket (logaritmusukat) tároljuk. A tárolt érték így mindig biztonságos egész, a sorrend pedig megmarad. */
+const LB_T = 8e15, LB_K = 1e12, LB_MAX = 8.3e15;
+export const lbEnc = v => { v = Math.floor(v || 0); if (!(v > 0)) return 0; if (!isFinite(v)) v = 1e300; return v < LB_T ? v : Math.min(LB_MAX, LB_T + Math.round(Math.log10(v / LB_T) * LB_K)); };
+export const lbDec = s => { s = +s || 0; return s < LB_T || s > LB_MAX ? s : LB_T * 10 ** ((s - LB_T) / LB_K); };
 export const bigNum = n => { n = Math.floor(n || 0); if (!isFinite(n)) return '∞'; if (n < 1e6) return n.toLocaleString('hu-HU');
   const k = Math.floor(Math.log10(n) / 3) - 1, m = n / 10 ** (3 * (k + 1)), num = m.toLocaleString('hu-HU', { maximumFractionDigits: m < 10 ? 2 : m < 100 ? 1 : 0 });
   const U = ['', 'U', 'D', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No'], T = ['', 'Dc', 'Vg', 'Tg', 'Qag', 'Qig', 'Sxg', 'Spg', 'Ocg', 'Nog'], F = ['', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No'];

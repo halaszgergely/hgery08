@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, bigNum } from './core.js?v=202611191904';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611191904';
-import * as Player from './player.js?v=202611191904';
-import * as Party from './party.js?v=202611191904';
-import * as VP from './vplayer.js?v=202611191904';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611191904';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611200904';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611200904';
+import * as Player from './player.js?v=202611200904';
+import * as Party from './party.js?v=202611200904';
+import * as VP from './vplayer.js?v=202611200904';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611200904';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -285,7 +285,7 @@ export function weekKey(d = new Date()) {
 const lbCol = lb => FB.collection(db, 'leaderboards', lb, 'scores');
 async function topOf(lb, n = 10) {
   try { const s = await FB.getDocs(FB.query(lbCol(lb), FB.orderBy('best', 'desc'), FB.limit(n * 3)));
-    return s.docs.map(d => ({ uid: d.id, score: d.data().best, wins: d.data().wins || 0, nick: d.data().nick })).sort((a, b) => b.score - a.score || b.wins - a.wins).slice(0, n); } catch (_) { return []; }
+    return s.docs.map(d => ({ uid: d.id, score: lbDec(d.data().best), wins: d.data().wins || 0, nick: d.data().nick })).sort((a, b) => b.score - a.score || b.wins - a.wins).slice(0, n); } catch (_) { return []; }
 }
 async function sendBoards(win) {
   const wk = weekKey(), boards = {};
@@ -389,7 +389,7 @@ async function delScore(game, uid) {
 async function saveScore(game, score, win, sync) {
   if (!GAMES.some(g => g.id === game) || !(score > 0)) return;
   const nick = await nickFor(); if (nick === null) return;
-  const me = C.uid(), sc = Math.floor(score);
+  const me = C.uid(), sc = lbEnc(score);
   // szinkronnál csak az örök ranglistára (a régi rekord a heti listába nem való)
   for (const lb of sync ? [game] : [game, game + '_' + weekKey()]) {
     const ref = FB.doc(db, 'leaderboards', lb, 'scores', me);
