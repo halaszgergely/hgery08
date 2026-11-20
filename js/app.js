@@ -1,18 +1,18 @@
 // HGWS Közösség – csatornák, privát üzenetek, csoportok, filmtár
 import { FB, auth, db, notConfigured, $, $$, esc, ROLES, roleOf, applyRoles, OWNER_UID, notify, audit, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
-  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG, badName, BAD_MSG } from './core.js?v=202611202019';
-import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611202019';
-import * as Admin from './admin.js?v=202611202019';
-import * as Browse from './browse.js?v=202611202019';
-import * as Notif from './notif.js?v=202611202019';
-import * as Profile from './profile.js?v=202611202019';
-import * as Party from './party.js?v=202611202019';
-import * as Ideas from './ideas.js?v=202611202019';
-import * as Player from './player.js?v=202611202019';
-import * as Cmdk from './cmdk.js?v=202611202019';
-import * as Stk from './stickers.js?v=202611202019';
-import * as Friends from './friends.js?v=202611202019';
-import { bootOut, pageIn, I } from './fx.js?v=202611202019';
+  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG, badName, BAD_MSG } from './core.js?v=202611202021';
+import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611202021';
+import * as Admin from './admin.js?v=202611202021';
+import * as Browse from './browse.js?v=202611202021';
+import * as Notif from './notif.js?v=202611202021';
+import * as Profile from './profile.js?v=202611202021';
+import * as Party from './party.js?v=202611202021';
+import * as Ideas from './ideas.js?v=202611202021';
+import * as Player from './player.js?v=202611202021';
+import * as Cmdk from './cmdk.js?v=202611202021';
+import * as Stk from './stickers.js?v=202611202021';
+import * as Friends from './friends.js?v=202611202021';
+import { bootOut, pageIn, I } from './fx.js?v=202611202021';
 
 const S = {
   user: null, me: null, users: new Map(), channels: [], convs: [], convsLoaded: false, videos: [], reads: { ch: {} },
@@ -136,6 +136,7 @@ function start() {
   FB.onSnapshot(FB.doc(db, 'users', uid(), 'private', 'reads'), s => { S.reads = { ch: {}, ...(s.data() || {}) }; soon('reads', () => { if (S.route.sec === 'srv') renderSide(); }); });
   S.owner = { uid: OWNER_UID };
 
+  watchGuests();
   // jelenlét
   const ping = () => { if (!document.hidden && !S.me?.banned) FB.updateDoc(me, { lastSeen: FB.serverTimestamp() }).catch(() => {}); };
   ping(); setInterval(ping, 60e3); document.addEventListener('visibilitychange', () => { if (!document.hidden) { ping(); S.chat?.markRead(); } });
@@ -164,6 +165,7 @@ function start() {
 /* vendég: csak filmnézés (Firebase névtelen belépéssel) – nincs profil, csevegés, hozzászólás, értékelés */
 function startGuest() {
   document.body.classList.add('guest');
+  watchGuests(); guestPing();
   S.convsLoaded = true; S.owner = null;
   renderMe();
   FB.onSnapshot(FB.collection(db, 'users'), s => {
@@ -410,10 +412,20 @@ function badges() {
   document.title = (n ? `(${n}) ` : '') + base;
 }
 
+/* vendégek jelenléte: guests/{uid} = { nick, lastSeen } – a vendég percenként frissíti, mindenki az utóbbi percek aktív vendégeit figyeli */
+function watchGuests() {
+  S.guests = new Map();
+  FB.onSnapshot(FB.query(FB.collection(db, 'guests'), FB.where('lastSeen', '>', FB.Timestamp.fromMillis(Date.now() - 5 * 60e3))), s => {
+    s.docs.forEach(d => S.guests.set(d.id, { id: d.id, ...d.data() })); s.docChanges().forEach(c => c.type === 'removed' && S.guests.delete(c.doc.id)); soon('guests', renderOnline); }, e => console.warn('vendégek', e));
+  setInterval(renderOnline, 60e3);
+}
+function guestPing() { const ref = FB.doc(db, 'guests', S.user.uid), ping = () => { if (!document.hidden) FB.setDoc(ref, { nick: Browse.getNick(), lastSeen: FB.serverTimestamp() }).catch(e => console.warn('vendég-jelenlét', e)); }; ping(); setInterval(ping, 60e3); document.addEventListener('visibilitychange', () => { if (!document.hidden) ping(); }); }
 function renderOnline() {
   const on = [...S.users.values()].filter(u => isOnline(u) && !u.banned).sort((a, b) => rankOfUser(b) - rankOfUser(a) || a.name.localeCompare(b.name, 'hu'));
-  $('#onCount').textContent = on.length;
-  $('#onList').innerHTML = on.map(u => `<button class="onu" data-u="${esc(u.id)}" title="${esc(u.name)}"><span class="avw">${avatar(u, 34)}<i class="on y"></i></span><b style="color:${roleColor(u) || 'inherit'}">${esc(u.name)}</b></button>`).join('');
+  const gs = [...(S.guests?.values() || [])].filter(g => isOnline(g) && typeof g.nick === 'string').sort((a, b) => a.nick.localeCompare(b.nick, 'hu'));
+  $('#onCount').textContent = on.length + gs.length;
+  $('#onList').innerHTML = on.map(u => `<button class="onu" data-u="${esc(u.id)}" title="${esc(u.name)}"><span class="avw">${avatar(u, 34)}<i class="on y"></i></span><b style="color:${roleColor(u) || 'inherit'}">${esc(u.name)}</b></button>`).join('')
+    + gs.map(g => `<button class="onu" data-gu="${esc(g.id)}" data-gn="${esc(g.nick)}" title="${esc(g.nick)} (vendég)"><span class="avw"><span style="width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--bg3);font-size:1rem">🎮</span><i class="on y"></i></span><b style="opacity:.75">${esc(g.nick)}</b></button>`).join('');
 }
 
 function renderMembers() {
@@ -465,6 +477,7 @@ function notifyConv(c) {
 /* ===================== GLOBÁLIS KATTINTÁSOK ===================== */
 function globalClick(e) {
   if (!S.guest && e.target.closest('[data-fr]:not([data-fr=msg]):not([data-fr=more])')) { Friends.onAction(e); return; }
+  const gu = e.target.closest('[data-gu]'); if (gu) { e.preventDefault(); return Browse.lbProfile(gu.dataset.gu, gu.dataset.gn); }
   const u = e.target.closest('[data-u]');
   if (u && !e.target.closest('.pop')) { e.preventDefault(); return profile(u.dataset.u, u); }
   if (Browse.onClick(e)) return;

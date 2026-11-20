@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611202019';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611202019';
-import * as Player from './player.js?v=202611202019';
-import * as Party from './party.js?v=202611202019';
-import * as VP from './vplayer.js?v=202611202019';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611202019';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611202021';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611202021';
+import * as Player from './player.js?v=202611202021';
+import * as Party from './party.js?v=202611202021';
+import * as VP from './vplayer.js?v=202611202021';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611202021';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -340,7 +340,7 @@ function funnyNick() {
   return 'Vizes Csiga ' + (10 + (Math.random() * 90 | 0));
 }
 /* a vendég beceneve: amíg nem ad meg sajátot, egy véletlenszerű (vicces) név, ami ebben a böngészőben megmarad */
-const getNick = () => { try { let n = localStorage.getItem(NICK_KEY); if (!n) { n = funnyNick(); localStorage.setItem(NICK_KEY, n); } return n; } catch (_) { return 'Vizes Csiga 42'; } };
+export const getNick = () => { try { let n = localStorage.getItem(NICK_KEY); if (!n) { n = funnyNick(); localStorage.setItem(NICK_KEY, n); } return n; } catch (_) { return 'Vizes Csiga 42'; } };
 const setNick = n => { try { localStorage.setItem(NICK_KEY, n); } catch (_) {} };
 const lbName = (uid, nick) => nick ? String(nick) : C.U(uid).name;
 let nickAsk = null, nickSkip = false;
@@ -405,7 +405,7 @@ async function saveScore(game, score, win, sync) {
   }
 }
 const lbErr = {}; /* ranglista-profil: a névre kattintva a játékos (vendég is) összes rekordja egy ablakban */
-async function lbProfile(uid, nick) {
+export async function lbProfile(uid, nick) {
   if (typeof uid !== 'string' || !/^[\w-]{6,128}$/.test(uid)) return;
   const u = S().users.get(uid), name = u ? u.name : (typeof nick === 'string' && nick.trim().slice(0, 20)) || 'Vendég', wk = weekKey();
   const el = modal({ title: 'Ranglista-profil', body: `<div style="display:flex;align-items:center;gap:.9rem;margin-bottom:1rem">${u ? avatar(u, 56) : '<span style="width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--bg3);font-size:1.6rem">🎮</span>'}
