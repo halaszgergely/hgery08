@@ -121,6 +121,18 @@ service cloud.firestore {
       allow delete: if request.auth.uid == uid || perm('publishMedia');
     }
 
+    // ---------- e-mail címek: CSAK az adminok és a tulaj olvashatják ----------
+    // A tag kizárólag a saját, a belépési tokenjében szereplő címét írhatja be – más nevében vagy hamis címmel nem.
+    match /emails/{uid} {
+      allow get: if isOwner() || perm('publishMedia') || (signedIn() && request.auth.uid == uid);
+      allow list: if isOwner() || perm('publishMedia');
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['email', 'at'])
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.at == request.time;
+      allow delete: if isOwner() || (signedIn() && request.auth.uid == uid);
+    }
+
     // ---------- felhasználók ----------
     match /users/{uid} {
       // a nevek a hozzászólásokhoz kellenek, ezért a vendégek is olvashatják
