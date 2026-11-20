@@ -2,6 +2,8 @@
 'use strict';
 const ZeroSpace = { id: 'zerospace', name: 'ZERO SPACE DEMO', ext: 'jatekok/zerospace/index.html', tag: 'DEMO',
   desc: 'Tervezd meg a saját űrhajódat modulról modulra, és vezesd csatába a végtelen űrben. Korai demó – az egyjátékos sandbox már elérhető.' };
+const AranyLocsolofej = { id: 'aranylocsolofej', name: 'AZ ARANY LOCSOLÓFEJ', ext: 'jatekok/aranylocsolofej/index.html', tag: 'ÚJ',
+  desc: 'Szikkadt Szilárd ellopta az Arany Locsolófejet! Hívd össze a csapatot, foglald el a víztornyot, és szerezd vissza a filmes kalandjátékban.' };
 const ZeroChip = { id: 'zerochip', name: 'ZERO CHIP', ext: 'jatekok/zerochip/index.html', tag: 'ÚJ',
   desc: 'Építs áramköröket a tranzisztortól a processzor számlálójáig. 29 küldetés: szilícium, logikai kapuk, összeadók, memória.' };
 /* zárt béta: csak adminok és „Béta-tesztelő” taggel rendelkezők látják és indíthatják (a jogosultságot a főoldal küldi) */
@@ -9,7 +11,7 @@ const ZeroQuest = { id: 'zeroquest', name: 'ZERO QUEST', ext: 'jatekok/zeroquest
   desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében: küldetések, szintlépés, felszerelés és egy ébredő őr a romok alatt. Zárt béta.' };
 const Drift = window.HGDrift ? window.HGDrift({ G, Sfx, rr, store, hud }) : null;
 const Zombi = window.HGZombi ? window.HGZombi({ G, Sfx, rr, store, hud }) : null;
-const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Torony, Birodalom, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), ZeroSpace, ZeroChip, ZeroQuest];
+const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Torony, Birodalom, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, ZeroSpace, ZeroChip, ZeroQuest];
 const EXT = $('#ext'), EXF = $('#extf');
 let zqWait = false;
 function openExt(gm) { if (gm.lock && !window.HGZQ_OK) { zqWait = !window.HGZQ_SEEN; return; } EXF.src = gm.ext + '?v=' + Date.now().toString(36).slice(0, 5); EXT.hidden = false; document.body.classList.add('locked'); setTimeout(() => { try { EXF.focus(); } catch (_) {} }, 300); }
@@ -31,6 +33,14 @@ const ARTS = {
     const cx = W / 2, cy = H / 2 + 8, a = Math.sin(t * 3) * 1.2; x.fillStyle = 'rgba(0,0,0,.3)'; x.beginPath(); x.ellipse(cx, cy + 18, 14, 5, 0, 0, 6.283); x.fill(); x.fillStyle = '#3f6fb5'; x.beginPath(); x.ellipse(cx, cy + 2, 10, 13, 0, 0, 6.283); x.fill(); x.fillStyle = '#f0c9a4'; x.beginPath(); x.arc(cx, cy - 15, 8, 0, 6.283); x.fill(); x.fillStyle = '#6b3f1f'; x.beginPath(); x.arc(cx, cy - 17, 8, 3.14, 6.283); x.fill();
     x.save(); x.translate(cx + 10, cy + 2); x.rotate(a - .6); x.fillStyle = '#e3ebf2'; x.fillRect(2, -1.6, 30, 3.2); x.fillStyle = '#e8b656'; x.fillRect(0, -5, 3, 10); x.restore(); x.strokeStyle = `rgba(255,255,255,${.5 + .4 * Math.sin(t * 3)})`; x.lineWidth = 3; x.beginPath(); x.arc(cx + 10, cy + 2, 34, a - 1.2, a - .2); x.stroke();
     const sx = cx + 70, sy = cy + 10 - Math.abs(Math.sin(t * 5)) * 6; x.fillStyle = '#6fc24a'; x.beginPath(); x.moveTo(sx - 15, sy + 10); x.bezierCurveTo(sx - 16, sy - 14, sx + 16, sy - 14, sx + 15, sy + 10); x.fill(); x.fillStyle = '#12301a'; x.fillRect(sx - 6, sy - 2, 3, 5); x.fillRect(sx + 3, sy - 2, 3, 5); },
+  aranylocsolofej: (c, x, t) => { const W = c.width, H = c.height, g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0b1430'); g.addColorStop(.7, '#3a2a5a'); g.addColorStop(1, '#a8552e'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    x.fillStyle = 'rgba(255,255,255,.5)'; for (let i = 0; i < 22; i++) x.fillRect((i * 73) % W, (i * 37) % 70, 1.5, 1.5);
+    x.fillStyle = '#0a0f1c'; x.beginPath(); x.moveTo(40, H); x.lineTo(46, 62); x.lineTo(66, 62); x.lineTo(72, H); x.fill(); x.beginPath(); x.roundRect(24, 26, 64, 38, 8); x.fill(); x.beginPath(); x.moveTo(22, 28); x.lineTo(56, 8); x.lineTo(90, 28); x.fill(); x.fillRect(0, H - 14, W, 14);
+    const cx = W / 2 + 10, cy = 96, gl = x.createRadialGradient(cx, cy - 26, 2, cx, cy - 26, 70); gl.addColorStop(0, `rgba(255,226,154,${.55 + .15 * Math.sin(t * 3)})`); gl.addColorStop(1, 'rgba(255,226,154,0)'); x.fillStyle = gl; x.fillRect(cx - 80, cy - 100, 160, 150);
+    x.strokeStyle = 'rgba(255,243,196,.55)'; x.lineWidth = 1.5; for (let k = 0; k < 8; k++) { const a = k / 8 * 6.283 + t * .5; x.beginPath(); x.moveTo(cx + Math.cos(a) * 30, cy - 26 + Math.sin(a) * 30); x.lineTo(cx + Math.cos(a) * 44, cy - 26 + Math.sin(a) * 44); x.stroke(); }
+    const G = x.createLinearGradient(cx - 18, 0, cx + 18, 0); G.addColorStop(0, '#a8702a'); G.addColorStop(.4, '#fff3c4'); G.addColorStop(1, '#a8702a'); x.fillStyle = G; x.fillRect(cx - 5, cy - 22, 10, 22); x.fillRect(cx - 13, cy - 2, 26, 6); x.beginPath(); x.moveTo(cx - 8, cy - 22); x.lineTo(cx + 8, cy - 22); x.lineTo(cx + 15, cy - 36); x.lineTo(cx - 15, cy - 36); x.fill(); x.beginPath(); x.ellipse(cx, cy - 38, 18, 7, 0, 0, 6.283); x.fill();
+    x.fillStyle = '#7a2f3a'; x.fillRect(cx - 34, cy + 4, 68, 30); x.fillStyle = '#e8b656'; x.fillRect(cx - 38, cy, 76, 5); x.strokeStyle = 'rgba(200,235,255,.8)'; x.lineWidth = 2; x.beginPath(); x.moveTo(cx - 30, cy); x.lineTo(cx - 30, cy - 46); x.arc(cx, cy - 46, 30, Math.PI, 0); x.lineTo(cx + 30, cy); x.stroke();
+    for (let k = 0; k < 6; k++) { const o = (t * .5 + k / 6) % 1, px = cx - 110 + k * 44 + Math.sin(k * 3) * 10, py = 20 + o * 100; x.fillStyle = `rgba(108,198,255,${.9 - o * .6})`; x.beginPath(); x.moveTo(px, py - 7); x.bezierCurveTo(px + 6, py, px + 5, py + 6, px, py + 6); x.bezierCurveTo(px - 5, py + 6, px - 6, py, px, py - 7); x.fill(); } },
   zerochip: (c, x, t) => { const W = c.width, H = c.height; x.fillStyle = '#0a3324'; x.fillRect(0, 0, W, H); x.fillStyle = 'rgba(160,230,190,.25)'; for (let i = 8; i < W; i += 16) for (let j = 8; j < H; j += 16) x.fillRect(i, j, 1.5, 1.5);
     x.lineWidth = 3; x.lineCap = 'round'; const on = k => Math.sin(t * 3 - k * .9) > 0; for (const [k, pts] of [[0, [[20, 40], [90, 40], [90, 56], [128, 56]]], [1, [[20, 104], [90, 104], [90, 84], [128, 84]]], [2, [[192, 70], [250, 70], [250, 40], [300, 40]]], [3, [[250, 70], [250, 104], [300, 104]]]]) { x.strokeStyle = on(k) ? '#ffd35a' : '#3f6f9a'; x.beginPath(); pts.forEach((p, i) => i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1])); x.stroke(); }
     x.fillStyle = '#1b222d'; x.beginPath(); x.roundRect(128, 44, 64, 52, 7); x.fill(); x.strokeStyle = '#6f8196'; x.lineWidth = 1.5; x.stroke(); x.fillStyle = '#ffe29a'; x.font = '800 15px system-ui'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('NAND', 160, 71); x.fillStyle = on(2) ? '#ff5a4d' : '#4a1f1c'; x.beginPath(); x.arc(304, 40, 9, 0, 6.283); x.fill(); x.fillStyle = on(3) ? '#ff5a4d' : '#4a1f1c'; x.beginPath(); x.arc(304, 104, 9, 0, 6.283); x.fill(); },
@@ -77,7 +87,7 @@ function renderCards() {
     (function anim(now) { requestAnimationFrame(anim); if (!vis || document.hidden || gEl.classList.contains('open')) return;
       arts.forEach((c, i) => ARTS[GAMES[i].id](c, c.getContext('2d'), now / 1000)); })(0);
   }
-  wrap.querySelectorAll('.best').forEach(b => { if (b.dataset.ext) { b.textContent = b.dataset.id === 'zeroquest' ? 'ZÁRT BÉTA' : b.dataset.id === 'zerochip' ? 'ÚJ' : 'DEMO'; return; } const v = store.get('best_' + b.dataset.id), gm = GAMES.find(x => x.id === b.dataset.id), w = store.get('wins_' + b.dataset.id); b.textContent = 'REKORD: ' + bigNum(v) + (gm.lb ? ' ' + gm.lb : '') + (w ? ' · 🏆×' + w : ''); });
+  wrap.querySelectorAll('.best').forEach(b => { if (b.dataset.ext) { const eg = GAMES.find(x => x.id === b.dataset.id); b.textContent = (eg && eg.tag) || 'DEMO'; return; } const v = store.get('best_' + b.dataset.id), gm = GAMES.find(x => x.id === b.dataset.id), w = store.get('wins_' + b.dataset.id); b.textContent = 'REKORD: ' + bigNum(v) + (gm.lb ? ' ' + gm.lb : '') + (w ? ' · 🏆×' + w : ''); });
 }
 renderCards();
 $('#yr').textContent = new Date().getFullYear();
