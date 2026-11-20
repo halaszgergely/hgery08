@@ -7,8 +7,8 @@ const Nyomas = {
   ranks: [[0, 'Gyakornok'], [300, 'Szivattyúkezelő'], [900, 'Nyomásfelelős'], [2000, 'PLC-programozó'], [4000, 'Főgépész-legenda']],
   /* választható műszer-külsők – valódi nyomásmérő-típusok alapján */
   designs: ['HGWS vezérlőpult', 'Bourdon-csöves ipari', 'Glicerines rozsdamentes', 'Sárgaréz gőzmanométer', 'Digitális manométer'],
-  init(G) { this.ds = Math.min(this.designs.length - 1, store.get('nyomas_design') | 0); this.a = 0; this.dir = 1; this.sp = .9; this.lvl = 1; this.newZone(); this.flash = 0; this.lock = 0; this.burst = 0; },
-  newZone() { this.zw = Math.max(.045, .2 - this.lvl * .012); this.zc = .15 + Math.random() * .7; },
+  init(G) { this.ds = Math.min(this.designs.length - 1, store.get('nyomas_design') | 0); this.a = 0; this.dir = 1; this.sp = .65; this.lvl = 1; this.newZone(); this.flash = 0; this.lock = 0; this.burst = 0; },
+  newZone() { this.zw = Math.max(.045, .25 - this.lvl * .013); this.zc = .15 + Math.random() * .7; },
   update(G, dt) {
     if (this.lock > 0) { this.lock -= dt; return; }
     this.a += this.dir * this.sp * dt; if (this.a > 1) { this.a = 1; this.dir = -1; } if (this.a < 0) { this.a = 0; this.dir = 1; }
@@ -22,7 +22,7 @@ const Nyomas = {
       const perfect = d < this.zw * .12, pts = Math.round((perfect ? 50 : 20) * (1 + this.lvl * .25));
       G.add(pts, cx, cy - G.H * .2, perfect ? 'PERFEKT! +' + pts : '+' + pts); perfect ? Sfx.perfect() : Sfx.coin();
       G.splash(cx, cy - G.H * .1, perfect ? '255,215,120' : '150,215,255', perfect ? 40 : 22, 7);
-      this.lvl++; this.sp = Math.min(3.4, .9 + this.lvl * .14); this.flash = 1; this.lock = .25; this.newZone();
+      this.lvl++; this.sp = Math.min(3.4, .55 + this.lvl * .14); this.flash = 1; this.lock = .25; this.newZone();
     } else { this.burst = 1; this.lock = .5; G.float(cx, cy - G.H * .2, d < this.zw ? 'MAJDNEM!' : 'CSŐTÖRÉS!', true); G.lose(); }
   },
   draw(g, G, t) {
