@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611210025';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611210025';
-import * as Player from './player.js?v=202611210025';
-import * as Party from './party.js?v=202611210025';
-import * as VP from './vplayer.js?v=202611210025';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611210025';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611210032';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611210032';
+import * as Player from './player.js?v=202611210032';
+import * as Party from './party.js?v=202611210032';
+import * as VP from './vplayer.js?v=202611210032';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611210032';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -251,6 +251,7 @@ export const GAMES = [
   { id: 'nyomas', name: 'Nyomásmester', icon: '🎛️', desc: 'Állítsd meg a mutatót a zöld zónában – a PLC rád bízta a szivattyút.', c: '#6cc6ff' },
   { id: 'vizagyu', name: 'Vízágyú', icon: '💦', desc: 'Kaktuszok és tűzgolyók zúdulnak a kertre. Célozz a vízágyúval!', c: '#ff7a6e' },
   { id: 'csepp', name: 'Csepp Futam', icon: '💧', desc: 'Repülj át a csövek között egy bátor vízcseppel – egy ütközés és vége!', c: '#e8b656' },
+  { id: 'ugro', name: 'Cseppugró', icon: '🫧', unit: 'm', desc: 'Pattogj levélről levélre egyre magasabbra – a száraz levél letörik, a locsolófej fellő!', c: '#5ee08a' },
   { id: 'viztorony', name: 'Víztorony', icon: '🗼', unit: 'm', desc: 'Mássz fel a víztorony tetejére az Arany Locsolófejért – egy rossz ugrás, és zuhansz!', c: '#b48cff', sponsor: 'A Zerosites támogatásával' },
   { id: 'drift', name: 'Drift Király', icon: '🏎️', desc: 'Felülnézetes drift-verseny 10 pályán, szellemautókkal és kétjátékos móddal.', c: '#ff5a4d' },
   { id: 'holtvaros', name: 'Holtváros', icon: '🧟', unit: 'pont', desc: 'Védd meg a várost a zombijárványtól: zóna, kapuk, őrség, légicsapás. A Zombies Aren\'t Real ihlette.', c: '#7dff4a', sponsor: 'A Zerosites támogatásával' },

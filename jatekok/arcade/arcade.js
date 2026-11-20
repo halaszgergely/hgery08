@@ -11,7 +11,7 @@ const ZeroQuest = { id: 'zeroquest', name: 'ZERO QUEST', ext: 'jatekok/zeroquest
   desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében: küldetések, szintlépés, felszerelés és egy ébredő őr a romok alatt. Zárt béta.' };
 const Drift = window.HGDrift ? window.HGDrift({ G, Sfx, rr, store, hud }) : null;
 const Zombi = window.HGZombi ? window.HGZombi({ G, Sfx, rr, store, hud }) : null;
-const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Torony, Birodalom, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, ZeroSpace, ZeroChip, ZeroQuest];
+const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Ugro, Torony, Birodalom, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, ZeroSpace, ZeroChip, ZeroQuest];
 const EXT = $('#ext'), EXF = $('#extf');
 let zqWait = false;
 function openExt(gm) { if (gm.lock && !window.HGZQ_OK) { zqWait = !window.HGZQ_SEEN; return; } EXF.src = gm.ext + '?v=' + Date.now().toString(36).slice(0, 5); EXT.hidden = false; document.body.classList.add('locked'); setTimeout(() => { try { EXF.focus(); } catch (_) {} }, 300); }
@@ -67,6 +67,9 @@ const ARTS = {
     for (let i = 0; i < 3; i++) { const ex = W * (.25 + i * .25), ey = ((t * 30 + i * 40) % (H + 20)) - 10; x.fillStyle = i === 1 ? '#ff9a2e' : '#3f8a3a'; x.beginPath(); x.arc(ex, ey, 9, 0, 6.283); x.fill(); }
     const cx = W / 2 + Math.sin(t) * W * .25; x.fillStyle = '#9fdcff'; for (let k = 0; k < 6; k++) { x.fillRect(cx - 2, H - 30 - ((t * 200 + k * 22) % H), 4, 8); }
     x.fillStyle = '#e8b656'; x.fillRect(cx - 5, H - 34, 10, 20); x.fillStyle = '#2d3b52'; x.fillRect(cx - 18, H - 16, 36, 16); },
+  ugro: (c, x, t) => { const W = c.width, H = c.height; const gr = x.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#0c3046'); gr.addColorStop(1, '#0a2a1c'); x.fillStyle = gr; x.fillRect(0, 0, W, H);
+    const s = H / 120, off = (t * 26) % 40; for (let i = -1; i < 5; i++) { const y = (i * 40 + off) * s, px = W * (.25 + .5 * (((i * 7 + Math.floor(t * 26 / 40) * 3) % 5 + 5) % 5) / 4); x.fillStyle = '#2f8f3f'; x.beginPath(); x.roundRect(px - 22 * s, y, 44 * s, 8 * s, 4 * s); x.fill(); x.fillStyle = '#5ee08a'; x.fillRect(px - 18 * s, y + 1.5 * s, 36 * s, 2 * s); }
+    const b = Math.abs(Math.sin(t * 3.2)), dx = W / 2 + Math.sin(t * 1.1) * W * .18, dy = H * .78 - b * H * .42, r = 10 * s; x.fillStyle = '#6cc6ff'; x.beginPath(); x.moveTo(dx, dy - r * 1.75); x.quadraticCurveTo(dx + r * 1.05, dy - r * .5, dx + r, dy + .1 * r); x.arc(dx, dy + .1 * r, r, 0, Math.PI); x.quadraticCurveTo(dx - r * 1.05, dy - r * .5, dx, dy - r * 1.75); x.fill(); x.fillStyle = '#04121f'; x.beginPath(); x.arc(dx - 3 * s, dy, 1.6 * s, 0, 6.283); x.arc(dx + 3 * s, dy, 1.6 * s, 0, 6.283); x.fill(); },
   csepp: (c, x, t) => { const W = c.width, H = c.height; x.fillStyle = '#0c2238'; x.fillRect(0, 0, W, H);
     for (let i = 0; i < 3; i++) { const px = ((W + 60) - ((t * 50 + i * 90) % (W + 60))) - 30, gap = H * .28 + 40 + Math.sin(i * 3) * 10; const top = H * (.2 + .15 * Math.sin(i * 5));
       x.fillStyle = '#aab6c2'; x.fillRect(px, 0, 22, top); x.fillRect(px, top + gap, 22, H); x.fillStyle = '#b5873a'; x.fillRect(px - 3, top - 8, 28, 8); x.fillRect(px - 3, top + gap, 28, 8); }
