@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611201959';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611201959';
-import * as Player from './player.js?v=202611201959';
-import * as Party from './party.js?v=202611201959';
-import * as VP from './vplayer.js?v=202611201959';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611201959';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611202000';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611202000';
+import * as Player from './player.js?v=202611202000';
+import * as Party from './party.js?v=202611202000';
+import * as VP from './vplayer.js?v=202611202000';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611202000';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -401,10 +401,10 @@ async function saveScore(game, score, win, sync) {
   for (const lb of sync ? [game] : [game, game + '_' + weekKey()]) {
     const ref = FB.doc(db, 'leaderboards', lb, 'scores', me);
     try { const s = await FB.getDoc(ref), o = s.data() || {}, ob = o.best || 0;
-      if (sc > ob || win) await FB.setDoc(ref, { best: Math.max(sc, ob), at: FB.serverTimestamp(), ...(win || o.wins ? { wins: (o.wins || 0) + (win ? 1 : 0) } : {}), ...nick }); } catch (e) { console.warn('ranglista', e); if (!lbErr) { lbErr = 1; toast('Ranglista: nem sikerült menteni (' + (e?.code || e?.message || 'ismeretlen hiba') + ')', true); } }
+      if (sc > ob || win) await FB.setDoc(ref, { best: Math.max(sc, ob), at: FB.serverTimestamp(), ...(win || o.wins ? { wins: (o.wins || 0) + (win ? 1 : 0) } : {}), ...nick }); } catch (e) { console.warn('ranglista', e); if (!lbErr[game]) { lbErr[game] = 1; toast(`Ranglista – ${GAMES.find(g => g.id === game)?.name || game}: nem sikerült menteni (${e?.code || e?.message || 'ismeretlen hiba'}, érték: ${bigNum(score)})`, true); } }
   }
 }
-let lbErr = 0, synced = false; const syncBest = {}; // az első szinkron (régi helyi rekordok) csak az örök listára megy, a munkamenet közbeni új rekord a hetire is
+const lbErr = {}; let synced = false; const syncBest = {}; // az első szinkron (régi helyi rekordok) csak az örök listára megy, a munkamenet közbeni új rekord a hetire is
 addEventListener('message', async e => {
   if (e.origin !== location.origin || !e.data?.hgws) return;
   const fr = $('.arcframe'); if (!fr || e.source !== fr.contentWindow) return;
