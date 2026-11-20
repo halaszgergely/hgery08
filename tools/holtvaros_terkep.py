@@ -8,7 +8,7 @@ A települések, parkok és hidak helye kézzel megadott, közelítő koordinát
 """
 import json, math, sys, os
 D = sys.argv[1] if len(sys.argv) > 1 else '.'
-K = 180                                   # képpont / km
+K = 1000                                  # képpont / km – 1 képpont = 1 méter
 load = lambda n: json.load(open(os.path.join(D, n)))['features']
 lines = lambda g: g['coordinates'] if g['type'] == 'MultiLineString' else [g['coordinates']]
 polys = lambda g: g['coordinates'] if g['type'] == 'MultiPolygon' else [g['coordinates']]
@@ -39,7 +39,7 @@ def build(key, title, county, cities, cap, T, extra=None):
     KX, KY = 111.32 * math.cos(math.radians((LAT0 + LAT1) / 2)) * K, 111.19 * K
     W, H = round((LON1 - LON0) * KX), round((LAT1 - LAT0) * KY)
     P = lambda lon, lat: ((lon - LON0) * KX, (LAT1 - lat) * KY)
-    M = 900
+    M = 6000
     inb = lambda p: -M <= p[0] <= W + M and -M <= p[1] <= H + M
     def clip(pts):
         out, cur = [], []
@@ -54,11 +54,11 @@ def build(key, title, county, cities, cap, T, extra=None):
         nm = f['properties'].get('name') or ''
         if not f['geometry']: continue
         for l in lines(f['geometry']):
-            for c in clip([P(*q[:2]) for q in l]): water.append((0 if nm == 'Danube' else 1, 84 if nm == 'Danube' else 44 if nm in ('Tisza', 'Tisa') else 40, chaikin(c)))
+            for c in clip([P(*q[:2]) for q in l]): water.append((0 if nm == 'Danube' else 1, 430 if nm == 'Danube' else 170 if nm in ('Tisza', 'Tisa') else 110, chaikin(c, 3)))
     for f in RIV2:
         if not f['geometry']: continue
         for l in lines(f['geometry']):
-            for c in clip([P(*q[:2]) for q in l]): water.append((2, 18, chaikin(c)))
+            for c in clip([P(*q[:2]) for q in l]): water.append((2, 40, chaikin(c, 3)))
     water.sort(key=lambda w: (w[0], -len(w[2])))
     roads, rails, urban = [], [], []
     for f in ROADS:
