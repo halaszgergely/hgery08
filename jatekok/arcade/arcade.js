@@ -1,0 +1,94 @@
+/* HGWS Arcade – játéklista, kártyák, mélylinkek és online ranglista (klasszikus szkript, az arcade.html tölti be; a közös keret a jatekok/arcade/mag.js) */
+'use strict';
+const ZeroSpace = { id: 'zerospace', name: 'ZERO SPACE DEMO', ext: 'jatekok/zerospace/index.html', tag: 'DEMO',
+  desc: 'Tervezd meg a saját űrhajódat modulról modulra, és vezesd csatába a végtelen űrben. Korai demó – az egyjátékos sandbox már elérhető.' };
+const Drift = window.HGDrift ? window.HGDrift({ G, Sfx, rr, store, hud }) : null;
+const Zombi = window.HGZombi ? window.HGZombi({ G, Sfx, rr, store, hud }) : null;
+const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Torony, Birodalom, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), ZeroSpace];
+const EXT = $('#ext'), EXF = $('#extf');
+function openExt(gm) { EXF.src = gm.ext + '?v=' + Date.now().toString(36).slice(0, 5); EXT.hidden = false; document.body.classList.add('locked'); setTimeout(() => { try { EXF.focus(); } catch (_) {} }, 300); }
+function closeExt() { EXT.hidden = true; EXF.src = 'about:blank'; document.body.classList.remove('locked'); }
+$('#extX').onclick = closeExt;
+const ARTS = {
+  drift: (c, x, t) => Drift && Drift.art(c, x, t),
+  holtvaros: (c, x, t) => Zombi && Zombi.art(c, x, t),
+  birodalom: (c, x, t) => { const W = c.width, H = c.height, s = 22, ox = (W - s * 11) / 2, oy = (H - s * 5) / 2; x.fillStyle = '#0f2a1a'; x.fillRect(0, 0, W, H);
+    for (let r = 0; r < 5; r++) for (let q = 0; q < 11; q++) { x.fillStyle = (q + r) & 1 ? '#3b7a33' : '#367230'; x.fillRect(ox + q * s, oy + r * s, s, s); }
+    x.fillStyle = 'rgba(40,110,170,.3)'; x.fillRect(ox + 2 * s, oy, s * 3, s * 3); x.fillRect(ox + 6 * s, oy + 2 * s, s * 3, s * 3);
+    x.fillStyle = '#6f8fae'; x.fillRect(ox - 8, oy + 2.4 * s, s * 7.5 + 8, s * .22); x.fillRect(ox + 3.4 * s, oy + 1.5 * s, s * .22, s);
+    for (const [q, r] of [[3, 1], [7, 3]]) { const cx = ox + q * s + s / 2, cy = oy + r * s + s / 2; x.fillStyle = '#e8b656'; x.beginPath(); x.arc(cx, cy, 4, 0, 6.283); x.fill();
+      x.strokeStyle = `rgba(150,215,255,${.35 + .2 * Math.sin(t * 6)})`; for (let j = 0; j < 8; j++) { const a = j * .785, rr2 = s * (.6 + .6 * ((t + j * .3) % 1)); x.beginPath(); x.arc(cx, cy, rr2, a - .2, a + .2); x.stroke(); } }
+    for (const [q, r, col] of [[2, 0, '#e5533d'], [4, 0, '#e5533d'], [2, 2, '#ff6fa8'], [4, 1, '#9be36a'], [6, 3, '#ffa531'], [8, 4, '#8e5bd6'], [6, 2, '#ffa531'], [8, 2, '#8e5bd6']]) {
+      const cx = ox + q * s + s / 2, cy = oy + r * s + s / 2, k = .7 + .3 * Math.sin(t * 2 + q); x.fillStyle = '#4fae46'; x.beginPath(); x.arc(cx, cy, 7 * k, 0, 6.283); x.fill(); x.fillStyle = col; x.beginPath(); x.arc(cx + 2, cy - 2, 2.6 * k, 0, 6.283); x.fill(); } },
+  zerospace: (c, x, t) => { const W = c.width, H = c.height; x.fillStyle = '#07070a'; x.fillRect(0, 0, W, H);
+    for (let i = 0; i < 60; i++) { const sx = (i * 97.3 + t * (6 + i % 4 * 6)) % W, sy = (i * 53.7) % H; x.fillStyle = `rgba(230,224,208,${.25 + (i % 5) * .12})`; x.fillRect(W - sx, sy, i % 7 ? 1 : 2, i % 7 ? 1 : 2); }
+    const cx = W * .5 + Math.sin(t * .7) * 30, cy = H * .5 + Math.sin(t * 1.1) * 8; x.save(); x.translate(cx, cy);
+    x.fillStyle = '#33496b'; x.fillRect(-34, -8, 52, 16); x.fillStyle = '#17253f'; x.fillRect(-26, -16, 30, 32); x.fillStyle = '#b2382a'; x.fillRect(18, -5, 14, 10); x.fillStyle = '#c9a24a'; x.fillRect(-8, -3, 10, 6);
+    x.fillStyle = `rgba(95,176,200,${.6 + .4 * Math.sin(t * 20)})`; x.fillRect(-44 - Math.random() * 8, -5, 10, 10); x.restore();
+    x.fillStyle = '#e4614a'; for (let k = 0; k < 3; k++) { const bx = (t * 160 + k * 110) % (W + 40); x.fillRect(cx + 34 + bx, cy - 1, 8, 2); } },
+  viztorony: (c, x, t) => { const W = c.width, H = c.height; const gr = x.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#251c3e'); gr.addColorStop(1, '#0a1a10'); x.fillStyle = gr; x.fillRect(0, 0, W, H);
+    x.fillStyle = '#1c1712'; x.fillRect(0, 0, 26, H); x.fillRect(W - 26, 0, 26, H); x.fillStyle = 'rgba(232,182,86,.4)'; x.fillRect(25, 0, 2, H); x.fillRect(W - 27, 0, 2, H);
+    const pl = [[60, 118, 70], [150, 88, 54], [222, 58, 48], [120, 30, 42]]; x.fillStyle = '#6b4a2a'; for (const [px, py, w] of pl) { x.fillRect(px, py, w, 8); } x.fillStyle = '#c8964a'; for (const [px, py, w] of pl) x.fillRect(px, py, w, 3);
+    const k = (t * .55) % 1, sx = 95 + 82 * k, sy = 118 - 30 * k - Math.sin(k * Math.PI) * 42; x.fillStyle = '#2f8fe0'; x.fillRect(sx - 5, sy - 13, 10, 8); x.fillStyle = '#f1c9a0'; x.fillRect(sx - 4, sy - 18, 8, 6); x.fillStyle = '#e8b656'; x.fillRect(sx - 5, sy - 20, 10, 3);
+    x.fillStyle = '#ffd77a'; x.save(); x.translate(141, 18); x.rotate(t * 3); x.fillRect(-8, -2, 16, 4); x.restore(); },
+  locsolo: (c, x, t) => { const W = c.width, H = c.height; const gr = x.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#3a2410'); gr.addColorStop(1, '#140b04'); x.fillStyle = gr; x.fillRect(0, 0, W, H);
+    for (let i = 0; i < 4; i++) { const px = W * (.14 + i * .24), py = H * .62, w = (Math.sin(t + i) + 1) / 2; x.fillStyle = '#7a4325'; x.fillRect(px - 14, py, 28, 22); x.strokeStyle = `hsl(${30 + 90 * w},60%,40%)`; x.lineWidth = 3; x.beginPath(); x.moveTo(px, py); x.lineTo(px + (1 - w) * 10, py - 30); x.stroke();
+      x.fillStyle = w > .4 ? '#ffd23f' : '#9a7a3a'; x.beginPath(); x.arc(px + (1 - w) * 10, py - 32, 7, 0, 6.283); x.fill(); }
+    for (let i = 0; i < 14; i++) { const k = (t * 1.5 + i / 14) % 1; x.fillStyle = `rgba(150,215,255,${1 - k})`; x.beginPath(); x.arc(W * .5 + Math.sin(i * 7) * W * .3 * k, H * .1 + k * H * .5, 2, 0, 6.283); x.fill(); } },
+  nyomas: (c, x, t) => { const W = c.width, H = c.height; x.fillStyle = '#0b1424'; x.fillRect(0, 0, W, H); const cx = W / 2, cy = H * .85, R = H * .65;
+    x.lineWidth = 12; x.strokeStyle = '#1e2b40'; x.beginPath(); x.arc(cx, cy, R, Math.PI * 1.1, Math.PI * 1.9); x.stroke();
+    x.strokeStyle = '#5ee08a'; x.beginPath(); x.arc(cx, cy, R, Math.PI * 1.45, Math.PI * 1.55); x.stroke();
+    const a = Math.PI * 1.1 + Math.PI * .8 * ((Math.sin(t * 2) + 1) / 2); x.strokeStyle = '#ffd77a'; x.lineWidth = 4; x.lineCap = 'round'; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + Math.cos(a) * R * 1.05, cy + Math.sin(a) * R * 1.05); x.stroke(); },
+  vizagyu: (c, x, t) => { const W = c.width, H = c.height; const gr = x.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#4a2810'); gr.addColorStop(1, '#1a0d05'); x.fillStyle = gr; x.fillRect(0, 0, W, H);
+    for (let i = 0; i < 3; i++) { const ex = W * (.25 + i * .25), ey = ((t * 30 + i * 40) % (H + 20)) - 10; x.fillStyle = i === 1 ? '#ff9a2e' : '#3f8a3a'; x.beginPath(); x.arc(ex, ey, 9, 0, 6.283); x.fill(); }
+    const cx = W / 2 + Math.sin(t) * W * .25; x.fillStyle = '#9fdcff'; for (let k = 0; k < 6; k++) { x.fillRect(cx - 2, H - 30 - ((t * 200 + k * 22) % H), 4, 8); }
+    x.fillStyle = '#e8b656'; x.fillRect(cx - 5, H - 34, 10, 20); x.fillStyle = '#2d3b52'; x.fillRect(cx - 18, H - 16, 36, 16); },
+  csepp: (c, x, t) => { const W = c.width, H = c.height; x.fillStyle = '#0c2238'; x.fillRect(0, 0, W, H);
+    for (let i = 0; i < 3; i++) { const px = ((W + 60) - ((t * 50 + i * 90) % (W + 60))) - 30, gap = H * .28 + 40 + Math.sin(i * 3) * 10; const top = H * (.2 + .15 * Math.sin(i * 5));
+      x.fillStyle = '#aab6c2'; x.fillRect(px, 0, 22, top); x.fillRect(px, top + gap, 22, H); x.fillStyle = '#b5873a'; x.fillRect(px - 3, top - 8, 28, 8); x.fillRect(px - 3, top + gap, 28, 8); }
+    const y = H * .5 + Math.sin(t * 4) * 14; x.fillStyle = '#6cc6ff'; x.beginPath(); x.arc(W * .25, y, 9, 0, 6.283); x.fill(); }
+};
+
+function renderCards() {
+  const wrap = $('#games');
+  if (!wrap.children.length) {
+    GAMES.forEach((gm, i) => {
+      const el = document.createElement('article'); el.className = 'card reveal'; el.tabIndex = 0; el.setAttribute('role', 'button');
+      el.innerHTML = `<span class="tag">${String(i + 1).padStart(2, '0')}</span><div class="art"><canvas width="320" height="140"></canvas></div><h3>${gm.name}</h3>${gm.sponsor ? `<span class="spon">${gm.sponsor}</span>` : ''}<p>${gm.desc.split('.')[0]}.</p><div class="foot"><span class="best" data-id="${gm.id}"${gm.ext ? ' data-ext="1"' : ''}></span><span class="play">JÁTÉK ▶</span></div>`;
+      el.addEventListener('click', () => openGame(gm)); el.addEventListener('keydown', e => { if (e.key === 'Enter') openGame(gm); });
+      wrap.appendChild(el); io.observe(el);
+    });
+    const arts = [...wrap.querySelectorAll('canvas')];
+    let vis = false; new IntersectionObserver(e => vis = e[0].isIntersecting).observe(wrap);
+    (function anim(now) { requestAnimationFrame(anim); if (!vis || document.hidden || gEl.classList.contains('open')) return;
+      arts.forEach((c, i) => ARTS[GAMES[i].id](c, c.getContext('2d'), now / 1000)); })(0);
+  }
+  wrap.querySelectorAll('.best').forEach(b => { if (b.dataset.ext) { b.textContent = 'DEMO'; return; } const v = store.get('best_' + b.dataset.id), gm = GAMES.find(x => x.id === b.dataset.id), w = store.get('wins_' + b.dataset.id); b.textContent = 'REKORD: ' + bigNum(v) + (gm.lb ? ' ' + gm.lb : '') + (w ? ' · 🏆×' + w : ''); });
+}
+renderCards();
+$('#yr').textContent = new Date().getFullYear();
+startHero();
+function deep() { const m = location.hash.match(/^#play=(\w+)/); const gm = m && GAMES.find(x => x.id === m[1]); if (gm) { openGame(gm); history.replaceState(null, '', location.pathname + location.search); } }
+deep(); addEventListener('hashchange', deep);
+/* online ranglista: az adatokat a HGWS főoldal küldi (ott van a bejelentkezés) */
+let LB = null, lbt = 'week';
+function lbDraw() {
+  if (!LB) return;
+  $('#lbw').hidden = false;
+  const esc = t => String(t).replace(/[<>&"]/g, '');
+  const base = lbt === 'week' ? `E heti verseny (${LB.week}) – a hét végén a legjobb regisztrált játékosok megkapják az „Arcade-bajnok” taget! 🏆` : 'Minden idők legjobbjai.';
+  $('#lbn').innerHTML = LB.guest
+    ? `Vendégként <b>${esc(LB.nick)}</b> néven szerepelsz a ranglistán. <button class="lbnick" data-nick>✏️ Becenév módosítása</button>`
+    : base;
+  $('#lbg').innerHTML = GAMES.filter(g => !g.ext).map(g => { const l = (LB.boards[g.id] || {})[lbt] || [];
+    return `<div class="lbc${g.unit ? ' wide' : ''}"><h4>${g.icon || ''} ${g.name}</h4>${l.length ? l.map((r, i) => `<div class="lbr${r.me ? ' me' : ''}${LB.admin && r.uid ? ' adm' : ''}"><i>${['🥇', '🥈', '🥉'][i] || i + 1}</i><span>${esc(r.name)}${r.guest ? '<em class="lbg2">VENDÉG</em>' : ''}</span><b>${r.wins ? `<em class="lbw2" title="Arany Locsolófej">🏆×${r.wins}</em>` : ''}${bigNum(r.score)}${g.lb ? ' ' + g.lb : ''}</b>${LB.admin && r.uid ? `<button class="lbdel" data-del="${g.id}|${esc(r.uid)}" title="Eredmény törlése">🗑</button>` : ''}</div>`).join('') : '<p class="lbe">Még senki – légy te az első!</p>'}</div>`; }).join('');
+}
+$('#lbw').addEventListener('click', e => { if (e.target.closest('[data-nick]')) { parent.postMessage({ hgws: 'nickreq' }, location.origin); return; }
+  const del = e.target.closest('[data-del]');
+  if (del) { if (!del.classList.contains('sure')) { document.querySelectorAll('.lbdel.sure').forEach(x => { x.classList.remove('sure'); x.textContent = '🗑'; }); del.classList.add('sure'); del.textContent = 'Biztos?'; clearTimeout(del._t); del._t = setTimeout(() => { del.classList.remove('sure'); del.textContent = '🗑'; }, 3000); return; }
+    const [game, uid] = del.dataset.del.split('|'); del.disabled = true; del.textContent = '…'; parent.postMessage({ hgws: 'lbdel', game, uid }, location.origin); return; } const b = e.target.closest('[data-lbt]'); if (!b) return; lbt = b.dataset.lbt; document.querySelectorAll('[data-lbt]').forEach(x => x.classList.toggle('on', x === b)); lbDraw(); });
+addEventListener('message', e => { if (e.origin !== location.origin || e.data?.hgws !== 'lb') return; LB = e.data; lbDraw(); });
+if (window.top !== window) parent.postMessage({ hgws: 'lbreq' }, location.origin);
+// a helyi rekordok felszinkronizálása a ranglistára (nem vendég fióknál, akkor is, ha az eredményt korábban törölték)
+if (window.top !== window) { const bests = {}; for (const gm of GAMES) if (!gm.ext) { const v = store.get('best_' + gm.id); if (v > 0) bests[gm.id] = v; }
+  if (Object.keys(bests).length) parent.postMessage({ hgws: 'sync', bests }, location.origin); }

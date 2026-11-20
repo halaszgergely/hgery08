@@ -1,6 +1,6 @@
 // HGWS – közös Firebase-indítás és segédfüggvények
-import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611201238';
-import * as FB from './firebase.js?v=202611201238';
+import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611201242';
+import * as FB from './firebase.js?v=202611201242';
 
 export { FB, notConfigured };
 

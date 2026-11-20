@@ -118,6 +118,6 @@ maps = [build('pest', 'Pest megye', 'Pest', ['Budapest', 'Érd'], ('BUDAPEST', 1
         build('debrecen', 'Hajdú-Bihar', 'Hajdú-Bihar', ['Debrecen'], ('DEBRECEN', 21.63, 47.53), T_HB, lambda o, P, w: o.update(woods=[ell_of(P)(21.15, 47.60, 12, 8, 'Hortobágy'), ell_of(P)(21.75, 47.58, 4, 5, 'Nagyerdő')])),
         build('szeged', 'Csongrád-Csanád', 'Csongrád', ['Szeged', 'Hódmezôvásárhely'], ('SZEGED', 20.148, 46.253), T_CS, lambda o, P, w: o.update(woods=[ell_of(P)(19.80, 46.27, 7, 5, 'Homokhátság')])),
         build('pecs', 'Baranya', 'Baranya', ['Pécs'], ('PÉCS', 18.233, 46.073), T_BA, lambda o, P, w: o.update(woods=[ell_of(P)(18.22, 46.13, 13, 5, 'Mecsek'), ell_of(P)(18.40, 45.87, 6, 2, 'Villányi-hegység')]))]
-dst = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'js', 'arcade-zombi-map.js')
+dst = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'jatekok', 'holtvaros', 'terkepadat.js')
 open(dst, 'w').write('/* Holtváros – megyetérképek. Generálta: tools/holtvaros_terkep.py\n   Megyehatár, folyók, főutak, vasutak, beépített területek: Natural Earth (közkincs, naturalearthdata.com). */\nwindow.HGZMaps = ' + json.dumps(maps, ensure_ascii=False, separators=(',', ':')) + ';\n')
 print(os.path.getsize(dst), 'bájt')

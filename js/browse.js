@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611201238';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611201238';
-import * as Player from './player.js?v=202611201238';
-import * as Party from './party.js?v=202611201238';
-import * as VP from './vplayer.js?v=202611201238';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611201238';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611201242';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611201242';
+import * as Player from './player.js?v=202611201242';
+import * as Party from './party.js?v=202611201242';
+import * as VP from './vplayer.js?v=202611201242';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611201242';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -116,7 +116,7 @@ function footHtml() {
   return `<footer class="sitefoot"><div class="fl"><img src="img/logo.webp" alt=""><div><b>HGWS Studios</b><small>Halász Gergely Watering Solutions</small></div></div>
     <div class="fc"><h4>Partneroldalak</h4>${PARTNERS.map(p => `<a href="${p.url}" target="_blank" rel="noopener"><i class="ic ic-handshake"></i> ${esc(p.name)} <small>${esc(p.host)} ↗</small></a>`).join('')}</div>
     <div class="fc"><h4>Kapcsolat</h4><a href="mailto:${CONTACT}"><i class="ic ic-mail"></i> ${CONTACT}</a><a href="#/kapcsolat"><i class="ic ic-contact"></i> Kapcsolat oldal</a></div>
-    <div class="fc"><h4>Szórakozás</h4><a href="#/arcade"><i class="ic ic-gamepad-2"></i> HGWS Arcade</a><a href="miert_igyal.html"><i class="ic ic-beer"></i> Ma miért igyál?</a></div>
+    <div class="fc"><h4>Szórakozás</h4><a href="#/arcade"><i class="ic ic-gamepad-2"></i> HGWS Arcade</a><a href="oldalak/miert_igyal.html"><i class="ic ic-beer"></i> Ma miért igyál?</a></div>
     <div class="fslogan">VÍZ. ERŐ. TECHNIKA. ÉLETFORMA.</div>
     <div class="fcopy">© ${new Date().getFullYear()} Halász Gergely Watering Solutions Kft. · HGWS Studios</div></footer>`;
 }
