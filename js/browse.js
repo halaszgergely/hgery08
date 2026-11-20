@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611202234';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611202234';
-import * as Player from './player.js?v=202611202234';
-import * as Party from './party.js?v=202611202234';
-import * as VP from './vplayer.js?v=202611202234';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611202234';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611202330';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611202330';
+import * as Player from './player.js?v=202611202330';
+import * as Party from './party.js?v=202611202330';
+import * as VP from './vplayer.js?v=202611202330';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611202330';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -256,7 +256,7 @@ export const GAMES = [
   { id: 'holtvaros', name: 'Holtváros', icon: '🧟', unit: 'pont', desc: 'Védd meg a várost a zombijárványtól: zóna, kapuk, őrség, légicsapás. A Zombies Aren\'t Real ihlette.', c: '#7dff4a', sponsor: 'A Zerosites támogatásával' },
   { id: 'birodalom', name: 'Öntöző Birodalom', icon: '🌱', unit: 'Ft', desc: 'Építs csőhálózatot, ültess kertet és ültetvényt – a kerted akkor is termel, amikor nem vagy itt.', c: '#6fcf6a' }
 ];
-const EXTRA = [{ id: 'zerochip', name: 'Zero Chip', icon: '🔌', desc: 'Építs áramköröket a tranzisztortól a processzorig – 29 küldetés.', c: '#3ecf8e', demo: 1 }, { id: 'zerospace', name: 'Zero Space Demo', icon: '🚀', desc: 'Építs űrhajót modulról modulra és vezesd csatába – korai demó, egyjátékos sandbox.', c: '#b2382a', demo: 1 }];
+const EXTRA = [{ id: 'aranylocsolofej', name: 'Az Arany Locsolófej', icon: '🏆', desc: 'Filmes kalandjáték: szerezd vissza az Arany Locsolófejet Szikkadt Szilárdtól!', c: '#e8b656', demo: 1, tag: 'ÚJ' }, { id: 'zerochip', name: 'Zero Chip', icon: '🔌', desc: 'Építs áramköröket a tranzisztortól a processzorig – 29 küldetés.', c: '#3ecf8e', demo: 1 }, { id: 'zerospace', name: 'Zero Space Demo', icon: '🚀', desc: 'Építs űrhajót modulról modulra és vezesd csatába – korai demó, egyjátékos sandbox.', c: '#b2382a', demo: 1 }];
 /* Zero Quest – zárt béta: adminok és a „Béta-tesztelő” taggel rendelkezők */
 const betaOk = () => { try { return !!C && !C.S.guest && (C.isAdmin() || (C.S.me?.tags || []).some(id => /b[eé]ta/i.test(C.S.tags.find(t => t.id === id)?.name || ''))); } catch (_) { return false; } };
 const ZQ = { id: 'zeroquest', name: 'Zero Quest', icon: '⚔️', desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében – zárt béta.', c: '#e8b656', demo: 1, beta: 1 };
@@ -265,7 +265,7 @@ const best = id => { try { return +localStorage.getItem('hgws_best_' + id) || 0;
 function arcadeRow() {
   return `<section class="row arcrow"><div class="rowh"><h2><i class="ic ic-gamepad-2"></i> HGWS Arcade</h2><a href="#/arcade">Mind ›</a></div>
     <div class="agrid">${[...GAMES, ...extras()].map((g, i) => `<a class="acard" href="#/arcade/${g.id}" style="--c:${g.c}"><span class="an">${String(i + 1).padStart(2, '0')}</span><span class="ai">${g.icon}</span>
-      <b>${esc(g.name)}</b>${g.sponsor ? `<span class="aspon">${esc(g.sponsor)}</span>` : ''}<small>${esc(g.desc)}</small><span class="af"><em>${g.beta ? 'ZÁRT BÉTA' : g.demo ? 'DEMO' : 'REKORD: ' + bigNum(best(g.id)) + (g.unit ? ' ' + g.unit : '')}</em><i>Játék <i class="ic ic-play"></i></i></span></a>`).join('')}</div></section>`;
+      <b>${esc(g.name)}</b>${g.sponsor ? `<span class="aspon">${esc(g.sponsor)}</span>` : ''}<small>${esc(g.desc)}</small><span class="af"><em>${g.tag ? g.tag : g.beta ? 'ZÁRT BÉTA' : g.demo ? 'DEMO' : 'REKORD: ' + bigNum(best(g.id)) + (g.unit ? ' ' + g.unit : '')}</em><i>Játék <i class="ic ic-play"></i></i></span></a>`).join('')}</div></section>`;
 }
 /* ha a tagek vagy a saját fiók megváltozik, a zárt béta jogosultságot újraküldjük az Arcade-nak */
 export function tagsChanged() { const f = $('.arcframe'); if (f) sendBoards(f.contentWindow); }
