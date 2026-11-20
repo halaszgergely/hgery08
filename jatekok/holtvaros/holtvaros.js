@@ -313,7 +313,7 @@ window.HGZombi = function (env) {
   function say(t) { S.msg = { t, l: 2.5 }; Sfx.blip(150, .08, 'square', .05); }
   const UR = u => TOOL[u.k].R * (1 + .25 * ((u.lv || 1) - 1)); // fejlesztett épület nagyobb hatókörrel dolgozik
   // fegyverhalmozás ellen: minden további azonos lövő egység 6%-kal drágább az alapárnál
-  const spamK = k => ['gar', 'snp', 'tur'].includes(k) ? 1 + .06 * S.units.filter(u => u.k === k).length : 1;
+  const spamK = k => 1;
   const discount = (k, x, y) => ['gar', 'snp', 'tur', 'mor', 'mine'].includes(k) && S.units.some(u => u.k === 'bud' && Math.hypot(u.x - x, u.y - y) < UR(u)) ? .75 : 1;
   // útzár mindenhol, ahol a fal utat keresztez; később megjelenő utakra (új út, táguló pálya) is pótolható
   function zoneBars(z, edges) { const P = z.poly, m = z.closed ? P.length : P.length - 1; let add = 0; for (const e of edges) { const A = [S.N[e.a].x, S.N[e.a].y], B = [S.N[e.b].x, S.N[e.b].y]; for (let i = 0; i < m; i++) { const u = segInt(P[i], P[(i + 1) % P.length], A, B); if (u >= 0 && !e.bars.some(q => Math.abs(q.s - u * e.len) < 12)) { const b = { e, s: u * e.len, hp: HP_WALL, max: HP_WALL, gate: 0, x: A[0] + (B[0] - A[0]) * u, y: A[1] + (B[1] - A[1]) * u, z, pi: i }; e.bars.push(b); z.bars.push(b); add++; } } } return add; }
