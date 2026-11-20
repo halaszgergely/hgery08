@@ -279,6 +279,8 @@ function over() {
 }
 function close() { if (G.game && G.game.leave) G.game.leave(G); if (G.running && G.score > 0) over(); /* kilépéskor is számít az addig elért pontszám */ G.running = false; cancelAnimationFrame(G.raf); gEl.classList.remove('open'); document.body.classList.remove('locked'); renderCards(); }
 $('#gQuit').onclick = () => { if (G.running) over(); };
+// lapbezárás / elnavigálás játék közben: az addig elért pontszám rekordként megmarad, és ha lehet, felmegy a ranglistára
+addEventListener('pagehide', () => { try { if (G.running && G.game && !G.game.ext && G.score > 0) { if (G.score > store.get('best_' + G.game.id)) store.set('best_' + G.game.id, G.score); if (window.top !== window) parent.postMessage({ hgws: 'score', game: G.game.id, score: G.score }, location.origin); } } catch (_) {} });
 $('#pGo').onclick = start; $('#oAgain').onclick = start; $('#oExit').onclick = close; $('#gClose').onclick = close;
 addEventListener('keydown', e => { if (!gEl.classList.contains('open')) return; if (e.key === 'Escape') close();
   if ((e.key === ' ' || e.key === 'ArrowUp') && G.running && G.game.down) { e.preventDefault(); G.game.down(G, G.W / 2, G.H / 2, true); } });
