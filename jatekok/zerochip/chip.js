@@ -105,7 +105,7 @@ function runTests() { if (L.free) return; keep(); NET = build(); dirty = false; 
 
 /* ---------- felület ---------- */
 function ui() { const quests = LV.filter(l => !l.free), nd = quests.filter(l => DB.solved[l.id]).length; let h = `<h1>ZERO CHIP<small>A TRANZISZTORTÓL A PROCESSZORIG</small></h1><div class="ch" style="margin-top:10px;color:#e8b656">KÜLDETÉSEK ${nd} / ${quests.length}</div>`; LV.forEach((l, k) => { if (l.ch) h += `<div class="ch">${l.ch}</div>`; h += `<button class="lv${L === l ? ' on' : ''}${DB.solved[k] ? ' done' : ''}" data-l="${k}"${unlocked(k) ? '' : ' disabled'}><i>${DB.solved[k] ? '✓' : unlocked(k) ? k + 1 : '🔒'}</i>${l.name}</button>`; }); $('#side').innerHTML = h;
-  $('#head').innerHTML = `<b>${L.name}</b><p>${L.desc}</p>`;
+  $('#head').innerHTML = `<button class="b" data-a="doc" data-d="${(window.ZC_DOCMAP || {})[L.name] || (L.ch || LV.slice(0, L.id).reverse().find(l => l.ch)?.ch) === 'KAPUK' && 'kapu' || 'kez'}" style="float:right;margin-left:12px">📖 Kézikönyv</button><b>${L.name}</b><p>${L.desc}</p>`;
   let b = `<button class="b${tool === 'wire' ? ' on' : ''}" data-t="wire">〰 Vezeték</button><button class="b${tool === 'erase' ? ' on' : ''}" data-t="erase">✕ Törlés</button><span class="sep"></span>`;
   for (const p of parts()) b += `<button class="b${tool === p ? ' on' : ''}" data-t="${p}">${DEF[p].name}</button>`;
   b += `<button class="b" data-a="clear" style="margin-left:auto">Üres lap</button>`; if (!L.free) b += `<button class="b go" data-a="test" style="margin-left:0">▶ Teszt</button>`; if (DB.solved[L.id] && LV[L.id + 1]) b += `<button class="b nx" data-a="next">Következő ›</button>`; $('#bar').innerHTML = b;
@@ -117,8 +117,12 @@ function ui() { const quests = LV.filter(l => !l.free), nd = quests.filter(l => 
     else t = `<h3>IGAZSÁGTÁBLA</h3><div id="res">${1 << L.ins.length} eset – a teszt mindet végigpróbálja.</div>`; }
   $('#info').innerHTML = t; }
 document.addEventListener('click', e => { const l = e.target.closest('[data-l]'); if (l && !l.disabled) return open(+l.dataset.l); const t = e.target.closest('[data-t]'); if (t) { tool = t.dataset.t; return ui(); }
-  const a = e.target.closest('[data-a]'); if (!a) return; if (a.dataset.a === 'test') runTests(); else if (a.dataset.a === 'next') open(L.id + 1); else if (a.dataset.a === 'clear') { if (a.dataset.sure) { delete DB.designs[L.id]; store(); open(L.id); } else { a.dataset.sure = 1; a.textContent = 'Biztos?'; setTimeout(() => { if (a.isConnected) { delete a.dataset.sure; a.textContent = 'Üres lap'; } }, 2500); } } });
-addEventListener('keydown', e => { if (e.key === 'Escape') { tool = 'wire'; ui(); } });
+  const a = e.target.closest('[data-a]'); if (!a) return; if (a.dataset.a === 'doc') return doc(a.dataset.d); if (a.dataset.a === 'docx') return $('#doc').classList.remove('on'); if (a.dataset.a === 'test') runTests(); else if (a.dataset.a === 'next') open(L.id + 1); else if (a.dataset.a === 'clear') { if (a.dataset.sure) { delete DB.designs[L.id]; store(); open(L.id); } else { a.dataset.sure = 1; a.textContent = 'Biztos?'; setTimeout(() => { if (a.isConnected) { delete a.dataset.sure; a.textContent = 'Üres lap'; } }, 2500); } } });
+addEventListener('keydown', e => { if (e.key === 'Escape') { if ($('#doc').classList.contains('on')) return $('#doc').classList.remove('on'); tool = 'wire'; ui(); } });
+/* kézikönyv */
+function doc(id) { const el = $('#doc'), body = $('#dbody'); if (!body.dataset.ok) { body.dataset.ok = 1; body.innerHTML = '<button class="b" id="dx" data-a="docx">✕ Bezárás</button>' + window.ZC_DOC; $('#dnav').innerHTML = '<b>Kézikönyv</b>' + [...body.querySelectorAll('section')].map(s => `<a data-a="doc" data-d="${s.id.slice(2)}">${s.querySelector('h2').textContent}</a>`).join(''); }
+  el.classList.add('on'); const t = body.querySelector('#d-' + id); body.scrollTop = t ? t.offsetTop - 4 : 0; }
+$('#doc').addEventListener('pointerdown', e => { if (e.target.id === 'doc') e.target.classList.remove('on'); });
 function fit() { const w = $('#wrap'), dpr = Math.min(2, devicePixelRatio || 1); CS = Math.max(10, Math.floor(Math.min((w.clientWidth - 16) / COLS, (w.clientHeight - 16) / ROWS))); cv.style.width = COLS * CS + 'px'; cv.style.height = ROWS * CS + 'px'; cv.width = COLS * CS * dpr; cv.height = ROWS * CS * dpr; cv.dpr = dpr; }
 addEventListener('resize', fit);
 
