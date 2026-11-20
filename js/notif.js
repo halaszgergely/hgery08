@@ -1,6 +1,6 @@
 // HGWS – értesítések (csengő a felső sávban): megemlítés, ötlet-válasz, jóváhagyás, rang, tag, premier, közös nézés
-import { FB, db, $, esc, timeLabel, toDate, toast, blip } from './core.js?v=202611201335';
-import { popover, closePop } from './ui.js?v=202611201335';
+import { FB, db, $, esc, timeLabel, toDate, toast, blip } from './core.js?v=202611201347';
+import { popover, closePop } from './ui.js?v=202611201347';
 
 let C = null, list = [], first = true, open = false;
 export const ICON = { mention: 'message-circle', idea: 'lightbulb', approve: 'circle-check', reject: 'x', role: 'crown', tag: 'tag', premiere: 'clapperboard', party: 'popcorn', vote: 'thumbs-up', badge: 'award' };
