@@ -402,6 +402,9 @@ window.HGZombi = function (env) {
   }
   /* Megkerülés: a falnak ütköző horda letér az útról, és a fal mentén a legközelebbi kapuhoz, réshez vagy a fal végéhez megy. */
   // túl nagy tömeg egy bejáratnál: a horda egy része a fal mentén a legkevésbé zsúfolt másik kapuhoz vagy réshez megy
+  function soldier(x, y, o = {}) { const ne = nearEdge(x, y, 400); if (!ne) return; const a = agent(ne.e); a.s = ne.s; pos(a); Object.assign(a, { hp: 1, cd: Math.random() * .3, r: 110, ...o }); S.sol.push(a); if (S.phase === 'battle') toGate(a); return a; }
+  // a katonák és rendőrök a legközelebbi ép kapu belső oldalára állnak
+  function toGate(sd) { let best = null, bd = 1300; for (const z of S.zones) for (const b of z.bars) { if (!b.gate || b.hp <= 0) continue; const d0 = Math.hypot(b.x - sd.x, b.y - sd.y); if (d0 >= bd) continue; if (b.inN === undefined) { const pa = S.prot[b.e.a], pb = S.prot[b.e.b]; b.inN = pa && !pb ? b.e.a : pb && !pa ? b.e.b : -1; b.F = b.inN >= 0 ? dij([b.inN], e => wallBars(e) ? Infinity : e.len) : null; } if (b.inN < 0 || !isFinite(b.F[sd.e.a])) continue; bd = d0; best = b; } sd.gate = best; sd.posted = 0; }
   function blast(z, b) { b.hp = Math.max(0, b.hp - 34); S.fx.push({ k: 'boom', x: b.x, y: b.y, r: 30, l: .5 }); G.shake = Math.max(G.shake, 4 * G.d); Sfx.blip(90, .2, 'sawtooth', .07, .4); z.dead = 1; if (b.hp <= 0) S.broke++; }
   function spread(z, b, dt) { if ((z.spT = (z.spT == null ? Math.random() * 3 : z.spT) - dt) > 0) return false; z.spT = 2 + Math.random() * 3; const here = S.bl.get(b) || 0; let best = null, bv = here / 1.6 - z.n;
     for (const q of b.z.bars) { if (q === b || !(q.gate || q.hp <= 0)) continue; const v = q.hp <= 0 ? -1 : S.bl.get(q) || 0; if (v < bv) { bv = v; best = q; } } return !!best && flank(z, b, best); }
