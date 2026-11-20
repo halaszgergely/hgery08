@@ -132,7 +132,8 @@ window.HGZombi = function (env) {
     // megnyert kör után a védelem megmarad (falak kijavítva, hidak helyreállítva), a pálya pedig kijjebb tágul
     for (const e of prev.E) { e.dead = 0; e.stain = 0; } for (const z of prev.zones) for (const b of z.bars) b.hp = b.max;
     const units = prev.units.filter(u => !u.lost).map(u => ({ k: u.k, x: u.x, y: u.y, b: u.b, e: u.e, s: u.s, paid: u.paid, cd: Math.random(), ammo: TOOL[u.k].ammo || 0, lv: u.lv || 1 })), old = { s: L.s, cx: L.cam.cx, cy: L.cam.cy };
-    S = { ...prev, ...fresh(), m, budget: prev.budget + Math.round((400 + 160 * m) * RUN.bud), units }; region(); spawn(); L = null; layout(true); S.zin = { t: 0, ...old };
+    S = { ...prev, ...fresh(), m, budget: prev.budget, units }; region(); spawn();
+    { const inc = Math.max(Math.round((400 + 160 * m) * RUN.bud), Math.round(S.n0 * .022 * RUN.bud)); S.budget += inc; S.msg = { t: '+' + inc + ' keret a(z) ' + S.n0.toLocaleString('hu-HU') + ' lakos után', l: 4, ok: 1 }; } // a körönkénti keret a terület lakosságához igazodik L = null; layout(true); S.zin = { t: 0, ...old };
   }
   function region() { const [sx, sy] = S.start, R0 = R_START + R_GROW * (S.m - 1); S.R = R0; S.ensure(sx - R0 - 150, sy - R0 - 150, sx + R0 + 150, sy + R0 + 150);
     for (const i of S.live) S.N[i].adj = []; const inn = new Set(S.nodesIn(sx, sy, R0)); for (const i of inn) S.N[i].adj = S.N[i].all.filter(a => inn.has(a.n));
