@@ -542,7 +542,7 @@ const Birodalom = (() => {
     if (S.tab === 'pl') return Object.keys(PL).filter(k => here(PL[k])).map(k => ({ k, kind: 'pl', ...PL[k], c: costOf(k), ck: ckOf(k), cc: ccOf(k) }));
     if (S.tab === 'up') return Object.keys(UP).filter(k => !UP[k].sp || S.up.raketa).map(k => { const u = UP[k], n = S.up[k]; return { k, kind: 'up', n: u.n, ic: u.ic, lvl: n, u: u.u, c: n >= u.max ? Infinity : Math.round(u.cost(n)), ck: n >= u.max || !u.ck ? 0 : Math.ceil(u.ck(n)), cc: n >= u.max || !u.cc ? 0 : Math.ceil(u.cc(n)) }; });
     const sg = starGain();
-    return [{ k: 'reset', kind: 'reset', n: confirmT > 0 ? 'Biztos? Még egyszer!' : 'Új birtok', ic: '🌅', lbl: sg ? '+' + sg + ' ⭐' : '–', ok: sg > 0 },
+    return [{ k: 'reset', kind: 'reset', n: confirmT > 0 ? 'Biztos? Még egyszer!' : 'Új birtok', ic: '🌅', lbl: '+' + sg + ' ⭐', ok: true },
       ...Object.keys(PERK).map(k => { const P = PERK[k], lv = pk(k), max = lv >= P.max, c = max ? 0 : P.c(lv);
         return { k, kind: 'perk', n: P.max > 1 ? P.n + ' ' + lv : P.n, ic: P.ic, lv, c, lbl: max ? (P.max > 1 ? 'MAX' : 'MEGVAN') : fmt(c) + ' ⭐', ok: !max && S.star >= c, have: max }; })];
   }
@@ -571,7 +571,7 @@ const Birodalom = (() => {
   }
 
   function rebirth(G) {
-    const sg = starGain(); if (!sg) return;
+    const sg = starGain();
     if (S.loc !== 'earth') { stash(); unstash('earth'); }
     const keep = { life: S.life, sent: S.sent, star: S.star + sg, starT: S.starT + sg, perk: S.perk, runs: (S.runs || 0) + 1, tab: 'mod', tool: 'pipe' };
     const n = fresh(keep);
@@ -584,7 +584,7 @@ const Birodalom = (() => {
     for (const k of ['nyomas', 'tap', 'piac', 'talaj']) n.up[k] = Math.max(n.up[k], 3 * pk('pup'));
     if (S.perk.halo) { n.up.telek = Math.max(n.up.telek, S.up.telek); S.k.forEach((v, i) => { if (MOD[v] || v === 'src' || (v && v[0] === '#' && MOD[S.k[+v.slice(1)]])) n.k[i] = v; }); n.vc = { ...S.vc }; }
     S = n; MO = new Float32Array(COLS * ROWS); RP = new Float32Array(COLS * ROWS); DR = []; syncCB(); layout(G); net(); save(); Sfx.perfect(); G.splash(G.W / 2, G.H / 2, '255,215,120', 90, 10);
-    S.away = { got: 0, sec: 0, l: 3.5, msg: '⭐ +' + sg + ' hírnév' };
+    S.away = { got: 0, sec: 0, l: 3.5, msg: sg ? '⭐ +' + sg + ' hírnév' : '🌅 Új birtok' };
   }
   const newLoc = () => { const k = Array(COLS * ROWS).fill(''); k[idx(...SRC)] = 'src'; return { k, g: Array(COLS * ROWS).fill(0), vc: {}, telek: 0 }; };
   function stash() { S.locs[S.loc] = { k: S.k, g: S.g, vc: S.vc, telek: S.up.telek }; }
