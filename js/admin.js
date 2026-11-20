@@ -1,7 +1,7 @@
 // HGWS – kezelőfelület: tagok és rangok, tagek, filmek, zenék, csatornák, jóváhagyások, rangok szerkesztése
-import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG } from './core.js?v=202611210055';
-import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611210055';
-import { githubRepo } from '../firebase-config.js?v=202611210055';
+import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG } from './core.js?v=202611210056';
+import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611210056';
+import { githubRepo } from '../firebase-config.js?v=202611210056';
 
 let C = null, current = null;
 /* e-mail címek: csak adminok és a tulaj olvashatják (emails/{uid}); a lista megnyitásakor egyszer töltjük be */
@@ -743,7 +743,7 @@ async function statsPage(v) {
     const st = { nyitott: ['Nyitott', '#6cc6ff'], folyamatban: ['Folyamatban', '#ffa94d'], kesz: ['Kész', '#5ee08a'], elutasitva: ['Elutasítva', '#ff7a6e'] };
     $('#stIdea').innerHTML = s.size ? hbars(Object.entries(st).map(([k, [l, c]]) => [l, s.docs.filter(d => d.data().status === k).length, c]), ' db') : '<div class="estate"><i class="ic ic-lightbulb"></i><b>Még nincs beküldött ötlet</b></div>';
   }).catch(() => { $('#stIdea').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
-  import('./browse.js?v=202611210055').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
+  import('./browse.js?v=202611210056').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
     .then(l => { $('#stArc').innerHTML = hbars(l, ' játékos'); });
 }
 const lbScores = g => FB.collection(db, 'leaderboards', g, 'scores');
