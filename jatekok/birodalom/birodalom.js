@@ -469,6 +469,20 @@ const Birodalom = (() => {
   const wetVis = i => Math.max(NET.wet[i], MO && MO[i] > 0 ? MO[i] : 0), wetNow = i => { let w = ghW(); for (const j of cells(i)) w = Math.max(w, wetVis(j)); return w; };
   const rate = (i, w) => w * NET.gb[i] * speed() / PL[S.k[i]].t;
   const val = i => Math.round(PL[S.k[i]].v * price() * NET.yb[i]);
+  /* a mezőre ható bónuszok a növény-tooltiphez */
+  const xf = v => '×' + (v < 100 ? (+v.toFixed(2)).toLocaleString('hu-HU') : fmt(Math.round(v)));
+  function bonusLines(i, w) { const o = [], [cw, rh] = size(), c0 = i % COLS, r0 = Math.floor(i / COLS), mods = {};
+    for (let r = 0; r < rh; r++) for (let c = 0; c < cw; c++) { const j = idx(c, r), k = S.k[j], m = MOD[k]; if (!m || !(m.aura || (m.boost && NET.on[j]))) continue; const R = m.aura || m.boost, sz = m.sz || 1;
+      if (c0 >= c - R && c0 < c + sz + R && r0 >= r - R && r0 < r + sz + R && !(c0 >= c && c0 < c + sz && r0 >= r && r0 < r + sz) && (m.gb || m.yb)) { const q = mods[k] || (mods[k] = { n: m.n, gb: 0, yb: 0, db: 0 }); q.gb += m.gb || 0; q.yb += m.yb || 0; q.db++; } }
+    const sp = speed() / (NET.fg || 1), upS = [['Tápoldat', (1 + .2 * S.up.tap) * (1 + .25 * pk('ptap'))], ['Klíma', 1.25 ** S.up.klima], ['Időhurok', 1.8 ** S.up.idohurok], ['Gravitáció', 1.3 ** S.up.gravk], ['Szűrők', NET.fg || 1]].filter(q => q[1] > 1.001);
+    o.push('Növekedés ' + xf(sp * (NET.fg || 1) * NET.gb[i] * (w || 0)) + (w ? '' : ' (nincs víz)'));
+    if (upS.length) o.push('   ' + upS.map(q => q[0] + ' ' + xf(q[1])).join(' · '));
+    o.push('Ár ' + xf(price() * NET.yb[i]) + '   (fejlesztések, csillagok ' + xf(price()) + (NET.yb[i] > 1.001 ? ', modulok ' + xf(NET.yb[i]) : '') + ')');
+    const ml = Object.values(mods); if (ml.length) o.push('Hat rá: ' + ml.map(q => q.n + (q.db > 1 ? ' ×' + q.db : '') + ' (' + [q.gb ? '+' + Math.round(q.gb * 100) + '% növ.' : '', q.yb ? '+' + Math.round(q.yb * 100) + '% ár' : ''].filter(Boolean).join(', ') + ')').join(' · '));
+    if (BM[i] >= 1.5) o.push('Tételes aratás ' + xf(BM[i]) + ' (10 mp-es ciklus)');
+    if (goldP() > 0) o.push('Aranytermés: ' + Math.round(goldP() * 100) + '% esély, ×' + goldX());
+    if (S.up.kombajn || S.up.dron) o.push('Kombájnos aratás ' + xf(cbBonus()));
+    return o; }
 
   function earn(v) { S.money += v; S.life += v; }
   // nektár: minden aratás ad egy keveset; a magasabb szintű növény többet
@@ -1424,7 +1438,7 @@ const Birodalom = (() => {
       if (!galView() && S.tip && S.tip.i >= 0 && !S.hover && !(S.away && S.away.l > 0)) { const i = anc(S.tip.i), k = S.k[i];
         if (k) { const P = PL[k], M = MOD[k], lines = [];
           if (P) { const gr = Math.min(1, S.g[i]), w = wetNow(i); lines.push(P.n + (P.sz ? ' (' + P.sz + '×' + P.sz + ')' : ''));
-            lines.push(gr >= 1 ? 'Érett · kattints az aratáshoz' : Math.floor(gr * 100) + '% · ' + (w ? 'locsolva' : 'nincs víz')); lines.push('Termés: ' + fmt(val(i) * Math.max(1, BM[i])) + ' Ft' + (BM[i] >= 1.5 ? ' (×' + fmt(Math.round(BM[i])) + ' tétel)' : '')); }
+            lines.push(gr >= 1 ? 'Érett · kattints az aratáshoz' : Math.floor(gr * 100) + '% · ' + (w ? 'locsolva' : 'nincs víz')); lines.push('Termés: ' + fmt(val(i) * Math.max(1, BM[i])) + ' Ft' + (BM[i] >= 1.5 ? ' (×' + fmt(Math.round(BM[i])) + ' tétel)' : '')); lines.push(...bonusLines(i, w)); }
           else if (k === 'src') lines.push('Főcsap', 'Innen indul a víz.');
           else if (M) { lines.push(M.n + (M.sz ? ' (' + M.sz + '×' + M.sz + ')' : ''));
             if (k === 'szelep') lines.push(S.vc[i] ? 'Zárva · kattints a nyitáshoz' : 'Nyitva · kattints a záráshoz');
