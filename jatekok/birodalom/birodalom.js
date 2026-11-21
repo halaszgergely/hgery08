@@ -2,7 +2,10 @@
 'use strict';
 const Birodalom = (() => {
   const B = Nagy.N, ZERO = Nagy.ZERO, ONE = Nagy.ONE, pw = (a, k, n) => B(k).pow(n).mul(a); // nagy számok (jatekok/birodalom/nagyszam.js)
-  const COLS = 64, ROWS = 40, SRC = [0, 2], KEY = 'hgws_birodalom_v1', CAP = 1e300, MOIST = 6;
+  /* Öntöző Birodalom Online: a közös világ egy telkének kertje – külön mentés, a régió vízbősége szorozza a vízhozamot,
+     a pontszám nem megy az egyjátékos rekordba / ranglistára / felhőmentésbe, az állást a szülőoldal (js/bo.js) kapja meg */
+  const BOQ = new URLSearchParams(location.search), BO = /^[\w-]{3,40}$/.test(BOQ.get('bo') || '') ? BOQ.get('bo') : '', BOW = BO ? Math.max(.2, Math.min(3, +BOQ.get('bw') || 1)) : 1;
+  const COLS = 64, ROWS = 40, SRC = [0, 2], KEY = BO ? 'hgws_bo_' + BO : 'hgws_birodalom_v1', CAP = 1e300, MOIST = 6;
   // hálózat: w = vízigény, r = sugár, nb = szomszédok, q = vízhozam, wm = locsolás-szorzó, mob = mozgó (tengely)
   // aura: nem hálózati, bónusz a környékre; fok/szuro: hálózati, globális bónusz; valve: zárható
   const MOD = {
@@ -448,18 +451,18 @@ const Birodalom = (() => {
     } catch (_) {}
     return fresh();
   }
-  function save() { if (!S) return; S.t = Date.now(); try { localStorage.setItem(KEY, ser()); } catch (_) {} }
+  function save() { if (!S) return; S.t = Date.now(); try { localStorage.setItem(KEY, ser()); } catch (_) {} if (BO && window.top !== window) try { parent.postMessage({ hgws: 'bo', key: BO, life: Math.min(1e300, S.life.toNumber()) }, location.origin); } catch (_) {} }
   function ser() { const { bgMsg, lr, gxT, rt, away, saveT, syncT, hudT, info, hover, tip, lp, anim, linc, lincT, cloudT, ...o } = S; if (o.gx) o.gx = { ...o.gx, pick: null }; return JSON.stringify(o); }
   /* felhőmentés (bejelentkezve): a főoldal tárolja a Firestore-ban. Mindig a legnagyobb összbevételű (life) mentés győz:
      betöltéskor a nagyobbik marad meg, feltöltés csak akkor megy, ha a helyi legalább akkora, mint a felhőben lévő. */
   let CL = { asked: 0, life: -1, lg: -1, at: Date.now() }, GG = null; const lgOf = d => { const l = B(d).log10(); return isFinite(l) ? l : -1; };
   const inFrame = () => { try { return window.top !== window; } catch (_) { return false; } };
-  function cloudPush(force, manual) { const say = t => { if (manual && S) S.bgMsg = { t, l: 3.5 }; };
+  function cloudPush(force, manual) { const say = t => { if (manual && S) S.bgMsg = { t, l: 3.5 }; }; if (BO) return;
     if (!S || !inFrame() || CL.life < 0) return say('☁️ Felhőmentés csak bejelentkezve érhető el'); if (lgOf(S.life) < CL.lg - 1e-9) return say('☁️ A felhőben nagyobb mentés van (' + fmt(B(10).pow(CL.lg)) + ' Ft) – az marad meg');
     const now = Date.now(); if (!manual && (lgOf(S.life) === CL.lg || now - CL.at < (force ? 5 : 15) * 60e3)) return; // automatikusan ritkán: 15 percenként, kilépéskor csak ha 5 perce nem volt if (now - CL.at < 11e3) return say('☁️ Pár másodperc múlva próbáld újra'); CL.at = now; S.t = now; save();
     const st = ser(); if (st.length > 900000) return say('☁️ A mentés túl nagy'); CL.lg = lgOf(S.life); CL.man = manual ? 1 : 0; if (manual) say('☁️ Mentés folyamatban…'); parent.postMessage({ hgws: 'cssave', game: 'birodalom', life: Math.min(9e15, S.life.toNumber()), lg: CL.lg, st, ack: 1 }, location.origin); }
-  const cloudBtn = () => inFrame() && CL.life >= 0 && L ? { x: L.fx + L.fw - 42 * L.d, y: L.fy + 6 * L.d, w: 36 * L.d, h: 30 * L.d } : null;
-  if (typeof addEventListener === 'function') addEventListener('message', e => { if (e.origin !== location.origin || e.source !== parent || !e.data || e.data.hgws !== 'cs' || e.data.game !== 'birodalom') return;
+  const cloudBtn = () => !BO && inFrame() && CL.life >= 0 && L ? { x: L.fx + L.fw - 42 * L.d, y: L.fy + 6 * L.d, w: 36 * L.d, h: 30 * L.d } : null;
+  if (typeof addEventListener === 'function') addEventListener('message', e => { if (BO || e.origin !== location.origin || e.source !== parent || !e.data || e.data.hgws !== 'cs' || e.data.game !== 'birodalom') return;
     const d = e.data; if (d.ack) { if (CL.man && S) S.bgMsg = { t: d.ok ? '☁️ Felhőbe mentve' : '☁️ Nem sikerült menteni' + (d.err ? ' (' + d.err + ')' : ''), l: 3.5 }; CL.man = 0; if (!d.ok) CL.at = 0; return; }
     if (d.none) { CL.life = -1; return; } CL.life = 0; CL.lg = typeof d.lg === 'number' ? d.lg : lgOf(Math.min(1e300, +d.life || 0)); // régi mentésnél a life-ból (a végtelen plafonnak számít)
     if (d.st && CL.lg > (S ? lgOf(S.life) : -1) + 1e-9) { try { JSON.parse(d.st); localStorage.setItem(KEY, d.st); } catch (_) { return; } if (GG && GG.game && GG.game.id === 'birodalom') { Birodalom.init(GG); S.bgMsg = { t: '☁️ Felhőmentés betöltve – ' + fmt(S.life) + ' Ft összbevétel', l: 4 }; } }
@@ -474,7 +477,7 @@ const Birodalom = (() => {
     let cap = 4 + 3 * S.up.nyomas, dem = 0, fok = 1, fg = 1; const tk = 1 - .06 * S.up.takarek; const pm = 1 + .15 * S.up.hatas;
     for (let i = 0; i < N; i++) if (on[i]) { const k = S.k[i], m = MOD[k]; if (!m) continue;
       if (m.q) cap += m.q * (k === 'pump' || k === 'kut' || k === 'napel' ? pm : 1); if (m.w) dem += m.w * tk; if (m.fok) fok += m.fok; if (m.szuro) fg += m.szuro; }
-    const capD = B(cap * fok * (1 + .15 * pk('pviz'))).mul(B(2).pow(S.up.fuzio)); cap = capD.lt(1e15) ? Math.round(capD.toNumber() * 10) / 10 : capD.toNumber();
+    const capD = B(cap * BOW * fok * (1 + .15 * pk('pviz'))).mul(B(2).pow(S.up.fuzio)); cap = capD.lt(1e15) ? Math.round(capD.toNumber() * 10) / 10 : capD.toNumber();
     let hiveN = 0, cpR = 0; const wet = new Float32Array(N), mwet = new Float32Array(N), gb = new Float32Array(N).fill(1), yb = new Float32Array(N).fill(1), mobs = [], prov = new Uint8Array(N); let wg = 1, wy = 1, wgold = 0;
     // terület egy (akár több mezős) elem körül, saját mezői nélkül
     const area = (c, r, R, f, sz = 1) => { for (let y = r - R; y < r + sz + R; y++) for (let x = c - R; x < c + sz + R; x++) { if (x >= c && x < c + sz && y >= r && y < r + sz) continue; if (x >= 0 && y >= 0 && x < cw && y < rh) f(idx(x, y)); } };
@@ -544,7 +547,7 @@ const Birodalom = (() => {
   // nektár: minden aratás ad egy keveset; a magasabb szintű növény többet
   const PLI = {}; Object.keys(PL).forEach((k, j) => { PLI[k] = j; });
   const nekOf = k => .004 * (1 + PLI[k]) * (PL[k].nkx || 1) * (PL[k].sz ? PL[k].sz * PL[k].sz : 1) * (1 + .25 * S.up.nektar);
-  const scoreOf = () => Math.floor(Math.min(1e300, S.life.toNumber()));
+  const scoreOf = () => BO ? 0 : Math.floor(Math.min(1e300, S.life.toNumber()));
   const nfmt = n => { const d = B(n); return d.lt(100) ? d.toNumber().toLocaleString('hu-HU', { maximumFractionDigits: d.lt(10) ? 2 : 1 }) : fmt(d); };
   /* tételes növekedés: egy ciklus legalább MINC másodperc; ha a növény ennél gyorsabban nőne, ritkábban érik be,
      de annyi termést ad, ahányszor közben beérett volna (a növekedési bónuszok ezt a szorzót növelik) */
@@ -1347,7 +1350,7 @@ const Birodalom = (() => {
     },
     resize(G) { if (S) layout(G); },
     leave(G) { save(); this.sync(G, true); cloudPush(true); },
-    sync(G) { const sc = scoreOf(); if (S.life.gt(S.sent || 0)) { S.sent = S.life; save(); store.set('best_' + this.id, Math.max(store.get('best_' + this.id), sc));
+    sync(G) { const sc = scoreOf(); if (BO) return; if (S.life.gt(S.sent || 0)) { S.sent = S.life; save(); store.set('best_' + this.id, Math.max(store.get('best_' + this.id), sc));
       if (window.top !== window) parent.postMessage({ hgws: 'score', game: this.id, score: sc, lg: S.life.log10() }, location.origin); } },
     down(G, x, y, e) {
       if (e === true) return;
