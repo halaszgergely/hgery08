@@ -1,0 +1,59 @@
+/* HGWS Arcade – listaoldal (js/arcade-lista.js) */
+.arcl{padding:calc(var(--nav) + 1.2rem) 0 2.5rem;min-height:100vh}
+.arcl .al-ah{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap;padding:0 var(--pad);margin-bottom:1rem}
+.arcl .al-ah h1{font-family:var(--head);font-size:clamp(1.5rem,3vw,2.2rem);color:#efe9dc;letter-spacing:.04em}
+.arcl .al-spon,.apc .al-spon{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:#7f8ea6}
+.arcl .afoot{text-align:center;margin-top:2rem;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:#66748c}
+/* borító: kép(ek) vagy generált */
+.al-cov{position:relative;display:block;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#0a1324;flex:none}
+.al-cov img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .8s}.al-cov img.on{opacity:1}
+.al-cov .al-gen{position:absolute;inset:0;display:grid;place-items:center;background:radial-gradient(120% 90% at 30% 20%,color-mix(in srgb,var(--c) 55%,#0a1324),#0a1324 70%),linear-gradient(135deg,color-mix(in srgb,var(--c) 30%,#04070e),#04070e)}
+.al-cov .al-gen::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(115deg,rgba(255,255,255,.035) 0 2px,transparent 2px 14px)}
+.al-cov .al-gen span{font-size:clamp(2.4rem,5vw,3.4rem);filter:drop-shadow(0 8px 18px rgba(0,0,0,.55));position:relative;z-index:1}.al-cov.al-big .al-gen span{font-size:clamp(4rem,10vw,7rem)}
+/* kártya */
+.acd{position:relative;display:flex;flex-direction:column;gap:.4rem;padding:.6rem .6rem .7rem;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(140,180,230,.12);color:inherit;text-decoration:none;cursor:pointer;transition:transform .2s,border-color .2s,background .2s;outline:none;min-width:0}
+.acd:hover,.acd:focus-visible{transform:translateY(-4px);border-color:color-mix(in srgb,var(--water) 70%,transparent);background:rgba(108,198,255,.06)}
+.acd b{font-family:var(--head);font-weight:900;font-size:1.02rem;color:#f2ecdf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acd small{color:#a9a397;font-size:.84rem;line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;height:calc(1.4em * 3)}
+.acd .al-af{display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-top:auto;padding-top:.3rem}
+.acd .al-af em{font-style:normal;font-size:.74rem;color:#8fa3bd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.al-chips{display:flex;gap:.3rem;flex-wrap:wrap;align-items:center}
+.al-chips .al-kat,.al-chips .al-st,.al-chips .al-tg{font-size:.62rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:.16rem .45rem;border-radius:999px;white-space:nowrap}
+.al-chips .al-kat{background:rgba(108,198,255,.14);color:var(--water)}.al-chips .al-tg{background:rgba(255,255,255,.07);color:#a9b4c2;font-weight:600}
+.al-chips .al-st{background:rgba(232,182,86,.16);color:#ffd98a}.al-chips .al-st-online{background:rgba(94,224,138,.16);color:#7ef0a4}.al-chips .al-st-beta{background:rgba(180,140,255,.18);color:#cdb4ff}.al-chips .al-st-demo{background:rgba(255,255,255,.1);color:#cfd5dc}
+.al-pl{flex:none;font-weight:800;font-size:.8rem;color:#04121f;background:var(--water);border-radius:999px;padding:.32rem .75rem;text-decoration:none;white-space:nowrap}.al-pl:hover{filter:brightness(1.12)}.al-pl.al-big{font-size:1rem;padding:.6rem 1.4rem}
+/* kiemelt sáv */
+.arcl .ahero{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(0,1fr);gap:.9rem;padding:0 var(--pad);margin-bottom:1.4rem}.arcl .ahero[hidden]{display:none}
+.al-hbig{position:relative;border-radius:16px;overflow:hidden;cursor:pointer;border:1px solid rgba(140,180,230,.16);outline:none;min-height:300px;display:flex}
+.al-hbig .al-cov{position:absolute;inset:0;aspect-ratio:auto;border-radius:0}
+.al-hbig .al-hb{position:relative;z-index:1;margin-top:auto;padding:1.3rem 1.4rem;background:linear-gradient(0deg,rgba(4,7,14,.94) 35%,rgba(4,7,14,0));width:100%;display:flex;flex-direction:column;gap:.5rem}
+.al-hbig h2,.apc h2{font-family:var(--head);font-size:clamp(1.5rem,3vw,2.3rem);color:#fff}
+.al-hbig p{color:#c6cdd8;max-width:62ch;font-size:.93rem;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.al-hbtn{display:flex;align-items:center;gap:.9rem;flex-wrap:wrap}.al-hbtn em{font-style:normal;color:#8fa3bd;font-size:.85rem}
+.al-hside{display:flex;flex-direction:column;gap:.6rem;min-width:0}
+.acd.al-mini{display:grid;grid-template-columns:38% minmax(0,1fr);grid-auto-rows:min-content;align-content:center;column-gap:.7rem;row-gap:.25rem;flex:1;padding:.55rem}
+.acd.al-mini .al-cov{grid-column:1;grid-row:1 / span 4;aspect-ratio:auto;height:100%;min-height:86px}
+.acd.al-mini>:not(.al-cov){grid-column:2}.acd.al-mini small{-webkit-line-clamp:2;height:calc(1.4em * 2)}
+/* szűrősor */
+.fbar{position:sticky;top:var(--nav);z-index:5;display:flex;gap:.6rem;align-items:center;padding:.6rem var(--pad);margin-bottom:.8rem;background:rgba(4,7,14,.88);backdrop-filter:blur(8px)}
+.fchips{display:flex;gap:.4rem;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}.fchips::-webkit-scrollbar{display:none}
+.fchips button{flex:none;border:1px solid rgba(140,180,230,.2);background:rgba(255,255,255,.04);color:#cfd8e6;border-radius:999px;padding:.4rem .9rem;font:700 .82rem var(--body,inherit);cursor:pointer;white-space:nowrap}
+.fchips button.on{background:var(--water);border-color:var(--water);color:#04121f}
+.fbar .fq,.fbar .fs{flex:none;background:#0a1324;border:1px solid rgba(140,180,230,.2);border-radius:10px;color:#e8edf5;font:500 .88rem var(--body,inherit);padding:.5rem .7rem;outline:none}.fbar .fq{width:min(280px,30vw)}.fbar .fq:focus,.fbar .fs:focus{border-color:var(--water)}
+/* sorok és rács */
+.arcl .row,.arcl-home{margin-bottom:1.1rem}.arcl .rowh .al-cnt{color:#7f8ea6;font-size:.85rem}
+.arow{display:flex;gap:.7rem;overflow-x:auto;scroll-snap-type:x proximity;scroll-padding:0 var(--pad);padding:.5rem var(--pad) 1rem;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.arow .acd{flex:none;width:clamp(220px,21vw,290px);scroll-snap-align:start}
+.agridx{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr));gap:.8rem;padding:.5rem var(--pad) 1rem}
+.arcl .al-none{padding:2rem var(--pad);color:#8fa3bd}
+/* részletező panel */
+.apnl{position:fixed;inset:0;z-index:60;background:rgba(2,4,8,.72);display:flex;align-items:center;justify-content:center;padding:1rem}.apnl[hidden]{display:none}
+body.arcl-lock{overflow:hidden}
+.apc{position:relative;width:min(860px,100%);max-height:100%;overflow:auto;background:linear-gradient(180deg,#0e1a30,#070d1a);border:1px solid rgba(140,180,230,.2);border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.7)}
+.apc>.al-cov{border-radius:0;aspect-ratio:21/9}.apc .al-ax{position:absolute;top:.7rem;right:.7rem;z-index:2;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(4,7,14,.75);color:#fff;font-size:1rem;cursor:pointer}
+.apb{padding:1.1rem 1.4rem 1.3rem;display:flex;flex-direction:column;gap:.7rem}.apb>p{color:#c6cdd8;line-height:1.55}
+.acols{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-top:.3rem}.acols h3{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:#7f8ea6;margin-bottom:.4rem}
+.acols ul{list-style:none;padding:0;margin:0;color:#d5dbe5;font-size:.9rem;line-height:1.7}.acols ul li::before{content:"▸ ";color:var(--water)}
+.al-top{margin:0;padding-left:1.6rem;color:#d5dbe5;font-size:.9rem;line-height:1.75}.al-top li>span{display:inline-block;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}.al-top li b{float:right;color:#ffd98a;font-weight:700}.al-top li.al-me{color:var(--water)}.al-top .al-ld{list-style:none;margin-left:-1.6rem;color:#8fa3bd}
+@media (max-width:860px){.arcl .ahero{grid-template-columns:1fr}.al-hside{flex-direction:row;overflow-x:auto;padding-bottom:.3rem}.al-hside .acd.al-mini{flex:none;width:min(320px,82vw)}.fbar{flex-wrap:wrap}.fchips{flex-basis:100%}.fbar .fq{flex:1;width:auto}.acols{grid-template-columns:1fr}.arow .acd{width:min(250px,72vw)}.al-hbig{min-height:260px}}
+.al-hbig .al-gen{place-items:start center;padding-top:7%}
