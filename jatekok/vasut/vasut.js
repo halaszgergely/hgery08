@@ -19,9 +19,9 @@
     kontener: { n: 'Konténer', w: 'Sgns pőrekocsi', m: 55, r: 120, col: '#2e7d6b', t: 'cont', wt: 'sgns' },
     uzemanyag: { n: 'Gázolaj', w: 'Zacns tartálykocsi', m: 70, r: 175, col: '#b8b8b8', haz: 1, t: 'tank', wt: 'zacns' } };
   const WAGONS = { eas: { n: 'Eas nyitott kocsi', c: 6e5 }, roos: { n: 'Roos rakoncás kocsi', c: 5e5 }, hbbins: { n: 'Hbbins fedett kocsi', c: 7e5 }, uagps: { n: 'Uagps silókocsi', c: 8e5 }, sgns: { n: 'Sgns konténerszállító', c: 6.5e5 }, zacns: { n: 'Zacns tartálykocsi', c: 9e5, haz: 1 } };
-  const DEPOT_C = 2e6, RENT_DEP = 2e4, RENT_H = 1200, NETV = 2;
+  const DEPOT_C = 2e6, RENT_DEP = 2e4, RENT_H = 1200, NETV = 3;
   const LEN_LIC = [6, 10, 16, 24, 34], LEN_C = [0, 1.2e6, 4e6, 12e6, 30e6], HAZ_C = 2.5e6, EL_C = 3e6, FUEL_P = 120, KWH_P = 60, CAR_L = 15;
-  let SLP = null, H = null, NX, NY, E = [], ADJ = [], ST = [], PL = [], SB = [], S = null, cam = { x: 0, y: 0, s: .05, follow: 1 }, keys = {}, lastT = 0, toastT = 0;
+  let SLP = null, TT = [], TTN = new Set(), H = null, NX, NY, E = [], ADJ = [], ST = [], PL = [], SB = [], S = null, cam = { x: 0, y: 0, s: .05, follow: 1 }, keys = {}, lastT = 0, toastT = 0;
   const fmt = n => Math.round(n).toLocaleString('hu-HU'), money = n => (Math.abs(n) >= 1e6 ? (n / 1e6).toLocaleString('hu-HU', { maximumFractionDigits: 2 }) + ' M' : fmt(n)) + ' Ft';
   const toast = (t, bad) => { const el = $('#toast'); el.textContent = t; el.style.color = bad ? '#ff8a7a' : ''; el.hidden = false; el.style.opacity = 1; toastT = 3; };
 
@@ -33,6 +33,8 @@
       const e = { i, a: q[0], b: q[1], L: Math.max(1, cum[n - 1]), el: q[3], vm: q[4] || (q[6] ? 30 : 60), svc: q[6] || 0, p, cum, bb: [x0, y0, x1, y1] }; ADJ[e.a].push({ e: i, end: 0 }); ADJ[e.b].push({ e: i, end: 1 }); return e; });
     const bbOf = f => { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (let i = 0; i < f.length; i += 2) { x0 = Math.min(x0, f[i]); x1 = Math.max(x1, f[i]); y0 = Math.min(y0, f[i + 1]); y1 = Math.max(y1, f[i + 1]); } return [x0, y0, x1, y1]; };
     PL = (h.pl || []).map(q => ({ c: q[0], p: q.slice(1), bb: bbOf(q.slice(1)) })); SB = (h.sb || []).map(p => ({ p, bb: bbOf(p) }));
+    TT = (h.tt || []).map(([x, y, r, c, pairs, stubs], k) => { const arms = pairs.flat(); for (const ei of arms) { const e = E[ei], o = e.a === c ? e.b : e.a; e.tt = k; e.virt = stubs.includes(ei); e.ta = Math.atan2(NY[o] - y, NX[o] - x); TTN.add(o); } TTN.add(c);
+      const pm = pairs.map(p => ((E[p[0]].ta % Math.PI) + Math.PI) % Math.PI), ord = pairs.map((_, i) => i).sort((a, b) => pm[a] - pm[b]); return { x, y, r, c, pairs, arms, pm, ord }; });
     ST = h.s.map(q => { const e = E[q[2]], s = Math.min(e.L, q[3] * e.L / (h.e[q[2]][2] || e.L)), [x, y] = at(e, s); return { n: q[0], big: !q[1], e: q[2], s, x, y }; });
   }
   // pont az élen (s méter az „a” végtől)
@@ -42,7 +44,16 @@
   function outDir(e, end) { const p = e.p, n = p.length / 2; let i0 = end ? n - 1 : 0, k = end ? -1 : 1, j = i0 + k; while (j > 0 && j < n - 1 && Math.hypot(p[2 * j] - p[2 * i0], p[2 * j + 1] - p[2 * i0 + 1]) < 25) j += k;
     const dx = p[2 * j] - p[2 * i0], dy = p[2 * j + 1] - p[2 * i0 + 1], l = Math.hypot(dx, dy) || 1; return [dx / l, dy / l]; }
   // kijárat választása egy csomópontban; vin: érkezési irány. Visszaad: { e, fromA } vagy null (ütköző)
-  function exits(node, inE, vin) { const o = []; for (const q of ADJ[node]) { if (q.e === inE && ADJ[node].filter(z => z.e === inE).length < 2) continue; const v = outDir(E[q.e], q.end), dot = v[0] * vin[0] + v[1] * vin[1]; o.push({ e: q.e, fromA: q.end === 0, dot }); } o.sort((a, b) => b.dot - a.dot); const lim = o.length && o[0].dot > .85 ? -.1 : -.6; return o.filter(q => q.dot > lim); }
+  function exits(node, inE, vin) { const o = []; for (const q of ADJ[node]) { if (q.e === inE && ADJ[node].filter(z => z.e === inE).length < 2) continue; if (E[q.e].tt >= 0 && !aligned(E[q.e])) continue; const v = outDir(E[q.e], q.end), dot = v[0] * vin[0] + v[1] * vin[1]; o.push({ e: q.e, fromA: q.end === 0, dot }); } o.sort((a, b) => b.dot - a.dot); const lim = o.length && o[0].dot > .85 ? -.1 : -.6; return o.filter(q => q.dot > lim); }
+  // fordítókorong: a híd szöge (S.tt[k]); egy kar akkor járható, ha a híd valamelyik vége felé néz
+  const curP = k => S.ttp && S.ttp[k] != null ? S.ttp[k] : 0, brAng = k => TT[k].pm[curP(k)];
+  const aligned = e => TT[e.tt].pairs[curP(e.tt)].includes(e.i);
+  function onTT() { if (Math.abs(S.v) > .15 || S.ttAnim) return -1; const k = E[S.P[0].e].tt; if (!(k >= 0) || S.P.some(sg => E[sg.e].tt !== k) || trainLen() > 2 * TT[k].r + 1) return -1; return k; }
+  function rotTT(dir) { const k = onTT(); if (k < 0) return; const T = TT[k], i = T.ord.indexOf(curP(k)), np = T.ord[(i + dir + T.ord.length) % T.ord.length], b = T.pm[curP(k)]; let dlt = T.pm[np] - b; if (dir > 0 && dlt <= 0) dlt += Math.PI; if (dir < 0 && dlt >= 0) dlt -= Math.PI;
+    S.ttAnim = { k, np, from: b, to: b + dlt, t: 0, dur: Math.max(1.2, Math.abs(dlt) / (Math.PI / 6)) }; S.thr = 0; beep(180, .3); }
+  function ttDone() { const A = S.ttAnim, T = TT[A.k], f = front(), f1 = f[2], fd = (f[0] - T.x) * Math.cos(f1) + (f[1] - T.y) * Math.sin(f1), f2 = f1 + A.to - A.from;
+    S.ttp = S.ttp || {}; S.ttp[A.k] = A.np; SUCC = null; S.ttAnim = null; const angDiff = (a, b) => Math.abs(((a - b) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI);
+    const pr = T.pairs[A.np], fc = angDiff(E[pr[0]].ta, f2) < angDiff(E[pr[1]].ta, f2) ? pr[0] : pr[1]; const e = E[fc]; S.P = [{ e: fc, d: e.a === T.c ? 1 : -1 }]; S.fu = Math.max(.1, Math.min(e.L, fd)); S.v = 0; fixRear(); plan(); ui(); }
   function choose(node, inE, vin) { const o = exits(node, inE, vin); if (!o.length) return null; const w = S.sw[node]; return o.find(q => q.e === w) || (E[o[0].e].svc && o.find(q => !E[q.e].svc && q.dot > o[0].dot - .1)) || o[0]; }
   const segEnd = (sg, front) => { const e = E[sg.e]; return (sg.d > 0) === front ? e.b : e.a; };
   const arriveDir = (sg, front) => { const e = E[sg.e], atB = (sg.d > 0) === front, v = outDir(e, atB ? 1 : 0); return [-v[0], -v[1]]; };
@@ -88,8 +99,8 @@
   // tervezett útvonal az eleje előtti csomóponttól a célállomásig, a váltók beállítása
   // irányhelyes útvonal: állapot = irányított él (e*2: a→b, e*2+1: b→a), továbblépni csak a váltó engedte kijáratokon lehet
   let SUCC = null;
-  function succ(sid) { SUCC = SUCC || new Array(E.length * 2); if (SUCC[sid]) return SUCC[sid]; const e = sid >> 1, sg = { e, d: sid & 1 ? -1 : 1 };
-    return SUCC[sid] = exits(segEnd(sg, true), e, arriveDir(sg, true)).map(q => q.e * 2 + (q.fromA ? 0 : 1)); }
+  function succ(sid) { SUCC = SUCC || new Array(E.length * 2); if (SUCC[sid]) return SUCC[sid]; const e = sid >> 1, sg = { e, d: sid & 1 ? -1 : 1 }, nd = segEnd(sg, true), r = exits(nd, e, arriveDir(sg, true)).map(q => q.e * 2 + (q.fromA ? 0 : 1));
+    if (!TTN.has(nd)) SUCC[sid] = r; return r; }
   // D[v]: költség az irányított él végéig. Irányváltás: a csomópont után egy kijáraton kihúzunk (szerelvényhossz + 40 m), visszatolunk, és onnan megyünk tovább
   // ki lehet-e húzni a szerelvényt a w irányított élről indulva legalább T méterre (bármely ágon); visszaad: az állapotok sora vagy null
   const PULL = new Map();
@@ -162,7 +173,7 @@
     const st = ST[si]; S = { money: 300000, life: 0, time: 6 * 3600, loco: 'm44', own: ['m44'], fuel: LOCOS.m44.fuel, lic: { len: 0, haz: 0, el: 0 }, P: [{ e: st.e, d: 1 }], fu: Math.min(E[st.e].L, st.s + 30), ru: 0, v: 0, thr: 0, brk: 0, park: 1, rev: 1, cars: [], jobs: [], boards: {}, sw: {}, nav: null, auto: 1, done: 0, depots: [st.n], wag: {}, nv: NETV };
     fixRear(); cam.x = st.x; cam.y = st.y; cam.s = .25; }
   function place(S0) { let si = ST.findIndex(s => s.big && /Kelenföld/.test(s.n)); if (si < 0) si = ST.findIndex(s => s.big); const st = ST[si]; S0.P = [{ e: st.e, d: 1 }]; S0.fu = Math.min(E[st.e].L, st.s + 30); S0.ru = 0; S0.v = 0; S0.brk = 0; S0.park = 1; S0.thr = 0; return st; }
-  function save() { if (!S) return; try { const { route, nearIdx, stop, manualT, rlock, lastBack, gr, migr, ...o } = S; localStorage.setItem(KEY, JSON.stringify(o)); } catch (_) {} }
+  function save() { if (!S) return; try { const { route, nearIdx, stop, manualT, rlock, lastBack, gr, migr, ttAnim, ...o } = S; localStorage.setItem(KEY, JSON.stringify(o)); } catch (_) {} }
   function load() { try { const o = JSON.parse(localStorage.getItem(KEY)); if (!o || !o.P) return false; S = { ...o }; S.wag = S.wag || {};
     if (S.nv !== NETV || S.P.some(sg => !E[sg.e])) { // a hálózat frissült: a régi élek és állomássorszámok érvénytelenek
       for (const j of S.jobs || []) { if (j.dep) S.money += j.dep; if (j.own) { const wt = CARGO[j.cg].wt; S.wag[wt] = (S.wag[wt] || 0) + j.n; } }
@@ -179,6 +190,7 @@
     const fe = E[S.P[S.P.length - 1].e], onEl = fe.el, power = Lc.el ? (onEl ? 1 : 0) : S.fuel > 0 ? 1 : 0;
     const Ft = S.rev && power ? Math.min(Lc.f0 * 1000, Lc.kw * 1000 / Math.max(ad, 1.5)) * S.thr / 8 * (ad * 3.6 >= Lc.vmax ? 0 : 1) : 0;
     const Fr = M * 9.81 * .0018 + 4 * v * v, Fb = (S.brk / 6) * M * 9.81 * .11 + (keys[' '] ? M * 9.81 * .11 : 0);
+    if (S.ttAnim) { S.ttAnim.t += dt / TS; S.v = 0; S.time += dt; if (S.ttAnim.t >= S.ttAnim.dur) ttDone(); return; }
     const gr = grade(); S.gr = gr; let a = (S.rev * Ft) / M - 9.81 * gr, dec = (Fr + Fb) / M; let nv = v + a * dt; if (nv > 0) nv = Math.max(0, nv - dec * dt); else if (nv < 0) nv = Math.min(0, nv + dec * dt); S.v = S.park ? 0 : nv;
     if (Lc.el) { const kwh = Lc.kw * S.thr / 8 * dt / 3600; if (power) S.money -= kwh * KWH_P; } else { S.fuel = Math.max(0, S.fuel - Lc.kw * .27 / 3600 * (S.thr / 8 + .03) * dt); }
     S.stop = 0; const moved = move(S.v * dt); if (S.stop) { if (Math.abs(S.v) * 3.6 > 15) toast('Ütközőbak! A szerelvény megállt.', 1); S.v = 0; }
@@ -203,7 +215,7 @@
         let t0 = 0, t1 = 1; const dx = bx - ax, dy = by - ay, cl = (pp, q) => { if (pp === 0) return q >= 0; const r = q / pp; if (pp < 0) { if (r > t1) return false; if (r > t0) t0 = r; } else { if (r < t0) return false; if (r < t1) t1 = r; } return true; };
         if (!(cl(-dx, ax - cx0) && cl(dx, cx1 - ax) && cl(-dy, ay - cy0) && cl(dy, cy1 - ay))) { pen = false; continue; }
         if (!pen || t0 > 0) g.moveTo(X(ax + dx * t0), Y(ay + dy * t0)); g.lineTo(X(ax + dx * t1), Y(ay + dy * t1)); pen = t1 >= 1; } }, path = e => pathP(e.p);
-    const rw = Math.max(1.3 * d, 4 * s), sv = E.filter(vis);
+    const rw = Math.max(1.3 * d, 4 * s), sv = E.filter(e => vis(e) && !(e.tt >= 0));
     // peronok és állomásépületek
     if (s > .08 * d) { const poly = f => { g.beginPath(); g.moveTo(X(f[0]), Y(f[1])); for (let i = 2; i < f.length; i += 2) g.lineTo(X(f[i]), Y(f[i + 1])); }, vb = b => !(b[2] < x0 || b[0] > x1 || b[3] < y0 || b[1] > y1);
       for (const q of PL) if (vb(q.bb)) { poly(q.p); if (q.c) { g.fillStyle = '#9d968a'; g.fill(); g.strokeStyle = '#d9cfb8'; g.lineWidth = Math.max(.6 * d, .5 * s); g.stroke(); } else { g.strokeStyle = '#d9cfb8'; g.lineWidth = Math.max(1.5 * d, 5 * s); g.stroke(); g.strokeStyle = '#9d968a'; g.lineWidth = Math.max(1 * d, 4 * s); g.stroke(); }
@@ -226,6 +238,10 @@
     else { g.beginPath(); for (const e of sv) if (!e.el && !e.svc) path(e); g.strokeStyle = '#7a7466'; g.lineWidth = rw; g.stroke();
       g.beginPath(); for (const e of sv) if (e.el && !e.svc) path(e); g.strokeStyle = '#a9b4c2'; g.lineWidth = rw; g.stroke();
       if (s > .02 * d) { g.beginPath(); for (const e of sv) if (e.svc) path(e); g.strokeStyle = '#8b8578'; g.lineWidth = Math.max(1 * d, 3 * s); g.stroke(); } }
+    if (s > .04 * d) for (let k = 0; k < TT.length; k++) { const T = TT[k]; if (T.x < x0 - 50 || T.x > x1 + 50 || T.y < y0 - 50 || T.y > y1 + 50) continue; const r = T.r * s, cx = X(T.x), cy = Y(T.y), an = S.ttAnim && S.ttAnim.k === k ? S.ttAnim.from + (S.ttAnim.to - S.ttAnim.from) * Math.min(1, S.ttAnim.t / S.ttAnim.dur) : brAng(k);
+      g.fillStyle = '#2a2622'; g.beginPath(); g.arc(cx, cy, r + 1.2 * s, 0, 6.283); g.fill(); g.strokeStyle = '#6d665c'; g.lineWidth = Math.max(1 * d, .8 * s); g.stroke(); g.strokeStyle = 'rgba(200,200,200,.25)'; g.lineWidth = Math.max(.6 * d, .2 * s); g.beginPath(); g.arc(cx, cy, r * .97, 0, 6.283); g.stroke();
+      g.save(); g.translate(cx, cy); g.rotate(an); g.fillStyle = '#4a4540'; g.fillRect(-r, -2.2 * s, 2 * r, 4.4 * s); g.fillStyle = '#5e4a38'; for (let u = -T.r + .4; u < T.r; u += .6) g.fillRect(u * s, -1.3 * s, .26 * s, 2.6 * s);
+      g.fillStyle = '#c9ced6'; g.fillRect(-r, -.8 * s, 2 * r, Math.max(.5 * d, .16 * s)); g.fillRect(-r, .64 * s, 2 * r, Math.max(.5 * d, .16 * s)); g.fillStyle = '#e8c547'; g.fillRect(-r, -2.2 * s, Math.max(1, .5 * s), 4.4 * s); g.fillRect(r - Math.max(1, .5 * s), -2.2 * s, Math.max(1, .5 * s), 4.4 * s); g.restore(); }
     if (S.route) { g.beginPath(); for (const ei of S.route.edges) path(E[ei]); g.strokeStyle = s > .25 * d ? 'rgba(94,224,138,.35)' : 'rgba(94,224,138,.6)'; g.lineWidth = s > .25 * d ? Math.max(3 * d, 1.4 * s) : Math.max(rw * 2.2, 3.5 * d); g.stroke(); }
     if (S.route && S.route.rev) { const q = S.route.rev; g.fillStyle = '#ffb347'; g.strokeStyle = '#000'; g.lineWidth = 2 * d; g.beginPath(); g.arc(X(q.x), Y(q.y), 7 * d, 0, 6.283); g.fill(); g.stroke(); g.fillStyle = '#000'; g.font = `800 ${9 * d}px Inter`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('⇄', X(q.x), Y(q.y)); }
     // állomások
@@ -238,7 +254,8 @@
       g.fillStyle = '#ffe29a'; g.beginPath(); g.arc(px, py, 5 * d, 0, 6.283); g.fill(); }
     // szerelvény
     const Lc = LOCOS[S.loco], L = trainLen();
-    const drawVeh = (x, len, kind, loco) => { const a = along(x), b = along(Math.min(L, x + len)), cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2, an = Math.atan2(b[1] - a[1], b[0] - a[0]);
+    const rotP = p => { const A = S.ttAnim; if (!A) return p; const T = TT[A.k], q = (A.to - A.from) * Math.min(1, A.t / A.dur), c = Math.cos(q), sn = Math.sin(q), dx = p[0] - T.x, dy = p[1] - T.y; return [T.x + dx * c - dy * sn, T.y + dx * sn + dy * c, p[2] + q]; };
+    const drawVeh = (x, len, kind, loco) => { const a = rotP(along(x)), b = rotP(along(Math.min(L, x + len))), cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2, an = Math.atan2(b[1] - a[1], b[0] - a[0]);
       const lw = Math.max(len * s, loco ? 10 * d : 4 * d), wd = Math.max(3 * s, loco ? 6 * d : 4 * d), hl = lw / 2, hw = wd / 2, det = s > .3 * d; g.save(); g.translate(X(cx), Y(cy)); g.rotate(an);
       if (det) { g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(-hl + .5 * s, -hw + .8 * s, lw, wd); }
       g.fillStyle = '#111'; g.fillRect(-hl - d * .5, -hw - d * .5, lw + d, wd + d);
@@ -278,7 +295,7 @@
     $('#locoN').textContent = Lc.n + ' · ' + S.cars.length + ' kocsi · ' + Math.round((Lc.m + S.cars.reduce((a, c) => a + CARGO[c.cg].m + 22, 0))) + ' t' + (Math.abs(S.gr || 0) >= .001 ? ' · ' + (S.gr > 0 ? '↗ ' : '↘ ') + (Math.abs(S.gr) * 100).toFixed(1).replace('.', ',') + '%' : '');
     const n = nextSwitch(); const R = S.route, rv = R && R.rev ? R.rev.dist - 0 : 0; $('#swT').textContent = (R && R.rev ? '🔁 Irányváltás ' + (rv < 1000 ? Math.round(rv / 10) * 10 + ' m' : (rv / 1000).toFixed(1).replace('.', ',') + ' km') + ' múlva · ' : '') + (S.route ? (S.route.back ? '🔁 A cél mögötted van · ' : '') + (S.route.km ? S.route.km.toFixed(1).replace('.', ',') + ' km a célig · ' : '') : '') + (n ? 'Váltó ' + (n.dist < 1000 ? Math.round(n.dist / 10) * 10 + ' m' : (n.dist / 1000).toFixed(1).replace('.', ',') + ' km') + ': ' + turnName(n) : 'Nincs váltó előtted');
     // állomási műveletek
-    const si = nearSt(); let h = ''; if (si >= 0) { h += `<span class="mut">📍 ${ST[si].n}</span>`;
+    const si = nearSt(); let h = ''; { const k = onTT(); if (k >= 0) h += `<span class="mut">🔄 Fordítókorong</span><button class="b sm g" data-rot="-1">⟲ Forgatás</button><button class="b sm g" data-rot="1">Forgatás ⟳</button>`; else if (S.ttAnim) h += '<span class="mut">🔄 Forog…</span>'; } if (si >= 0) { h += `<span class="mut">📍 ${ST[si].n}</span>`;
       for (const j of S.jobs) { if (j.state === 'taken' && j.from === si) { const wt = CARGO[j.cg].wt; if (isDepot(si) && (S.wag[wt] || 0) >= j.n) h += `<button class="b sm g" data-c="${j.id}" data-own="1">🔗 Saját kocsik: ${j.n} × ${CARGO[j.cg].n}</button>`; h += `<button class="b sm${isDepot(si) && (S.wag[wt] || 0) >= j.n ? '' : ' g'}" data-c="${j.id}">🔗 Bérelt kocsik: ${j.n} × ${CARGO[j.cg].n} · kaució ${money(j.n * RENT_DEP)}</button>`; } if (j.state === 'loaded' && j.to === si) h += `<button class="b sm g" data-u="${j.id}">📦 Lekapcsolás: ${j.n} × ${CARGO[j.cg].n}</button>`; }
       if (ST[si].big && !Lc.el && S.fuel < Lc.fuel - 1) h += `<button class="b sm" data-f>⛽ Tankolás (${money((Lc.fuel - S.fuel) * FUEL_P)})</button>`; }
     if (h !== AC) { AC = h; $('#acts').innerHTML = h; }
@@ -307,6 +324,7 @@
     if (t.dataset.lic) { const k = t.dataset.lic, c = k === 'len' ? LEN_C[S.lic.len + 1] : k === 'haz' ? HAZ_C : EL_C; if (S.money >= c) { S.money -= c; if (k === 'len') S.lic.len++; else S.lic[k] = 1; toast('Engedély megszerezve.'); showDepo(); } }
     ui(); save(); });
   $('#acts').addEventListener('click', e => { const t = e.target.closest('button'); if (!t) return; const j = S.jobs.find(q => q.id === (t.dataset.c || t.dataset.u));
+    if (t.dataset.rot) rotTT(+t.dataset.rot);
     if (t.dataset.c && j) couple(j, !!t.dataset.own); if (t.dataset.u && j) uncouple(j);
     if (t.dataset.f !== undefined) { const Lc = LOCOS[S.loco], need = Lc.fuel - S.fuel, can = Math.min(need, S.money / FUEL_P); S.money -= can * FUEL_P; S.fuel += can; toast('Tankolás: ' + fmt(can) + ' L'); }
     AC = ''; ui(); save(); });
@@ -348,11 +366,11 @@
     if (toastT > 0 && (toastT -= dt) <= 0) $('#toast').hidden = true; }
   requestAnimationFrame(loop);
   if (window.Taj) Taj.load('202611212100').catch(() => {});
-  fetch('halo.json?v=202611212115').then(r => r.json()).then(h => { build(h); const ok = load(); if (!ok) fresh(); S.nearIdx = []; nearT = 0;
+  fetch('halo.json?v=202611212150').then(r => r.json()).then(h => { build(h); const ok = load(); if (!ok) fresh(); S.nearIdx = []; nearT = 0;
     $('#mLoad').textContent = (H.e.reduce((a, e) => a + e[2], 0) / 1000).toFixed(0) + ' km vasútvonal · ' + ST.length + ' állomás és megálló'; $('#mPlay').disabled = false; $('#mPlay').textContent = ok ? '▶ Folytatás' : '▶ Játék'; $('#mNew').hidden = !ok; })
     .catch(() => { $('#mLoad').textContent = 'Nem sikerült betölteni a vasúthálózatot.'; });
   $('#mPlay').onclick = () => { $('#menu').hidden = true; beep(660, .08); if (S && S.migr) { delete S.migr; toast('A vasúthálózat bővült (állomási vágányok): a vonatod Kelenföldre került, a futó munkák lezárultak, a kauciókat visszakaptad.'); } };
   $('#mNew').onclick = () => { if ($('#mNew').dataset.sure) { localStorage.removeItem(KEY); fresh(); S.nearIdx = []; nearT = 0; $('#menu').hidden = true; delete $('#mNew').dataset.sure; $('#mNew').textContent = 'Új játék'; } else { $('#mNew').dataset.sure = 1; $('#mNew').textContent = 'Biztos? Minden elvész'; } };
   addEventListener('pagehide', save);
-  window.__vt = () => ({ S, E, ST, NX, NY, ADJ, dijkstra, exits, outDir, routeTo, succ, step, ui, move, plan, nextSwitch, flip, board, take, couple, uncouple, nearSt, front, along, cam });
+  window.__vt = () => ({ S, E, ST, TT, aligned, onTT, fixRear, NX, NY, ADJ, dijkstra, exits, outDir, routeTo, succ, step, ui, move, plan, nextSwitch, flip, board, take, couple, uncouple, nearSt, front, along, cam });
 })();

@@ -37,13 +37,14 @@ def work(a):
                 ks = pk(kb)
                 if not ki.intersection(ks): continue
                 t = {st[k]: st[v] for k, v in zip(ks, pk(vb)) if k in ki}
-                svc = t.get(b'service')
-                if t.get(b'railway') == b'rail' and svc in (None, b'siding', b'yard', b'crossover'):
+                svc = t.get(b'service'); rw = t.get(b'railway')
+                if rw in (b'rail', b'disused'):
                     try: vm = int(t.get(b'maxspeed', b'0').split()[0])
                     except ValueError: vm = 0
-                    out.append(('r', 1 if t.get(b'electrified', b'no') not in (b'no', b'') else 0, vm, zzl(pk(rb)), 0 if svc is None else 1))
+                    out.append(('r', 1 if t.get(b'electrified', b'no') not in (b'no', b'') else 0, vm, zzl(pk(rb)), 2 if rw == b'disused' else 0 if svc is None else 1))
                 elif t.get(b'railway') == b'platform' or (t.get(b'public_transport') == b'platform' and t.get(b'train') == b'yes'): out.append(('p', zzl(pk(rb))))
                 elif t.get(b'building') == b'train_station': out.append(('b', zzl(pk(rb))))
+                elif rw == b'turntable': out.append(('t', zzl(pk(rb))))
                 elif t.get(b'waterway') == b'river': out.append(('w', t.get(b'name', b'').decode(), zzl(pk(rb))))
             elif mode == 'N' and gk == 2:
                 ib = lb = ob = kv = b''
@@ -74,12 +75,12 @@ def P(lon, lat): return (lon - LON0) * KX, (LAT1 - lat) * KY
 
 if __name__ == '__main__':
     import pickle
-    cache = '/tmp/vasut-osm2.pkl'
+    cache = '/tmp/vasut-osm3.pkl'
     if os.path.exists(cache): W, N = pickle.load(open(cache, 'rb'))
     else:
         bl = blobs(); print(len(bl), 'blokk', flush=True)
         with Pool(2) as p: W = [r for o in p.imap_unordered(work, sorted([('W',) + b for b in bl]), 8) for r in o]
-        need = np.unique(np.array([r for w in W if w[0] == 'r' for r in w[3]] + [r for w in W if w[0] in 'wpb' for r in (w[2] if w[0] == 'w' else w[1])], np.int64))
+        need = np.unique(np.array([r for w in W if w[0] == 'r' for r in w[3]] + [r for w in W if w[0] in 'wpb' for r in (w[2] if w[0] == 'w' else w[1])] + [r for w in W if w[0] == 't' for r in w[1]], np.int64))
         with Pool(2, initializer=init, initargs=(need,)) as p: N = [r for o in p.imap_unordered(work, sorted([('N',) + b for b in bl]), 8) for r in o]
         pickle.dump((W, N), open(cache, 'wb'))
     rails = [w for w in W if w[0] == 'r']; rivers = [w for w in W if w[0] == 'w']
@@ -111,7 +112,7 @@ if __name__ == '__main__':
                     a, b = node(seg[0]), node(seg[-1])
                     if a is not None and b is not None and a != b:
                         pts = [(px[i], py[i]) for i in keep]; L = sum(math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]) for i in range(len(pts) - 1))
-                        if L > 1: edges.append([a, b, L, el, vm if vm or not svc else 30, pts, svc])
+                        if L > 1: edges.append([a, b, L, el, vm or (20 if svc == 2 else 30 if svc else 0), pts, svc])
                 p0 = k
     print('csomópont', len(nodes), 'él', len(edges), flush=True)
     # kettes fokszámú csomópontok összevonása (azonos villamosítás / sebesség mellett), kis komponensek elhagyása
@@ -231,7 +232,46 @@ if __name__ == '__main__':
     nodes = [nodes[v] for v in used]
     for e in edges: e[0] = remap[e[0]]; e[1] = remap[e[1]]
     print('fő hálózat', len(nodes), 'csomópont', len(edges), 'él', round(sum(e[2] for e in edges) / 1000), 'km', flush=True)
-    # állomások: a legközelebbi élpontra vetítve (300 m-en belül)
+    # fordítókorongok: a korongon belüli vágánydarabok helyett középpont + karok (a peremnél végződő vágányok), a szemközti oldalon hiányzó karok helyett vak csonk
+    tts = []; drop = set()
+    for w in W:
+        if w[0] != 't': continue
+        j = ix(w[1])
+        if len(j) < 4: continue
+        px, py = xs[j], ys[j]; cx, cy = float(px.mean()), float(py.mean()); r = float(np.hypot(px - cx, py - cy).mean())
+        if r < 5 or r > 25: continue
+        for k, e in enumerate(edges):
+            if k in drop: continue
+            if all(math.hypot(q[0] - cx, q[1] - cy) < r + 2.5 for q in e[5]): drop.add(k)
+        tts.append([cx, cy, r])
+    if tts:
+        keep = [e for k, e in enumerate(edges) if k not in drop]; edges[:] = keep
+        deg = [0] * len(nodes)
+        for e in edges: deg[e[0]] += 1; deg[e[1]] += 1
+        TT = []
+        for cx, cy, r in tts:
+            arms = [i for i, (x, y) in enumerate(nodes[:len(deg)]) if deg[i] and math.hypot(x - cx, y - cy) < r + 4]
+            if len(arms) < 2: continue
+            c = len(nodes); nodes.append((cx, cy)); conn = []; angs = []
+            for i in arms:
+                x, y = nodes[i]; a = math.atan2(y - cy, x - cx); edges.append([i, c, max(1, math.hypot(x - cx, y - cy)), 0, 5, [nodes[i], (cx, cy)], 1]); conn.append(len(edges) - 1); angs.append(a)
+            # párok: minden kar a szemközti karral (0,12 rad-on belül), ha nincs ilyen, egy vak csonkkal
+            dif = lambda a, b: abs(((a - b) + math.pi) % (2 * math.pi) - math.pi)
+            cand = sorted((dif(angs[p], angs[q] + math.pi), p, q) for p in range(len(arms)) for q in range(p + 1, len(arms)))
+            used = set(); pairs = []; stubs = []
+            for dd, p, q in cand:
+                if dd > .12: break
+                if p in used or q in used: continue
+                used |= {p, q}; pairs.append([conn[p], conn[q]])
+            for p in range(len(arms)):
+                if p in used: continue
+                a = angs[p]; sx, sy = cx + math.cos(a + math.pi) * r, cy + math.sin(a + math.pi) * r; nodes.append((sx, sy)); edges.append([len(nodes) - 1, c, r, 0, 5, [(sx, sy), (cx, cy)], 1])
+                pairs.append([conn[p], len(edges) - 1]); stubs.append(len(edges) - 1)
+            conn = pairs
+            TT.append([round(cx, 1), round(cy, 1), round(r, 1), c, conn, stubs])
+        print('fordítókorong', len(TT), 'eldobott belső él', len(drop), flush=True)
+    else: TT = []
+    # állomások: a legközelebbi élpontra vetítve (300 m-en belül)    # állomások: a legközelebbi élpontra vetítve (300 m-en belül)
     G = {}
     for k, e in enumerate(edges):
         acc = 0; pts = e[5]
@@ -295,6 +335,6 @@ if __name__ == '__main__':
     print('peron', len(plat), 'állomásépület', len(sbld), flush=True)
     W_, H_ = idx['W'] * 100, idx['H'] * 100
     json.dump({'K': 1, 'W': W_, 'H': H_, 'n': [[round(x), round(y)] for x, y in nodes],
-               'e': [[e[0], e[1], round(e[2]), e[3], e[4], [round(v) for p in e[5] for v in p], e[6]] for e in edges], 'pl': plat, 'sb': sbld,
+               'e': [[e[0], e[1], round(e[2]), e[3], e[4], [round(v) for p in e[5] for v in p], e[6]] for e in edges], 'pl': plat, 'sb': sbld, 'tt': TT,
                's': sts, 'o': outl, 'w': riv}, open(os.path.join(OUTD, 'halo.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     print('kész', os.path.getsize(os.path.join(OUTD, 'halo.json')) // 1024, 'kB', flush=True)
