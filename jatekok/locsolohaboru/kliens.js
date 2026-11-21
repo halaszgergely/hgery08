@@ -1,8 +1,8 @@
 // Locsolóháború – kliens: menü, váróterem, hálózat, előrejelzés, megjelenítés, HUD, hang, irányítás, beállítások.
-import { TICK, MODES, WEAPONS, GOLD, COLORS, TEAMC, ENT, newWorld, step, encodeSnap, decodeSnap, encodeInput, decodeInput, worldFromSnap } from './jatek.js?v=202611211943';
-import { MAPS, mapOf, movePlayer, raycast, pointSolid, eyeH, PR, PH, CH, B_JUMP, B_CROUCH, B_RUN, B_FIRE, B_RELOAD, B_AIM } from './vilag.js?v=202611211943';
-import { createRenderer, M4, hex } from './motor.js?v=202611211943';
-import { joinRoom, localSignal, fireSignal } from '../../js/net.js?v=202611211943';
+import { TICK, MODES, WEAPONS, GOLD, COLORS, TEAMC, ENT, newWorld, step, encodeSnap, decodeSnap, encodeInput, decodeInput, worldFromSnap } from './jatek.js?v=202611212043';
+import { MAPS, mapOf, movePlayer, raycast, pointSolid, eyeH, PR, PH, CH, B_JUMP, B_CROUCH, B_RUN, B_FIRE, B_RELOAD, B_AIM } from './vilag.js?v=202611212043';
+import { createRenderer, M4, hex } from './motor.js?v=202611212043';
+import { joinRoom, localSignal, fireSignal } from '../../js/net.js?v=202611212043';
 
 const $ = s => document.querySelector(s), Q = new URLSearchParams(location.search), LOCAL = Q.has('local'), GAME = 'locsolohaboru';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -30,7 +30,7 @@ for (const p of ['m', 'l']) { fillSel($('#' + p + 'Mode'), MODES.map(m => [m.id,
 async function boot() {
   if (!R) { $('#st').textContent = 'A böngésződ nem támogatja a WebGL-t, ezért a játék nem indítható.'; $('#mSolo').disabled = $('#mCreate').disabled = true; return; }
   if (LOCAL) { me = { uid: Q.get('uid') || 'u' + Math.random().toString(36).slice(2, 7), name: Q.get('name') || 'Teszt', color: COLORS[0] }; sig = localSignal('hgws_lh'); return ready(); }
-  try { core = await import('../../js/core.js?v=202611211943'); } catch (e) { console.warn(e); }
+  try { core = await import('../../js/core.js?v=202611212043'); } catch (e) { console.warn(e); }
   if (!core || core.notConfigured || !core.auth) return ready();
   core.FB.onAuthStateChanged(core.auth, async u => {
     if (u && !u.isAnonymous) { me = { uid: u.uid, name: u.displayName || 'Tag', color: COLORS[0] }; try { const s = await core.FB.getDoc(core.FB.doc(core.db, 'users', u.uid)); if (s.exists()) { me.name = s.data().name || me.name; if (COLORS.includes(s.data().color)) me.color = s.data().color; } } catch (_) {} sig = fireSignal(core.FB, core.db); }
