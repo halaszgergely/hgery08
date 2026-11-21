@@ -1,0 +1,186 @@
+// Öntöző Birodalom Online – szabályteszt a Firebase Emulatorral (csalásvédelem, piac, régió, világ, szövetkezet).
+// Futtatás a repó gyökeréből:
+//   npm i --no-save @firebase/rules-unit-testing firebase
+//   firebase emulators:exec --only firestore --project demo-hgws "node tools/birodalomteszt.mjs"
+import { readFileSync } from 'node:fs';
+import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
+import { doc, setDoc, updateDoc, deleteDoc, getDoc, writeBatch, serverTimestamp, increment, arrayUnion, arrayRemove, deleteField, Timestamp } from 'firebase/firestore';
+
+const env = await initializeTestEnvironment({ projectId: 'demo-hgws', firestore: { rules: readFileSync('firestore.rules', 'utf8') } });
+const now = new Date(), y = now.getUTCFullYear(), m = now.getUTCMonth() + 1, SID = y + '-' + String(m).padStart(2, '0'), PREV = m === 1 ? (y - 1) + '-12' : y + '-' + String(m - 1).padStart(2, '0');
+const WK = Math.floor(Date.now() / 6048e5), ago = h => Timestamp.fromMillis(Date.now() - h * 3600e3);
+const fresh = { lv: 1, ft: 500, inv: { viz: 200, vjog: 1 }, pl: {}, sc: 1050, coop: '', cos: [], rd: { wk: 0, d: 0, cl: false }, ad: '', cand: false, prog: '', voted: false, tx: '', txp: '', txk: '' };
+const world = { tw: { wk: WK, v: 0 }, raid: { wk: WK, dmg: 0 }, rp: { wk: 0, ok: false }, kosz: { wk: WK, v: 0 }, pipes: {}, cv: {}, rv: {}, rule: '', op: '', lk: '' };
+const people = ['anna', 'bela', 'csaba', 'dora', 'emil', 'tiltott'];
+const seedPlayer = (db, u, x = {}) => setDoc(doc(db, 'bo', SID, 'players', u), { ...fresh, t0: ago(48), at: ago(1), ...x });
+await env.withSecurityRulesDisabled(async c => {
+  const db = c.firestore();
+  for (const p of people) await setDoc(doc(db, 'users', p), { name: p, role: 'user', banned: p === 'tiltott' });
+  await setDoc(doc(db, 'friends', 'anna_bela'), { users: ['anna', 'bela'], from: 'anna', to: 'bela', status: 'accepted' });
+  await setDoc(doc(db, 'bo', PREV), { ...world, rv: { gyorsno: 3, eros: 1 }, t0: ago(800) });
+  await seedPlayer(db, 'anna', { lv: 5, ft: 20000, inv: { viz: 5000, vjog: 2, buza: 300, alk: 100, gep: 12, lfd: 7, hir: 500, szv: 200 } });
+  await seedPlayer(db, 'bela', { lv: 4, ft: 5000, inv: { viz: 3000, vjog: 1 } });
+  await seedPlayer(db, 'csaba', { lv: 3, ft: 3000 });
+  await seedPlayer(db, 'emil', { cand: true, prog: 'hirnev' });
+});
+const as = (id, v = true) => env.authenticatedContext(id, { email_verified: v }).firestore();
+const W = db => doc(db, 'bo', SID), Pl = (db, u) => doc(db, 'bo', SID, 'players', u), Rg = (db, r) => doc(db, 'bo', SID, 'regions', r), Dl = (db, id) => doc(db, 'bo', SID, 'deals', id), Co = (db, id) => doc(db, 'bo', SID, 'coops', id);
+let n = 0, bad = 0;
+const t = async (name, p) => { n++; try { await p; console.log('✅', name); } catch (e) { bad++; console.log('❌', name, '–', e.message?.split('\n')[0]); } };
+const anna = as('anna'), bela = as('bela'), csaba = as('csaba'), dora = as('dora');
+const batch = (db, f) => { const b = writeBatch(db); f(b); return b.commit(); };
+const upd = (db, u, x) => updateDoc(Pl(db, u), { tx: '', txp: '', txk: '', ...x });
+
+console.log('--- világ');
+await t('világ létrehozása rossz szabállyal (nem a győztes program)', assertFails(setDoc(W(anna), { ...world, rule: 'eros', t0: serverTimestamp() })));
+await t('világ létrehozása szabály nélkül, pedig volt választás', assertFails(setDoc(W(anna), { ...world, rule: '', t0: serverTimestamp() })));
+await t('világ létrehozása előre megtöltött toronnyal', assertFails(setDoc(W(anna), { ...world, rule: 'gyorsno', tw: { wk: WK, v: 9999 }, t0: serverTimestamp() })));
+await t('világ létrehozása a győztes programmal', assertSucceeds(setDoc(W(anna), { ...world, rule: 'gyorsno', t0: serverTimestamp() })));
+await t('másik szezon világának létrehozása', assertFails(setDoc(doc(anna, 'bo', '2099-01'), { ...world, rule: '', t0: serverTimestamp() })));
+await t('a szabály utólagos átírása', assertFails(updateDoc(W(anna), { rule: 'eros', op: 'tw' })));
+
+console.log('--- játékos: belépés és időarányos termelés');
+await t('új játékos alapértékekkel', assertSucceeds(setDoc(Pl(dora, 'dora'), { ...fresh, t0: serverTimestamp(), at: serverTimestamp() })));
+await t('új játékos más nevében', assertFails(setDoc(Pl(dora, 'tiltott'), { ...fresh, t0: serverTimestamp(), at: serverTimestamp() })));
+await t('új játékos több pénzzel', assertFails(setDoc(Pl(as('ujgazdag'), 'ujgazdag'), { ...fresh, ft: 99999, t0: serverTimestamp(), at: serverTimestamp() })));
+await t('nem megerősített e-maillel', assertFails(setDoc(Pl(as('emil', false), 'emil'), { ...fresh, t0: serverTimestamp(), at: serverTimestamp() })));
+await t('1 óra termelése a korláton belül (5. szint: búza ≤ 720, víz ≤ 10 800)', assertSucceeds(upd(anna, 'anna', { 'inv.buza': 1000, 'inv.viz': 15000, ft: 25000, at: serverTimestamp() })));
+await t('azonnali újabb jóváírás (nem telt el idő)', assertFails(upd(anna, 'anna', { 'inv.buza': 1500, at: serverTimestamp() })));
+await t('jóváírás az időbélyeg frissítése nélkül', assertFails(upd(bela, 'bela', { 'inv.buza': 50 })));
+await t('korlát feletti termelés (4. szint, 1 óra: búza ≤ 576)', assertFails(upd(bela, 'bela', { 'inv.buza': 5000, at: serverTimestamp() })));
+await t('pénz a semmiből', assertFails(upd(bela, 'bela', { ft: 900000, at: serverTimestamp() })));
+await t('ismeretlen nyersanyag', assertFails(upd(bela, 'bela', { 'inv.arany': 5, at: serverTimestamp() })));
+await t('negatív készlet', assertFails(upd(bela, 'bela', { 'inv.viz': -100 })));
+await t('Locsolófej-darab ostrom nélkül', assertFails(upd(bela, 'bela', { 'inv.lfd': 5, at: serverTimestamp() })));
+await t('pontszám a vagyon fölött', assertFails(upd(bela, 'bela', { sc: 999999 })));
+await t('a belépés idejének átírása', assertFails(upd(bela, 'bela', { t0: ago(9999) })));
+await t('más játékos állásának írása', assertFails(upd(bela, 'anna', { ft: 0 })));
+await t('költés (csökkenés) mindig szabad', assertSucceeds(upd(bela, 'bela', { 'inv.viz': 2900 })));
+
+console.log('--- szint, vízjog, eladás');
+await t('két szint egyszerre', assertFails(upd(bela, 'bela', { lv: 6, ft: 0 })));
+await t('szintlépés fizetés nélkül', assertFails(upd(bela, 'bela', { lv: 5 })));
+await t('szintlépés 150 × szint² Ft-ért', assertSucceeds(upd(bela, 'bela', { lv: 5, ft: 5000 - 3750 })));
+await t('szintlépés a szezonba lépés után túl korán', assertFails(upd(dora, 'dora', { lv: 2, ft: 0 })));
+await t('vízjog ingyen', assertFails(upd(anna, 'anna', { 'inv.vjog': 3 })));
+await t('vízjog pénzért', assertSucceeds(upd(anna, 'anna', { 'inv.vjog': 3, ft: 25000 - 400 })));
+await t('eladás az állami ár fölött', assertFails(updateDoc(Pl(anna, 'anna'), { 'inv.buza': 900, ft: 24600 + 5000, tx: 'buza', txp: '', txk: 'sell' })));
+await t('eladás állami áron (100 búza = 200 Ft)', assertSucceeds(updateDoc(Pl(anna, 'anna'), { 'inv.buza': 900, ft: 24600 + 200, tx: 'buza', txp: '', txk: 'sell' })));
+await t('„eladás” közben más készlet növelése', assertFails(updateDoc(Pl(anna, 'anna'), { 'inv.buza': 800, 'inv.krist': 50, ft: 24800, tx: 'buza', txp: '', txk: 'sell' })));
+await t('léghajó gép nélkül', assertFails(upd(bela, 'bela', { 'inv.hajo': 1 })));
+await t('léghajó 10 gépből', assertSucceeds(upd(anna, 'anna', { 'inv.hajo': 1, 'inv.gep': 2 })));
+await t('Arany Locsolófej 7 darabból', assertSucceeds(upd(anna, 'anna', { 'inv.alf': 1, 'inv.lfd': 0 })));
+await t('Arany Locsolófej darabok nélkül', assertFails(upd(anna, 'anna', { 'inv.alf': 2 })));
+await t('dísztárgy hírnév nélkül', assertFails(upd(bela, 'bela', { cos: ['cimer1'] })));
+await t('dísztárgy hírnévért', assertSucceeds(upd(anna, 'anna', { cos: ['cimer1'], 'inv.hir': 350 })));
+
+console.log('--- régió és telek');
+const buy = (db, u, rid, k, ft, extra = {}) => batch(db, b => { b.set(Rg(db, rid), { plots: { [k]: { u, wt: serverTimestamp(), lv: 1 } }, lk: k, op: 'buy' }, { merge: true }); b.update(Pl(db, u), { ['pl.' + rid + '_' + k]: { r: rid, lv: 1, b: {}, g: 0 }, ft, tx: rid, txp: k, txk: 'plot', ...extra }); });
+await t('telek fizetés nélkül', assertFails(buy(csaba, 'csaba', 'volgy', '3', 3000)));
+await t('telek a régió-összesítő módosítása nélkül', assertFails(updateDoc(Pl(csaba, 'csaba'), { 'pl.volgy_3': { r: 'volgy' }, ft: 2700, tx: 'volgy', txp: '3', txk: 'plot' })));
+await t('telek megvétele (Locsolóvölgy, 300 Ft)', assertSucceeds(buy(csaba, 'csaba', 'volgy', '3', 2700)));
+await t('régió-bejegyzés a játékos fizetése nélkül', assertFails(updateDoc(Rg(csaba, 'volgy'), { 'plots.4': { u: 'csaba', wt: serverTimestamp(), lv: 1 }, lk: '4', op: 'buy' })));
+await t('foglalt telek megvétele', assertFails(buy(anna, 'anna', 'volgy', '3', 24100)));
+await t('nem létező telek (48)', assertFails(buy(anna, 'anna', 'volgy', '48', 24100)));
+await t('zárt régió (Holdkolónia: 8. szint)', assertFails(buy(anna, 'anna', 'hold', '1', 9000)));
+await t('másé a bejegyzés', assertFails(batch(anna, b => { b.update(Rg(anna, 'volgy'), { 'plots.5': { u: 'bela', wt: serverTimestamp(), lv: 1 }, lk: '5', op: 'buy' }); b.update(Pl(anna, 'anna'), { 'pl.volgy_5': { r: 'volgy' }, ft: 24000, tx: 'volgy', txp: '5', txk: 'plot' }); })));
+await t('telekkorlát: 3. szinten legfeljebb 2 telek', assertSucceeds(buy(csaba, 'csaba', 'volgy', '6', 2400)));
+await t('… a harmadik már nem megy', assertFails(buy(csaba, 'csaba', 'volgy', '7', 2100)));
+await t('öntözés víz nélkül', assertFails(updateDoc(Rg(csaba, 'volgy'), { 'plots.3.wt': serverTimestamp(), lk: '3', op: 'water' })));
+await t('öntözés 20 liter vízért', assertSucceeds(batch(csaba, b => { b.update(Rg(csaba, 'volgy'), { 'plots.3.wt': serverTimestamp(), lk: '3', op: 'water' }); b.update(Pl(csaba, 'csaba'), { 'inv.viz': 180, tx: '', txp: '', txk: 'water' }); })));
+await t('más telkének átírása', assertFails(updateDoc(Rg(anna, 'volgy'), { 'plots.3.lv': 9, lk: '3', op: 'up' })));
+await t('egy írás két telket érint', assertFails(updateDoc(Rg(csaba, 'volgy'), { 'plots.3.lv': 2, 'plots.6.lv': 2, lk: '3', op: 'up' })));
+await t('nem kiszáradt telek felvásárlása', assertFails(batch(anna, b => { b.update(Rg(anna, 'volgy'), { 'plots.6': { u: 'anna', wt: serverTimestamp(), lv: 1 }, lk: '6', op: 'buy' }); b.update(Pl(anna, 'anna'), { 'pl.volgy_6': { r: 'volgy' }, ft: 24000, tx: 'volgy', txp: '6', txk: 'plot' }); })));
+await env.withSecurityRulesDisabled(c => updateDoc(Rg(c.firestore(), 'volgy'), { 'plots.6.wt': ago(80) }));
+await t('kiszáradt telek (80 órája nem öntözték) negyedáron', assertSucceeds(batch(anna, b => { b.update(Rg(anna, 'volgy'), { 'plots.6': { u: 'anna', wt: serverTimestamp(), lv: 1 }, lk: '6', op: 'buy' }); b.update(Pl(anna, 'anna'), { 'pl.volgy_6': { r: 'volgy', lv: 1, b: {}, g: 0 }, ft: 24800 - 75, tx: 'volgy', txp: '6', txk: 'plot' }); })));
+await t('saját telek feladása', assertSucceeds(batch(csaba, b => { b.update(Rg(csaba, 'volgy'), { 'plots.3': deleteField(), lk: '3', op: 'leave' }); b.update(Pl(csaba, 'csaba'), { 'pl.volgy_3': deleteField(), tx: '', txp: '', txk: '' }); })));
+
+console.log('--- piac');
+const offer = (db, u, id, res, q, p, left, to = '') => batch(db, b => { b.set(Dl(db, id), { k: 'offer', s: u, to, pub: !to, res, q, p, st: 'open', b: '', at: serverTimestamp() }); b.update(Pl(db, u), { ['inv.' + res]: left, tx: id, txp: '', txk: 'offer' }); });
+await t('ajánlat letét nélkül (az áru nem csökken)', assertFails(offer(anna, 'anna', 'd0', 'buza', 100, 300, 900)));
+await t('ajánlat letéttel', assertSucceeds(offer(anna, 'anna', 'd1', 'buza', 100, 300, 800)));
+await t('két ajánlat egy letétre', assertFails(batch(anna, b => { for (const id of ['d2', 'd3']) b.set(Dl(anna, id), { k: 'offer', s: 'anna', to: '', pub: true, res: 'buza', q: 100, p: 1, st: 'open', b: '', at: serverTimestamp() }); b.update(Pl(anna, 'anna'), { 'inv.buza': 700, tx: 'd2', txp: '', txk: 'offer' }); })));
+await t('névre szóló ajánlat idegennek', assertFails(offer(anna, 'anna', 'd4', 'buza', 10, 5, 790, 'csaba')));
+await t('névre szóló ajánlat barátnak', assertSucceeds(offer(anna, 'anna', 'd5', 'buza', 10, 0, 790, 'bela')));
+await t('nem kereskedhető áru (vízjog)', assertFails(offer(anna, 'anna', 'd6', 'vjog', 1, 5, 2)));
+const buyD = (db, u, id, res, have, ft) => batch(db, b => { b.update(Dl(db, id), { st: 'sold', b: u, pub: false }); b.update(Pl(db, u), { ['inv.' + res]: have, ft, tx: id, txp: '', txk: 'buy' }); });
+await t('vétel fizetés nélkül', assertFails(buyD(csaba, 'csaba', 'd1', 'buza', 100, 2400)));
+await t('vétel: több áru, mint az ajánlatban', assertFails(buyD(csaba, 'csaba', 'd1', 'buza', 500, 2100)));
+await t('áru jóváírása az ajánlat megvétele nélkül', assertFails(updateDoc(Pl(csaba, 'csaba'), { 'inv.buza': 100, ft: 2100, tx: 'd1', txp: '', txk: 'buy' })));
+await t('más barátjának szóló ajánlat megvétele', assertFails(buyD(csaba, 'csaba', 'd5', 'buza', 10, 2400)));
+await t('saját ajánlat megvétele', assertFails(buyD(anna, 'anna', 'd1', 'buza', 890, 24425)));
+await t('vétel a piacon', assertSucceeds(buyD(csaba, 'csaba', 'd1', 'buza', 100, 2100)));
+await t('ugyanaz az ajánlat még egyszer', assertFails(buyD(bela, 'bela', 'd1', 'buza', 100, 900)));
+await t('ár felvétele idegen ajánlatra', assertFails(batch(bela, b => { b.delete(Dl(bela, 'd1')); b.update(Pl(bela, 'bela'), { ft: 1250 + 300, tx: 'd1', txp: '', txk: 'collect' }); })));
+await t('ár felvétele az ajánlat törlése nélkül', assertFails(updateDoc(Pl(anna, 'anna'), { ft: 24725 + 300, tx: 'd1', txp: '', txk: 'collect' })));
+await t('nagyobb összeg felvétele', assertFails(batch(anna, b => { b.delete(Dl(anna, 'd1')); b.update(Pl(anna, 'anna'), { ft: 24725 + 9000, tx: 'd1', txp: '', txk: 'collect' }); })));
+await t('az eladott áru árának felvétele', assertSucceeds(batch(anna, b => { b.delete(Dl(anna, 'd1')); b.update(Pl(anna, 'anna'), { ft: 24725 + 300, tx: 'd1', txp: '', txk: 'collect' }); })));
+await t('ajánlat visszavonása: a letét visszajár', assertSucceeds(batch(anna, b => { b.delete(Dl(anna, 'd5')); b.update(Pl(anna, 'anna'), { 'inv.buza': 800, tx: 'd5', txp: '', txk: 'cancel' }); })));
+
+console.log('--- vezeték, víztorony, szennyezés');
+const pipe = (db, u, ft, alk, fee = 2) => batch(db, b => { b.update(W(db), { 'pipes.aszaly-gyar': { o: u, fee }, lk: 'aszaly-gyar', op: 'pipe' }); b.update(Pl(db, u), { ft, 'inv.alk': alk, tx: '', txp: '', txk: 'pipe' }); });
+await t('vezeték fizetés nélkül', assertFails(pipe(anna, 'anna', 25025, 100)));
+await t('vezeték nem létező élre', assertFails(batch(anna, b => { b.update(W(anna), { 'pipes.hold-volgy': { o: 'anna', fee: 1 }, lk: 'hold-volgy', op: 'pipe' }); b.update(Pl(anna, 'anna'), { ft: 22025, 'inv.alk': 80, tx: '', txp: '', txk: 'pipe' }); })));
+await t('vezeték túl nagy díjjal', assertFails(pipe(anna, 'anna', 22025, 80, 50)));
+await t('vezeték megépítése (3000 Ft + 20 alkatrész)', assertSucceeds(pipe(anna, 'anna', 22025, 80)));
+await t('más vezetékének díjállítása', assertFails(updateDoc(W(bela), { 'pipes.aszaly-gyar.fee': 0, lk: 'aszaly-gyar', op: 'fee' })));
+await t('saját vezeték díjának állítása', assertSucceeds(updateDoc(W(anna), { 'pipes.aszaly-gyar.fee': 3, lk: 'aszaly-gyar', op: 'fee' })));
+const imp = (db, u, id, q, p, viz, ft) => batch(db, b => { b.set(Dl(db, id), { k: 'toll', s: 'anna', b: u, pipe: 'aszaly-gyar', q, p, st: 'sold', at: serverTimestamp() }); b.update(Pl(db, u), { 'inv.viz': viz, ft, tx: id, txp: '', txk: 'import' }); });
+await t('behozatal díj nélkül', assertFails(imp(bela, 'bela', 'i0', 100, 0, 3000, 1150)));
+await t('behozatal fizetés nélkül', assertFails(imp(bela, 'bela', 'i1', 100, 300, 3000, 1250)));
+await t('víz behozatala: 100 × (1 + 3) Ft', assertSucceeds(imp(bela, 'bela', 'i2', 100, 300, 3000, 850)));
+await t('a vezetékdíj a tulajdonosé', assertSucceeds(batch(anna, b => { b.delete(Dl(anna, 'i2')); b.update(Pl(anna, 'anna'), { ft: 22325, tx: 'i2', txp: '', txk: 'collect' }); })));
+await t('víztorony töltése víz beadása nélkül', assertFails(updateDoc(W(bela), { 'tw.v': increment(500), op: 'tw' })));
+await t('víztorony: több jóváírás, mint beadott víz', assertFails(batch(bela, b => { b.update(W(bela), { 'tw.v': increment(5000), op: 'tw' }); b.update(Pl(bela, 'bela'), { 'inv.viz': 2500, tx: '', txp: '', txk: 'tw' }); })));
+await t('víztorony töltése', assertSucceeds(batch(bela, b => { b.update(W(bela), { 'tw.v': increment(500), op: 'tw' }); b.update(Pl(bela, 'bela'), { 'inv.viz': 2500, tx: '', txp: '', txk: 'tw' }); })));
+await t('egy vízbeadás kétszeri elszámolása (torony + ostrom)', assertFails(batch(bela, b => { b.update(W(bela), { 'tw.v': increment(500), 'raid.dmg': increment(500), op: 'tw' }); b.update(Pl(bela, 'bela'), { 'inv.viz': 2000, rd: { wk: WK, d: 500, cl: false }, tx: '', txp: '', txk: 'tw' }); })));
+await t('szennyezés szennyvíz-veszteség nélkül', assertFails(updateDoc(W(bela), { 'kosz.v': increment(1), op: 'kosz' })));
+await t('túlcsordulás: +1 szennyezés, −50 szennyvíz', assertSucceeds(batch(anna, b => { b.update(W(anna), { 'kosz.v': increment(1), op: 'kosz' }); b.update(Pl(anna, 'anna'), { 'inv.szv': 150, tx: '', txp: '', txk: 'kosz' }); })));
+
+console.log('--- ostrom');
+const raid = (db, u, dmg, viz, d = dmg) => batch(db, b => { b.update(W(db), { 'raid.dmg': increment(dmg), op: 'raid' }); b.update(Pl(db, u), { 'inv.viz': viz, rd: { wk: WK, d, cl: false }, tx: '', txp: '', txk: 'raid' }); });
+await t('sebzés víz beadása nélkül', assertFails(raid(bela, 'bela', 1000, 2500)));
+await t('közös sebzés a saját sebzés nélkül', assertFails(updateDoc(W(bela), { 'raid.dmg': increment(4000), op: 'raid' })));
+await t('nagyobb saját sebzés, mint a közös', assertFails(raid(bela, 'bela', 100, 2400, 3000)));
+await t('ostrom: 1000 liter víz = 1000 sebzés', assertSucceeds(raid(bela, 'bela', 1000, 1500)));
+await t('jutalom a hét lezárása előtt', assertFails(upd(bela, 'bela', { 'inv.lfd': 2, rd: { wk: WK, d: 1000, cl: true } })));
+await env.withSecurityRulesDisabled(async c => { const db = c.firestore(); await updateDoc(W(db), { raid: { wk: WK - 1, dmg: 4200 } }); await updateDoc(Pl(db, 'bela'), { rd: { wk: WK - 1, d: 1000, cl: false } }); await updateDoc(Pl(db, 'csaba'), { rd: { wk: WK - 1, d: 50, cl: false } }); });
+await t('hétzárás hamis eredménnyel', assertFails(updateDoc(W(bela), { raid: { wk: WK, dmg: 0 }, rp: { wk: WK - 1, ok: false }, op: 'roll' })));
+await t('hétzárás', assertSucceeds(updateDoc(W(bela), { raid: { wk: WK, dmg: 0 }, rp: { wk: WK - 1, ok: true }, op: 'roll' })));
+await t('jutalom a sebzésnél nagyobb fokozatban (1000 sebzés → 2 darab)', assertFails(upd(bela, 'bela', { 'inv.lfd': 3, rd: { wk: WK - 1, d: 1000, cl: true } })));
+await t('jutalom felvétele', assertSucceeds(upd(bela, 'bela', { 'inv.lfd': 2, rd: { wk: WK - 1, d: 1000, cl: true } })));
+await t('jutalom másodszor', assertFails(upd(bela, 'bela', { 'inv.lfd': 4, rd: { wk: WK - 1, d: 1000, cl: true } })));
+await t('100 sebzés alatt nincs darab', assertFails(upd(csaba, 'csaba', { 'inv.lfd': 1, rd: { wk: WK - 1, d: 50, cl: true } })));
+
+console.log('--- szövetkezet');
+const coop = { n: 'Csőhálózat Kft', cr: '💧', o: 'anna', m: ['anna'], inv: [], p: { torony: 0, portal: 0 }, op: '' };
+await t('alapítás fizetés nélkül', assertFails(batch(anna, b => { b.set(Co(anna, 'c1'), { ...coop, at: serverTimestamp() }); b.update(Pl(anna, 'anna'), { coop: 'c1', tx: '', txp: '', txk: 'coop' }); })));
+await t('alapítás trágár névvel', assertFails(batch(anna, b => { b.set(Co(anna, 'c1'), { ...coop, n: 'Kurva Kft', at: serverTimestamp() }); b.update(Pl(anna, 'anna'), { coop: 'c1', ft: 20325, tx: '', txp: '', txk: 'coop' }); })));
+await t('alapítás (2000 Ft)', assertSucceeds(batch(anna, b => { b.set(Co(anna, 'c1'), { ...coop, at: serverTimestamp() }); b.update(Pl(anna, 'anna'), { coop: 'c1', ft: 20325, tx: '', txp: '', txk: 'coop' }); })));
+const join = (db, u) => batch(db, b => { b.update(Co(db, 'c1'), { m: arrayUnion(u), inv: arrayRemove(u), op: 'join' }); b.update(Pl(db, u), { coop: 'c1', tx: '', txp: '', txk: '' }); });
+await t('belépés meghívó nélkül', assertFails(join(bela, 'bela')));
+await t('tagság beírása a szövetkezet módosítása nélkül', assertFails(upd(bela, 'bela', { coop: 'c1' })));
+await t('nem alapító hív meg', assertFails(updateDoc(Co(bela, 'c1'), { inv: arrayUnion('bela'), op: 'own' })));
+await t('alapító meghív', assertSucceeds(updateDoc(Co(anna, 'c1'), { inv: arrayUnion('bela'), op: 'own' })));
+await t('belépés meghívóval', assertSucceeds(join(bela, 'bela')));
+await t('közös építmény: beadás alkatrész nélkül', assertFails(updateDoc(Co(bela, 'c1'), { 'p.portal': increment(100), op: 'give' })));
+await t('közös építmény: alkatrész beadása', assertSucceeds(batch(anna, b => { b.update(Co(anna, 'c1'), { 'p.portal': increment(50), op: 'give' }); b.update(Pl(anna, 'anna'), { 'inv.alk': 30, tx: '', txp: '', txk: 'give' }); })));
+await t('kívülálló ad be', assertFails(batch(csaba, b => { b.update(Co(csaba, 'c1'), { 'p.portal': increment(1), op: 'give' }); b.update(Pl(csaba, 'csaba'), { 'inv.buza': 99, tx: '', txp: '', txk: 'give' }); })));
+await t('tag kilép', assertSucceeds(batch(bela, b => { b.update(Co(bela, 'c1'), { m: arrayRemove('bela'), op: 'leave' }); b.update(Pl(bela, 'bela'), { coop: '', tx: '', txp: '', txk: '' }); })));
+await t('nem alapító törli', assertFails(deleteDoc(Co(bela, 'c1'))));
+
+console.log('--- tanácsválasztás, csarnok');
+const vote = (db, u, c, prog) => batch(db, b => { b.set(doc(db, 'bo', SID, 'votes', u), { c, at: serverTimestamp() }); b.update(W(db), { ['cv.' + c]: increment(1), ['rv.' + prog]: increment(1), lk: c, op: 'vote' }); b.update(Pl(db, u), { voted: true, tx: '', txp: '', txk: '' }); });
+if (now.getUTCDate() >= 22) {
+  await t('szavazat nem jelöltre', assertFails(vote(bela, 'bela', 'csaba', 'hirnev')));
+  await t('szavazat más programra, mint a jelölté', assertFails(vote(bela, 'bela', 'emil', 'eros')));
+  await t('szavazat', assertSucceeds(vote(bela, 'bela', 'emil', 'hirnev')));
+  await t('második szavazat', assertFails(vote(bela, 'bela', 'emil', 'hirnev')));
+  await t('szavazatszám növelése szavazat nélkül', assertFails(updateDoc(W(csaba), { 'cv.emil': increment(5), 'rv.hirnev': increment(5), lk: 'emil', op: 'vote' })));
+} else await t('szavazás a hónap 22. napja előtt', assertFails(vote(bela, 'bela', 'emil', 'hirnev')));
+await t('csarnok írása jog nélkül', assertFails(setDoc(doc(bela, 'bohall', PREV), { top: [], council: [], rule: '' })));
+await t('kitiltott tag nem játszhat', assertFails(setDoc(Pl(as('tiltott'), 'tiltott'), { ...fresh, t0: serverTimestamp(), at: serverTimestamp() })));
+await t('vendég olvashatja a világot', assertSucceeds(getDoc(W(env.authenticatedContext('vendeg').firestore()))));
+
+console.log(`\n${n - bad}/${n} rendben`);
+await env.cleanup(); process.exit(bad ? 1 : 0);

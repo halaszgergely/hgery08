@@ -194,7 +194,7 @@ service cloud.firestore {
           && request.resource.data.at == request.time
           && request.resource.data.text is string && request.resource.data.text.size() <= 200
           && request.resource.data.link is string && request.resource.data.link.size() <= 200
-          && request.resource.data.type in ['mention', 'idea', 'approve', 'reject', 'role', 'tag', 'premiere', 'party', 'vote', 'badge', 'friend', 'game']
+          && request.resource.data.type in ['mention', 'idea', 'approve', 'reject', 'role', 'tag', 'premiere', 'party', 'vote', 'badge', 'friend', 'game', 'birodalom']
           && (request.resource.data.type != 'badge' || request.auth.uid == uid);   // kitüntetésről csak saját magának írhat
       }
     }
@@ -594,6 +594,335 @@ service cloud.firestore {
           && dmOk(getAfter(/databases/$(db)/documents/conversations/$(cid)).data);
         allow update: if request.auth.uid in members() && msgUpdate();
         allow delete: if active() && resource.data.uid == request.auth.uid;
+      }
+    }
+
+    // ================= Öntöző Birodalom Online =================
+    // bo/{szezon}                  – a világ: közös víztorony, ostrom, vezetékek, szennyezés, tanácsi szavazatok (egy kis dokumentum)
+    // bo/{szezon}/players/{uid}    – a játékos állása. A telek a kliensen szimulálódik, ide csak az eredmény kerül,
+    //                                ezért minden növekedésnek felső korlátja van a szint és az eltelt idő alapján.
+    // bo/{szezon}/regions/{régió}  – régiónként EGY összesítő dokumentum: melyik telek kié, mikor kapott vizet
+    // bo/{szezon}/deals/{id}       – piaci ajánlatok (letéttel) és vezetékdíjak
+    // bo/{szezon}/coops/{id}       – szövetkezetek · bo/{szezon}/votes/{uid} – tanácsválasztás · bohall/{szezon} – a szezon legjobbjai
+    // A számok (árak, korlátok, élek) a js/bo-data.js táblázataival egyeznek – együtt kell módosítani őket.
+    function boSid() { return string(request.time.year()) + '-' + (request.time.month() < 10 ? '0' : '') + string(request.time.month()); }
+    function boPrev() {
+      return request.time.month() == 1 ? string(request.time.year() - 1) + '-12'
+        : string(request.time.year()) + '-' + (request.time.month() < 11 ? '0' : '') + string(request.time.month() - 1);
+    }
+    function boDay() { return boSid() + '-' + (request.time.day() < 10 ? '0' : '') + string(request.time.day()); }
+    function boWeek() { return int(request.time.toMillis() / 604800000); }
+    function boRules() { return ['olcsoviz', 'bopiac', 'gyorsno', 'eros', 'hirnev']; }
+    function boRes() { return ['viz', 'buza', 'virag', 'gomba', 'gyogy', 'so', 'hal', 'krist', 'kaktusz', 'goz', 'asvany', 'jeg', 'eso', 'sziv', 'holdpor', 'csviz', 'alk', 'gep', 'szv', 'hir', 'vjog', 'lfd', 'alf', 'hajo']; }
+    function boTrade() { return ['viz', 'buza', 'virag', 'gomba', 'gyogy', 'so', 'hal', 'krist', 'kaktusz', 'goz', 'asvany', 'jeg', 'eso', 'sziv', 'holdpor', 'csviz', 'alk', 'gep', 'szv']; }
+    // állami felvásárlás: legfeljebb ennyit fizet darabjáért (alapár × 1,25 – a „Bő piac” szabály miatt)
+    function boSell() { return {'viz': 0.25, 'buza': 2.5, 'virag': 3.75, 'gomba': 5, 'gyogy': 6.25, 'so': 6.25, 'hal': 7.5, 'krist': 15, 'kaktusz': 11.25, 'goz': 12.5, 'asvany': 15, 'jeg': 12.5, 'eso': 17.5, 'sziv': 35, 'holdpor': 40, 'csviz': 56.25, 'alk': 75, 'gep': 625}; }
+    function boPrice() { return {'volgy': 300, 'atemelo': 1200, 'mocsar': 800, 'obol': 1500, 'gyar': 2000, 'studio': 2000, 'aszaly': 2500, 'gejzir': 4000, 'eszak': 6000, 'felho': 9000, 'hold': 15000}; }
+    function boRegLv() { return {'volgy': 1, 'atemelo': 2, 'mocsar': 2, 'obol': 3, 'gyar': 3, 'studio': 3, 'aszaly': 4, 'gejzir': 5, 'eszak': 6, 'felho': 7, 'hold': 8}; }
+    function boEdges() { return ['vizvar-volgy', 'gyar-vizvar', 'studio-vizvar', 'atemelo-volgy', 'atemelo-mocsar', 'obol-volgy', 'gyar-obol', 'aszaly-gyar', 'aszaly-gejzir', 'eszak-mocsar', 'eszak-studio', 'felho-gejzir', 'felho-hold']; }
+    function boDock() { return ['locsolo', 'nyomas', 'vizagyu', 'csepp', 'viztorony', 'drift', 'holtvaros']; }
+    function boCoopName(n) { return n is string && n.size() >= 3 && n.size() <= 24 && n.matches('^[^<>&"]+$') && !reservedName(n) && !badName(n); }
+    function boTop(rv, r) {
+      return rv.get(r, 0) > 0 && rv.get(r, 0) >= rv.get('olcsoviz', 0) && rv.get(r, 0) >= rv.get('bopiac', 0) && rv.get(r, 0) >= rv.get('gyorsno', 0)
+        && rv.get(r, 0) >= rv.get('eros', 0) && rv.get(r, 0) >= rv.get('hirnev', 0);
+    }
+    // az új szezon szabálya: az előző szezon tanácsválasztásán a legtöbb szavazatot kapott program (ha volt szavazás)
+    function boRuleOk(r) {
+      return exists(/databases/$(db)/documents/bo/$(boPrev())) && get(/databases/$(db)/documents/bo/$(boPrev())).data.rv.size() > 0
+        ? (r in boRules() && boTop(get(/databases/$(db)/documents/bo/$(boPrev())).data.rv, r)) : r == '';
+    }
+    match /bohall/{sid} {
+      allow read: if signedIn();
+      allow create, update: if perm('manageTags');
+    }
+    match /bo/{sid} {
+      function my() { return request.auth.uid; }
+      function live() { return active() && sid == boSid(); }
+      function PP(u) { return /databases/$(db)/documents/bo/$(sid)/players/$(u); }
+      function WW() { return /databases/$(db)/documents/bo/$(sid); }
+      function DD(d) { return /databases/$(db)/documents/bo/$(sid)/deals/$(d); }
+      function RR(r) { return /databases/$(db)/documents/bo/$(sid)/regions/$(r); }
+      function CC(c) { return /databases/$(db)/documents/bo/$(sid)/coops/$(c); }
+      function VV(u) { return /databases/$(db)/documents/bo/$(sid)/votes/$(u); }
+      function meB() { return get(PP(my())).data; }          // a játékos a művelet előtt
+      function meA() { return getAfter(PP(my())).data; }     // … és utána (ugyanabban a kötegben)
+
+      // ---------- a világ ----------
+      function twOld() { return resource.data.tw.wk == boWeek() ? resource.data.tw.v : 0; }
+      function raidNew() { return resource.data.raid.wk != boWeek(); }
+      function raidOld() { return raidNew() ? 0 : resource.data.raid.dmg; }
+      function rdOld(d) { return d.rd.wk == boWeek() ? d.rd.d : 0; }
+      function feeOk(f) { return f is int && f >= 0 && f <= 5; }
+      // közös víztorony: annyival nő, amennyi vizet a játékos bead
+      function boTower() {
+        return request.resource.data.op == 'tw' && changed().hasOnly(['tw', 'op'])
+          && request.resource.data.tw.keys().hasOnly(['wk', 'v']) && request.resource.data.tw.wk == boWeek()
+          && request.resource.data.tw.v > twOld() && meA().txk == 'tw'
+          && request.resource.data.tw.v - twOld() <= meB().inv.get('viz', 0) - meA().inv.get('viz', 0);
+      }
+      // heti ostrom: a közös sebzés pontosan annyival nő, amennyivel a játékos saját sebzése
+      function boRaid() {
+        return request.resource.data.op == 'raid' && changed().hasOnly(['raid', 'rp', 'op'])
+          && request.resource.data.raid.keys().hasOnly(['wk', 'dmg']) && request.resource.data.raid.wk == boWeek()
+          && (raidNew() ? (request.resource.data.rp.keys().hasOnly(['wk', 'ok']) && request.resource.data.rp.wk == resource.data.raid.wk && request.resource.data.rp.ok == (resource.data.raid.dmg >= 4000))
+                        : request.resource.data.rp == resource.data.rp)
+          && request.resource.data.raid.dmg > raidOld() && meA().txk == 'raid'
+          && request.resource.data.raid.dmg - raidOld() == meA().rd.d - rdOld(meB());
+      }
+      // hétváltás ostrom nélkül: az előző hét eredményének rögzítése
+      function boRoll() {
+        return request.resource.data.op == 'roll' && changed().hasOnly(['raid', 'rp', 'op']) && raidNew()
+          && request.resource.data.raid.keys().hasOnly(['wk', 'dmg']) && request.resource.data.raid.wk == boWeek() && request.resource.data.raid.dmg == 0
+          && request.resource.data.rp.keys().hasOnly(['wk', 'ok']) && request.resource.data.rp.wk == resource.data.raid.wk && request.resource.data.rp.ok == (resource.data.raid.dmg >= 4000);
+      }
+      function pipeDiff() { return request.resource.data.pipes.diff(resource.data.pipes).affectedKeys().hasOnly([request.resource.data.lk]); }
+      function pipeNew() { return request.resource.data.pipes[request.resource.data.lk]; }
+      // régiók közti vezeték építése (3000 Ft + 20 alkatrész) és a díj állítása
+      function boPipe() {
+        return request.resource.data.op == 'pipe' && changed().hasOnly(['pipes', 'op', 'lk'])
+          && request.resource.data.lk in boEdges() && !(request.resource.data.lk in resource.data.pipes) && pipeDiff()
+          && pipeNew().keys().hasOnly(['o', 'fee']) && pipeNew().o == my() && feeOk(pipeNew().fee)
+          && meA().txk == 'pipe' && meA().ft <= meB().ft - 3000 && meA().inv.get('alk', 0) <= meB().inv.get('alk', 0) - 20;
+      }
+      function boFee() {
+        return request.resource.data.op == 'fee' && changed().hasOnly(['pipes', 'op', 'lk'])
+          && request.resource.data.lk in resource.data.pipes && resource.data.pipes[request.resource.data.lk].o == my() && pipeDiff()
+          && pipeNew().keys().hasOnly(['o', 'fee']) && pipeNew().o == my() && feeOk(pipeNew().fee);
+      }
+      // tanácsválasztás (a hónap 22. napjától): egy tag egy szavazat, a jelölt programja is kap egy szavazatot
+      function progOf(c) { return get(PP(c)).data.prog; }
+      function boVote() {
+        return request.resource.data.op == 'vote' && changed().hasOnly(['cv', 'rv', 'op', 'lk']) && request.time.day() >= 22
+          && !exists(VV(my())) && getAfter(VV(my())).data.c == request.resource.data.lk
+          && get(PP(request.resource.data.lk)).data.cand == true && progOf(request.resource.data.lk) in boRules()
+          && request.resource.data.cv.diff(resource.data.cv).affectedKeys().hasOnly([request.resource.data.lk])
+          && request.resource.data.cv[request.resource.data.lk] == resource.data.cv.get(request.resource.data.lk, 0) + 1
+          && request.resource.data.rv.diff(resource.data.rv).affectedKeys().hasOnly([progOf(request.resource.data.lk)])
+          && request.resource.data.rv[progOf(request.resource.data.lk)] == resource.data.rv.get(progOf(request.resource.data.lk), 0) + 1;
+      }
+      // túlcsordulás az Átemelőtelepen: a mocsár koszosabb lesz (és a hibázó 50 szennyvizet veszít)
+      function boKosz() {
+        return request.resource.data.op == 'kosz' && changed().hasOnly(['kosz', 'op'])
+          && request.resource.data.kosz.keys().hasOnly(['wk', 'v']) && request.resource.data.kosz.wk == boWeek()
+          && request.resource.data.kosz.v == (resource.data.kosz.wk == boWeek() ? resource.data.kosz.v : 0) + 1
+          && meA().txk == 'kosz' && meA().inv.get('szv', 0) <= meB().inv.get('szv', 0) - 50;
+      }
+      allow read: if signedIn();
+      allow create: if live()
+        && request.resource.data.keys().hasOnly(['t0', 'tw', 'raid', 'rp', 'pipes', 'cv', 'rv', 'kosz', 'rule', 'op', 'lk'])
+        && request.resource.data.t0 == request.time
+        && request.resource.data.tw.keys().hasOnly(['wk', 'v']) && request.resource.data.tw.wk == boWeek() && request.resource.data.tw.v == 0
+        && request.resource.data.raid.keys().hasOnly(['wk', 'dmg']) && request.resource.data.raid.wk == boWeek() && request.resource.data.raid.dmg == 0
+        && request.resource.data.kosz.keys().hasOnly(['wk', 'v']) && request.resource.data.kosz.wk == boWeek() && request.resource.data.kosz.v == 0
+        && request.resource.data.rp.keys().hasOnly(['wk', 'ok']) && request.resource.data.rp.wk == 0 && request.resource.data.rp.ok == false
+        && request.resource.data.pipes == {} && request.resource.data.cv == {} && request.resource.data.rv == {}
+        && request.resource.data.op == '' && request.resource.data.lk == ''
+        && boRuleOk(request.resource.data.rule);
+      allow update: if live() && exists(PP(my())) && request.resource.data.keys().hasOnly(['t0', 'tw', 'raid', 'rp', 'pipes', 'cv', 'rv', 'kosz', 'rule', 'op', 'lk'])
+        && (boTower() || boRaid() || boRoll() || boPipe() || boFee() || boVote() || boKosz());
+
+      match /votes/{vid} {
+        allow read: if signedIn() && vid == request.auth.uid;
+        allow create: if live() && vid == my() && request.resource.data.keys().hasOnly(['c', 'at'])
+          && request.resource.data.c is string && request.resource.data.at == request.time
+          && getAfter(WW()).data.op == 'vote' && getAfter(WW()).data.lk == request.resource.data.c
+          && getAfter(WW()).data.cv[request.resource.data.c] == get(WW()).data.cv.get(request.resource.data.c, 0) + 1;
+      }
+
+      // ---------- játékos ----------
+      // eltelt idő (mp) az előző elszámolás óta, legfeljebb 12 óra; ha az „at” nem változik, nincs időalapú jóváírás
+      function boDt(o, n) {
+        return n.at != request.time ? 0.0
+          : (request.time.toMillis() - o.at.toMillis() > 43200000 ? 43200.0 : (request.time.toMillis() - o.at.toMillis()) / 1000.0);
+      }
+      // egy nyersanyag: nem lehet negatív, és legfeljebb „a” darabbal nőhet
+      function rk(o, n, ch, k, a) { return !(k in ch) || (n.inv[k] >= 0 && n.inv[k] <= o.inv.get(k, 0) + a && n.inv[k] <= 10000000); }
+      function dock(o, n) {
+        return n.txk == 'dock' && n.ad == boDay() && o.ad != boDay() && n.get('adg', '') in boDock()
+          && get(/databases/$(db)/documents/leaderboards/$(n.adg)/scores/$(my())).data.at > request.time - duration.value(1, 'd');
+      }
+      // vízjog: pénzért (legalább 200 Ft/db), vagy naponta egy az Arcade-dokkban (ha aznap rekordot döntött a nap játékában)
+      function vjOk(o, n, ch) {
+        return !('vjog' in ch) || (n.inv.vjog >= 0 && (n.inv.vjog <= o.inv.get('vjog', 0)
+          || (dock(o, n) && n.inv.vjog == o.inv.get('vjog', 0) + 1)
+          || (n.inv.vjog <= o.inv.get('vjog', 0) + 10 && n.ft <= o.ft - 200 * (n.inv.vjog - o.inv.get('vjog', 0)))));
+      }
+      // Locsolófej-darab: csak sikeres heti ostrom után, a saját sebzés szerint (100 / 600 / 2000 sebzés: 1 / 2 / 3 darab)
+      function lfOk(o, n, ch) {
+        return !('lfd' in ch) || (n.inv.lfd >= 0 && (n.inv.lfd <= o.inv.get('lfd', 0)
+          || (n.rd.cl == true && o.rd.cl == false && o.rd.wk == get(WW()).data.rp.wk && get(WW()).data.rp.ok == true
+            && n.inv.lfd <= o.inv.get('lfd', 0) + (o.rd.d >= 2000 ? 3 : o.rd.d >= 600 ? 2 : o.rd.d >= 100 ? 1 : 0))));
+      }
+      // Arany Locsolófej: 7 darabból önthető · léghajó: 10 gépből
+      function alfOk(o, n, ch) { return !('alf' in ch) || (n.inv.alf >= 0 && (n.inv.alf <= o.inv.get('alf', 0) || (n.inv.alf == o.inv.get('alf', 0) + 1 && n.inv.get('lfd', 0) <= o.inv.get('lfd', 0) - 7))); }
+      function hajoOk(o, n, ch) { return !('hajo' in ch) || (n.inv.hajo >= 0 && (n.inv.hajo <= o.inv.get('hajo', 0) || (n.inv.hajo == o.inv.get('hajo', 0) + 1 && n.inv.get('gep', 0) <= o.inv.get('gep', 0) - 10))); }
+      // ostrom: a sebzés legfeljebb a beadott víz + 20 × alkatrész 1,25-szöröse, és a világ közös sebzése ugyanennyivel nő
+      function rdOk(o, n) {
+        return n.rd.keys().hasOnly(['wk', 'd', 'cl']) && (n.rd == o.rd
+          || (n.rd.wk == o.rd.wk && n.rd.d == o.rd.d && n.rd.cl == true)
+          || (n.txk == 'raid' && n.rd.wk == boWeek() && n.rd.cl == (o.rd.wk == boWeek() ? o.rd.cl : false) && n.rd.d is int && n.rd.d > rdOld(o)
+            && n.rd.d - rdOld(o) <= 1.25 * ((o.inv.get('viz', 0) - n.inv.get('viz', 0)) + 20 * (o.inv.get('alk', 0) - n.inv.get('alk', 0)))
+            && getAfter(WW()).data.raid.dmg - (get(WW()).data.raid.wk == boWeek() ? get(WW()).data.raid.dmg : 0) == n.rd.d - rdOld(o)));
+      }
+      // szintlépés: egyszerre egy szint, 150 × szint² Ft, és szintenként legalább fél óra a szezonba lépés óta
+      function lvOk(o, n) { return n.lv == o.lv || (n.lv == o.lv + 1 && n.lv <= 30 && request.time.toMillis() - o.t0.toMillis() >= (n.lv - 1) * 1800000); }
+      function lvCost(o, n) { return n.lv == o.lv ? 0 : 150 * n.lv * n.lv; }
+      // új telek: a régió összesítőjében ugyanebben a kötegben a játékosé lesz; kiszáradt telek negyedáron
+      function plotNew(o, n) {
+        return n.txk == 'plot' && n.tx in boPrice() && n.pl.size() <= 1 + o.lv / 2
+          && n.pl.keys().toSet().difference(o.pl.keys().toSet()).hasOnly([n.tx + '_' + n.txp])
+          && getAfter(RR(n.tx)).data.plots[n.txp].u == my();
+      }
+      function plotCost(o, n) {
+        return n.pl.keys().hasOnly(o.pl.keys()) ? 0
+          : (exists(RR(n.tx)) && n.txp in get(RR(n.tx)).data.plots ? boPrice()[n.tx] / 4 : boPrice()[n.tx]);
+      }
+      function scOk(n) { return n.sc is number && n.sc <= n.lv * 1000 + n.ft / 10 + n.inv.get('hir', 0) * 5 + n.inv.get('lfd', 0) * 500 + n.inv.get('alf', 0) * 5000 + n.pl.size() * 200 + 1; }
+      function miscOk(o, n) {
+        return (n.coop == o.coop || n.coop == '' || my() in getAfter(CC(n.coop)).data.m)
+          && n.cos is list && n.cos.size() <= 20 && (n.cos == o.cos || n.inv.get('hir', 0) <= o.inv.get('hir', 0) - 100)
+          && n.cand is bool && (n.prog == '' || n.prog in boRules()) && n.voted is bool && n.ad is string && n.ad.size() <= 10;
+      }
+      // általános módosítás: időarányos termelés + költések (szint, telek, vízjog, épületek)
+      function boGen(o, n) {
+        let dt = boDt(o, n);
+        let ch = n.inv.diff(o.inv).affectedKeys();
+        let aR = 0.04 * o.lv * dt;
+        return n.txk in ['', 'plot', 'offer', 'tw', 'raid', 'pipe', 'kosz', 'give', 'coop', 'water', 'dock']
+          && ch.hasOnly(boRes())
+          && rk(o, n, ch, 'viz', 0.6 * o.lv * dt) && rk(o, n, ch, 'szv', 0.3 * o.lv * dt)
+          && rk(o, n, ch, 'buza', aR) && rk(o, n, ch, 'virag', aR) && rk(o, n, ch, 'gomba', aR) && rk(o, n, ch, 'gyogy', aR) && rk(o, n, ch, 'so', aR)
+          && rk(o, n, ch, 'hal', aR) && rk(o, n, ch, 'krist', aR) && rk(o, n, ch, 'kaktusz', aR) && rk(o, n, ch, 'goz', aR) && rk(o, n, ch, 'asvany', aR)
+          && rk(o, n, ch, 'jeg', aR) && rk(o, n, ch, 'eso', aR) && rk(o, n, ch, 'sziv', aR) && rk(o, n, ch, 'holdpor', aR) && rk(o, n, ch, 'csviz', aR)
+          && rk(o, n, ch, 'alk', 0.004 * o.lv * dt) && rk(o, n, ch, 'gep', 0.0004 * o.lv * dt) && rk(o, n, ch, 'hir', 0.01 * o.lv * dt)
+          && vjOk(o, n, ch) && lfOk(o, n, ch) && alfOk(o, n, ch) && hajoOk(o, n, ch)
+          && n.ft >= 0 && n.ft <= o.ft + 0.3 * o.lv * dt + (dock(o, n) ? 300 : 0) - lvCost(o, n) - plotCost(o, n)
+          && lvOk(o, n) && n.pl is map && n.pl.size() <= 16 && (n.pl.keys().hasOnly(o.pl.keys()) || plotNew(o, n))
+          && rdOk(o, n) && miscOk(o, n) && (n.ad == o.ad || dock(o, n));
+      }
+      // kereskedés: egyetlen ügylethez kötött módosítás (időarányos jóváírás nélkül)
+      function dB(n) { return get(DD(n.tx)).data; }
+      function dA(n) { return getAfter(DD(n.tx)).data; }
+      function one(o, n, k) { return n.inv.diff(o.inv).affectedKeys().hasOnly([k]) && n.inv.get(k, 0) >= 0; }
+      function boTr(o, n) {
+        return n.at == o.at && n.diff(o).affectedKeys().hasOnly(['inv', 'ft', 'sc', 'tx', 'txp', 'txk']) && n.ft >= 0 && (
+          // eladás az állami felvásárlónak
+          (n.txk == 'sell' && n.tx in boSell() && one(o, n, n.tx) && n.inv[n.tx] < o.inv[n.tx] && n.ft <= o.ft + (o.inv[n.tx] - n.inv[n.tx]) * boSell()[n.tx])
+          // vétel a piacon: az ajánlat ebben a kötegben kel el
+          || (n.txk == 'buy' && dB(n).st == 'open' && dA(n).st == 'sold' && dA(n).b == my() && one(o, n, dB(n).res)
+            && n.inv[dB(n).res] <= o.inv.get(dB(n).res, 0) + dB(n).q && n.ft <= o.ft - dB(n).p)
+          // saját ajánlat visszavonása: a letét visszajár
+          || (n.txk == 'cancel' && dB(n).k == 'offer' && dB(n).st == 'open' && dB(n).s == my() && !existsAfter(DD(n.tx)) && one(o, n, dB(n).res)
+            && n.inv[dB(n).res] <= o.inv.get(dB(n).res, 0) + dB(n).q && n.ft <= o.ft)
+          // az eladott áru / a vezetékdíj árának felvétele
+          || (n.txk == 'collect' && dB(n).st == 'sold' && dB(n).s == my() && !existsAfter(DD(n.tx)) && n.inv == o.inv && n.ft <= o.ft + dB(n).p)
+          // víz behozatala vezetéken: 1 Ft/liter + a tulajdonos díja
+          || (n.txk == 'import' && !exists(DD(n.tx)) && dA(n).k == 'toll' && dA(n).b == my() && one(o, n, 'viz')
+            && n.inv.viz <= o.inv.get('viz', 0) + dA(n).q && n.ft <= o.ft - dA(n).p - dA(n).q));
+      }
+      match /players/{pid} {
+        allow read: if signedIn();
+        allow create: if live() && pid == my()
+          && request.resource.data.keys().hasOnly(['lv', 'ft', 'inv', 'pl', 'sc', 'coop', 'cos', 'rd', 'ad', 'cand', 'prog', 'voted', 'tx', 'txp', 'txk', 't0', 'at'])
+          && request.resource.data.lv == 1 && request.resource.data.ft == 500 && request.resource.data.inv == {'viz': 200, 'vjog': 1}
+          && request.resource.data.pl == {} && request.resource.data.sc == 1050 && request.resource.data.coop == '' && request.resource.data.cos == []
+          && request.resource.data.rd.keys().hasOnly(['wk', 'd', 'cl']) && request.resource.data.rd.wk == 0 && request.resource.data.rd.d == 0 && request.resource.data.rd.cl == false
+          && request.resource.data.ad == '' && request.resource.data.cand == false && request.resource.data.prog == '' && request.resource.data.voted == false
+          && request.resource.data.tx == '' && request.resource.data.txp == '' && request.resource.data.txk == ''
+          && request.resource.data.t0 == request.time && request.resource.data.at == request.time;
+        allow update: if live() && pid == my()
+          && request.resource.data.keys().hasOnly(['lv', 'ft', 'inv', 'pl', 'sc', 'coop', 'cos', 'rd', 'ad', 'adg', 'cand', 'prog', 'voted', 'tx', 'txp', 'txk', 't0', 'at'])
+          && request.resource.data.t0 == resource.data.t0 && (request.resource.data.at == request.time || request.resource.data.at == resource.data.at)
+          && request.resource.data.lv is int && request.resource.data.ft is number && request.resource.data.tx is string && request.resource.data.txp is string
+          && scOk(request.resource.data)
+          && (request.resource.data.txk in ['sell', 'buy', 'cancel', 'collect', 'import']
+            ? boTr(resource.data, request.resource.data) : boGen(resource.data, request.resource.data));
+      }
+
+      // ---------- régió: egyetlen összesítő dokumentum, benne a telkek (kulcs: 0–47) ----------
+      // egy írás egy telket érint (lk); a telek 72 óra víz nélkül kiszárad, és bárki felvásárolhatja
+      function regBuy(op, n, rid) {
+        let k = n.lk;
+        return n.op == 'buy' && k.matches('^([0-9]|[1-3][0-9]|4[0-7])$')
+          && (!(k in op) || (op[k].u != my() && op[k].wt < request.time - duration.value(72, 'h')))
+          && n.plots[k].keys().hasOnly(['u', 'wt', 'lv']) && n.plots[k].u == my() && n.plots[k].wt == request.time && n.plots[k].lv == 1
+          && meB().lv >= boRegLv()[rid]
+          && meA().txk == 'plot' && meA().tx == rid && meA().txp == k
+          && (rid + '_' + k) in meA().pl && !((rid + '_' + k) in meB().pl);
+      }
+      function regOwn(op, n) {
+        let k = n.lk;
+        return k in op && op[k].u == my() && (
+          // öntözés: 20 liter vízbe kerül, és frissíti az időbélyeget
+          (n.op == 'water' && n.plots[k].keys().hasOnly(['u', 'wt', 'lv']) && n.plots[k].u == my() && n.plots[k].wt == request.time && n.plots[k].lv == op[k].lv
+            && meA().txk == 'water' && meA().inv.get('viz', 0) <= meB().inv.get('viz', 0) - 20)
+          || (n.op == 'up' && n.plots[k].keys().hasOnly(['u', 'wt', 'lv']) && n.plots[k].u == my() && n.plots[k].wt == op[k].wt
+            && n.plots[k].lv is int && n.plots[k].lv >= 1 && n.plots[k].lv <= 10)
+          || (n.op == 'leave' && !(k in n.plots)));
+      }
+      match /regions/{rid} {
+        allow read: if signedIn();
+        allow create: if live() && rid in boPrice() && request.resource.data.keys().hasOnly(['plots', 'lk', 'op'])
+          && request.resource.data.plots.keys().hasOnly([request.resource.data.lk]) && regBuy({}, request.resource.data, rid);
+        allow update: if live() && changed().hasOnly(['plots', 'lk', 'op'])
+          && request.resource.data.plots.diff(resource.data.plots).affectedKeys().hasOnly([request.resource.data.lk])
+          && (regBuy(resource.data.plots, request.resource.data, rid) || regOwn(resource.data.plots, request.resource.data));
+      }
+
+      // ---------- piac: ajánlatok letéttel + vezetékdíjak ----------
+      // idegennek csak nyilvános ajánlat tehető; névre szóló (közvetlen) ajánlat csak barátnak
+      match /deals/{did} {
+        allow read: if active();
+        allow create: if live() && meA().tx == did && request.resource.data.at == request.time
+          && request.resource.data.q is int && request.resource.data.q > 0 && request.resource.data.q <= 1000000 && (
+          (request.resource.data.keys().hasOnly(['k', 's', 'to', 'pub', 'res', 'q', 'p', 'st', 'b', 'at'])
+            && request.resource.data.k == 'offer' && request.resource.data.s == my() && request.resource.data.st == 'open' && request.resource.data.b == ''
+            && request.resource.data.res in boTrade()
+            && request.resource.data.p is int && request.resource.data.p >= 0 && request.resource.data.p <= 100000000
+            && ((request.resource.data.to == '' && request.resource.data.pub == true)
+              || (request.resource.data.pub == false && request.resource.data.to != my() && areFriends(my(), request.resource.data.to)))
+            && meA().txk == 'offer'
+            && meA().inv.get(request.resource.data.res, 0) <= meB().inv.get(request.resource.data.res, 0) - request.resource.data.q)
+          || (request.resource.data.keys().hasOnly(['k', 's', 'b', 'pipe', 'q', 'p', 'st', 'at'])
+            && request.resource.data.k == 'toll' && request.resource.data.b == my() && request.resource.data.st == 'sold'
+            && request.resource.data.pipe in get(WW()).data.pipes
+            && request.resource.data.s == get(WW()).data.pipes[request.resource.data.pipe].o
+            && request.resource.data.p == request.resource.data.q * get(WW()).data.pipes[request.resource.data.pipe].fee
+            && meA().txk == 'import'));
+        allow update: if live() && resource.data.k == 'offer' && resource.data.st == 'open' && resource.data.s != my()
+          && (resource.data.to == '' || resource.data.to == my())
+          && changed().hasOnly(['st', 'b', 'pub']) && request.resource.data.st == 'sold' && request.resource.data.b == my() && request.resource.data.pub == false
+          && meA().tx == did && meA().txk == 'buy';
+        allow delete: if active() && resource.data.s == my() && meA().tx == did && meA().txk in ['cancel', 'collect'];
+      }
+
+      // ---------- szövetkezetek (legfeljebb 10 fő; belépni csak meghívottként lehet) ----------
+      function coopGive() { return (request.resource.data.p.torony + request.resource.data.p.portal) - (resource.data.p.torony + resource.data.p.portal); }
+      match /coops/{cid} {
+        allow read: if signedIn();
+        allow create: if live() && request.resource.data.keys().hasOnly(['n', 'cr', 'o', 'm', 'inv', 'p', 'op', 'at'])
+          && boCoopName(request.resource.data.n) && request.resource.data.cr is string && request.resource.data.cr.size() <= 8
+          && request.resource.data.o == my() && request.resource.data.m == [my()] && request.resource.data.inv == []
+          && request.resource.data.p.keys().hasOnly(['torony', 'portal']) && request.resource.data.p.torony == 0 && request.resource.data.p.portal == 0
+          && request.resource.data.at == request.time
+          && meB().coop == '' && meB().lv >= 3 && meA().coop == cid && meA().txk == 'coop' && meA().ft <= meB().ft - 2000;
+        allow update: if live() && request.resource.data.keys().hasOnly(['n', 'cr', 'o', 'm', 'inv', 'p', 'op', 'at']) && (
+          (request.resource.data.op == 'join' && changed().hasOnly(['m', 'inv', 'op'])
+            && my() in resource.data.inv && !(my() in resource.data.m) && resource.data.m.size() < 10
+            && request.resource.data.m == resource.data.m.concat([my()]) && request.resource.data.inv == resource.data.inv.removeAll([my()])
+            && meB().coop == '' && meA().coop == cid)
+          || (request.resource.data.op == 'leave' && changed().hasOnly(['m', 'op'])
+            && my() != resource.data.o && my() in resource.data.m && request.resource.data.m == resource.data.m.removeAll([my()]))
+          || (request.resource.data.op == 'own' && resource.data.o == my() && changed().hasOnly(['m', 'inv', 'n', 'cr', 'op'])
+            && my() in request.resource.data.m && resource.data.m.hasAll(request.resource.data.m)
+            && request.resource.data.inv is list && request.resource.data.inv.size() <= 20
+            && boCoopName(request.resource.data.n) && request.resource.data.cr is string && request.resource.data.cr.size() <= 8)
+          // közös építmény (víztorony, vízportál): alkatrész beadása
+          || (request.resource.data.op == 'give' && changed().hasOnly(['p', 'op']) && my() in resource.data.m
+            && request.resource.data.p.keys().hasOnly(['torony', 'portal'])
+            && request.resource.data.p.torony >= resource.data.p.torony && request.resource.data.p.portal >= resource.data.p.portal
+            && coopGive() > 0 && meA().txk == 'give' && coopGive() <= meB().inv.get('alk', 0) - meA().inv.get('alk', 0)));
+        allow delete: if active() && resource.data.o == my() && resource.data.m.size() == 1;
       }
     }
 
