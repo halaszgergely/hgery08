@@ -1,18 +1,19 @@
 // HGWS Közösség – csatornák, privát üzenetek, csoportok, filmtár
 import { FB, auth, db, notConfigured, $, $$, esc, ROLES, roleOf, applyRoles, OWNER_UID, notify, audit, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
-  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG, badName, BAD_MSG } from './core.js?v=202611210038';
-import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611210038';
-import * as Admin from './admin.js?v=202611210038';
-import * as Browse from './browse.js?v=202611210038';
-import * as Notif from './notif.js?v=202611210038';
-import * as Profile from './profile.js?v=202611210038';
-import * as Party from './party.js?v=202611210038';
-import * as Ideas from './ideas.js?v=202611210038';
-import * as Player from './player.js?v=202611210038';
-import * as Cmdk from './cmdk.js?v=202611210038';
-import * as Stk from './stickers.js?v=202611210038';
-import * as Friends from './friends.js?v=202611210038';
-import { bootOut, pageIn, I } from './fx.js?v=202611210038';
+  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG, badName, BAD_MSG } from './core.js?v=202611210122';
+import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611210122';
+import * as Admin from './admin.js?v=202611210122';
+import * as Browse from './browse.js?v=202611210122';
+import * as Notif from './notif.js?v=202611210122';
+import * as Profile from './profile.js?v=202611210122';
+import * as Party from './party.js?v=202611210122';
+import * as Ideas from './ideas.js?v=202611210122';
+import * as Player from './player.js?v=202611210122';
+import * as Cmdk from './cmdk.js?v=202611210122';
+import * as Stk from './stickers.js?v=202611210122';
+import * as Friends from './friends.js?v=202611210122';
+import * as Bo from './bo-ui.js?v=202611210122';
+import { bootOut, pageIn, I } from './fx.js?v=202611210122';
 
 const S = {
   user: null, me: null, users: new Map(), channels: [], convs: [], convsLoaded: false, videos: [], reads: { ch: {} },
@@ -263,6 +264,7 @@ function route(force) {
   else if (a === 'lista') r = { mode: 'browse', view: 'lista' };
   else if (a === 'zene') r = { mode: 'browse', view: 'zene' };
   else if (a === 'arcade') r = { mode: 'browse', view: 'arcade', id: b || '' };
+  else if (a === 'birodalom') r = { mode: 'browse', view: 'birodalom', id: h.slice(1).join('/') };
   else if (a === 'kapcsolat') r = { mode: 'browse', view: 'kapcsolat' };
   else if (a === 'otletek') r = { mode: 'browse', view: 'otletek', id: b || '' };
   else if (a === 'profil' && b) r = { mode: 'browse', view: 'profil', id: b };
@@ -274,13 +276,14 @@ function route(force) {
   else r = { mode: 'browse', view: 'home' };
   r.mode ||= 'chat';
   // navigáció kiemelése
-  const nav = r.mode === 'chat' ? (r.sec === 'dm' ? 'dm' : 'chat') : r.view === 'admin' ? 'admin' : r.view === 'kereses' ? 'kereses' : r.view === 'tar' ? 'tar' : r.view === 'lista' ? 'lista' : r.view === 'zene' ? 'zene' : r.view === 'arcade' ? 'arcade' : r.view === 'kapcsolat' ? 'kapcsolat' : r.view === 'otletek' ? 'otletek' : r.view === 'home' ? 'home' : '';
+  const nav = r.mode === 'chat' ? (r.sec === 'dm' ? 'dm' : 'chat') : r.view === 'admin' ? 'admin' : r.view === 'kereses' ? 'kereses' : r.view === 'tar' ? 'tar' : r.view === 'lista' ? 'lista' : r.view === 'zene' ? 'zene' : r.view === 'arcade' ? 'arcade' : r.view === 'birodalom' ? 'birodalom' : r.view === 'kapcsolat' ? 'kapcsolat' : r.view === 'otletek' ? 'otletek' : r.view === 'home' ? 'home' : '';
   $$('[data-nav]').forEach(x => x.classList.toggle('on', x.dataset.nav === nav));
   $$('#seg [data-seg]').forEach(x => x.classList.toggle('on', x.dataset.seg === r.sec));
   const same = !force && S.route.mode === r.mode && S.route.view === r.view && S.route.id === r.id;
   const filmBefore = S.route.film, prevRoute = S.route;
   S.route = r;
   if (r.view !== 'party') Party.leave();
+  if (r.view !== 'birodalom') Bo.leave();
   if (!r.film && Browse.detailOpen()) Browse.closeDetail(true);
   if (r.mode === 'browse') {
     setMode('browse');
@@ -292,6 +295,7 @@ function route(force) {
       else if (r.view === 'lista') Browse.myList();
       else if (r.view === 'zene') Browse.music();
       else if (r.view === 'arcade') Browse.arcade(r.id);
+      else if (r.view === 'birodalom') { Browse.cleanup(); Bo.render(r.id); }
       else if (r.view === 'kapcsolat') Browse.contact();
       else if (r.view === 'otletek') Ideas.render(r.id);
       else if (r.view === 'profil') Profile.render(r.id);
@@ -1144,5 +1148,6 @@ Notif.init({ S, uid, U });
 Friends.init({ S, uid, U, roleBadge, setTitle, changed: () => soon('friends', friendsChanged) });
 Profile.init({ S, uid, friendBtn: id => `<span id="pFr" data-id="${esc(id)}">${Friends.actionHtml(id, 'pbtn')}</span>`, can, isOwner, U, roleBadge, tagPills, userTags, roleKey, rankOfUser, myRank, openDm: id => location.hash = '#/u/' + id });
 Party.init({ S, uid, can, U, roleBadge });
+Bo.init({ S, uid, can, isOwner, U });
 Browse.init({ S, uid, isAdmin, isMod, can, isOwner, U, shareFilm, renderOwnerBar, convUnread, guestPrompt, guestLeave, tagPills });
 setInterval(() => S.users.size && renderOnline(), 60e3);

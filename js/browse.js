@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611210038';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611210038';
-import * as Player from './player.js?v=202611210038';
-import * as Party from './party.js?v=202611210038';
-import * as VP from './vplayer.js?v=202611210038';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611210038';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611210122';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611210122';
+import * as Player from './player.js?v=202611210122';
+import * as Party from './party.js?v=202611210122';
+import * as VP from './vplayer.js?v=202611210122';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611210122';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -264,7 +264,7 @@ const ZQ = { id: 'zeroquest', name: 'Zero Quest', icon: '⚔️', desc: 'Felüln
 const extras = () => betaOk() ? [...EXTRA, ZQ] : EXTRA;
 const best = id => { try { return +localStorage.getItem('hgws_best_' + id) || 0; } catch (_) { return 0; } };
 function arcadeRow() {
-  return `<section class="row arcrow"><div class="rowh"><h2><i class="ic ic-gamepad-2"></i> HGWS Arcade</h2><a href="#/arcade">Mind ›</a></div>
+  return `<a class="bo-banner" href="#/birodalom"><i>🌍</i><span><b>Öntöző Birodalom Online</b><small>Közös világ 13 régióval: telkek, piac, vezetékek, szövetkezetek, heti ostrom.</small></span><span>Belépek ›</span></a><section class="row arcrow"><div class="rowh"><h2><i class="ic ic-gamepad-2"></i> HGWS Arcade</h2><a href="#/arcade">Mind ›</a></div>
     <div class="agrid">${[...GAMES, ...extras()].map((g, i) => `<a class="acard" href="#/arcade/${g.id}" style="--c:${g.c}"><span class="an">${String(i + 1).padStart(2, '0')}</span><span class="ai">${g.icon}</span>
       <b>${esc(g.name)}</b>${g.sponsor ? `<span class="aspon">${esc(g.sponsor)}</span>` : ''}<small>${esc(g.desc)}</small><span class="af"><em>${g.tag ? g.tag : g.beta ? 'ZÁRT BÉTA' : g.demo ? 'DEMO' : 'REKORD: ' + bigNum(best(g.id)) + (g.unit ? ' ' + g.unit : '')}</em><i>Játék <i class="ic ic-play"></i></i></span></a>`).join('')}</div></section>`;
 }

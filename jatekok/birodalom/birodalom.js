@@ -1,7 +1,11 @@
 /* HGWS Arcade – Öntöző Birodalom (klasszikus szkript, az arcade.html tölti be; a közös keret a jatekok/arcade/mag.js) */
 'use strict';
 const Birodalom = (() => {
-  const COLS = 64, ROWS = 40, SRC = [0, 2], KEY = 'hgws_birodalom_v1', CAP = 1e300, MOIST = 6;
+  /* Öntöző Birodalom Online: a közös világ egy telkének kertje – külön mentés, a régió vízbősége szorozza a vízhozamot,
+     a pontszám nem megy az egyjátékos rekordba / ranglistára, az állást a szülőoldal (js/bo.js) kapja meg */
+  const BOQ = new URLSearchParams(location.search), BO = /^[\w-]{3,40}$/.test(BOQ.get('bo') || '') ? BOQ.get('bo') : '', BOW = BO ? Math.max(.2, Math.min(3, +BOQ.get('bw') || 1)) : 1;
+  const COLS = 64, ROWS = 40, SRC = [0, 2], KEY = BO ? 'hgws_bo_' + BO : 'hgws_birodalom_v1', CAP = 1e300, MOIST = 6;
+  const lifeSc = () => BO ? 0 : Math.min(CAP, Math.floor(S.life));
   // hálózat: w = vízigény, r = sugár, nb = szomszédok, q = vízhozam, wm = locsolás-szorzó, mob = mozgó (tengely)
   // aura: nem hálózati, bónusz a környékre; fok/szuro: hálózati, globális bónusz; valve: zárható
   const MOD = {
@@ -397,7 +401,7 @@ const Birodalom = (() => {
     } catch (_) {}
     return fresh();
   }
-  function save() { if (!S) return; S.t = Date.now(); try { const { bgMsg, lr, gxT, rt, away, saveT, syncT, hudT, info, hover, tip, lp, anim, linc, lincT, ...o } = S; if (o.gx) o.gx = { ...o.gx, pick: null }; localStorage.setItem(KEY, JSON.stringify(o)); } catch (_) {} }
+  function save() { if (!S) return; S.t = Date.now(); try { const { bgMsg, lr, gxT, rt, away, saveT, syncT, hudT, info, hover, tip, lp, anim, linc, lincT, ...o } = S; if (o.gx) o.gx = { ...o.gx, pick: null }; localStorage.setItem(KEY, JSON.stringify(o)); } catch (_) {} if (BO && window.top !== window) try { parent.postMessage({ hgws: 'bo', key: BO, life: S.life }, location.origin); } catch (_) {} }
 
   function net() {
     const [cw, rh] = size(), N = COLS * ROWS, on = new Uint8Array(N), dist = new Int16Array(N).fill(-1), q = [SRC];
@@ -408,7 +412,7 @@ const Birodalom = (() => {
     let cap = 4 + 3 * S.up.nyomas, dem = 0, fok = 1, fg = 1; const tk = 1 - .06 * S.up.takarek; const pm = 1 + .15 * S.up.hatas;
     for (let i = 0; i < N; i++) if (on[i]) { const k = S.k[i], m = MOD[k]; if (!m) continue;
       if (m.q) cap += m.q * (k === 'pump' || k === 'kut' || k === 'napel' ? pm : 1); if (m.w) dem += m.w * tk; if (m.fok) fok += m.fok; if (m.szuro) fg += m.szuro; }
-    cap = Math.round(cap * fok * 2 ** S.up.fuzio * (1 + .15 * pk('pviz')) * 10) / 10;
+    cap = Math.round(cap * BOW * fok * 2 ** S.up.fuzio * (1 + .15 * pk('pviz')) * 10) / 10;
     let hiveN = 0, cpR = 0; const wet = new Float32Array(N), mwet = new Float32Array(N), gb = new Float32Array(N).fill(1), yb = new Float32Array(N).fill(1), mobs = [];
     // terület egy (akár több mezős) elem körül, saját mezői nélkül
     const area = (c, r, R, f, sz = 1) => { for (let y = r - R; y < r + sz + R; y++) for (let x = c - R; x < c + sz + R; x++) { if (x >= c && x < c + sz && y >= r && y < r + sz) continue; if (x >= 0 && y >= 0 && x < cw && y < rh) f(idx(x, y)); } };
@@ -1177,7 +1181,7 @@ const Birodalom = (() => {
       S = load(); S.tab = S.tab || 'mod'; S.tool = S.tool === undefined ? 'pipe' : S.tool; fl = []; dust = []; drag = null; confirmT = 0;
       MO = new Float32Array(COLS * ROWS); RP = new Float32Array(COLS * ROWS); CB = []; DR = []; syncCB(); panS = null; pinch = null; PT.clear();
       S.nek = S.nek || 0; S.cp = S.cp || 0; S.met = { vas: 0, rez: 0, tit: 0, iri: 0, neu: 0, ...(S.met || {}) }; S.gx = { gals: [], cur: 0, sel: 0, up: {}, won: {}, ...(S.gx || {}) }; S.gx.pick = null; for (const gal of S.gx.gals) for (const st of gal.stars) for (const p of st.pl) if (!PCLS[p.c].al.includes(p.des)) p.des = PCLS[p.c].al[0]; GR = gnet(); S.loc = S.loc || 'earth'; S.locs = S.locs || {}; S.unl = S.unl || ['earth']; S.anim = null; S.lp = false;
-      layout(G); net(); G.score = Math.min(CAP, Math.floor(S.life));
+      layout(G); net(); G.score = lifeSc();
       if (!wheelOn) { wheelOn = 1; const on = () => G.running && G.game && G.game.id === 'birodalom' && L;
         gc.addEventListener('wheel', e => { if (!on()) return; e.preventDefault(); const [x, y] = P(e); if (y < L.barY) zoomAt(G, x, y, Math.exp(-Math.max(-60, Math.min(60, e.deltaY)) * .004)); }, { passive: false });
         gc.addEventListener('contextmenu', e => { if (on()) e.preventDefault(); });
@@ -1190,14 +1194,14 @@ const Birodalom = (() => {
           const grow = away * rate(i, w) + S.g[i];
           if (auto()) { const n = Math.floor(grow); got += n * val(i) * offF() * luck(); S.nek += n * nekOf(S.k[i]) * offF(); if (p.met) S.met[p.met] += n * p.ma * metMul() * offF(); S.g[i] = grow - n; } else S.g[i] = Math.min(1, grow); }
         lincAll(); GR = gnet(); got += GR.ft * away; payBg(away); S.nek += GR.nek * away; S.cp += GR.cp * away; for (const k in GR.met) S.met[k] += GR.met[k] * away; S.nek += (S.linc[1] + NET.nekH) * away; S.cp += ((S.linc[2] || 0) + NET.cpR) * away;
-        got = Math.floor(got); if (got > 0) { earn(got); G.score = Math.min(CAP, Math.floor(S.life)); }
+        got = Math.floor(got); if (got > 0) { earn(got); G.score = lifeSc(); }
         S.away = { got, sec: away, l: 6 };
       }
       S.saveT = 0; S.syncT = 0; S.hudT = 0; S.rt = 0;
     },
     resize(G) { if (S) layout(G); },
     leave(G) { save(); this.sync(G, true); },
-    sync(G) { const sc = Math.min(CAP, Math.floor(S.life)); if (sc > (S.sent || 0)) { S.sent = sc; save(); store.set('best_' + this.id, Math.max(store.get('best_' + this.id), sc));
+    sync(G) { const sc = lifeSc(); if (BO) return; if (sc > (S.sent || 0)) { S.sent = sc; save(); store.set('best_' + this.id, Math.max(store.get('best_' + this.id), sc));
       if (window.top !== window) parent.postMessage({ hgws: 'score', game: this.id, score: sc }, location.origin); } },
     down(G, x, y, e) {
       if (e === true) return;
@@ -1291,7 +1295,7 @@ const Birodalom = (() => {
       if ((S.gxT = (S.gxT || 0) + dt) > 1) { S.gxT = 0; GR = gnet(); }
       if (GR.ft || GR.nek || GR.cp) { earn(GR.ft * dt); S.nek += GR.nek * dt; S.cp += GR.cp * dt; } for (const k in GR.met) S.met[k] += GR.met[k] * dt;
       if (S.anim) { S.anim.t += dt; if (!S.anim.done && S.anim.t >= S.anim.dur * .55) { S.anim.done = 1; goLoc(G, S.anim.to); } if (S.anim.t >= S.anim.dur) S.anim = null; }
-      const sc = Math.min(CAP, Math.floor(S.life));
+      const sc = lifeSc();
       S.hudT -= dt; if (sc !== G.score && S.hudT <= 0) { G.score = sc; S.hudT = .25; if (sc > store.get('best_' + this.id)) store.set('best_' + this.id, sc); hud(); }
       if ((S.saveT += dt) > 5) { S.saveT = 0; save(); }
       if ((S.syncT += dt) > 60) { S.syncT = 0; this.sync(G); }
