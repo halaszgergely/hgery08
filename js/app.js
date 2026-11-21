@@ -263,7 +263,7 @@ function route(force) {
   else if (a === 'tar') r = { mode: 'browse', view: 'tar', id: b || '' };
   else if (a === 'lista') r = { mode: 'browse', view: 'lista' };
   else if (a === 'zene') r = { mode: 'browse', view: 'zene' };
-  else if (a === 'arcade') r = { mode: 'browse', view: 'arcade', id: b || '' };
+  else if (a === 'arcade' || a.startsWith('arcade?')) r = { mode: 'browse', view: 'arcade', id: a === 'arcade' ? b || '' : '' };
   else if (a === 'birodalom') r = { mode: 'browse', view: 'birodalom', id: h.slice(1).join('/') };
   else if (a === 'kapcsolat') r = { mode: 'browse', view: 'kapcsolat' };
   else if (a === 'otletek') r = { mode: 'browse', view: 'otletek', id: b || '' };

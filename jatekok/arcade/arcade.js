@@ -183,3 +183,6 @@ if (window.top !== window) { const sent = {}; const syncB = () => { const bests 
   syncB();
   // a tábla frissítése mások eredményeivel: kétpercenként, csak ha a ranglista látszik és nincs nyitva játék
   let lbVis = false; new IntersectionObserver(e => { lbVis = e[0].isIntersecting; }).observe($('#lbw')); setInterval(() => { if (lbVis && !document.hidden && !gEl.classList.contains('open') && EXT.hidden) parent.postMessage({ hgws: 'lbreq' }, location.origin); }, 120000); }
+/* a HGWS oldalba ágyazva a játékból kilépve az új Arcade-listára megyünk vissza (js/arcade-lista.js) */
+if (window.top !== window) { let was = false; const chk = () => { const open = gEl.classList.contains('open') || !EXT.hidden; if (was && !open) parent.postMessage({ hgws: 'nav', to: '#/arcade' }, location.origin); was = open; };
+  new MutationObserver(chk).observe(gEl, { attributes: true, attributeFilter: ['class'] }); new MutationObserver(chk).observe(EXT, { attributes: true, attributeFilter: ['hidden'] }); }
