@@ -90,7 +90,9 @@ window.HGZombi = function (env) {
     const towns = MD.towns.map(t => ({ n: t[0], x: t[1], y: t[2], pop: t[3], f: t[4] || 0, r: (95 + 62 * Math.sqrt(t[3])) * SC }));
     // valós népesség: a település (KSH/OSM) lakossága a hozzá tartozó épületek súlyozott szintterülete arányában oszlik el
     // (tools/holtvaros_nepesseg.py számolja a szorzót; az épület annak a településnek a része, ahol a távolság − hatósugár a legkisebb)
-    const resOf = b => { if (b.pp == null) { let bt = null, bd = 1e18; for (const t of towns) { const d0 = Math.hypot(t.x - b.x, t.y - b.y) - t.r; if (d0 < bd) { bd = d0; bt = t; } } b.pp = (b.ar || 600) * Math.max(1, (b.h || 4) / 3) * (bt && bt.f ? bt.f : 1 / 60); } return b.pp; };
+    const resOf = b => { if (b.pp == null) { let bt = null, bd = 1e18; for (const t of towns) { const d0 = Math.hypot(t.x - b.x, t.y - b.y) - t.r; if (d0 < bd) { bd = d0; bt = t; } } b.pp = (b.ar || 600) * Math.max(1, (b.h || 4) / 3) * (bt && bt.f ? bt.f : 1 / 60); b.px = bt && bt.pop >= 10 ? 6 : 4; } return b.pp; };
+    // a játékban a valós népesség túlzott: négyszeres, a 10 ezer fő feletti városokban hatszoros (a hőtérkép a valósat mutatja)
+    const crowdOf = b => resOf(b) * b.px;
     // csempék: az él abban a csempében van tárolva, ahol az első vége; a szomszédba átnyúló él akkor jön létre, amikor mindkét csempe megvan
     const mk = (a, b, f, t) => { const c = f & 7, e = raw(a, b, { big: c >= 1 ? 1 : 0, hw: c >= 2 ? c - 1 : 0, bridge: f & 8 ? 1 : 0, nob: (f & 32) && !(f & 24) && c < 4 ? 0 : 1 }); if (e) { const l = ownE.get(t); if (l) l.push(e); else ownE.set(t, [e]); } };
     function mat(t) { if (tb[t] >= 0) return; const io = 8 + 12 * t, off = DV.getUint32(io, true), nn = DV.getUint16(io + 4, true), ne = DV.getUint32(io + 8, true), base = tb[t] = g.N.length; if (off) { const bx = Math.floor(t / TYN) * TS, by = (t % TYN) * TS;
@@ -139,7 +141,7 @@ window.HGZombi = function (env) {
     // a játékos útjának élei (törléshez), és élek kivétele a gráfból
     function roadEdges(pts) { const key = rkey(pts); return allE.filter(e => e.rkey === key); }
     function dropEdges(es) { const D = new Set(es); for (const e of es) for (const n of [e.a, e.b]) g.N[n].all = g.N[n].all.filter(a => a.e !== e); for (const H of [EG, eg]) for (const [k, l] of H) if (l.some(e => D.has(e))) H.set(k, l.filter(e => !D.has(e))); for (let i = allE.length - 1; i >= 0; i--) if (D.has(allE[i])) allE.splice(i, 1); for (let i = g.E.length - 1; i >= 0; i--) if (D.has(g.E[i])) g.E.splice(i, 1); }
-    return { ...g, roadEdges, dropEdges, Efull: allE, wet, towns, townsByPop: towns.slice().sort((a, b) => b.pop - a.pop), resOf, labels: MD.labels, EG, BG, ensure, addRoad, crossW, seeds, blockOf, cellPoly, seedsNear, ruralId,
+    return { ...g, roadEdges, dropEdges, Efull: allE, wet, towns, townsByPop: towns.slice().sort((a, b) => b.pop - a.pop), resOf, crowdOf, labels: MD.labels, EG, BG, ensure, addRoad, crossW, seeds, blockOf, cellPoly, seedsNear, ruralId,
       nearAny: (x, y, r) => nearIn(NH, x, y, r, n => g.N[n].all.length), nodesIn: (x, y, r) => inCircle(NH, 128, n => g.N[n], x, y, r), bldIn: (x, y, r) => inCircle(BG, 512, b => b, x, y, r),
       nodeOf: k => { k = String(k); if (k[0] === 'r') return RK.has(k) ? RK.get(k) : null; if (k[0] !== 't') return null; const [t, i] = k.slice(1).split(',').map(Number); if (!(t >= 0 && t < nT)) return null; mat(t); return i < DV.getUint16(8 + 12 * t + 4, true) ? tb[t] + i : null; } };
   }
@@ -155,8 +157,8 @@ window.HGZombi = function (env) {
     S.phase = 'expand'; { const [sx, sy] = S.start, R2 = S.R + RS_VIEW; S.box = [Math.max(0, sx - R2), Math.max(0, sy - R2), Math.min(WW, sx + R2), Math.min(WH, sy + R2)]; } L = null; layout(true); S.zin = { t: 0, ...old };
   }
   const inBlock = (id, x, y) => S.blockOf(x, y) === id, bldOf = id => { const c = S.seeds[id]; S.ensure(c.x - c.r, c.y - c.r, c.x + c.r, c.y + c.r); return S.bldIn(c.x, c.y, c.r).filter(b => inBlock(id, b.x, b.y)); };
-  // lakosság: valós településnépesség az épületekre szétosztva (S.resOf); ECO: a gazdaság a régi, sűrűbb becsléshez volt hangolva
-  const ECO = 4, popB = l => { let v = 0; for (const b of l) v += S.resOf(b); return Math.round(v); }, popOf = id => popB(bldOf(id));
+  // lakosság: valós településnépesség az épületekre szétosztva, majd felszorozva (S.crowdOf)
+  const ECO = 1, popB = l => { let v = 0; for (const b of l) v += S.crowdOf(b); return Math.round(v); }, popOf = id => popB(bldOf(id));
   // feloldható: ami szomszédos egy már feloldott tömbbel, és úton el is érhető belőle
   function candidates() { const o = new Set(), live = new Set(S.live), add = (x, y) => { const j = S.blockOf(x, y); if (j >= 0 && !S.blocks.has(j)) o.add(j); };
     for (const id of S.blocks) { const c = S.seeds[id], P = S.cellPoly(id); for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length], m = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 400)); for (let k = 0; k < m; k++) { const x = a[0] + (b[0] - a[0]) * k / m, y = a[1] + (b[1] - a[1]) * k / m, d = Math.hypot(x - c.x, y - c.y) || 1; add(x + (x - c.x) / d * 90, y + (y - c.y) / d * 90); } }
@@ -582,7 +584,7 @@ window.HGZombi = function (env) {
     x.restore(); }
   function heatLegend(g) { const d = L.d, w = 150 * d, h = 8 * d, x0 = 8 * d, y0 = L.top + L.vh - 44 * d; g.fillStyle = 'rgba(8,12,22,.85)'; rr(x0 - 4 * d, y0 - 16 * d, w + 8 * d, 34 * d, 8 * d); g.fill();
     for (let i = 0; i < w; i++) { const q = heatCol(Math.expm1(i / w * Math.log1p(HREF))); if (q) { g.fillStyle = `rgb(${q[0] | 0},${q[1] | 0},${q[2] | 0})`; g.fillRect(x0 + i, y0, 1, h); } }
-    g.fillStyle = '#fff'; g.font = `600 ${9 * d}px Inter, sans-serif`; g.textBaseline = 'alphabetic'; g.textAlign = 'left'; g.fillText('Népsűrűség (fő/km²)', x0, y0 - 5 * d); g.font = `500 ${8.5 * d}px Inter, sans-serif`; g.fillText('10', x0, y0 + h + 9 * d); g.textAlign = 'center'; g.fillText('500', x0 + w * Math.log1p(500) / Math.log1p(HREF), y0 + h + 9 * d); g.textAlign = 'right'; g.fillText('20 000+', x0 + w, y0 + h + 9 * d); }
+    g.fillStyle = '#fff'; g.font = `600 ${9 * d}px Inter, sans-serif`; g.textBaseline = 'alphabetic'; g.textAlign = 'left'; g.fillText('Valós népsűrűség (fő/km²)', x0, y0 - 5 * d); g.font = `500 ${8.5 * d}px Inter, sans-serif`; g.fillText('10', x0, y0 + h + 9 * d); g.textAlign = 'center'; g.fillText('500', x0 + w * Math.log1p(500) / Math.log1p(HREF), y0 + h + 9 * d); g.textAlign = 'right'; g.fillText('20 000+', x0 + w, y0 + h + 9 * d); }
   function blockPat(x) { if (!PAT) { PAT = document.createElement('canvas'); PAT.width = PAT.height = 270; const c = PAT.getContext('2d'); c.fillStyle = '#292b31'; c.fillRect(0, 0, 270, 270); const cols = ['#b3a283', '#a39274', '#c2b091', '#998a6e'];
       for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) for (let k = 0; k < 4; k++) { c.fillStyle = cols[(i * 2 + j + k) % 4]; const bx = i * 135 + 16 + (k % 2) * 54, by = j * 135 + 16 + (k >> 1) * 54; c.fillRect(bx, by, 44 + ((i + k) % 2) * 6, 42 + ((j + k) % 2) * 8); } }
     return x.createPattern(PAT, 'repeat'); }
@@ -748,6 +750,7 @@ window.HGZombi = function (env) {
   }
   // rövid bevezető minden új játék elején, kihagyható
   const TUT_STEPS = [['🗺️', 'Válassz helyet', 'Az országtérképen válassz vármegyét, aztán válassz kezdőterületet: egy települést vagy városrészt (első koppintás mutatja, a második kiválasztja). A térkép a valódi utcákat mutatja; görgővel vagy csípéssel nagyíthatsz.'],
+    ['🏙️', 'Túlnépesedés', 'A települések valódi lakosságából indulunk, de a járvány kedvéért mindenhol négyszer, a városokban hatszor annyian laknak. A 🔥 gomb a valós népsűrűséget mutatja – a játékban ennél jóval nagyobb a tömeg.'],
     ['🧱', 'Húzz falat', 'Rajzolj falat az utcákon keresztül. Amit a fal elvág a város többi részétől, az védett terület – kékkel látod.'],
     ['🚪', 'Nyiss kaput', 'Kapun át jutnak be a civilek a védett részre. A kapu jóval gyengébb a falnál, a horda azt keresi meg és azt töri be először.'],
     ['🪖', 'Állíts védelmet', 'Őrséget és mesterlövészt épületbe, gépágyút és aknát útra tehetsz – főleg a kapuk köré. A Különleges fülön terelőút és hangosbemondó, az Építés fülön őrház és vasút van. A vonattal érkező járművet csatában kijelölöd, aztán koppintasz, hová menjen.'],
