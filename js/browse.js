@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611211637';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611211637';
-import * as Player from './player.js?v=202611211637';
-import * as Party from './party.js?v=202611211637';
-import * as VP from './vplayer.js?v=202611211637';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611211637';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611211640';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611211640';
+import * as Player from './player.js?v=202611211640';
+import * as Party from './party.js?v=202611211640';
+import * as VP from './vplayer.js?v=202611211640';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611211640';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -282,9 +282,10 @@ async function cloudGet(win, game) {
   try { const d = (await FB.getDoc(FB.doc(db, 'cloudsaves', C.uid(), 'g', game))).data(); win.postMessage({ hgws: 'cs', game, life: d ? +d.life || 0 : 0, st: d ? d.st : null }, location.origin); }
   catch (_) { win.postMessage({ hgws: 'cs', game, none: 1 }, location.origin); }
 }
-function cloudPut(m) {
-  if (!CS_GAMES.includes(m.game) || guest() || !C.uid() || typeof m.st !== 'string' || m.st.length > 900000 || !(m.life >= 0)) return;
-  FB.setDoc(FB.doc(db, 'cloudsaves', C.uid(), 'g', m.game), { life: m.life, st: m.st, updatedAt: FB.serverTimestamp() }).catch(() => {});
+function cloudPut(m, win) {
+  const ack = (ok, err) => { if (m.ack) win?.postMessage({ hgws: 'cs', game: m.game, ack: 1, ok, err }, location.origin); };
+  if (!CS_GAMES.includes(m.game) || guest() || !C.uid() || typeof m.st !== 'string' || m.st.length > 900000 || !(m.life >= 0)) return ack(false, 'nincs bejelentkezve');
+  FB.setDoc(FB.doc(db, 'cloudsaves', C.uid(), 'g', m.game), { life: m.life, st: m.st, updatedAt: FB.serverTimestamp() }).then(() => ack(true), er => ack(false, er?.code === 'permission-denied' ? 'elutasítva – kisebb mentés, túl gyakori írás vagy nincs kint a szabály' : 'hálózati hiba'));
 }
 function countPlay(id) {
   if (!/^[a-z0-9]{2,24}$/.test(id || '') || !C.uid()) return;
@@ -456,7 +457,7 @@ addEventListener('message', async e => {
   if (e.data.hgws === 'lbreq') sendBoards(fr.contentWindow);
   if (e.data.hgws === 'play') countPlay(e.data.game);
   if (e.data.hgws === 'csreq') cloudGet(fr.contentWindow, e.data.game);
-  if (e.data.hgws === 'cssave') cloudPut(e.data);
+  if (e.data.hgws === 'cssave') cloudPut(e.data, fr.contentWindow);
   if (e.data.hgws === 'sync' && !guest() && C.uid()) { const first = !synced; synced = true; let ch = 0; for (const [g, v] of Object.entries(e.data.bests || {})) if (v > (syncBest[g] || 0)) { syncBest[g] = v; ch = 1; await saveScore(g, v, false, first); } if (ch) sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'nickreq') { await renameNick(); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbprof') lbProfile(e.data.uid, e.data.nick);
