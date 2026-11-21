@@ -1,13 +1,13 @@
 // Az Átemelőtelep – Three.js megjelenítő (r170). A statikus pálya anyagonként EGY összefűzött geometria; külön draw call csak a mozgó/kapcsolt tárgyaké.
 // Képkockánként nincs memóriafoglalás: minden vektor, tömb és fényforrás-rekord előre lefoglalt, és újrahasznosul.
 import * as THREE from 'three';
-import { mergeGeometries } from './lib/addons/utils/BufferGeometryUtils.js?v=202611211754';
-import { EffectComposer } from './lib/addons/postprocessing/EffectComposer.js?v=202611211754';
-import { RenderPass } from './lib/addons/postprocessing/RenderPass.js?v=202611211754';
-import { UnrealBloomPass } from './lib/addons/postprocessing/UnrealBloomPass.js?v=202611211754';
-import { ShaderPass } from './lib/addons/postprocessing/ShaderPass.js?v=202611211754';
-import { makeTextures, decals, makeMaterials } from './anyag.js?v=202611211754';
-import { WELL, CONT, GEN, VAN, TREES, POLES, MARKERS, FENCES, HOLE } from './palya.js?v=202611211754';
+import { mergeGeometries } from './lib/addons/utils/BufferGeometryUtils.js?v=202611211759';
+import { EffectComposer } from './lib/addons/postprocessing/EffectComposer.js?v=202611211759';
+import { RenderPass } from './lib/addons/postprocessing/RenderPass.js?v=202611211759';
+import { UnrealBloomPass } from './lib/addons/postprocessing/UnrealBloomPass.js?v=202611211759';
+import { ShaderPass } from './lib/addons/postprocessing/ShaderPass.js?v=202611211759';
+import { makeTextures, decals, makeMaterials } from './anyag.js?v=202611211759';
+import { WELL, CONT, GEN, VAN, TREES, POLES, MARKERS, FENCES, HOLE } from './palya.js?v=202611211759';
 
 // minőségi szintek: alap pixelarány-plafon, pontfények száma, esőcseppek, csobbanások, utófeldolgozás, árnyék, köd
 export const QUAL = [
@@ -251,7 +251,7 @@ export function createWorld(canvas, L, opt = {}) {
   /* ---------- fények ---------- */
   const hemi = new THREE.HemisphereLight(0x6d82a6, 0x1a1c16, .5); scene.add(hemi);
   const moon = new THREE.DirectionalLight(0x8fa4cf, .2); moon.position.set(-30, 60, 25); scene.add(moon); scene.add(moon.target);
-  const flash = new THREE.SpotLight(0xfff1dc, 0, 30, .48, .6, 1.8); flash.position.set(.18, -.12, 0); cam.add(flash); flash.target.position.set(.05, -.08, -4); cam.add(flash.target);
+  const flash = new THREE.SpotLight(0xfff1dc, 0, 30, .48, .6, 1.15); flash.position.set(.18, -.12, 0); cam.add(flash); flash.target.position.set(.05, -.08, -4); cam.add(flash.target);
   flash.shadow.mapSize.set(512, 512); flash.shadow.bias = -.0006; flash.shadow.normalBias = .02; flash.shadow.camera.near = .2; flash.shadow.camera.far = 30;
   const pool = []; function setPool(n) { while (pool.length > n) { const l = pool.pop(); scene.remove(l); l.dispose(); } while (pool.length < n) { const l = new THREE.PointLight(0xffffff, 0, 10, 2); scene.add(l); pool.push(l); } }
   // fényforrás-rekordok (előre lefoglalva): x, y, z, hatótáv, szín, intenzitás, aktív
@@ -317,7 +317,7 @@ export function createWorld(canvas, L, opt = {}) {
     hemi.intensity = .5 + 1.4 * dawn + fl * 2.6; hemi.color.setRGB(.42 + .5 * dawn, .5 + .35 * dawn, .65 + .2 * dawn); moon.intensity = .12 + 1.6 * dawn + fl * 1.8; moon.color.setRGB(.56 + .44 * dawn, .64 + .26 * dawn, .82 - .1 * dawn);
     renderer.toneMappingExposure = 1.05 - .15 * dawn; if (finalP) finalP.uniforms.uE.value = renderer.toneMappingExposure;
     // zseblámpa
-    flash.intensity = F.torch * 16; dyn.lens.material.color.setScalar(F.torch > 0 ? 1.6 : .15); torch.visible = true; det.visible = !!F.detector;
+    flash.intensity = F.torch * 5.5; dyn.lens.material.color.setScalar(F.torch > 0 ? 1.6 : .15); torch.visible = true; det.visible = !!F.detector;
     hand.position.set(F.bobX, F.bobY, 0); hand.rotation.set(F.swayP, F.swayY, 0);
     if (F.detector) { const g = F.gas; dyn.detScr.material.color.setHex(g >= 10 ? 0xff3322 : g >= 5 ? 0xffcc33 : 0x66ff88); dyn.detLed.material.color.setHex(g >= 5 && (t * (g >= 10 ? 6 : 2)) % 1 < .5 ? 0xff2211 : 0x331111); }
     if (!S) { finish(); return; }
