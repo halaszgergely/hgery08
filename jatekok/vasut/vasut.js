@@ -24,6 +24,7 @@
     cement: { n: 'Cement', w: 'Uagps silókocsi', m: 75, r: 100, col: '#b9b6ad', t: 'hopper', wt: 'uagps', x: 1 },
     nyersolaj: { n: 'Nyersolaj', w: 'Zacns tartálykocsi', m: 70, r: 170, col: '#2a2a2a', haz: 1, t: 'tank', wt: 'zacns', x: 1 },
     vegyszer: { n: 'Vegyszer', w: 'Zacns tartálykocsi', m: 65, r: 190, col: '#d8d27a', haz: 1, t: 'tank', wt: 'zacns', x: 1 },
+    szemely: { n: 'Utasok', w: 'Személykocsi', m: 20, r: 0, col: '#2f5fa0', t: 'box', x: 1 },
     auto: { n: 'Új autók', w: 'Laaers autószállító', m: 25, r: 210, col: '#3a5fa8', t: 'cars', wt: 'laaers', x: 1 } };
   // ipari rakodók: mit fogadnak (be) és mit adnak fel (ki)
   const IND = { acel: { n: 'Acélmű', i: '🔥', be: ['szen', 'vaserc', 'ocskavas'], ki: ['acel'] }, cement: { n: 'Cementgyár', i: '🏗️', be: ['szen', 'kavics'], ki: ['cement'] }, finomito: { n: 'Olajfinomító', i: '🛢️', be: ['nyersolaj'], ki: ['uzemanyag'] },
@@ -82,7 +83,7 @@
   const trainLen = () => S.cons.reduce((a, u) => a + (u.l ? LOCOS[u.l].len : CAR_L), 0);
   function TR() { const o = { m: 0, dkw: 0, ekw: 0, df0: 0, ef0: 0, vmax: 999, dcap: 0, n: '', k: 0 }; for (const k of locos()) { const L = LOCOS[k]; o.m += L.m; o.vmax = Math.min(o.vmax, L.vmax); if (L.el) { o.ekw += L.kw; o.ef0 += L.f0; } else { o.dkw += L.kw; o.df0 += L.f0; o.dcap += L.fuel; } o.k++; }
     const l0 = locos()[0]; o.n = (l0 ? LOCOS[l0].n : '–') + (o.k > 1 ? ' + ' + (o.k - 1) + ' mozdony' : ''); o.cm = cars().reduce((a, c) => a + CARGO[c.cg].m + 22, 0); return o; }
-  const ownCnt = k => S.own.filter(x => x === k).length, freeLoco = k => ownCnt(k) - locos().filter(x => x === k).length;
+  const ownCnt = k => S.own.filter(x => x === k).length, freeLoco = k => ownCnt(k) - locos().filter(x => x === k).length - (S.bots || []).filter(b => b.loco === k).length;
   function fixRear() { // az elejétől visszafelé a szerelvény hosszával
     let rem = trainLen(), i = S.P.length - 1, u = S.fu;
     while (rem > u) { rem -= u; i--; if (i < 0) { const sg = S.P[0], c = choose(segEnd(sg, false), sg.e, arriveDir(sg, false)); if (!c) { S.ru = 0; return; } S.P.unshift({ e: c.e, d: c.fromA ? -1 : 1 }); i = 0; } u = E[S.P[i].e].L; }
@@ -224,7 +225,8 @@
     if (!S.cons) { S.cons = [{ l: S.loco || 'm44' }, ...(S.cars || [])]; delete S.cars; }
     if (S.nv !== NETV || S.P.some(sg => !E[sg.e])) { // a hálózat frissült: a régi élek és állomássorszámok érvénytelenek
       for (const j of S.jobs || []) { if (j.dep) S.money += j.dep; if (j.own) { const wt = CARGO[j.cg].wt; S.wag[wt] = (S.wag[wt] || 0) + j.n; } }
-      const st = place(S); S.cons = (S.cons || [{ l: S.loco || 'm44' }]).filter(u => u.l); S.jobs = []; S.boards = {}; S.sw = {}; S.nav = null; S.nv = NETV; S.depots = S.depots && S.depots.length ? S.depots : [st.n]; S.migr = 1; }
+      const st = place(S); S.cons = (S.cons || [{ l: S.loco || 'm44' }]).filter(u => u.l); S.jobs = []; S.boards = {}; S.sw = {}; S.nav = null; S.nv = NETV; S.depots = S.depots && S.depots.length ? S.depots : [st.n]; S.migr = 1;
+      for (const b of S.bots || []) { if (b.job && b.own) { const wt = CARGO[b.job.cg].wt; S.wag[wt] = (S.wag[wt] || 0) + b.job.n; } b.job = null; b.st = 'idle'; b.t = 0; b.at = ST.findIndex(q => q.n === S.depots[0]); if (b.at < 0) b.at = ST.indexOf(st); } }
     if (!S.depots || !S.depots.length) { const si = ST.findIndex(s => s.big && /Kelenföld/.test(s.n)); S.depots = [ST[si].n]; }
     fixRear(); return true; } catch (_) { return false; } }
 
@@ -310,7 +312,7 @@
     // szerelvény
     const L = trainLen();
     const rotP = p => { const A = S.ttAnim; if (!A) return p; const T = TT[A.k], q = (A.to - A.from) * Math.min(1, A.t / A.dur), c = Math.cos(q), sn = Math.sin(q), dx = p[0] - T.x, dy = p[1] - T.y; return [T.x + dx * c - dy * sn, T.y + dx * sn + dy * c, p[2] + q]; };
-    const drawVeh = (x, len, kind, loco, back) => { const a = rotP(along(x)), b = rotP(along(Math.min(L, x + len))), cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2, an = Math.atan2(b[1] - a[1], b[0] - a[0]);
+    const drawVeh = (x, len, kind, loco, back, al) => { const a = al ? al(x) : rotP(along(x)), b = al ? al(x + len) : rotP(along(Math.min(L, x + len))), cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2, an = Math.atan2(b[1] - a[1], b[0] - a[0]);
       const lw = Math.max(len * s, loco ? 10 * d : 4 * d), wd = Math.max(3 * s, loco ? 6 * d : 4 * d), hl = lw / 2, hw = wd / 2, det = s > .3 * d; g.save(); g.translate(X(cx), Y(cy)); g.rotate(an);
       if (det) { g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(-hl + .5 * s, -hw + .8 * s, lw, wd); }
       g.fillStyle = '#111'; g.fillRect(-hl - d * .5, -hw - d * .5, lw + d, wd + d);
@@ -335,6 +337,12 @@
       else { g.fillStyle = C.col; g.fillRect(-hl + 1, -hw + 1, lw - 2, wd - 2); }
       g.restore(); };
     let x = 0; const CN = S.cons; for (let k = CN.length - 1; k >= 0; k--) { const u = CN[k]; if (u.l) { const Lo = LOCOS[u.l]; drawVeh(x, Lo.len, Lo, 1, k > 0 && k === CN.length - 1); x += Lo.len; } else { drawVeh(x + .6, CAR_L - 1.2, u.cg); x += CAR_L; } }
+    // sofőrök (botok) és a forgalom (NPC-vonatok)
+    const drawAg = (a, name) => { if (!a || !a.segs) return; const f = agPt(a, a.pos); if (f[0] < x0 - 800 || f[0] > x1 + 800 || f[1] < y0 - 800 || f[1] > y1 + 800) return; const px = X(f[0]), py = Y(f[1]);
+      if (s < .03 * d) { if (!name && s < .006 * d) return; g.fillStyle = name ? '#4fd8ff' : '#c9c2b4'; g.strokeStyle = '#000'; g.lineWidth = d; g.beginPath(); g.arc(px, py, (name ? 5 : 3) * d, 0, 6.283); g.fill(); g.stroke(); }
+      else { let q = 0; const al = v => agPt(a, a.pos - a.tl + v), C = a.cons; for (let k = C.length - 1; k >= 0; k--) { const u = C[k]; if (u.l) { const Lo = LOCOS[u.l]; drawVeh(q, Lo.len, Lo, 1, 0, al); q += Lo.len; } else { drawVeh(q + .6, CAR_L - 1.2, u.cg, 0, 0, al); q += CAR_L; } } }
+      if (name && s > .004 * d) { g.font = `800 ${11 * d}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'bottom'; g.lineWidth = 3 * d; g.strokeStyle = 'rgba(0,0,0,.85)'; g.strokeText('🤖 ' + name, px, py - 9 * d); g.fillStyle = '#9fe8ff'; g.fillText('🤖 ' + name, px, py - 9 * d); } };
+    for (const a of NPC) drawAg(a); for (const b of S.bots || []) drawAg(botAgent(b), b.n);
     if (s < .02 * d) { const p = front(); g.strokeStyle = '#ffe29a'; g.lineWidth = 2 * d; g.beginPath(); g.arc(X(p[0]), Y(p[1]), 9 * d, 0, 6.283); g.stroke(); }
     if (PIN) { const px = X(PIN.x), py = Y(PIN.y); g.fillStyle = '#ff5a4a'; g.strokeStyle = '#000'; g.lineWidth = 1.5 * d; g.beginPath(); g.arc(px, py - 14 * d, 7 * d, Math.PI * .85, Math.PI * .15); g.lineTo(px, py); g.closePath(); g.fill(); g.stroke(); g.fillStyle = '#fff'; g.beginPath(); g.arc(px, py - 14 * d, 2.6 * d, 0, 6.283); g.fill();
       g.font = `800 ${13 * d}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'bottom'; g.lineWidth = 3.5 * d; g.strokeStyle = 'rgba(0,0,0,.85)'; g.strokeText(PIN.n, px, py - 24 * d); g.fillStyle = '#fff'; g.fillText(PIN.n, px, py - 24 * d); }
@@ -385,6 +393,7 @@
       <div class="it"><div class="grow"><b>Veszélyes áru</b><small>Gázolaj-szállítás tartálykocsiban</small></div>${S.lic.haz ? '<span style="color:var(--ok)">megvan</span>' : `<button class="b sm g" data-lic="haz" ${S.money < HAZ_C ? 'disabled' : ''}>${money(HAZ_C)}</button>`}</div>
       <div class="it"><div class="grow"><b>Villamos vontatás</b><small>V43 és Taurus vezetése felsővezetékes vonalakon</small></div>${S.lic.el ? '<span style="color:var(--ok)">megvan</span>' : `<button class="b sm g" data-lic="el" ${S.money < EL_C ? 'disabled' : ''}>${money(EL_C)}</button>`}</div>`); }
   $('#pnl').addEventListener('click', e => { const t = e.target.closest('button'); if (e.target.id === 'pnl' || (t && t.dataset.x !== undefined)) return closeP(); if (!t) return;
+    if (botClick(t)) return;
     if (t.dataset.fd) return showFind(+t.dataset.fd);
     if (t.dataset.ft || t.dataset.fall !== undefined) { const js = findJobs(FTO).filter(j => t.dataset.ft ? j.id === t.dataset.ft : !(CARGO[j.cg].haz && !S.lic.haz)); for (const j of js) { if (S.jobs.length >= 10) break; take(j); } showFind(); ui(); save(); return; }
     if (t.dataset.t) { const si = nearSt(), j = (S.boards[si] || { jobs: [] }).jobs.find(q => q.id === t.dataset.t); if (j) { take(j); showBoard(); } }
@@ -420,7 +429,7 @@
   function park() { if (!S.park && Math.abs(S.v) * 3.6 > 3) return toast('A rögzítőfék csak megállva húzható be.', 1); S.park = !S.park; S.ccA = 0; if (S.park) { S.thr = 0; S.v = 0; } beep(S.park ? 220 : 440, .1); ui(); }
   $('#bPark').onclick = park;
   function setRev(r) { if (Math.abs(S.v) > .5 && r !== 0 && r !== S.rev) return toast('Irányváltás csak álló helyzetben.', 1); S.rev = r; if (!r) S.ccA = 0; beep(500, .05); plan(); ui(); }
-  $('#bSw').onclick = flip; $('#bCons').onclick = showCons; $('#bFind').onclick = () => showFind(); $('#bBoard').onclick = showBoard; $('#bDepo').onclick = showDepo; $('#bFollow').onclick = () => { cam.follow = 1; PIN = null; };
+  $('#bSw').onclick = flip; $('#bCons').onclick = showCons; $('#bFind').onclick = () => showFind(); $('#bBots').onclick = showBots; $('#bBoard').onclick = showBoard; $('#bDepo').onclick = showDepo; $('#bFollow').onclick = () => { cam.follow = 1; PIN = null; };
   $('#bMap').onclick = () => { if (cam.s > .003) { cam.prev = cam.s; cam.s = Math.min(cv.width, cv.height) / (devicePixelRatio || 1) / 560000; cam.follow = 0; } else { cam.s = cam.prev || .25; cam.follow = 1; } };
   $('#bMenu').onclick = () => { save(); $('#menu').hidden = false; $('#mPlay').textContent = '▶ Folytatás'; };
   const hold = (el, f) => { let iv = null; el.addEventListener('pointerdown', e => { e.preventDefault(); f(); iv = setInterval(f, 180); }); for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, () => { clearInterval(iv); iv = null; }); };
@@ -464,6 +473,61 @@
   cv.addEventListener('pointerup', e => { PT.delete(e.pointerId); if (drag && drag.m < 6 && S) { const r = cv.getBoundingClientRect(), wx = cam.x + (e.clientX - r.left - r.width / 2) / cam.s, wy = cam.y + (e.clientY - r.top - r.height / 2) / cam.s, n = nextSwitch();
       if (n && Math.hypot(NX[n.nd] - wx, NY[n.nd] - wy) < 40 / cam.s) flip(); } if (!PT.size) drag = null; });
 
+  /* ---------- más vonatok: felvett sofőrök (botok) és véletlen forgalom ---------- */
+  // útvonal két állomás között: szakaszok {e, s0, s1 (él-koordináta), c (kezdő táv)}
+  function mkPath(A, B) { const segs = []; let c = 0; const add = (e, s0, s1) => { const l = Math.abs(s1 - s0); if (l < .01) return; segs.push({ e, s0, s1, c }); c += l; };
+    if (A.e === B.e) { add(A.e, A.s, B.s); return segs.length ? { segs, end: c } : null; }
+    const R = dijkstra(stSeeds(A)), eb = E[B.e], tgt = R.D[eb.a] + B.s < R.D[eb.b] + eb.L - B.s ? eb.a : eb.b; if (!isFinite(R.D[tgt])) return null; const nodes = [tgt], es = []; while (R.PV[nodes[0]] >= 0) { es.unshift(R.PE[nodes[0]]); nodes.unshift(R.PV[nodes[0]]); }
+    const ea = E[A.e]; add(A.e, A.s, nodes[0] === ea.a ? 0 : ea.L); for (let k = 0; k < es.length; k++) { const e = E[es[k]]; e.a === nodes[k] ? add(es[k], 0, e.L) : add(es[k], e.L, 0); } add(B.e, tgt === eb.a ? 0 : eb.L, B.s); return { segs, end: c }; }
+  function stayPath(st, tl) { const L = E[st.e].L; let s1 = st.s, s0 = Math.max(0, s1 - tl - 1); if (s1 - s0 < tl) s1 = Math.min(L, s0 + tl + 1); return { segs: [{ e: st.e, s0, s1, c: 0 }], end: Math.abs(s1 - s0) }; }
+  function agPt(a, p) { const S2 = a.segs; p = Math.max(0, Math.min(a.end, p)); let lo = 0, hi = S2.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (S2[m].c <= p) lo = m; else hi = m - 1; } const g2 = S2[lo]; return at(E[g2.e], g2.s0 + (g2.s1 > g2.s0 ? 1 : -1) * (p - g2.c)); }
+  function agSeg(a) { const S2 = a.segs; let k = a.si || 0; if (k >= S2.length || S2[k].c > a.pos) k = 0; while (k + 1 < S2.length && S2[k + 1].c <= a.pos) k++; a.si = k; return S2[k]; }
+  function agStep(a, dt) { const vm = Math.min(E[agSeg(a).e].vm || 60, a.vmax) / 3.6, vt = Math.min(vm, Math.sqrt(2 * .4 * Math.max(0, a.end - a.pos)) + .4); a.v = Math.max(0, a.v + Math.max(-.6 * dt, Math.min(.3 * dt, vt - a.v))); a.pos += a.v * dt; if (a.pos >= a.end) { a.pos = a.end; a.v = 0; return 1; } return 0; }
+  const consLen = C => C.reduce((x, u) => x + (u.l ? LOCOS[u.l].len : CAR_L), 0);
+  // --- forgalom: a játékos környékén közlekedő, állomásokon várakozó vonatok
+  const NPC = [], NPC_N = 16; let npcT = 0;
+  function npcCons() { const r = Math.random(), C = []; if (r < .25) { C.push({ l: ['v43', 'm41', 'taurus'][Math.floor(Math.random() * 3)] }); for (let k = 3 + Math.floor(Math.random() * 6); k--;) C.push({ cg: 'szemely' }); }
+    else { C.push({ l: ['m44', 'm41', 'm62', 'v43', 'taurus'][Math.floor(Math.random() * 5)] }); if (Math.random() < .25) C.push({ l: C[0].l }); const ks = Object.keys(CARGO).filter(k => k !== 'szemely'); let n = Math.floor(Math.random() * Math.random() * 30); while (n > 0) { const cg = ks[Math.floor(Math.random() * ks.length)], run = 1 + Math.floor(Math.random() * 8); for (let k = 0; k < run && n > 0; k++, n--) C.push({ cg }); } } return C; }
+  function npcTrip(a, from) { const p = front(), near = []; for (let i = 0; i < ST.length; i++) { const st = ST[i]; if (st.big && Math.hypot(st.x - p[0], st.y - p[1]) < 90000) near.push(i); } if (near.length < 2) return false;
+    if (from == null) from = near[Math.floor(Math.random() * near.length)]; let to = from; for (let k = 0; k < 6 && to === from; k++) to = near[Math.floor(Math.random() * near.length)]; if (to === from) return false; const P = mkPath(ST[from], ST[to]); if (!P || P.end > 200000) return false;
+    a.segs = P.segs; a.end = P.end; a.pos = 0; a.v = 0; a.si = 0; a.to = to; return true; }
+  function npcTick(dt) { const p = front(); for (let i = NPC.length - 1; i >= 0; i--) { const a = NPC[i], f = agPt(a, a.pos); if (Math.hypot(f[0] - p[0], f[1] - p[1]) > 150000) { NPC.splice(i, 1); continue; }
+      if (a.wait > 0) { a.wait -= dt; if (a.wait <= 0 && !npcTrip(a, a.to)) NPC.splice(i, 1); } else if (agStep(a, dt)) a.wait = 300 + Math.random() * 2400; }
+    if (NPC.length < NPC_N && (npcT -= dt) <= 0) { npcT = 5; const a = { cons: npcCons(), wait: 0 }; a.tl = consLen(a.cons); a.vmax = Math.min(...a.cons.filter(u => u.l).map(u => LOCOS[u.l].vmax)); if (npcTrip(a)) { if (Math.random() < .4) a.wait = Math.random() * 1800; else a.pos = Math.random() * a.end * .9; NPC.push(a); } } }
+  // --- sofőrök: a munkatáblákról vállalnak fuvart; mozdony és kocsi a tiedből (ha van szabad), különben bérelt
+  const BOTN = ['Béla', 'Jóska', 'Pista', 'Kati', 'Feri', 'Zsuzsa', 'Laci', 'Erzsi'], BAG = new WeakMap(), BOT_WAGE = .3, BOT_LRENT = .15;
+  const hireC = () => 4e5 * ((S.bots || []).length + 1);
+  function botAgent(b) { let a = BAG.get(b); if (a) return a; const lk = b.loco || 'm44'; a = { v: 0, cons: [{ l: lk }, ...(b.job && b.st !== 'idle' ? Array.from({ length: b.job.n }, () => ({ cg: b.job.cg })) : [])], vmax: LOCOS[lk].vmax }; a.tl = consLen(a.cons);
+    let P = null; if (b.st === 'run') { P = mkPath(ST[b.from], ST[b.to]); if (!P) { b.st = 'idle'; b.at = b.from; b.t = 600; } } if (P) { a.pos = Math.min(b.pos || 0, P.end); } else { P = stayPath(ST[b.at] || ST[0], a.tl); a.pos = P.end; } a.segs = P.segs; a.end = P.end; BAG.set(b, a); return a; }
+  function botPay(b) { const j = b.job, late = S.time - b.t0 > j.lim, pay = Math.round(j.pay * (late ? .7 : 1)), wage = Math.round(pay * BOT_WAGE), lr = b.loco ? 0 : Math.round(pay * BOT_LRENT); let wr = 0;
+    if (b.own) { const wt = CARGO[j.cg].wt; S.wag[wt] = (S.wag[wt] || 0) + j.n; } else wr = j.n * RENT_H * Math.max(1, Math.ceil((S.time - b.t0) / 3600)); const net = pay - wage - lr - wr; S.money += net; S.life += Math.max(0, net); b.done = (b.done || 0) + 1; b.earn = (b.earn || 0) + net; b.last = { pay, wage, rent: lr + wr, net };
+    toast('🤖 ' + b.n + ': ' + j.n + ' × ' + CARGO[j.cg].n + ' leszállítva · ' + (net >= 0 ? '+' : '') + money(net)); score(); }
+  function botTick(b, dt) { const a = botAgent(b);
+    if (b.st === 'run') { const r = agStep(a, dt); b.pos = a.pos; if (r) { b.at = b.to; if (b.job) { b.st = 'unload'; b.t = 600; } else { b.st = 'idle'; b.t = 300; } BAG.delete(b); } return; }
+    if ((b.t = (b.t || 0) - dt) > 0) return;
+    if (b.st === 'load') { b.from = b.at; b.to = b.job.to; b.st = 'run'; b.pos = 0; BAG.delete(b); }
+    else if (b.st === 'unload') { botPay(b); b.job = null; b.st = 'idle'; b.t = 300; BAG.delete(b); }
+    else { const L = b.lic, js = (ST[b.at].big || ST[b.at].ind ? board(b.at) : []).filter(j => !j.rt && j.n <= LEN_LIC[L.len] && j.km <= DIST_LIC[L.dist] * 1.25 && (!CARGO[j.cg].haz || L.haz)).sort((x, y) => y.pay - x.pay), j = js[0];
+      if (j) { S.boards[b.at].jobs = S.boards[b.at].jobs.filter(q => q !== j); b.job = { cg: j.cg, n: j.n, to: j.to, pay: j.pay, lim: j.lim, km: j.km }; b.t0 = S.time; const wt = CARGO[j.cg].wt; b.own = (S.wag[wt] || 0) >= j.n ? 1 : 0; if (b.own) S.wag[wt] -= j.n; b.st = 'load'; b.t = 600; b.miss = 0; BAG.delete(b); }
+      else if ((b.miss = (b.miss || 0) + 1) >= 2) { const h = ST[b.at], c = []; for (let i = 0; i < ST.length; i++) if (i !== b.at && ST[i].big && Math.hypot(ST[i].x - h.x, ST[i].y - h.y) < 60000) c.push(i); if (c.length) { b.from = b.at; b.to = c[Math.floor(Math.random() * c.length)]; b.job = null; b.st = 'run'; b.pos = 0; BAG.delete(b); } b.miss = 0; b.t = 600; }
+      else b.t = 1800; } }
+  function agentsTick(dt) { npcTick(dt); for (const b of S.bots || []) botTick(b, dt); }
+  const botStat = b => { const a = botAgent(b), j = b.job, c = j ? j.n + ' × ' + CARGO[j.cg].n : ''; return b.st === 'run' ? (j ? c + ' → ' : 'Üresen → ') + ST[b.to].n + ' · még ' + ((a.end - a.pos) / 1000).toFixed(0) + ' km' : b.st === 'load' ? 'Rakodik: ' + c + ' · ' + ST[b.at].n : b.st === 'unload' ? 'Kirakodik · ' + ST[b.at].n : 'Fuvarra vár · ' + ST[b.at].n; };
+  function showBots() { const bots = S.bots || [], dl = Object.keys(LOCOS).filter(k => !LOCOS[k].el);
+    panel(`<div class="row"><h1 style="font-size:22px">🤖 Sofőrök</h1><div style="flex:1"></div><button class="b" data-x>✕</button></div><p class="mut">Fizetés: a fuvardíj ${BOT_WAGE * 100}%-a. Bérelt mozdony: a díj ${BOT_LRENT * 100}%-a. Saját kocsi híján bérelt kocsi.</p>` +
+      bots.map((b, i) => { const nl = b.lic.len + 1 < LEN_LIC.length, nd = b.lic.dist + 1 < DIST_LIC.length - 1; return `<div class="it" style="display:block"><div class="row"><div class="grow" style="flex:1"><b>${b.n}</b> · ${b.done || 0} fuvar · ${money(b.earn || 0)}<small>${botStat(b)}${b.last ? ' · utolsó: díj ' + money(b.last.pay) + ', fizetés −' + money(b.last.wage) + (b.last.rent ? ', bérlés −' + money(b.last.rent) : '') : ''}</small></div><button class="b sm" data-bj="${i}">📍 Mutasd</button><button class="b sm" data-bf="${i}" ${b.st === 'idle' ? '' : 'disabled'}>Elbocsátás</button></div>
+        <div class="row" style="margin-top:6px"><span class="mut" style="font-size:12px">Mozdony:</span><button class="b sm${b.loco ? '' : ' on'}" data-bl="${i}:">bérelt M44</button>${dl.filter(k => ownCnt(k)).map(k => `<button class="b sm${b.loco === k ? ' on' : ''}" data-bl="${i}:${k}" ${b.loco === k || (freeLoco(k) > 0 && b.st === 'idle') ? '' : 'disabled'}>${LOCOS[k].n.split(' ')[0]}</button>`).join('')}</div>
+        <div class="row" style="margin-top:6px"><span class="mut" style="font-size:12px">Engedélyek:</span><button class="b sm${nl ? ' g' : ''}" data-bq="${i}:len" ${nl && S.money >= LEN_C[b.lic.len + 1] / 2 ? '' : 'disabled'}>${LEN_LIC[b.lic.len]} kocsi${nl ? ' → ' + LEN_LIC[b.lic.len + 1] + ' · ' + money(LEN_C[b.lic.len + 1] / 2) : ''}</button><button class="b sm${nd ? ' g' : ''}" data-bq="${i}:dist" ${nd && S.money >= DIST_C[b.lic.dist + 1] / 2 ? '' : 'disabled'}>${DIST_LIC[b.lic.dist]} km${nd ? ' → ' + DIST_LIC[b.lic.dist + 1] + ' · ' + money(DIST_C[b.lic.dist + 1] / 2) : ''}</button><button class="b sm${b.lic.haz ? '' : ' g'}" data-bq="${i}:haz" ${!b.lic.haz && S.money >= HAZ_C / 2 ? '' : 'disabled'}>☣ veszélyes áru${b.lic.haz ? ' ✓' : ' · ' + money(HAZ_C / 2)}</button></div></div>`; }).join('') +
+      (bots.length < BOTN.length ? `<div class="it"><div class="grow"><b>Új sofőr felvétele</b><small>${ST[nearBig()].n} állomáson kezd</small></div><button class="b sm g" data-hire ${S.money < hireC() ? 'disabled' : ''}>${money(hireC())}</button></div>` : '')); }
+  const nearBig = () => { const p = front(); let b = 0, bd = 1e18; for (let i = 0; i < ST.length; i++) if (ST[i].big) { const d2 = (ST[i].x - p[0]) ** 2 + (ST[i].y - p[1]) ** 2; if (d2 < bd) { bd = d2; b = i; } } return b; };
+  function botClick(t) { const bots = S.bots = S.bots || [];
+    if (t.dataset.hire !== undefined) { const c = hireC(); if (S.money < c || bots.length >= BOTN.length) return true; S.money -= c; bots.push({ n: BOTN.find(n => !bots.some(b => b.n === n)), loco: '', lic: { len: 0, dist: 0, haz: 0 }, at: nearBig(), st: 'idle', t: 60 }); toast('Sofőr felvéve.'); }
+    else if (t.dataset.bj) { const a = botAgent(bots[+t.dataset.bj]), f = agPt(a, a.pos); cam.follow = 0; cam.x = f[0]; cam.y = f[1]; cam.s = Math.max(cam.s, .5); closeP(); return true; }
+    else if (t.dataset.bf) { const b = bots[+t.dataset.bf]; if (b.st !== 'idle') return true; bots.splice(+t.dataset.bf, 1); }
+    else if (t.dataset.bl) { const [i, k] = t.dataset.bl.split(':'), b = bots[+i]; if (k && freeLoco(k) < 1) return true; b.loco = k; BAG.delete(b); }
+    else if (t.dataset.bq) { const [i, k] = t.dataset.bq.split(':'), b = bots[+i], c = k === 'len' ? LEN_C[b.lic.len + 1] / 2 : k === 'dist' ? DIST_C[b.lic.dist + 1] / 2 : HAZ_C / 2; if (!(S.money >= c)) return true; S.money -= c; if (k === 'haz') b.lic.haz = 1; else b.lic[k]++; }
+    else return false; showBots(); ui(); save(); return true; }
+
   /* ---------- kereső: települések, városrészek, állomások, ipari rakodók ---------- */
   const fold = t => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   let QI = null, QS = [], QA = 0, PIN = null;
@@ -489,7 +553,7 @@
   function resize() { const d = devicePixelRatio || 1; cv.width = innerWidth * d; cv.height = innerHeight * d; } addEventListener('resize', resize); resize();
   let uiT = 0, saveT = 0, scT = 0;
   function loop(t) { requestAnimationFrame(loop); const dt = Math.min(.05, (t - lastT) / 1000 || 0); lastT = t; if (!H || !S) return;
-    if ($('#menu').hidden && $('#pnl').hidden) { const sub = 4; for (let k = 0; k < sub; k++) step(dt * TS / sub); }
+    if ($('#menu').hidden && $('#pnl').hidden) { const sub = 4; for (let k = 0; k < sub; k++) step(dt * TS / sub); agentsTick(dt * TS); }
     draw(); if ((uiT -= dt) <= 0) { uiT = .15; ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); } if ((scT -= dt) <= 0) { scT = 60; score(); }
     if (toastT > 0 && (toastT -= dt) <= 0) $('#toast').hidden = true; }
   requestAnimationFrame(loop);
@@ -500,5 +564,5 @@
   $('#mPlay').onclick = () => { $('#menu').hidden = true; beep(660, .08); if (S && S.migr) { delete S.migr; toast('A vasúthálózat bővült (állomási vágányok): a vonatod Kelenföldre került, a futó munkák lezárultak, a kauciókat visszakaptad.'); } };
   $('#mNew').onclick = () => { if ($('#mNew').dataset.sure) { localStorage.removeItem(KEY); fresh(); S.nearIdx = []; nearT = 0; $('#menu').hidden = true; delete $('#mNew').dataset.sure; $('#mNew').textContent = 'Új játék'; } else { $('#mNew').dataset.sure = 1; $('#mNew').textContent = 'Biztos? Minden elvész'; } };
   addEventListener('pagehide', save);
-  window.__vt = () => ({ S, E, ST, TT, CARGO, aligned, onTT, fixRear, NX, NY, ADJ, dijkstra, exits, outDir, routeTo, succ, step, ui, move, plan, nextSwitch, flip, board, take, couple, uncouple, nearSt, front, along, cam });
+  window.__vt = () => ({ NPC, agentsTick, botAgent, agPt, showBots, S, E, ST, TT, CARGO, aligned, onTT, fixRear, NX, NY, ADJ, dijkstra, exits, outDir, routeTo, succ, step, ui, move, plan, nextSwitch, flip, board, take, couple, uncouple, nearSt, front, along, cam });
 })();
