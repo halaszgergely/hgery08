@@ -1,11 +1,11 @@
 // Az Átemelőtelep – fő program: mozgás, interakció, fejezetek, hangulat (fények, eső, hangok), HUD, mentés, beállítások, mobil.
 // A megjelenítést a latvany.js (Three.js) végzi, a szimulációt a jatek.js, a paneleket az ui.js.
-import { createWorld, QUAL } from './latvany.js?v=202611212202';
-import { createAudio } from './hang.js?v=202611212202';
-import { buildLevel, move, pick, itVisible, WELL, EYE } from './palya.js?v=202611212202';
-import * as PAL from './palya.js?v=202611212202';
-import { freshState, step as simStep, clone, CHAPTERS, OVER, cabPow, plcRun, lightPow, supply } from './jatek.js?v=202611212202';
-import * as UI from './ui.js?v=202611212202';
+import { createWorld, QUAL } from './latvany.js?v=202611212210';
+import { createAudio } from './hang.js?v=202611212210';
+import { buildLevel, move, pick, itVisible, WELL, EYE } from './palya.js?v=202611212210';
+import * as PAL from './palya.js?v=202611212210';
+import { freshState, step as simStep, clone, CHAPTERS, OVER, cabPow, plcRun, lightPow, supply } from './jatek.js?v=202611212210';
+import * as UI from './ui.js?v=202611212210';
 
 const $ = s => document.querySelector(s), TOUCH = matchMedia('(pointer: coarse)').matches, SAVE = 'hgws_atemelo_v1', GAME = 'atemelotelep', DEBUG = /[?&]debug\b/.test(location.search);
 let SET = { sens: 1, fov: 78, vol: .8, mus: .55, sfx: 1, q: 3, res: 0, inv: 0, scary: 0, lvl: 1, wp: 1, cap: 1 };
@@ -98,13 +98,13 @@ function place(sp) { P.x = sp[0]; P.y = sp[1]; P.z = sp[2]; P.yaw = sp[3]; P.pit
 
 /* ---------- fejezetek, célok, események ---------- */
 const wiresOK = s => s.wires.W102 === 2 && s.wires.W104 === 4 && s.wires.W105 === 5 && s.wires.W106 === 6 && s.wires.WX === 7;
-function objectives() { const s = S, W = s.well, o = [];
-  if (s.ch === 1) o.push(!s.f.atCont ? 'Nézz körül, és juss el a vezérlőkonténerig.' : 'Állítsd helyre a tápellátást a kapcsolószekrényben (+S1).');
-  else if (s.ch === 2) { if (!s.f.sawAlarms) o.push('Nézd meg a PLC hibalistáját a terminálon.'); else o.push('Kösd vissza az elvágott jelvezetékeket (X1) a kapcsolási rajz alapján.'); }
-  else if (s.ch === 3) { o.push((W.vent && lightPow(s) ? '✓ ' : '') + 'Kapcsold be az akna szellőztetését.'); o.push((s.lock[0] || W.p1clean ? '✓ ' : '') + 'Zárd ki a P1 szivattyút (0 állás + személyes lakat).'); o.push((W.float ? '✓ ' : '') + 'Szabadítsd ki a beragadt úszókapcsolót.'); o.push((W.p1clean ? '✓ ' : '') + 'Emeld ki és tisztítsd meg a P1-et.'); if (W.p1clean) o.push('Engedd vissza a P1-et, vedd le a lakatot, és gyere fel.'); }
-  else if (s.ch === 4) { o.push((s.progOK ? '✓ ' : '') + 'Javítsd ki a szintszabályozó programot (terminál → Program).'); if (s.progOK) o.push((s.mode[0] === 'A' && s.mode[1] === 'A' ? '✓ ' : '') + 'Állítsd mindkét szivattyút AUTO üzemmódba.'); if (s.f.ch4ok) o.push('Figyeld, ahogy az automatika leviszi a szintet 2,2 m alá.'); }
-  else if (s.ch === 5) { if (s.mains) o.push('Figyeld a telepet – a vihar erősödik.'); else { o.push((supply(s) ? '✓ ' : '') + 'Áramszünet! Indítsd el az aggregátort, és kapcsold át a telepet.'); if (supply(s)) o.push((s.modem.online ? '✓ ' : '') + 'Állítsd helyre a kommunikációt (VPN-modem).'); if (s.f.sms || s.f.pressSeen) o.push('Nyisd ki a tolózárat a gazdasági ágon – keleti kapu, sárga jelzőoszlopok!'); } }
-  else o.push('Hajnalodik. Nézd meg, mit hagytak a tolózárnál.');
+function objectives() { const s = S, W = s.well, o = [], t = (ok, x) => o.push((ok ? '✓ ' : '') + x);
+  if (s.ch === 1) { t(s.f.atCont, 'Nézz körül, és juss el a vezérlőkonténerig.'); t(plcRun(s), 'Állítsd helyre a tápellátást a kapcsolószekrényben (+S1).'); }
+  else if (s.ch === 2) { t(s.f.sawAlarms, 'Nézd meg a PLC hibalistáját a terminálon.'); t(wiresOK(s), 'Kösd vissza az elvágott jelvezetékeket (X1) a kapcsolási rajz alapján.'); }
+  else if (s.ch === 3) { t(W.vent && lightPow(s), 'Kapcsold be az akna szellőztetését.'); t(s.lock[0] || W.p1clean, 'Zárd ki a P1 szivattyút (0 állás + személyes lakat).'); t(W.float, 'Szabadítsd ki a beragadt úszókapcsolót.'); t(W.p1clean, 'Emeld ki és tisztítsd meg a P1-et.'); t(W.p1clean && W.p1up === 0 && !s.lock[0] && !W.in, 'Engedd vissza a P1-et, vedd le a lakatot, és gyere fel.'); }
+  else if (s.ch === 4) { t(s.progOK, 'Javítsd ki a szintszabályozó programot (terminál → Program).'); t(s.progOK && s.mode[0] === 'A' && s.mode[1] === 'A', 'Állítsd mindkét szivattyút AUTO üzemmódba.'); t(0, 'Figyeld, ahogy az automatika leviszi a szintet 2,2 m alá.'); }
+  else if (s.ch === 5) { if (s.mains) t(0, 'Figyeld a telepet – a vihar erősödik.'); else { t(supply(s), 'Áramszünet! Indítsd el az aggregátort, és kapcsold át a telepet.'); t(s.modem.online, 'Állítsd helyre a kommunikációt (VPN-modem).'); t(s.valve >= 1, 'Nyisd ki a tolózárat a gazdasági ágon – keleti kapu, sárga jelzőoszlopok!'); } }
+  else t(0, 'Hajnalodik. Nézd meg, mit hagytak a tolózárnál.');
   return o; }
 // a célpontjelölő: merre van a következő teendő
 function goal() { const s = S, W = s.well, G = s.gen;
@@ -129,6 +129,7 @@ function check() { if (!S || !playing) return; const s = S, W = s.well;
   else if (s.ch === 5 && s.valve >= 1) { setCh(6); msg('A nyomás leesett, a szivattyúk szállítanak. A szint csökken.'); }
   UI.refresh(); }
 function events(dt) { const s = S;
+  if (s.ch === 1 && !s.f.atCont && !s.well.in && P.x > PAL.CONT.x0 && P.x < PAL.CONT.x1 && P.z > PAL.CONT.z0 && P.z < PAL.CONT.z1) s.f.atCont = 1;   // beléptél a konténerbe
   if (s.ch === 4 && s.f.ch4ok && s.t - s.f.ch4ok > 10 && s.lvl < 2.2) setCh(5);
   if (s.ch === 5 && s.mains && s.t >= s.f.cutAt) { s.mains = 0; lightning(1); A.sfx('zap', [-17, 3, -12]); msg('Áramszünet! A villám a betáplálást is elvitte.', 4500); if (!SET.scary) s.f.figure = { x: -24, z: -14, t: 3.5 }; }
   if (s.ch === 5 && !s.mains && supply(s) && !s.f.genOK) { s.f.genOK = 1; checkpoint(); msg('A telep generátorról üzemel.'); }
@@ -283,5 +284,5 @@ function frame(now) { requestAnimationFrame(frame); const real = now - last, rdt
 
 /* ---------- indulás ---------- */
 $('#load').hidden = true; requestAnimationFrame(frame); menu();
-(async () => { try { core = await import('../../js/core.js?v=202611212202'); if (!core || core.notConfigured || !core.auth) return; core.FB.onAuthStateChanged(core.auth, u => { user = u && !u.isAnonymous ? u : null; if (user) cloudLoad(); }); } catch (e) { console.info(e); } })();
+(async () => { try { core = await import('../../js/core.js?v=202611212210'); if (!core || core.notConfigured || !core.auth) return; core.FB.onAuthStateChanged(core.auth, u => { user = u && !u.isAnonymous ? u : null; if (user) cloudLoad(); }); } catch (e) { console.info(e); } })();
 window.__at = () => ({ S, P, L, V, UI, PAL, act, check, setCh, CP, target, holdA, start, SET, useDown, useUp, goal, objectives });
