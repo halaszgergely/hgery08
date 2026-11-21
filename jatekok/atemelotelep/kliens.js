@@ -1,8 +1,8 @@
 // Az Átemelőtelep – fő program: mozgás, interakció, fejezetek, hangulat (fények, eső, hangok), HUD, mentés, beállítások, mobil.
-import { createRenderer, M4, hex } from './motor.js?v=202611211851';
-import { buildLevel, move, pick, overlap, WELL, EYE } from './palya.js?v=202611211851';
-import { freshState, step as simStep, clone, CHAPTERS, OVER, LSH_H, cabPow, plcRun, lightPow, supply, ITEMN } from './jatek.js?v=202611211851';
-import * as UI from './ui.js?v=202611211851';
+import { createRenderer, M4, hex } from './motor.js?v=202611211905';
+import { buildLevel, move, pick, overlap, WELL, EYE } from './palya.js?v=202611211905';
+import { freshState, step as simStep, clone, CHAPTERS, OVER, LSH_H, cabPow, plcRun, lightPow, supply, ITEMN } from './jatek.js?v=202611211905';
+import * as UI from './ui.js?v=202611211905';
 
 const $ = s => document.querySelector(s), TOUCH = matchMedia('(pointer: coarse)').matches, SAVE = 'hgws_atemelo_v1', GAME = 'atemelotelep';
 const cv = $('#c'), hc = $('#h'), h = hc.getContext('2d'), R = createRenderer(cv), L = buildLevel(); if (R) R.setWorld(L.g);
@@ -283,5 +283,5 @@ function hud(now, dt, W, H, D) { if (!playing || !S) return; h.setTransform(D, 0
 
 /* ---------- indulás ---------- */
 requestAnimationFrame(frame); menu();
-(async () => { try { core = await import('../../js/core.js?v=202611211851'); if (!core || core.notConfigured || !core.auth) return; core.FB.onAuthStateChanged(core.auth, u => { user = u && !u.isAnonymous ? u : null; if (user) cloudLoad(); }); } catch (e) { console.warn(e); } })();
+(async () => { try { core = await import('../../js/core.js?v=202611211905'); if (!core || core.notConfigured || !core.auth) return; core.FB.onAuthStateChanged(core.auth, u => { user = u && !u.isAnonymous ? u : null; if (user) cloudLoad(); }); } catch (e) { console.warn(e); } })();
 window.__at = () => ({ S, P, L, UI, act, check, setCh, CP, target, holdA, start, SET });

@@ -391,11 +391,14 @@ const Birodalom = (() => {
   const sci = Nagy.sci;
   const fmt = sci;
   /* készletek nagy számként; a régi, túlcsordult (végtelen / NaN / negatív) mentések javítása */
-  function sanit(full) { if (!S) return; const fix = (v, hi) => { const d = B(v); return !d.finite || d.neg || (v === null || v === undefined) && hi ? (hi ? B(1e300) : ZERO) : d; };
-    S.life = fix(S.life, S.life === null || S.life === undefined || (typeof S.life === 'number' && !(S.life >= 0)) || (S.life instanceof Nagy.D && (!S.life.finite || S.life.neg)));
-    const big = S.life.gte(1e250); for (const k of ['money', 'nek', 'cp']) S[k] = fix(S[k], big); for (const k of ['star', 'starT', 'sent']) S[k] = fix(S[k], false);
-    if (S.met) for (const k in S.met) S.met[k] = fix(S.met[k], big);
-    if (full) for (let i = 0; i < S.g.length; i++) if (typeof S.g[i] !== 'number' || !(S.g[i] >= 0) || !isFinite(S.g[i])) S.g[i] = 0; }
+  const GOOD = {}; // az utolsó ép érték készletenként: ha futás közben valami végtelenre / NaN-ra futna, ahhoz térünk vissza (nincs plafon)
+  function sanit(full) { if (!S) return; const ok = v => v instanceof Nagy.D && v.finite && !v.neg;
+    if (full) { const fix = (v, hi) => { if (v === null || v === undefined || (typeof v === 'number' && !(v >= 0))) return hi ? B(1e300) : ZERO; const d = B(v); return d.finite && !d.neg ? d : hi ? B(1e300) : ZERO; };
+      S.life = fix(S.life, true); const big = S.life.gte(1e250); for (const k of ['money', 'nek', 'cp']) S[k] = fix(S[k], big); for (const k of ['star', 'starT', 'sent']) S[k] = fix(S[k], false);
+      if (S.met) for (const k in S.met) S.met[k] = fix(S.met[k], big);
+      for (let i = 0; i < S.g.length; i++) if (typeof S.g[i] !== 'number' || !(S.g[i] >= 0) || !isFinite(S.g[i])) S.g[i] = 0; }
+    for (const k of ['life', 'money', 'nek', 'cp', 'star', 'starT']) { if (ok(S[k])) GOOD[k] = S[k]; else S[k] = GOOD[k] || ZERO; }
+    if (S.met) for (const k in S.met) { if (ok(S.met[k])) GOOD['m' + k] = S.met[k]; else S.met[k] = GOOD['m' + k] || ZERO; } }
   let GR = { ft: 0, nek: 0, cp: 0, met: {}, gal: [] }, S = null, L = null, NET = null, drag = null, lastTile = -1, fl = [], dust = [], confirmT = 0, CB = [], DR = [], MO = null, RP = null, panS = null, pinch = null, pend = null, wheelOn = 0;
   const CAM = { z: 0, cx: null, cy: null }, PT = new Map(), MMC = { t: -9 };
   const MOB = new Map(), TEX = { ts: 0, c: [] };
@@ -471,7 +474,7 @@ const Birodalom = (() => {
     let cap = 4 + 3 * S.up.nyomas, dem = 0, fok = 1, fg = 1; const tk = 1 - .06 * S.up.takarek; const pm = 1 + .15 * S.up.hatas;
     for (let i = 0; i < N; i++) if (on[i]) { const k = S.k[i], m = MOD[k]; if (!m) continue;
       if (m.q) cap += m.q * (k === 'pump' || k === 'kut' || k === 'napel' ? pm : 1); if (m.w) dem += m.w * tk; if (m.fok) fok += m.fok; if (m.szuro) fg += m.szuro; }
-    cap = Math.round(cap * fok * 2 ** S.up.fuzio * (1 + .15 * pk('pviz')) * 10) / 10;
+    const capD = B(cap * fok * (1 + .15 * pk('pviz'))).mul(B(2).pow(S.up.fuzio)); cap = capD.lt(1e15) ? Math.round(capD.toNumber() * 10) / 10 : capD.toNumber();
     let hiveN = 0, cpR = 0; const wet = new Float32Array(N), mwet = new Float32Array(N), gb = new Float32Array(N).fill(1), yb = new Float32Array(N).fill(1), mobs = [], prov = new Uint8Array(N); let wg = 1, wy = 1, wgold = 0;
     // terület egy (akár több mezős) elem körül, saját mezői nélkül
     const area = (c, r, R, f, sz = 1) => { for (let y = r - R; y < r + sz + R; y++) for (let x = c - R; x < c + sz + R; x++) { if (x >= c && x < c + sz && y >= r && y < r + sz) continue; if (x >= 0 && y >= 0 && x < cw && y < rh) f(idx(x, y)); } };
@@ -502,11 +505,11 @@ const Birodalom = (() => {
     }
     for (let i = 0; i < N; i++) { const p = PL[S.k[i]]; if (!p || !p.pw) continue; if (cells(i, p.sz).some(j => wet[j] || mwet[j])) dem += p.pw * tk; }
     dem = Math.round(dem * 100) / 100;
-    const eff = dem ? Math.min(1, cap / dem) : 1;
+    const eff = dem ? (capD.gte(dem) ? 1 : capD.div(dem).toNumber()) : 1;
     if (eff < 1) { for (let i = 0; i < N; i++) { wet[i] *= eff; mwet[i] *= eff; } for (const o of mobs) o.v *= eff; }
     for (const k of [...MOB.keys()]) if (!mobs.some(o => o.i === k)) MOB.delete(k);
     const rq = new Uint8Array(N); for (let i = 0; i < N; i++) { const p = PL[S.k[i]]; if (!p || !p.rq) continue; let h = 0; for (const j of cells(i, p.sz || 1)) h |= prov[j]; const need = rqBits(p); rq[i] = (h & need) === need ? 1 : 0; }
-    NET = { on, dist, cap, dem, eff, wet, mwet, gb, yb, mobs, fg, inc: 0, prov, rq, wg, wy, wgold };
+    NET = { on, dist, cap, capD, dem, eff, wet, mwet, gb, yb, mobs, fg, inc: 0, prov, rq, wg, wy, wgold };
     let inc = ZERO; const PR = price(), SP = speed(), LK = luck();
     for (let i = 0; i < N; i++) { const p = PL[S.k[i]]; if (!p) continue; const w = netW(i); if (w && rqOK(i)) inc = inc.add(B(p.v).mul(yb[i] * w * gb[i] / p.t * LK)); }
     NET.inc = inc.mul(PR).mul(SP); let nek = 0;
@@ -753,7 +756,7 @@ const Birodalom = (() => {
     ptap: n => 'Állandó: +25% növekedés szintenként. Most: +' + 25 * n + '%.',
     ppiac: n => 'Állandó: +30% termésár szintenként. Most: +' + 30 * n + '%.',
     pviz: n => 'Állandó: +15% vízhozam szintenként. Most: +' + 15 * n + '%.',
-    pkezd: n => 'Új birtok után ennyivel kezdesz: ' + fmt(5000 * 10 ** Math.max(0, n)) + ' Ft (a következő szinten).',
+    pkezd: n => 'Új birtok után ennyivel kezdesz: ' + fmt(pw(5000, 10, Math.max(0, n))) + ' Ft (a következő szinten).',
     ptelek: n => 'Új birtok után rögtön nagyobb telekkel kezdesz. Most: ' + SIZES[Math.min(SIZES.length - 1, n)].join('×') + '.',
     pup: n => 'Új birtok után a Nyomás, Tápoldat, Piac és Talajjavítás ' + 3 * n + '. szinten kezd (szintenként +3).',
     pauto: n => 'Új birtok után ' + n + ' szintű kertészed van.',
@@ -842,7 +845,7 @@ const Birodalom = (() => {
     if (galView() && it.kind !== 'x') return galDesc(it);
     if (it.warn) return it.warn;
     const big = it.sz ? 'Méret: ' + it.sz + '×' + it.sz + ' mező. ' : '';
-    if (it.kind === 'pl') return (it.rq ? 'Igény: ' + it.rq.map(k => RQ[k].ic + ' ' + RQ[k].n).join(', ') + ' – enélkül nem nő. ' : '') + (it.met ? 'Fémet is terem: aratásonként ' + nfmt(it.ma * metMul()) + ' ' + MET[it.met].ic + ' ' + MET[it.met].n + '. ' : '') + big + (it.pw ? 'Vízigény: ' + fmt(it.pw) + ' L/s (locsolva). ' : '') + (it.ck && B(it.ck).gt(0) ? 'Ültetéshez nektár is kell: ' + nfmt(it.ck) + ' 🍯. ' : '') + (it.cc && B(it.cc).gt(0) ? 'Csillagpor is kell: ' + nfmt(it.cc) + ' ✨. ' : '') + 'Aratásonként ' + nfmt(nekOf(it.k)) + ' 🍯. Locsolt mezőn ' + (it.t >= 120 ? (Math.round(it.t / 6) / 10).toLocaleString('hu-HU') + ' perc' : it.t + ' mp') + ' alatt érik be, és ' + fmt(Math.round(it.v * price())) + ' Ft termést hoz. ' + (S.up.uveghaz ? 'Víz nélkül csak lassan nő.' : 'Víz nélkül nem nő.');
+    if (it.kind === 'pl') return (it.rq ? 'Igény: ' + it.rq.map(k => RQ[k].ic + ' ' + RQ[k].n).join(', ') + ' – enélkül nem nő. ' : '') + (it.met ? 'Fémet is terem: aratásonként ' + nfmt(it.ma * metMul()) + ' ' + MET[it.met].ic + ' ' + MET[it.met].n + '. ' : '') + big + (it.pw ? 'Vízigény: ' + fmt(it.pw) + ' L/s (locsolva). ' : '') + (it.ck && B(it.ck).gt(0) ? 'Ültetéshez nektár is kell: ' + nfmt(it.ck) + ' 🍯. ' : '') + (it.cc && B(it.cc).gt(0) ? 'Csillagpor is kell: ' + nfmt(it.cc) + ' ✨. ' : '') + 'Aratásonként ' + nfmt(nekOf(it.k)) + ' 🍯. Locsolt mezőn ' + (it.t >= 120 ? (Math.round(it.t / 6) / 10).toLocaleString('hu-HU') + ' perc' : it.t + ' mp') + ' alatt érik be, és ' + fmt(B(it.v).mul(price()).round()) + ' Ft termést hoz. ' + (S.up.uveghaz ? 'Víz nélkül csak lassan nő.' : 'Víz nélkül nem nő.');
     const d = DESC[it.k] || (MOD[it.k] ? autoDesc(MOD[it.k]) : ''), txt = typeof d === 'function' ? d(it.kind === 'perk' ? pk(it.k) : S.up[it.k]) : d || '';
     const has = v => v && B(v).gt(0), nk = (has(it.ck) ? ' Nektár is kell hozzá: ' + nfmt(it.ck) + ' 🍯.' : '') + (has(it.cc) ? ' Csillagpor is kell: ' + nfmt(it.cc) + ' ✨.' : ''); return (it.kind === 'mod' ? big + txt : txt) + nk;
   }
@@ -1180,14 +1183,14 @@ const Birodalom = (() => {
   // galaxis-termelés másodpercenként (minden galaxisra külön víz- és energiakerettel)
   // egy bolygó termelése másodpercenként: [erőforrás, mennyiség] (a galaxis víz/energia-hatásfokával)
   function pOut(gi, st, p, eff) {
-    const W = S.gx.won, U = S.gx.up, L1 = 1.6 ** p.lvl, k = L1 * eff * (W.glocs ? 3 : 1), GM = gmul(gi);
-    if (p.des === 'agri') return ['ft', GM.mul(1e70 * k * (W.ido ? 5 : 1)).mul(B(1.5).pow(U.gagri || 0))];
-    if (p.des === 'aqua') return ['viz', 300 * L1 * (1 + .4 * (U.gviz || 0)) * (W.hiper ? 2 : 1)];
-    if (p.des === 'ener') return ['en', 250 * L1 * STY[st.ty].e * (1 + .4 * (U.gen || 0))];
-    if (p.des === 'banya') return [PCLS[p.c].met, B(2 * k * (1 + gi) ** 2 * (1 + .5 * (U.gbanya || 0)) * metMul())];
-    if (p.des === 'meh') return ['nek', GM.sqrt().mul(1e6 * k)];
-    if (p.des === 'cp') return ['cp', GM.sqrt().mul(1e5 * k)];
-    return ['', 0];
+    const W = S.gx.won, U = S.gx.up, L1 = B(1.6).pow(p.lvl), k = L1.mul(eff * (W.glocs ? 3 : 1)), GM = gmul(gi);
+    if (p.des === 'agri') return ['ft', GM.mul(k).mul(1e70 * (W.ido ? 5 : 1)).mul(B(1.5).pow(U.gagri || 0))];
+    if (p.des === 'aqua') return ['viz', L1.mul(300 * (1 + .4 * (U.gviz || 0)) * (W.hiper ? 2 : 1))];
+    if (p.des === 'ener') return ['en', L1.mul(250 * STY[st.ty].e * (1 + .4 * (U.gen || 0)))];
+    if (p.des === 'banya') return [PCLS[p.c].met, k.mul(2 * (1 + gi) ** 2 * (1 + .5 * (U.gbanya || 0)) * metMul())];
+    if (p.des === 'meh') return ['nek', GM.sqrt().mul(k).mul(1e6)];
+    if (p.des === 'cp') return ['cp', GM.sqrt().mul(k).mul(1e5)];
+    return ['', ZERO];
   }
   const RES = { ft: ['💰', 'Ft'], viz: ['💧', 'víz'], en: ['⚡', 'energia'], nek: ['🍯', 'nektár'], cp: ['✨', 'csillagpor'] };
   const resIc = r => RES[r] ? RES[r][0] : MET[r] ? MET[r].ic : '', resN = r => RES[r] ? RES[r][1] : MET[r] ? MET[r].n : '';
@@ -1196,12 +1199,12 @@ const Birodalom = (() => {
     const r = { ft: ZERO, nek: ZERO, cp: ZERO, met: { vas: ZERO, rez: ZERO, tit: ZERO, iri: ZERO, neu: ZERO }, gal: [], pl: {} }; if (!S.gx) return r;
     const W = S.gx.won, U = S.gx.up, tw = W.ido ? 1.5 : 1;
     S.gx.gals.forEach((gal, gi) => {
-      let wc = 100, ec = 100, wd = 0, ed = 0;
-      for (const st of gal.stars) { ec += st.dy ? 5000 * 2 ** st.dy * STY[st.ty].e * (W.dysraj ? 2 : 1) * (1 + .4 * (U.gen || 0)) : 0;
-        for (const p of st.pl) { if (!p.own || !p.des) continue; const L1 = 1.6 ** p.lvl;
-          if (p.des === 'aqua') wc += +pOut(gi, st, p, 1)[1]; else if (p.des === 'ener') ec += +pOut(gi, st, p, 1)[1];
-          else if (p.des === 'agri') { wd += 60 * L1 * tw; ed += 40 * L1 * tw; } else if (p.des === 'banya') ed += 80 * L1 * tw; else if (p.des === 'meh') wd += 50 * L1 * tw; else if (p.des === 'cp') ed += 70 * L1 * tw; } }
-      const eff = Math.min(1, wd ? wc / wd : 1, ed ? ec / ed : 1);
+      let wc = B(100), ec = B(100), wd = ZERO, ed = ZERO;
+      for (const st of gal.stars) { if (st.dy) ec = ec.add(B(2).pow(st.dy).mul(5000 * STY[st.ty].e * (W.dysraj ? 2 : 1) * (1 + .4 * (U.gen || 0))));
+        for (const p of st.pl) { if (!p.own || !p.des) continue; const L1 = B(1.6).pow(p.lvl).mul(tw);
+          if (p.des === 'aqua') wc = wc.add(pOut(gi, st, p, 1)[1]); else if (p.des === 'ener') ec = ec.add(pOut(gi, st, p, 1)[1]);
+          else if (p.des === 'agri') { wd = wd.add(L1.mul(60)); ed = ed.add(L1.mul(40)); } else if (p.des === 'banya') ed = ed.add(L1.mul(80)); else if (p.des === 'meh') wd = wd.add(L1.mul(50)); else if (p.des === 'cp') ed = ed.add(L1.mul(70)); } }
+      const eff = Math.min(1, wd.gt(0) ? wc.div(wd).toNumber() : 1, ed.gt(0) ? ec.div(ed).toNumber() : 1);
       gal.stars.forEach((st, si) => st.pl.forEach((p, pi) => { if (!p.own || !p.des) return; const o = pOut(gi, st, p, eff); r.pl[gi + '|' + si + '|' + pi] = o;
         if (o[0] === 'ft') r.ft = r.ft.add(o[1]); else if (o[0] === 'nek') r.nek = r.nek.add(o[1]); else if (o[0] === 'cp') r.cp = r.cp.add(o[1]); else if (MET[o[0]]) r.met[o[0]] = r.met[o[0]].add(o[1]); }));
       r.gal.push({ wc, ec, wd, ed, eff }); });
@@ -1285,8 +1288,8 @@ const Birodalom = (() => {
     // galaxis-állapot
     g.font = `600 ${11 * d}px Inter, sans-serif`; g.textAlign = 'left'; g.fillStyle = 'rgba(255,255,255,.75)';
     const st = gal.stars[S.gx.sel] || gal.stars[0]; g.fillText('🌌 ' + gal.name + ' · ' + st.name + ' (' + STY[st.ty].n + ')', L.fx + 4 * d, L.fy + 50 * d);
-    g.fillStyle = gs.wd > gs.wc ? '#ff8a7a' : '#9fd6f5'; g.fillText('💧 ' + nfmt(gs.wd || 0) + ' / ' + nfmt(gs.wc || 0), L.fx + 4 * d, L.fy + 66 * d);
-    g.fillStyle = gs.ed > gs.ec ? '#ff8a7a' : '#ffe066'; g.fillText('⚡ ' + nfmt(gs.ed || 0) + ' / ' + nfmt(gs.ec || 0), L.fx + 4 * d, L.fy + 82 * d);
+    g.fillStyle = B(gs.wd || 0).gt(gs.wc || 0) ? '#ff8a7a' : '#9fd6f5'; g.fillText('💧 ' + nfmt(gs.wd || 0) + ' / ' + nfmt(gs.wc || 0), L.fx + 4 * d, L.fy + 66 * d);
+    g.fillStyle = B(gs.ed || 0).gt(gs.ec || 0) ? '#ff8a7a' : '#ffe066'; g.fillText('⚡ ' + nfmt(gs.ed || 0) + ' / ' + nfmt(gs.ec || 0), L.fx + 4 * d, L.fy + 82 * d);
     g.fillStyle = 'rgba(255,255,255,.75)'; g.fillText('Hatásfok: ' + Math.round((gs.eff == null ? 1 : gs.eff) * 100) + '%', L.fx + 4 * d, L.fy + 98 * d);
     // kijelölés-választó
     if (S.gx.pick) { const R0 = pickRect(G), p = st.pl[S.gx.pick.j], P = PCLS[p.c]; g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(0, 0, G.W, L.barY);
@@ -1513,8 +1516,8 @@ const Birodalom = (() => {
       g.textAlign = 'center'; g.textBaseline = 'middle';
       g.font = `800 ${20 * d}px Inter, sans-serif`; g.fillStyle = '#ffe29a'; g.fillText('💰 ' + fmt(S.money) + ' Ft' + (S.star.gt(0) ? '   ⭐ ' + fmt(S.star) : '') + (S.nek.gte(.01) || S.life.gt(5e4) ? '   🍯 ' + nfmt(S.nek) : '') + (S.cp.gt(0) || S.unl.length > 1 ? '   ✨ ' + nfmt(S.cp) : ''), G.W / 2, 70 * d);
       g.font = `600 ${12 * d}px Inter, sans-serif`;
-      { const totInc = B(NET.inc).add(S.linc ? S.linc[0] : 0).add(GR.ft), t1 = `+${totInc.lt(1e4) ? totInc.toNumber().toLocaleString('hu-HU', { maximumFractionDigits: 1 }) : fmt(totInc)} Ft/s   ·   `, t2 = `💧 ${NET.dem < 1e6 ? NET.dem.toLocaleString('hu-HU', { maximumFractionDigits: 1 }) : fmt(NET.dem)} / ${NET.cap < 1e6 ? NET.cap.toLocaleString('hu-HU') : fmt(NET.cap)} L/s`, w1 = g.measureText(t1).width, w2 = g.measureText(t2).width, x0 = G.W / 2 - (w1 + w2) / 2;
-        g.textAlign = 'left'; g.fillStyle = 'rgba(255,255,255,.7)'; g.fillText(t1, x0, 89 * d); g.fillStyle = NET.dem > NET.cap ? '#ff8a7a' : '#9fd6f5'; g.fillText(t2, x0 + w1, 89 * d); g.textAlign = 'center'; }
+      { const totInc = B(NET.inc).add(S.linc ? S.linc[0] : 0).add(GR.ft), t1 = `+${totInc.lt(1e4) ? totInc.toNumber().toLocaleString('hu-HU', { maximumFractionDigits: 1 }) : fmt(totInc)} Ft/s   ·   `, t2 = `💧 ${NET.dem < 1e6 ? NET.dem.toLocaleString('hu-HU', { maximumFractionDigits: 1 }) : fmt(NET.dem)} / ${NET.capD.lt(1e6) ? NET.cap.toLocaleString('hu-HU') : fmt(NET.capD)} L/s`, w1 = g.measureText(t1).width, w2 = g.measureText(t2).width, x0 = G.W / 2 - (w1 + w2) / 2;
+        g.textAlign = 'left'; g.fillStyle = 'rgba(255,255,255,.7)'; g.fillText(t1, x0, 89 * d); g.fillStyle = NET.capD.lt(NET.dem) ? '#ff8a7a' : '#9fd6f5'; g.fillText(t2, x0 + w1, 89 * d); g.textAlign = 'center'; }
       if (S.gx.gals.length || Object.values(S.met).some(v => B(v).gt(0))) { g.font = `600 ${10 * d}px Inter, sans-serif`; g.fillStyle = 'rgba(255,255,255,.6)'; g.textAlign = 'center';
         g.fillText(Object.keys(MET).map(k => MET[k].ic + ' ' + nfmt(S.met[k])).join('   '), G.W / 2, 104 * d, G.W - 20 * d); }
       // alsó sáv
