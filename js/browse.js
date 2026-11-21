@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611211523';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611211523';
-import * as Player from './player.js?v=202611211523';
-import * as Party from './party.js?v=202611211523';
-import * as VP from './vplayer.js?v=202611211523';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611211523';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611211943';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611211943';
+import * as Player from './player.js?v=202611211943';
+import * as Party from './party.js?v=202611211943';
+import * as VP from './vplayer.js?v=202611211943';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611211943';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -256,9 +256,10 @@ export const GAMES = [
   { id: 'drift', name: 'Drift Király', icon: '🏎️', desc: 'Felülnézetes drift-verseny 10 pályán, szellemautókkal és kétjátékos móddal.', c: '#ff5a4d' },
   { id: 'holtvaros', name: 'Holtváros', icon: '🧟', unit: 'pont', desc: 'Védd meg a várost a zombijárványtól: zóna, kapuk, őrség, légicsapás. A Zombies Aren\'t Real ihlette.', c: '#7dff4a' },
   { id: 'atemelotelep', name: 'Az Átemelőtelep', icon: '🏭', desc: 'Éjszakai ügyelet egy szabotált szennyvízátemelőn – mielőtt túlcsordul a medence. Rekord: a leggyorsabb teljes idő.', c: '#e8b656', fmt: v => { const t = Math.max(0, 1e6 - v); return Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0'); } },
-  { id: 'birodalom', name: 'Öntöző Birodalom', icon: '🌱', unit: 'Ft', desc: 'Építs csőhálózatot, ültess kertet és ültetvényt – a kerted akkor is termel, amikor nem vagy itt.', c: '#6fcf6a' }
+  { id: 'birodalom', name: 'Öntöző Birodalom', icon: '🌱', unit: 'Ft', fmt: v => { let m, e; if (typeof v === 'string' && /e/i.test(v)) { [m, e] = v.split(/e/i).map(Number); } else { v = +v || 0; if (v < 1e6) return Math.floor(v).toLocaleString('hu-HU') + ' Ft'; e = Math.floor(Math.log10(v)); m = v / 10 ** e; } if (m >= 9.995) { m /= 10; e++; } return m.toFixed(2).replace('.', ',') + 'E' + e + ' Ft'; }, desc: 'Építs csőhálózatot, ültess kertet és ültetvényt – a kerted akkor is termel, amikor nem vagy itt.', c: '#6fcf6a' },
+  { id: 'aszaly', name: 'Aszálytúlélő', icon: '🌵', desc: 'Hordatúlélő: a fegyvereid maguktól tüzelnek, te mozogsz, cseppeket gyűjtesz és szintet lépsz. Meddig bírod Szikkadt Szilárd serege ellen?', c: '#ff9a3c' }
 ];
-const EXTRA = [{ id: 'aranylocsolofej', name: 'Az Arany Locsolófej', icon: '🏆', desc: 'Filmes kalandjáték: szerezd vissza az Arany Locsolófejet Szikkadt Szilárdtól!', c: '#e8b656', demo: 1, tag: 'ÚJ' }, { id: 'locsolohaboru', name: 'Locsolóháború', icon: '💦', desc: 'Első személyű vízipisztoly-aréna 2–8 játékosnak – barátokkal vagy botok ellen.', c: '#4aa8ff', demo: 1, tag: 'ONLINE' }, { id: 'vizagyuio', name: 'Vízágyú.io', icon: '🔫', desc: 'Valós idejű locsolóaréna 2–8 játékosnak – barátokkal vagy botok ellen.', c: '#6cc6ff', demo: 1, tag: 'ONLINE' }, { id: 'zerochip', name: 'Zero Chip', icon: '🔌', desc: 'Építs áramköröket a tranzisztortól a processzorig – 61 küldetés.', c: '#3ecf8e', demo: 1 }, { id: 'zerospace', name: 'Zero Space Demo', icon: '🚀', desc: 'Építs űrhajót modulról modulra és vezesd csatába – korai demó, egyjátékos sandbox.', c: '#b2382a', demo: 1 }];
+const EXTRA = [{ id: 'boonline', name: 'Öntöző Birodalom Online', icon: '🌍', desc: 'Közös világ 13 régióval: telkek, piac, vezetékek, szövetkezetek, heti ostrom.', c: '#e8b656', tag: 'ONLINE', href: '#/birodalom' }, { id: 'aranylocsolofej', name: 'Az Arany Locsolófej', icon: '🏆', desc: 'Filmes kalandjáték: szerezd vissza az Arany Locsolófejet Szikkadt Szilárdtól!', c: '#e8b656', demo: 1, tag: 'ÚJ' }, { id: 'locsolohaboru', name: 'Locsolóháború', icon: '💦', desc: 'Első személyű vízipisztoly-aréna 2–8 játékosnak – barátokkal vagy botok ellen.', c: '#4aa8ff', demo: 1, tag: 'ONLINE' }, { id: 'vizagyuio', name: 'Vízágyú.io', icon: '🔫', desc: 'Valós idejű locsolóaréna 2–8 játékosnak – barátokkal vagy botok ellen.', c: '#6cc6ff', demo: 1, tag: 'ONLINE' }, { id: 'zerochip', name: 'Zero Chip', icon: '🔌', desc: 'Építs áramköröket a tranzisztortól a processzorig – 61 küldetés.', c: '#3ecf8e', demo: 1 }, { id: 'zerospace', name: 'Zero Space Demo', icon: '🚀', desc: 'Építs űrhajót modulról modulra és vezesd csatába – korai demó, egyjátékos sandbox.', c: '#b2382a', demo: 1 }];
 /* Zero Quest – zárt béta: adminok és a „Béta-tesztelő” taggel rendelkezők */
 const betaOk = () => { try { return !!C && !C.S.guest && (C.isAdmin() || (C.S.me?.tags || []).some(id => /b[eé]ta/i.test(C.S.tags.find(t => t.id === id)?.name || ''))); } catch (_) { return false; } };
 const ZQ = { id: 'zeroquest', name: 'Zero Quest', icon: '⚔️', desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében – zárt béta.', c: '#e8b656', demo: 1, beta: 1 };
@@ -275,6 +276,18 @@ async function loadPlays() {
   const g = $('.arcrow .agrid'); if (g) byPop([...GAMES, ...extras()]).forEach((x, i) => { const a = g.querySelector(`[href="#/arcade/${x.id}"]`); if (a) { g.appendChild(a); a.querySelector('.an').textContent = String(i + 1).padStart(2, '0'); } });
   return PLAYS;
 }
+/* felhőmentés idle játékokhoz: cloudsaves/{uid}/g/{játék} = { life, st, updatedAt } – a szabály csak nagyobb vagy egyenlő life-ot enged */
+const CS_GAMES = ['birodalom'];
+async function cloudGet(win, game) {
+  if (!CS_GAMES.includes(game) || guest() || !C.uid()) return win.postMessage({ hgws: 'cs', game, none: 1 }, location.origin);
+  try { const d = (await FB.getDoc(FB.doc(db, 'cloudsaves', C.uid(), 'g', game))).data(); win.postMessage({ hgws: 'cs', game, life: d ? +d.life || 0 : 0, lg: d && typeof d.lg === 'number' ? d.lg : undefined, st: d ? d.st : null }, location.origin); }
+  catch (_) { win.postMessage({ hgws: 'cs', game, none: 1 }, location.origin); }
+}
+function cloudPut(m, win) {
+  const ack = (ok, err) => { if (m.ack) win?.postMessage({ hgws: 'cs', game: m.game, ack: 1, ok, err }, location.origin); };
+  if (!CS_GAMES.includes(m.game) || guest() || !C.uid() || typeof m.st !== 'string' || m.st.length > 900000 || !(m.life >= 0)) return ack(false, 'nincs bejelentkezve');
+  FB.setDoc(FB.doc(db, 'cloudsaves', C.uid(), 'g', m.game), { life: Math.min(9e15, +m.life || 0), lg: typeof m.lg === 'number' && isFinite(m.lg) ? m.lg : 0, st: m.st, updatedAt: FB.serverTimestamp() }).then(() => ack(true), er => ack(false, er?.code === 'permission-denied' ? 'elutasítva – kisebb mentés, túl gyakori írás vagy nincs kint a szabály' : 'hálózati hiba'));
+}
 function countPlay(id) {
   if (!/^[a-z0-9]{2,24}$/.test(id || '') || !C.uid()) return;
   try { const k = 'hgws_played_' + id; if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1'); } catch (_) {}
@@ -284,8 +297,8 @@ function countPlay(id) {
 const best = id => { try { return +localStorage.getItem('hgws_best_' + id) || 0; } catch (_) { return 0; } };
 function arcadeRow() {
   return `<section class="row arcrow"><div class="rowh"><h2><i class="ic ic-gamepad-2"></i> HGWS Arcade</h2><a href="#/arcade">Mind ›</a></div>
-    <div class="agrid">${byPop([...GAMES, ...extras()]).map((g, i) => `<a class="acard" href="#/arcade/${g.id}" style="--c:${g.c}"><span class="an">${String(i + 1).padStart(2, '0')}</span><span class="ai">${g.icon}</span>
-      <b>${esc(g.name)}</b>${g.sponsor ? `<span class="aspon">${esc(g.sponsor)}</span>` : ''}<small>${esc(g.desc)}</small><span class="af"><em>${g.tag ? g.tag : g.beta ? 'ZÁRT BÉTA' : g.demo ? 'DEMO' : 'REKORD: ' + bigNum(best(g.id)) + (g.unit ? ' ' + g.unit : '')}</em><i>Játék <i class="ic ic-play"></i></i></span></a>`).join('')}</div></section>`;
+    <div class="agrid">${byPop([...GAMES, ...extras()]).map((g, i) => `<a class="acard" href="${g.href || '#/arcade/' + g.id}" style="--c:${g.c}"><span class="an">${String(i + 1).padStart(2, '0')}</span><span class="ai">${g.icon}</span>
+      <b>${esc(g.name)}</b>${g.sponsor ? `<span class="aspon">${esc(g.sponsor)}</span>` : ''}<small>${esc(g.desc)}</small><span class="af"><em>${g.tag ? g.tag : g.beta ? 'ZÁRT BÉTA' : g.demo ? 'DEMO' : 'REKORD: ' + (g.fmt ? g.fmt(best(g.id)) : bigNum(best(g.id)) + (g.unit ? ' ' + g.unit : ''))}</em><i>Játék <i class="ic ic-play"></i></i></span></a>`).join('')}</div></section>`;
 }
 /* ha a tagek vagy a saját fiók megváltozik, a zárt béta jogosultságot újraküldjük az Arcade-nak */
 export function tagsChanged() { const f = $('.arcframe'); if (f) sendBoards(f.contentWindow); }
@@ -311,7 +324,7 @@ export function weekKey(d = new Date()) {
 const lbCol = lb => FB.collection(db, 'leaderboards', lb, 'scores');
 async function topOf(lb, n = 10) {
   try { const s = await FB.getDocs(FB.query(lbCol(lb), FB.orderBy('best', 'desc'), FB.limit(n * 3)));
-    return s.docs.map(d => ({ uid: d.id, score: lbDec(d.data().best), wins: d.data().wins || 0, nick: d.data().nick })).sort((a, b) => b.score - a.score || b.wins - a.wins).slice(0, n); } catch (_) { return []; }
+    return s.docs.map(d => ({ uid: d.id, raw: +d.data().best || 0, score: lbDec(d.data().best), wins: d.data().wins || 0, nick: d.data().nick })).sort((a, b) => b.raw - a.raw || b.wins - a.wins).slice(0, n); } catch (_) { return []; }
 }
 async function sendBoards(win) {
   const wk = weekKey(), boards = {}, plays = await loadPlays();
@@ -413,10 +426,10 @@ async function delScore(game, uid) {
     toast('Eredmény törölve' + (name ? ': ' + name : ''));
   } catch (e) { console.warn('ranglista-törlés', e); toast('Nem sikerült törölni.'); }
 }
-async function saveScore(game, score, win, sync) {
+async function saveScore(game, score, win, sync, lg) {
   if (!GAMES.some(g => g.id === game) || !(score > 0)) return;
   const nick = await nickFor(); if (nick === null) return;
-  const me = C.uid(), sc = lbEnc(score);
+  const me = C.uid(), sc = lbEnc(score, lg);
   // szinkronnál csak az örök ranglistára (a régi rekord a heti listába nem való)
   for (const lb of sync ? [game] : [game, game + '_' + weekKey()]) {
     const ref = FB.doc(db, 'leaderboards', lb, 'scores', me);
@@ -441,12 +454,15 @@ let synced = false; const syncBest = {}; // az első szinkron (régi helyi rekor
 addEventListener('message', async e => {
   if (e.origin !== location.origin || !e.data?.hgws) return;
   const fr = $('.arcframe'); if (!fr || e.source !== fr.contentWindow) return;
-  if (e.data.hgws === 'score') { await saveScore(e.data.game, e.data.score, !!e.data.win); sendBoards(fr.contentWindow); }
+  if (e.data.hgws === 'score') { await saveScore(e.data.game, e.data.score, !!e.data.win, false, typeof e.data.lg === 'number' ? e.data.lg : undefined); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbreq') sendBoards(fr.contentWindow);
   if (e.data.hgws === 'play') countPlay(e.data.game);
+  if (e.data.hgws === 'csreq') cloudGet(fr.contentWindow, e.data.game);
+  if (e.data.hgws === 'cssave') cloudPut(e.data, fr.contentWindow);
   if (e.data.hgws === 'sync' && !guest() && C.uid()) { const first = !synced; synced = true; let ch = 0; for (const [g, v] of Object.entries(e.data.bests || {})) if (v > (syncBest[g] || 0)) { syncBest[g] = v; ch = 1; await saveScore(g, v, false, first); } if (ch) sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'nickreq') { await renameNick(); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbprof') lbProfile(e.data.uid, e.data.nick);
+  if (e.data.hgws === 'nav' && e.data.to === '#/birodalom') location.hash = e.data.to;
   if (e.data.hgws === 'lbdel') { await delScore(e.data.game, e.data.uid); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'ghostreq') fr.contentWindow.postMessage({ hgws: 'ghosts', data: await ghostList(e.data.tracks), guest: guest() }, location.origin);
   if (e.data.hgws === 'ghostsave') await ghostSave(e.data);

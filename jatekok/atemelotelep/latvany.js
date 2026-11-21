@@ -1,13 +1,13 @@
 // Az Átemelőtelep – Three.js megjelenítő (r170). A statikus pálya anyagonként EGY összefűzött geometria; külön draw call csak a mozgó/kapcsolt tárgyaké.
 // Képkockánként nincs memóriafoglalás: minden vektor, tömb és fényforrás-rekord előre lefoglalt, és újrahasznosul.
 import * as THREE from 'three';
-import { mergeGeometries } from './lib/addons/utils/BufferGeometryUtils.js?v=202611211759';
-import { EffectComposer } from './lib/addons/postprocessing/EffectComposer.js?v=202611211759';
-import { RenderPass } from './lib/addons/postprocessing/RenderPass.js?v=202611211759';
-import { UnrealBloomPass } from './lib/addons/postprocessing/UnrealBloomPass.js?v=202611211759';
-import { ShaderPass } from './lib/addons/postprocessing/ShaderPass.js?v=202611211759';
-import { makeTextures, decals, makeMaterials } from './anyag.js?v=202611211759';
-import { WELL, CONT, GEN, VAN, TREES, POLES, MARKERS, FENCES, HOLE } from './palya.js?v=202611211759';
+import { mergeGeometries } from './lib/addons/utils/BufferGeometryUtils.js?v=202611211943';
+import { EffectComposer } from './lib/addons/postprocessing/EffectComposer.js?v=202611211943';
+import { RenderPass } from './lib/addons/postprocessing/RenderPass.js?v=202611211943';
+import { UnrealBloomPass } from './lib/addons/postprocessing/UnrealBloomPass.js?v=202611211943';
+import { ShaderPass } from './lib/addons/postprocessing/ShaderPass.js?v=202611211943';
+import { makeTextures, decals, makeMaterials } from './anyag.js?v=202611211943';
+import { WELL, CONT, GEN, VAN, TREES, POLES, MARKERS, FENCES, HOLE } from './palya.js?v=202611211943';
 
 // minőségi szintek: alap pixelarány-plafon, pontfények száma, esőcseppek, csobbanások, utófeldolgozás, árnyék, köd
 export const QUAL = [
