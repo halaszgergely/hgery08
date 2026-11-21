@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611211848';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611211848';
-import * as Player from './player.js?v=202611211848';
-import * as Party from './party.js?v=202611211848';
-import * as VP from './vplayer.js?v=202611211848';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611211848';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611211851';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611211851';
+import * as Player from './player.js?v=202611211851';
+import * as Party from './party.js?v=202611211851';
+import * as VP from './vplayer.js?v=202611211851';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611211851';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -285,7 +285,7 @@ async function cloudGet(win, game) {
 function cloudPut(m, win) {
   const ack = (ok, err) => { if (m.ack) win?.postMessage({ hgws: 'cs', game: m.game, ack: 1, ok, err }, location.origin); };
   if (!CS_GAMES.includes(m.game) || guest() || !C.uid() || typeof m.st !== 'string' || m.st.length > 900000 || !(m.life >= 0)) return ack(false, 'nincs bejelentkezve');
-  FB.setDoc(FB.doc(db, 'cloudsaves', C.uid(), 'g', m.game), { life: Math.min(1e300, +m.life || 0), lg: typeof m.lg === 'number' && isFinite(m.lg) ? m.lg : 0, st: m.st, updatedAt: FB.serverTimestamp() }).then(() => ack(true), er => ack(false, er?.code === 'permission-denied' ? 'elutasítva – kisebb mentés, túl gyakori írás vagy nincs kint a szabály' : 'hálózati hiba'));
+  FB.setDoc(FB.doc(db, 'cloudsaves', C.uid(), 'g', m.game), { life: Math.min(9e15, +m.life || 0), lg: typeof m.lg === 'number' && isFinite(m.lg) ? m.lg : 0, st: m.st, updatedAt: FB.serverTimestamp() }).then(() => ack(true), er => ack(false, er?.code === 'permission-denied' ? 'elutasítva – kisebb mentés, túl gyakori írás vagy nincs kint a szabály' : 'hálózati hiba'));
 }
 function countPlay(id) {
   if (!/^[a-z0-9]{2,24}$/.test(id || '') || !C.uid()) return;
