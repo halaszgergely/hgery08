@@ -122,12 +122,12 @@ const Birodalom = (() => {
     gyokst: { n: 'Gyökérserkentő', c: 5e8, u: 3e9, aura: 2, prov: 'gyoker', m: 1.25 },
     krracs: { n: 'Kristályrács', c: 3e13, u: 2e14, aura: 3, prov: 'kristaly', m: 1.3 },
     // vízkezelés: helyszínenként egy, csőre kötve az egész kertre hat; rákoppintva szintet lép (nem kell több darab)
-    lagyito: { n: 'Vízlágyító', c: 20000, u: 100000, wq: { g: .12 }, one: 1, m: 1 },
-    tapado: { n: 'Tápoldat-adagoló', c: 200000, u: 1e6, wq: { y: .1 }, one: 1, m: 1 },
-    uvster: { n: 'UV-sterilizáló', c: 3e6, u: 2e7, wq: { g: .03, gold: .005 }, one: 1, m: 1 },
-    oxig: { n: 'Oxigénező', c: 5e7, u: 4e8, wq: { g: .08, y: .08 }, one: 1, m: 1 },
-    asvany: { n: 'Ásványi dúsító', c: 1e10, u: 8e10, wq: { y: .15 }, one: 1, m: 1 },
-    kvantviz: { n: 'Kvantumvíz-reaktor', c: 1e16, u: 8e16, wq: { g: .2, y: .2 }, one: 1, m: 1 },
+    lagyito: { sz: 2, n: 'Vízlágyító', c: 20000, u: 100000, wq: { g: .12 }, one: 1, m: 1 },
+    tapado: { sz: 2, n: 'Tápoldat-adagoló', c: 200000, u: 1e6, wq: { y: .1 }, one: 1, m: 1 },
+    uvster: { sz: 2, n: 'UV-sterilizáló', c: 3e6, u: 2e7, wq: { g: .03, gold: .005 }, one: 1, m: 1 },
+    oxig: { sz: 2, n: 'Oxigénező', c: 5e7, u: 4e8, wq: { g: .08, y: .08 }, one: 1, m: 1 },
+    asvany: { sz: 2, n: 'Ásványi dúsító', c: 1e10, u: 8e10, wq: { y: .15 }, one: 1, m: 1 },
+    kvantviz: { sz: 2, n: 'Kvantumvíz-reaktor', c: 1e16, u: 8e16, wq: { g: .2, y: .2 }, one: 1, m: 1 },
     del: { n: 'Bontás', c: 0, u: 0, m: 1 }
   };
   const RQ = { tamasz: { b: 1, ic: '🪜', n: 'Támasz' }, arnyek: { b: 2, ic: '⛱️', n: 'Árnyék' }, beporz: { b: 4, ic: '🐝', n: 'Beporzás (kaptár)' }, meleg: { b: 8, ic: '🔥', n: 'Meleg' }, para: { b: 16, ic: '💨', n: 'Pára' }, gyoker: { b: 32, ic: '🌱', n: 'Gyökérserkentés' }, kristaly: { b: 64, ic: '💎', n: 'Kristályrács' } };
@@ -425,6 +425,10 @@ const Birodalom = (() => {
           s.k.forEach((v, i) => { k[at(i)] = v; g[at(i)] = (s.g || [])[i] || 0; }); for (const [i, v] of Object.entries(s.vc || {})) vc[at(+i)] = v; s.k = k; s.g = g; s.vc = vc; }
         // a hírnév-csillag új (lassabb) képlete: a már megszerzetteket nem vesszük el, de innen az új ütemben jár
         if (!s.v3) { s.v3 = 1; s.starT = Math.floor(Math.cbrt(Math.max(0, s.life || 0) / 1e5)); }
+        // a vízkezelők 2×2-esek lettek: a régi 1×1-esek kibővülnek, ha van hely, különben lekerülnek (a szintjük megmarad)
+        const wqFix = k => { for (let i = 0; i < k.length; i++) { const v = k[i]; if (!v || !MOD[v] || !MOD[v].wq) continue; const c = i % COLS, r = Math.floor(i / COLS), cs = [i + 1, i + COLS, i + COLS + 1];
+            if (c + 1 < COLS && r + 1 < ROWS && cs.every(j => !k[j] || k[j] === '#' + i)) cs.forEach(j => { k[j] = '#' + i; }); else if (!cs.every(j => k[j] === '#' + i)) { k[i] = ''; s.money = (s.money || 0) + MOD[v].c; } } };
+        if (s.k.length === COLS * ROWS) { wqFix(s.k); for (const l of Object.values(s.locs || {})) if (l && l.k && l.k.length === COLS * ROWS) wqFix(l.k); }
         if (s.k.length === COLS * ROWS) return { ...f, ...s, up: { ...f.up, ...s.up }, perk: { ...(s.perk || {}) }, vc: { ...(s.vc || {}) }, locs: { ...(s.locs || {}) }, unl: [...(s.unl || ['earth'])] };
       }
     } catch (_) {}
@@ -625,7 +629,14 @@ const Birodalom = (() => {
       arr: pages > 1 ? [{ dir: -1, x: ix - arr - 2 * d, y: iy, w: arr, h: ih }, { dir: 1, x: ix + iw * vis.length + 2 * d, y: iy, w: arr, h: ih }] : [] };
   }
 
-  const DN = { n: 0, c: 0, k: '', t: 0, x: 0, y: 0 }; // húzásos lerakás számlálója
+  const DN = { n: 0, c: 0, k: '', t: 0, x: 0, y: 0, last: -1 }; // húzásos lerakás számlálója
+  // hatótávos modulok húzása (mint a villanypóznák): a következő ott kerül le, ahol a körzetek épp nem fednek át
+  const rangeOf = k => { const m = MOD[k]; if (!m || m.mob || m.wq || m.one || m.q || m.cp || m.valve) return 0; return m.r ? m.r + S.up.kvantum : m.nb ? 1 : m.aura || m.boost || 0; };
+  function poleDrag(G, i) { const R = rangeOf(S.tool); if (!R || DN.last < 0 || i < 0) return; const sz = szOf(S.tool), sp = 2 * R + sz;
+    for (let guard = 0; guard < 20; guard++) { const c0 = DN.last % COLS, r0 = Math.floor(DN.last / COLS), c = i % COLS, r = Math.floor(i / COLS), dx = c - c0, dy = r - r0, hz = Math.abs(dx) >= Math.abs(dy), dist = Math.abs(hz ? dx : dy), dir = Math.sign(hz ? dx : dy);
+      if (dist < sp) return; let ok = false;
+      for (let s2 = sp; s2 <= dist; s2++) { const tc = hz ? c0 + dir * s2 : c0, tr = hz ? r0 : r0 + dir * s2; if (!inside(tc, tr)) break; const n0 = DN.n; place(G, idx(tc, tr), false); if (DN.n > n0) { ok = true; break; } }
+      if (!ok) return; } }
   function place(G, i, first) {
     i = anc(i); const k = S.k[i], tool = S.tool;
     if (PL[k] && S.g[i] >= 1 && tool !== 'del') return harvest(G, i);
@@ -642,7 +653,7 @@ const Birodalom = (() => {
     const c0 = i % COLS, r0 = Math.floor(i / COLS);
     if (sz > 1 && (!inside(c0 + sz - 1, r0 + sz - 1) || cells(i, sz).some(j => S.k[j]))) { if (first) { Sfx.blip(140, .1, 'square', .05); S.info = { it: { k: tool, kind: MOD[tool] ? 'mod' : 'pl', n: it.n, warn: 'Nincs elég szabad hely: ' + sz + '×' + sz + ' mező kell.' }, l: 3 }; } return; }
     const ck = ckOf(tool), cc = ccOf(tool); if (S.money < c || S.nek < ck || S.cp < cc) { Sfx.blip(140, .1, 'square', .05); return; }
-    S.money -= c; S.nek -= ck; S.cp -= cc; for (const j of cells(i, sz)) { S.k[j] = j === i ? tool : '#' + i; S.g[j] = 0; } if (it.wq) { S.wq = S.wq || {}; S.wq[tool] = Math.max(1, S.wq[tool] || 0); } DN.n++; DN.c += c; DN.k = tool; net();
+    S.money -= c; S.nek -= ck; S.cp -= cc; for (const j of cells(i, sz)) { S.k[j] = j === i ? tool : '#' + i; S.g[j] = 0; } if (it.wq) { S.wq = S.wq || {}; S.wq[tool] = Math.max(1, S.wq[tool] || 0); } DN.n++; DN.c += c; DN.k = tool; DN.last = i; net();
     PL[tool] ? Sfx.blip(520, .05, 'triangle', .06, 1.3) : Sfx.blip(380, .05, 'square', .04, 1.2);
   }
 
@@ -883,8 +894,36 @@ const Birodalom = (() => {
     for (let j = 0; j < n; j++) { const ph = (t * 1.1 + j * .618 + i * .13) % 1, a = a0 + (j / n) * arc + Math.sin(j * 7.1) * .2, r = R * ph, hgt = Math.sin(ph * Math.PI) * R * .35;
       g.fillStyle = `rgba(175,225,255,${.85 * (1 - ph * .7)})`; g.beginPath(); g.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r - hgt, Math.max(1, L.ts * .028), 0, 6.283); g.fill(); }
   }
+  /* vízkezelő üzem (2×2): betonalap, két átlátszó tartály buborékokkal, összekötő csövek, vezérlőpult */
+  const WQC = { lagyito: ['#5fb4ff', '#1d5d9c'], tapado: ['#7be07a', '#2e7d32'], uvster: ['#c18cff', '#5b2a9c'], oxig: ['#7ff0ff', '#1b7f8f'], asvany: ['#e0b77a', '#8a5a2a'], kvantviz: ['#ff8cf0', '#6a1f8f'] };
+  function drawWQ(g, k, i, x, y, ts, t, on) { const [c1, c2] = WQC[k] || WQC.lagyito, live = on || i < 0, u = ts / 2;
+    shadow(g, x + ts * .52, y + ts * .9, ts * .44, ts * .08, .3);
+    g.fillStyle = '#5d636c'; rr(x + ts * .04, y + ts * .1, ts * .92, ts * .84, ts * .06); g.fill(); g.fillStyle = '#767d87'; rr(x + ts * .06, y + ts * .12, ts * .88, ts * .78, ts * .05); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = Math.max(1, ts * .006); for (let q = 1; q < 4; q++) { g.beginPath(); g.moveTo(x + ts * (.06 + .22 * q), y + ts * .12); g.lineTo(x + ts * (.06 + .22 * q), y + ts * .9); g.stroke(); }
+    // összekötő cső
+    const pg = g.createLinearGradient(0, y + ts * .64, 0, y + ts * .72); pg.addColorStop(0, '#cfd8e2'); pg.addColorStop(1, '#6c7a8a'); g.fillStyle = pg; g.fillRect(x + ts * .18, y + ts * .64, ts * .64, ts * .08);
+    if (live) { g.fillStyle = c1; for (let q = 0; q < 4; q++) { const px = x + ts * (.2 + ((t * .35 + q * .25) % 1) * .6); g.globalAlpha = .7; g.fillRect(px, y + ts * .665, ts * .05, ts * .03); } g.globalAlpha = 1; }
+    for (const [tx, h] of [[.26, .5], [.62, .42]]) { const tw = ts * .26, tX = x + ts * tx - tw / 2, tY = y + ts * (.66 - h), tH = ts * h;
+      g.fillStyle = 'rgba(0,0,0,.25)'; rr(tX + ts * .015, tY + ts * .02, tw, tH, tw * .3); g.fill();
+      const gg = g.createLinearGradient(tX, 0, tX + tw, 0); gg.addColorStop(0, 'rgba(255,255,255,.55)'); gg.addColorStop(.35, 'rgba(220,235,250,.25)'); gg.addColorStop(1, 'rgba(120,140,170,.45)'); g.fillStyle = gg; rr(tX, tY, tw, tH, tw * .3); g.fill();
+      const lv = live ? .62 + Math.sin(t * 1.3 + tx * 9) * .04 : .3, wY = tY + tH * (1 - lv); g.save(); rr(tX, tY, tw, tH, tw * .3); g.clip();
+      const wg = g.createLinearGradient(0, wY, 0, tY + tH); wg.addColorStop(0, c1); wg.addColorStop(1, c2); g.fillStyle = wg; g.fillRect(tX, wY, tw, tH);
+      g.fillStyle = 'rgba(255,255,255,.45)'; g.fillRect(tX, wY, tw, Math.max(1, ts * .008));
+      if (live) for (let q = 0; q < 6; q++) { const ph = (t * (.5 + q * .13) + q * .37 + tx) % 1, bx = tX + tw * (.2 + ((q * .41) % .6)), by = tY + tH - ph * (tY + tH - wY); g.fillStyle = 'rgba(255,255,255,.6)'; g.beginPath(); g.arc(bx + Math.sin(t * 3 + q) * tw * .05, by, Math.max(1, tw * (.04 + (q % 3) * .015)), 0, 6.283); g.fill(); }
+      g.restore(); g.strokeStyle = 'rgba(30,40,55,.8)'; g.lineWidth = Math.max(1, ts * .012); rr(tX, tY, tw, tH, tw * .3); g.stroke();
+      g.fillStyle = '#9aa6b4'; rr(tX - tw * .08, tY - ts * .03, tw * 1.16, ts * .05, ts * .02); g.fill(); g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(tX + tw * .12, tY + tH * .08, tw * .1, tH * .8); }
+    if (k === 'uvster' && live) { g.fillStyle = `rgba(200,140,255,${.18 + .1 * Math.sin(t * 5)})`; g.beginPath(); g.arc(x + ts * .44, y + ts * .38, ts * .3, 0, 6.283); g.fill(); }
+    if (k === 'kvantviz' && live) { g.strokeStyle = 'rgba(255,140,240,.6)'; g.lineWidth = Math.max(1, ts * .01); for (let q = 0; q < 3; q++) { g.beginPath(); g.ellipse(x + ts * .44, y + ts * .4, ts * .3, ts * .1, t * (1 + q * .4) + q, 0, 6.283); g.stroke(); } }
+    // vezérlőpult
+    const px = x + ts * .76, py = y + ts * .2; g.fillStyle = '#2b3442'; rr(px, py, ts * .16, ts * .36, ts * .03); g.fill(); g.fillStyle = '#10161f'; g.fillRect(px + ts * .025, py + ts * .03, ts * .11, ts * .08);
+    g.fillStyle = c1; g.font = `${ts * .09}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(WQI[k], px + ts * .08, py + ts * .072);
+    for (let q = 0; q < 3; q++) { g.fillStyle = live ? (q === Math.floor(t * 2) % 3 ? '#7dff9a' : '#2f6a3a') : '#5a2020'; g.beginPath(); g.arc(px + ts * (.04 + q * .04), py + ts * .17, ts * .014, 0, 6.283); g.fill(); }
+    g.fillStyle = '#c0392b'; g.beginPath(); g.arc(px + ts * .08, py + ts * .27, ts * .035, 0, 6.283); g.fill();
+    if (i >= 0) { const lv = wqLv(k); g.fillStyle = '#ffe29a'; g.beginPath(); g.arc(x + ts * .88, y + ts * .82, ts * .085, 0, 6.283); g.fill(); g.strokeStyle = '#7a5a1e'; g.lineWidth = Math.max(1, ts * .01); g.stroke(); g.fillStyle = '#1a1206'; g.font = `800 ${ts * .1}px Inter, sans-serif`; g.fillText(lv, x + ts * .88, y + ts * .825); }
+  }
   function drawMod(g, k, i, x, y, ts, t, on, eff) {
     const c = i % COLS, r = Math.floor(i / COLS), cx = x + ts / 2, cy = y + ts / 2, pw = ts * .26, m = MOD[k], ef = eff == null ? NET.eff : eff;
+    if (m && m.wq) return drawWQ(g, k, i, x, y, ts, t, on);
     if (m && (m.prov || m.wq)) { // igény- és vízkezelő modulok: saját tábla ikonnal
       shadow(g, cx + ts * .04, cy + ts * .32, ts * .36, ts * .09); const wq = !!m.wq, gr = g.createLinearGradient(x, y, x, y + ts);
       gr.addColorStop(0, wq ? '#4a7fb0' : '#7a6a4a'); gr.addColorStop(1, wq ? '#22456a' : '#4a3e28'); g.fillStyle = gr; rr(x + ts * .1, y + ts * .12, ts * .8, ts * .76, ts * .14); g.fill();
@@ -1323,9 +1362,9 @@ const Birodalom = (() => {
       if (!S.tool || i < 0 || (e && (e.button === 1 || e.button === 2))) { panS = { x, y, moved: 0, i: e && e.button ? -1 : i }; return; }
       // érintésnél kicsit várunk: ha jön a második ujj (csípés), nem rakunk le semmit
       if (e && e.pointerType === 'touch') { pend = { i, x, y, t: performance.now() }; return; }
-      DN.n = 0; DN.c = 0; DN.x = x; DN.y = y; place(G, i, true); lastTile = i; drag = S.tool === 'pipe' || S.tool === 'del' || PL[S.tool] ? 1 : null;
+      DN.n = 0; DN.c = 0; DN.x = x; DN.y = y; DN.last = -1; place(G, i, true); lastTile = i; drag = S.tool === 'pipe' || S.tool === 'del' || PL[S.tool] ? 1 : rangeOf(S.tool) ? 'r' : null;
     },
-    commit(G) { if (!pend) return; const i = pend.i; DN.n = 0; DN.c = 0; DN.x = pend.x; DN.y = pend.y; pend = null; place(G, i, true); lastTile = i; drag = S.tool === 'pipe' || S.tool === 'del' || PL[S.tool] ? 1 : null; },
+    commit(G) { if (!pend) return; const i = pend.i; DN.n = 0; DN.c = 0; DN.x = pend.x; DN.y = pend.y; DN.last = -1; pend = null; place(G, i, true); lastTile = i; drag = S.tool === 'pipe' || S.tool === 'del' || PL[S.tool] ? 1 : rangeOf(S.tool) ? 'r' : null; },
     move(G, x, y, btn, e) { if (!btn && L && y >= L.barY) { const b = bar(G); S.hover = b.its.find(o => x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h) || null; } else if (!btn) S.hover = null;
       S.tip = !galView() && !btn && L && y < L.barY && (!e || e.pointerType === 'mouse') ? { i: tileAt(x, y), x, y } : null;
       const id = e && e.pointerId != null ? e.pointerId : 0; if (PT.has(id)) PT.set(id, { x, y });
@@ -1333,7 +1372,7 @@ const Birodalom = (() => {
         zoomAt(G, mx, my, dd / pinch.d); pan(G, mx - pinch.mx, my - pinch.my); pinch = { d: dd, mx, my }; return; }
       if (pend && btn && Math.hypot(x - pend.x, y - pend.y) > 6 * L.d) this.commit(G);
       if (panS && btn) { const dx = x - panS.x, dy = y - panS.y; panS.moved += Math.abs(dx) + Math.abs(dy); panS.x = x; panS.y = y; pan(G, dx, dy); return; }
-      if (!drag || !btn) return; DN.x = x; DN.y = y; DN.t = 1.2; const i = tileAt(x, y); if (i >= 0 && i !== lastTile) { lastTile = i; place(G, i, false); } },
+      if (!drag || !btn) return; DN.x = x; DN.y = y; DN.t = 1.2; if (drag === 'r') return poleDrag(G, tileAt(x, y)); const i = tileAt(x, y); if (i >= 0 && i !== lastTile) { lastTile = i; place(G, i, false); } },
     up(G, x, y, e) { const id = e && e.pointerId != null ? e.pointerId : 0; PT.delete(id);
       if (pinch) { if (PT.size < 2) pinch = null; panS = null; drag = null; pend = null; lastTile = -1; return; }
       if (pend) this.commit(G);
@@ -1524,7 +1563,7 @@ const Birodalom = (() => {
             g.textAlign = 'left'; g.fillStyle = '#fff'; g.font = `700 ${13 * d}px Inter, sans-serif`; g.fillText(L2.ic + '  ' + L2.n, r.x + 12 * d, r.y + r.h / 2 + d);
             g.textAlign = 'right'; g.font = `700 ${11 * d}px Inter, sans-serif`; g.fillStyle = cur ? '#ffe29a' : have ? '#9fd6f5' : ok ? '#ffe29a' : '#ff8a7a';
             g.fillText(cur && !galView() ? 'Itt vagy · +' + fmt(NET.inc) + ' Ft/mp' : have ? '+' + fmt((S.lr && S.lr[r.id] ? S.lr[r.id][0] : 0)) + ' Ft/mp · Átváltás' : '🚀 ' + fmt(c) + ' Ft + ' + nfmt(nk) + '🍯' + (cq ? ' + ' + nfmt(cq) + '✨' : ''), r.x + r.w - 12 * d, r.y + r.h / 2 + d, r.w * .62); g.textAlign = 'center'; } } }
-      if (DN.n > 0 && (drag || DN.t > 0)) { const lab = (DN.k === 'pipe' ? DN.n + '. cső' : DN.n + ' db') + ' · ' + fmt(DN.c) + ' Ft'; g.save(); g.globalAlpha = drag ? 1 : Math.min(1, DN.t); g.font = `800 ${13 * d}px Inter, sans-serif`; const tw3 = g.measureText(lab).width + 18 * d, lx = Math.min(G.W - tw3 - 6 * d, DN.x + 18 * d), ly = Math.max(6 * d, DN.y - 40 * d);
+      if (DN.n > 0 && (drag || DN.t > 0)) { const lab = (DN.k === 'pipe' ? DN.n + '. cső' : DN.n + ' db' + (rangeOf(DN.k) ? ' · ' + (2 * rangeOf(DN.k) + szOf(DN.k)) + ' mezőnként' : '')) + ' · ' + fmt(DN.c) + ' Ft'; g.save(); g.globalAlpha = drag ? 1 : Math.min(1, DN.t); g.font = `800 ${13 * d}px Inter, sans-serif`; const tw3 = g.measureText(lab).width + 18 * d, lx = Math.min(G.W - tw3 - 6 * d, DN.x + 18 * d), ly = Math.max(6 * d, DN.y - 40 * d);
         g.fillStyle = 'rgba(4,7,14,.9)'; g.strokeStyle = '#e8b656'; g.lineWidth = d; rr(lx, ly, tw3, 24 * d, 12 * d); g.fill(); g.stroke(); g.fillStyle = '#ffe29a'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(lab, lx + tw3 / 2, ly + 12 * d + d); g.restore(); }
       if (S.bgMsg && S.bgMsg.l > 0) { g.globalAlpha = Math.min(1, S.bgMsg.l); g.font = `700 ${12 * d}px Inter, sans-serif`; const tw2 = g.measureText(S.bgMsg.t).width + 24 * d, bx = (G.W - tw2) / 2, by = L.barY - 70 * d;
         g.fillStyle = 'rgba(4,7,14,.88)'; g.strokeStyle = 'rgba(159,214,245,.6)'; g.lineWidth = d; rr(bx, by, tw2, 26 * d, 13 * d); g.fill(); g.stroke(); g.fillStyle = '#9fd6f5'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(S.bgMsg.t, G.W / 2, by + 13 * d + d); g.globalAlpha = 1; }
