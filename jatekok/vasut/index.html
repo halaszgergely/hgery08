@@ -4,7 +4,7 @@
 <style>
 :root{--pn:#0b1119;--pn2:#121b27;--ln:rgba(140,180,230,.16);--ink:#ebeff6;--mut:#93a1b5;--gold:#e8b656;--gold2:#ffe29a;--ok:#5ee08a;--bad:#ff5a4d;--glass:rgba(7,11,17,.74)}
 *{box-sizing:border-box;margin:0}html,body{height:100%;background:#0d1410;color:var(--ink);font:500 14px/1.45 Inter,system-ui,sans-serif;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;touch-action:none}
-canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}[hidden]{display:none!important}
+canvas#c,canvas#c3{position:fixed;inset:0;width:100%;height:100%;display:block}canvas#c3{touch-action:none;cursor:grab}[hidden]{display:none!important}
 .gl{background:var(--glass);border:1px solid rgba(140,180,230,.15);border-radius:14px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .b{border:1px solid var(--ln);background:var(--pn2);color:var(--ink);border-radius:11px;padding:8px 13px;font:700 13px Inter;cursor:pointer;display:inline-flex;align-items:center;gap:6px;pointer-events:auto;white-space:nowrap}
 .b:hover{border-color:rgba(232,182,86,.6)}.b.g{background:linear-gradient(180deg,#f0c56a,#d79a32);color:#1a1004;border:0}.b.sm{padding:5px 9px;font-size:12px;border-radius:9px}.b:disabled{opacity:.4;cursor:default}
@@ -52,9 +52,9 @@ h2{font:800 11px Inter;letter-spacing:.18em;color:var(--mut);margin:14px 0 6px;t
 .keys{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;margin-top:8px}.keys b{color:var(--gold2)}
 @media (max-width:700px){#top{flex-wrap:wrap}#clock{display:none}#money{font-size:14px;padding:8px 10px}#top .b{padding:7px 9px;font-size:12px}#srch{order:9;width:100%}#jobs{top:auto;bottom:390px;max-height:16vh}#sw{left:8px;right:8px;transform:none;max-width:none;bottom:338px}#cab{height:auto;flex-wrap:wrap;gap:8px 10px;padding:8px;overflow:visible;justify-content:center}.cg{flex-basis:112px}.cg canvas{width:112px;height:112px}.lever{height:92px;width:54px}.lever .knob{left:6px}.lever .trk{left:22px}.cb{grid-template-columns:repeat(4,1fr);width:100%}.pb{min-width:0;height:34px;font-size:10.5px;padding:0 5px}.ci{flex-basis:100%;min-width:0}}
 </style></head><body>
-<canvas id="c"></canvas>
+<canvas id="c"></canvas><canvas id="c3" hidden></canvas>
 <div id="top"><div id="money" class="gl">–</div><div id="clock" class="gl">–</div><div id="srch" class="gl"><input id="q" type="search" placeholder="🔍 Település, állomás, üzem" autocomplete="off" spellcheck="false"><div id="qr" hidden></div></div><div class="sp"></div>
-  <button class="b" id="bFollow" hidden>🎯 Követés</button><button class="b" id="bMap">🗺️ Térkép</button><button class="b" id="bFind">🔎 Fuvarkereső</button><button class="b" id="bBots">🤖 Sofőrök</button><button class="b" id="bCons">🚃 Szerelvény</button><button class="b" id="bBoard">📋 Munkák</button><button class="b" id="bDepo">🏭 Depó</button><button class="b" id="bMenu">☰</button></div>
+  <button class="b" id="bFollow" hidden>🎯 Követés</button><button class="b" id="b3d">🧊 3D</button><button class="b" id="bMap">🗺️ Térkép</button><button class="b" id="bFind">🔎 Fuvarkereső</button><button class="b" id="bBots">🤖 Sofőrök</button><button class="b" id="bCons">🚃 Szerelvény</button><button class="b" id="bBoard">📋 Munkák</button><button class="b" id="bDepo">🏭 Depó</button><button class="b" id="bMenu">☰</button></div>
 <div id="jobs" class="gl" hidden></div>
 <div id="cab">
   <div class="cg"><canvas id="gauge" width="280" height="280"></canvas><div id="lim">–</div></div>
@@ -73,8 +73,8 @@ h2{font:800 11px Inter;letter-spacing:.18em;color:var(--mut);margin:14px 0 6px;t
 <div id="menu"><div class="card" style="width:min(520px,100%)"><h1>Mozdonyvezető<small>TEHERFUVAROZÁS MAGYARORSZÁG VALÓDI VASÚTHÁLÓZATÁN</small></h1>
   <p class="mut" id="mLoad" style="margin-top:12px">Vasúthálózat betöltése…</p>
   <div class="row" style="margin-top:14px"><button class="b g" id="mPlay" disabled>▶ Játék</button><button class="b" id="mNew" hidden>Új játék</button></div>
-  <h2>Irányítás</h2><div class="keys"><b>W / S</b><span>sebességkar fel / le</span><b>Szóköz, B / N</b><span>fék (tartva) · fékfokozat fel / le</span><b>C</b><span>a mostani sebesség tartása</span><b>X</b><span>automata tempomat</span><b>P</b><span>rögzítőfék be / ki</span><b>H</b><span>kürt</span><b>R</b><span>irány: előre – üres – hátra</span><b>V</b><span>a következő váltó állítása</span><b>M</b><span>térkép</span><b>Egér</b><span>görgő: nagyítás · húzás: mozgatás · kattintás a váltóra: állítás</span></div>
+  <h2>Irányítás</h2><div class="keys"><b>W / S</b><span>sebességkar fel / le</span><b>Szóköz, B / N</b><span>fék (tartva) · fékfokozat fel / le</span><b>C</b><span>a mostani sebesség tartása</span><b>X</b><span>automata tempomat</span><b>P</b><span>rögzítőfék be / ki</span><b>H</b><span>kürt</span><b>R</b><span>irány: előre – üres – hátra</span><b>V</b><span>a következő váltó állítása</span><b>3</b><span>3D nézet be / ki · F: vezetőállás / külső kamera · egérrel körbeforgatható</span><b>M</b><span>térkép</span><b>Egér</b><span>görgő: nagyítás · húzás: mozgatás · kattintás a váltóra: állítás</span></div>
   <p class="mut" style="margin-top:12px;font-size:12px">Térkép és vasúthálózat: © OpenStreetMap-közreműködők (ODbL)</p></div></div>
-<script src="taj.js?v=202611220021"></script>
-<script src="vasut.js?v=202611220021"></script>
+<script src="taj.js?v=202611220059"></script>
+<script src="vasut.js?v=202611220059"></script>
 </body></html>
