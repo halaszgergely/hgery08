@@ -79,11 +79,11 @@ export function step(S, dt, ev) {
     out += PUMP_Q * (S.valve < 1 && S.f.valveShut ? S.valve : 1); }
   if (!S.run[0] && !S.run[1]) S.press = Math.max(0, S.press - dt * .5); else if (!(S.valve < .5 && S.f.valveShut)) S.press = Math.max(1.2, Math.min(2.4, S.press + (1.8 - S.press) * dt));
   S.lvl = Math.max(.2, S.lvl + (S.qin - out) * dt);
-  if (S.lvl >= OVER && !S.f.overNow) { S.f.overNow = 1; S.stats.over = 1; ev('overflow'); }
+  if (S.lvl >= OVER && !S.f.overNow) { S.f.overNow = 1; S.stats.over = (S.stats.over || 0) + 1; ev('overflow'); }
   // akna: gáz
   const W = S.well, vent = W.vent && lightPow(S);
   if (W.in) { W.h2s = vent ? Math.max(1.2, W.h2s - dt * 1.6) : Math.min(40, W.h2s + dt * (W.h2s < 5 ? .7 : .55)); } else W.h2s = Math.max(0, W.h2s - dt * 3);
-  if (W.h2s >= 10 && !S.f.gasA2) { S.f.gasA2 = 1; S.stats.gas = 1; } if (W.h2s < 8) S.f.gasA2 = 0;
+  if (W.h2s >= 10 && !S.f.gasA2) { S.f.gasA2 = 1; S.stats.gas = (S.stats.gas || 0) + 1; } if (W.h2s < 8) S.f.gasA2 = 0;
   if (W.in && W.h2s >= 15) { if ((W.faintT += dt) > 14) { W.faintT = 0; ev('faint'); } } else W.faintT = Math.max(0, W.faintT - dt);
   // modem
   const M = S.modem; if (M.pwr && cp && q[4] && M.ant) { if (!M.online && (M.boot += dt) > 6) { M.online = 1; ev('online'); } } else { M.boot = 0; if (M.online) { M.online = 0; } }

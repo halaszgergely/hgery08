@@ -1,5 +1,5 @@
 // Az Átemelőtelep – kezelőfelületek (DOM-panelek): kapcsolószekrény, multiméter, sorkapocs, terminál, aggregát, átkapcsoló, modem, dokumentumok, leltár.
-import { X1, LOOSE, CODE, ITEMN, OVER, LSL_H, LSH_H, cabPow, v24, plcRun, lightPow, supply, ltOK, lshOK, lslOK, fbOK, progTest } from './jatek.js?v=202611211936';
+import { X1, LOOSE, CODE, ITEMN, OVER, LSL_H, LSH_H, cabPow, v24, plcRun, lightPow, supply, ltOK, lshOK, lslOK, fbOK, progTest } from './jatek.js?v=202611211943';
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let api = null, cur = null, sub = {}, timer = 0, lastH = '', pdown = false;
 export function initUI(a) { api = a; $('#pn').addEventListener('click', click); $('#pn').addEventListener('change', change); $('#pn').addEventListener('pointerdown', e => { pdown = true; hold(e); }); addEventListener('pointerup', () => { setTimeout(() => pdown = false, 0); release(); }); }
@@ -158,9 +158,10 @@ function change(e) { const s = S(); const p = e.target.dataset.p, c = e.target.d
 const wireAtTerm = (s, n) => Object.keys(s.wires).find(k => s.wires[k] === n);
 // tartós gombok (izzítás, indítás)
 let held = null, holdT = 0;
-function hold(e) { const b = e.target.closest('[data-hold]'); if (!b || b.disabled) return; held = b.dataset.hold; b.classList.add('on'); clearInterval(holdT); const s = S(), G = s.gen; let t = 0;
-  holdT = setInterval(() => { t += .1; if (!held) return;
-    if (held === 'pre') { G.pre = Math.min(1, G.pre + .1 / 6); api.sfx('tick'); }
+function hold(e) { const b = e.target.closest('[data-hold]'); if (!b || b.disabled) return; held = b.dataset.hold; b.classList.add('on'); clearInterval(holdT); const s = S(), G = s.gen; let t = 0, lastT = performance.now();
+  // a ténylegesen eltelt időt mérjük (lassú gépen az időzítő ritkábban fut, de az izzítás így is ~6 s marad)
+  holdT = setInterval(() => { const now = performance.now(), d = Math.min(.5, (now - lastT) / 1000) * (window.__ts || 1); lastT = now; t += d; if (!held) return;
+    if (held === 'pre') { G.pre = Math.min(1, G.pre + d / 6); api.sfx('tick'); }
     if (held === 'crank') { api.sfx('crank'); if (G.estop) { sub.gmsg = 'Az önindító megforgatja a motort, de a VÉSZ-STOP benyomva – nincs üzemanyag-adagolás.'; } else if (G.fuel < .2) { sub.gmsg = 'A motor köhög, de nem indul – nincs elég üzemanyag.'; } else if (G.pre < 1) { sub.gmsg = 'Hideg dízel: a motor nem akar beindulni. Izzíts előbb!'; } else if (t > 2.2) { G.run = 1; G.pre = 0; held = null; sub.gmsg = 'Beindult! Várd meg, amíg stabil lesz.'; api.sfx('engine'); api.check(); } }
     const m = document.getElementById('gmsg'); if (m) m.textContent = sub.gmsg || ''; }, 100); }
 function release() { if (!held) return; held = null; clearInterval(holdT); render(); }
