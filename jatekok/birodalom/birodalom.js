@@ -386,7 +386,14 @@ const Birodalom = (() => {
   const szOf = k => (MOD[k] || PL[k] || {}).sz || 1;
   const cells = (i, sz = szOf(S.k[i])) => { const c = i % COLS, r = Math.floor(i / COLS), o = []; for (let y = 0; y < sz; y++) for (let x = 0; x < sz; x++) o.push(idx(c + x, r + y)); return o; };
   const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-  const fmt = n => n >= 1e6 ? bigNum(n) : Math.floor(n).toLocaleString('hu-HU');
+  // tudományos jelölés 1 millió fölött (pl. 1,23E45); a túlcsordult érték is olvasható marad
+  const sci = n => { n = +n || 0; if (!isFinite(n)) return n < 0 ? '-∞' : '∞'; if (Math.abs(n) < 1e6) return Math.floor(n).toLocaleString('hu-HU'); let e = Math.floor(Math.log10(Math.abs(n))), m = n / 10 ** e; if (Math.abs(m) >= 9.995) { m /= 10; e++; } return m.toFixed(2).replace('.', ',') + 'E' + e; };
+  const fmt = sci;
+  /* túlcsordulás-védelem: minden készlet legfeljebb CAP (1e300); a végtelen / NaN / negatív (elrontott) értékek javítása */
+  function sanit(full) { if (!S) return; const fix = (v, hi) => typeof v !== 'number' || v !== v || v < 0 ? (hi ? CAP : 0) : v > CAP ? CAP : v;
+    S.life = fix(S.life, true); const big = S.life >= 1e250; for (const k of ['money', 'nek', 'cp']) S[k] = fix(S[k], big); for (const k of ['star', 'starT', 'sent']) S[k] = fix(S[k], false);
+    if (S.met) for (const k in S.met) S.met[k] = fix(S.met[k], big);
+    if (full) for (let i = 0; i < S.g.length; i++) if (typeof S.g[i] !== 'number' || !(S.g[i] >= 0) || !isFinite(S.g[i])) S.g[i] = 0; }
   let GR = { ft: 0, nek: 0, cp: 0, met: {}, gal: [] }, S = null, L = null, NET = null, drag = null, lastTile = -1, fl = [], dust = [], confirmT = 0, CB = [], DR = [], MO = null, RP = null, panS = null, pinch = null, pend = null, wheelOn = 0;
   const CAM = { z: 0, cx: null, cy: null }, PT = new Map(), MMC = { t: -9 };
   const MOB = new Map(), TEX = { ts: 0, c: [] };
@@ -510,7 +517,7 @@ const Birodalom = (() => {
   const wetVis = i => Math.max(NET.wet[i], MO && MO[i] > 0 ? MO[i] : 0), wetNow = i => { let w = ghW(); for (const j of cells(i)) w = Math.max(w, wetVis(j)); return w; };
   const rqOK = i => !PL[S.k[i]].rq || (NET.rq && NET.rq[i]);
   const rate = (i, w) => rqOK(i) ? w * NET.gb[i] * speed() / PL[S.k[i]].t : 0;
-  const val = i => Math.round(PL[S.k[i]].v * price() * NET.yb[i]);
+  const val = i => Math.min(CAP, Math.round(PL[S.k[i]].v * price() * NET.yb[i]));
   /* a mezőre ható bónuszok a növény-tooltiphez */
   const xf = v => '×' + (v < 100 ? (+v.toFixed(2)).toLocaleString('hu-HU') : fmt(Math.round(v)));
   function bonusLines(i, w) { const o = [], [cw, rh] = size(), c0 = i % COLS, r0 = Math.floor(i / COLS), mods = {};
@@ -526,7 +533,7 @@ const Birodalom = (() => {
     if (S.up.kombajn || S.up.dron) o.push('Kombájnos aratás ' + xf(cbBonus()));
     return o; }
 
-  function earn(v) { S.money += v; S.life += v; }
+  function earn(v) { if (!(v > 0)) return; S.money = Math.min(CAP, S.money + v); S.life = Math.min(CAP, S.life + v); }
   // nektár: minden aratás ad egy keveset; a magasabb szintű növény többet
   const PLI = {}; Object.keys(PL).forEach((k, j) => { PLI[k] = j; });
   const nekOf = k => .004 * (1 + PLI[k]) * (PL[k].nkx || 1) * (PL[k].sz ? PL[k].sz * PL[k].sz : 1) * (1 + .25 * S.up.nektar);
@@ -1301,13 +1308,14 @@ const Birodalom = (() => {
   }
 
   return {
+    sfmt: n => sci(n), fmt: n => sci(n),
     id: 'birodalom', name: 'ÖNTÖZŐ BIRODALOM', lives: 0, quit: false, idle: true, unit: ' FT', lb: 'Ft', sponsor: 'A Zerosites támogatásával',
     desc: 'Vegyél modulokat, építs csőhálózatot, ültess kertet és ültetvényt – a víz hozza a termést, a termés a pénzt. A kerted akkor is dolgozik, amikor nem vagy itt.',
     how: 'VÁLASSZ ESZKÖZT · ÉRINTSD A MEZŐT · ARATÁS: ÉRETT NÖVÉNYRE KOPPINTS · GÖRGETÉS: HÚZÁS ESZKÖZ NÉLKÜL, NAGYÍTÁS: GÖRGŐ / CSÍPÉS',
     ranks: [[0, 'Palántanevelő'], [1000, 'Kiskertész'], [50000, 'Kertész'], [1e6, 'Ültetvényes'], [5e7, 'Vízmester'], [1e9, 'Öntöző Birodalom ura'], [1e11, 'Vízcsászár'], [1e13, 'Bolygóöntöző'], [1e15, 'A Víz Istene']],
     init(G) {
       GG = G; if (inFrame() && !CL.asked) { CL.asked = 1; parent.postMessage({ hgws: 'csreq', game: 'birodalom' }, location.origin); }
-      S = load(); S.tab = S.tab || 'mod'; S.tool = S.tool === undefined ? 'pipe' : S.tool; fl = []; dust = []; drag = null; confirmT = 0;
+      S = load(); sanit(true); S.tab = S.tab || 'mod'; S.tool = S.tool === undefined ? 'pipe' : S.tool; fl = []; dust = []; drag = null; confirmT = 0;
       MO = new Float32Array(COLS * ROWS); RP = new Float32Array(COLS * ROWS); CB = []; DR = []; syncCB(); panS = null; pinch = null; PT.clear();
       S.nek = S.nek || 0; S.cp = S.cp || 0; S.met = { vas: 0, rez: 0, tit: 0, iri: 0, neu: 0, ...(S.met || {}) }; S.gx = { gals: [], cur: 0, sel: 0, up: {}, won: {}, ...(S.gx || {}) }; S.gx.pick = null; for (const gal of S.gx.gals) for (const st of gal.stars) for (const p of st.pl) if (!PCLS[p.c].al.includes(p.des)) p.des = PCLS[p.c].al[0]; GR = gnet(); S.loc = S.loc || 'earth'; S.locs = S.locs || {}; S.unl = S.unl || ['earth']; S.anim = null; S.lp = false;
       layout(G); net(); G.score = Math.min(CAP, Math.floor(S.life));
@@ -1430,7 +1438,7 @@ const Birodalom = (() => {
       if (S.anim) { S.anim.t += dt; if (!S.anim.done && S.anim.t >= S.anim.dur * .55) { S.anim.done = 1; goLoc(G, S.anim.to); } if (S.anim.t >= S.anim.dur) S.anim = null; }
       const sc = Math.min(CAP, Math.floor(S.life));
       S.hudT -= dt; if (sc !== G.score && S.hudT <= 0) { G.score = sc; S.hudT = .25; if (sc > store.get('best_' + this.id)) store.set('best_' + this.id, sc); hud(); }
-      if ((S.saveT += dt) > 5) { S.saveT = 0; save(); }
+      sanit(); if ((S.saveT += dt) > 5) { S.saveT = 0; save(); }
       if ((S.syncT += dt) > 60) { S.syncT = 0; this.sync(G); cloudPush(); }
       if (S.away) S.away.l -= dt; if (S.info) S.info.l -= dt;
       if (confirmT > 0) confirmT -= dt;

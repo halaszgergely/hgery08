@@ -120,7 +120,7 @@ function renderCards() {
       arts.forEach((c, i) => ARTS[GAMES[i].id](c, c.getContext('2d'), now / 1000)); })(0);
     popOrder();
   }
-  wrap.querySelectorAll('.best').forEach(b => { if (b.dataset.ext) { const eg = GAMES.find(x => x.id === b.dataset.id); b.textContent = (eg && eg.tag) || 'DEMO'; return; } const v = store.get('best_' + b.dataset.id), gm = GAMES.find(x => x.id === b.dataset.id), w = store.get('wins_' + b.dataset.id); b.textContent = 'REKORD: ' + bigNum(v) + (gm.lb ? ' ' + gm.lb : '') + (w ? ' · 🏆×' + w : ''); });
+  wrap.querySelectorAll('.best').forEach(b => { if (b.dataset.ext) { const eg = GAMES.find(x => x.id === b.dataset.id); b.textContent = (eg && eg.tag) || 'DEMO'; return; } const v = store.get('best_' + b.dataset.id), gm = GAMES.find(x => x.id === b.dataset.id), w = store.get('wins_' + b.dataset.id); b.textContent = 'REKORD: ' + (gm.sfmt ? gm.sfmt(v) : bigNum(v)) + (gm.lb ? ' ' + gm.lb : '') + (w ? ' · 🏆×' + w : ''); });
 }
 renderCards();
 $('#yr').textContent = new Date().getFullYear();

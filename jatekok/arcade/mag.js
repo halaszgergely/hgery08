@@ -247,7 +247,7 @@ const bigNum = n => { n = Math.floor(n || 0); if (!isFinite(n)) return '∞'; if
   const U = ['', 'U', 'D', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No'], T = ['', 'Dc', 'Vg', 'Tg', 'Qag', 'Qig', 'Sxg', 'Spg', 'Ocg', 'Nog'], F = ['', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No'];
   return k >= 100 ? num + ' × 10^' + 3 * (k + 1) : num + ' ' + (k < 10 ? F[k] : U[k % 10] + T[Math.floor(k / 10)]); };
 function hud() {
-  UI.score.textContent = bigNum(G.score) + (G.game.unit || ' PONT');
+  UI.score.textContent = (G.game.sfmt ? G.game.sfmt(G.score) : bigNum(G.score)) + (G.game.unit || ' PONT');
   UI.best.textContent = 'REKORD ' + bigNum(store.get('best_' + G.game.id)) + (G.game.unit || '');
   UI.lives.textContent = G.game.lives ? '💧'.repeat(Math.max(0, G.lives)) + '🥀'.repeat(Math.max(0, G.game.lives - G.lives)) : '';
   UI.lives.style.display = G.game.lives ? '' : 'none';
@@ -271,7 +271,7 @@ function over() {
   const id = 'best_' + G.game.id, prev = store.get(id), nb = G.score > prev; if (nb) store.set(id, G.score);
   if (G.win) store.set('wins_' + G.game.id, store.get('wins_' + G.game.id) + 1);
   $('#oTitle').textContent = G.game.overTitle || 'VÉGE';
-  $('#oScore').textContent = bigNum(G.score) + (G.game.unit || '');
+  $('#oScore').textContent = (G.game.sfmt ? G.game.sfmt(G.score) : bigNum(G.score)) + (G.game.unit || '');
   $('#oRank').textContent = (G.game.ranks.filter(r => G.score >= r[0]).pop() || [0, ''])[1].toUpperCase();
   $('#oBest').textContent = (nb ? '🏆 ÚJ REKORD!' : 'Rekord: ' + bigNum(prev) + (G.game.unit || '')) + (G.win || store.get('wins_' + G.game.id) ? ' · 🏆 ×' + store.get('wins_' + G.game.id) : '');
   setTimeout(() => { UI.pOver.hidden = false; }, 450); hud(); renderCards();
