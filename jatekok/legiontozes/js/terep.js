@@ -2,7 +2,7 @@
    (4, 8, 16, 32 km) ugyanannyi osztással – ez a LOD. A csonkok széle „szoknyát” kap, hogy ne látszódjon rés a szintek között.
    A felszínt lapszínek adják (low-poly): mezőparcellák, erdő, település, víz, szikla. Közeli erdőcsonkokon instancolt fák. */
 import * as THREE from 'three';
-import { ground, cls, hash2, G, onTile, clearGridCache, inAirport } from './geo.js?v=202611212314';
+import { ground, cls, hash2, G, onTile, clearGridCache, inAirport } from './geo.js?v=202611212316';
 
 const LEAF = 2000, ROOT = 32000, N = 16;
 const C = new THREE.Color();
