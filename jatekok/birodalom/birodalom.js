@@ -629,6 +629,7 @@ const Birodalom = (() => {
       arr: pages > 1 ? [{ dir: -1, x: ix - arr - 2 * d, y: iy, w: arr, h: ih }, { dir: 1, x: ix + iw * vis.length + 2 * d, y: iy, w: arr, h: ih }] : [] };
   }
 
+  let RDEL = false; // jobb klikkes bontás előtti eszköz
   const DN = { n: 0, c: 0, k: '', t: 0, x: 0, y: 0, last: -1 }; // húzásos lerakás számlálója
   // hatótávos modulok húzása (mint a villanypóznák): a következő ott kerül le, ahol a körzetek épp nem fednek át
   const rangeOf = k => { const m = MOD[k]; if (!m || m.mob || m.wq || m.one || m.q || m.cp || m.valve) return 0; return m.r ? m.r + S.up.kvantum : m.nb ? 1 : m.aura || m.boost || 0; };
@@ -1359,6 +1360,7 @@ const Birodalom = (() => {
       if (PT.size >= 2) { const [a, b] = [...PT.values()]; drag = null; panS = null; pend = null; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; return; }
       const i = tileAt(x, y);
       // eszköz nélkül (vagy jobb/középső gombbal) húzva a kertet görgeti; koppintásra arat / szelepet kapcsol
+      if (e && e.button === 2 && i >= 0 && !galView()) { RDEL = S.tool === undefined ? null : S.tool; S.tool = 'del'; DN.n = 0; DN.c = 0; place(G, i, true); lastTile = i; drag = 1; return; } // jobb klikk = bontás (húzva is)
       if (!S.tool || i < 0 || (e && (e.button === 1 || e.button === 2))) { panS = { x, y, moved: 0, i: e && e.button ? -1 : i }; return; }
       // érintésnél kicsit várunk: ha jön a második ujj (csípés), nem rakunk le semmit
       if (e && e.pointerType === 'touch') { pend = { i, x, y, t: performance.now() }; return; }
@@ -1377,7 +1379,7 @@ const Birodalom = (() => {
       if (pinch) { if (PT.size < 2) pinch = null; panS = null; drag = null; pend = null; lastTile = -1; return; }
       if (pend) this.commit(G);
       if (panS && panS.moved < 10 * L.d && panS.i >= 0) place(G, panS.i, true);
-      if (drag) DN.t = 1.2; panS = null; drag = null; lastTile = -1; },
+      if (drag) DN.t = 1.2; if (RDEL !== false) { S.tool = RDEL; RDEL = false; } panS = null; drag = null; lastTile = -1; },
     update(G, fdt) {
       DN.t = Math.max(0, DN.t - fdt);
       if (pend && PT.size === 1 && performance.now() - pend.t > 110) this.commit(G);
