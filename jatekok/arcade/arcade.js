@@ -4,6 +4,8 @@ const ZeroSpace = { id: 'zerospace', name: 'ZERO SPACE DEMO', ext: 'jatekok/zero
   desc: 'Tervezd meg a saját űrhajódat modulról modulra, és vezesd csatába a végtelen űrben. Korai demó – az egyjátékos sandbox már elérhető.' };
 const AranyLocsolofej = { id: 'aranylocsolofej', name: 'AZ ARANY LOCSOLÓFEJ', ext: 'jatekok/aranylocsolofej/index.html', tag: 'ÚJ',
   desc: 'Szikkadt Szilárd ellopta az Arany Locsolófejet! Hívd össze a csapatot, foglald el a víztornyot, és szerezd vissza a filmes kalandjátékban.' };
+const LocsoloHaboru = { id: 'locsolohaboru', name: 'LOCSOLÓHÁBORÚ', ext: 'jatekok/locsolohaboru/index.html', tag: 'ONLINE',
+  desc: 'Első személyű vízipisztoly-aréna 2–8 játékosnak: öt fegyver, négy pálya, négy mód – barátokkal vagy botok ellen.' };
 const VizagyuIo = { id: 'vizagyuio', name: 'VÍZÁGYÚ.IO', ext: 'jatekok/vizagyuio/index.html', tag: 'ONLINE',
   desc: 'Valós idejű locsolóaréna 2–8 játékosnak: hívd meg a barátaidat, vagy gyakorolj botok ellen. Négy mód, négy pálya.' };
 const ZeroChip = { id: 'zerochip', name: 'ZERO CHIP', ext: 'jatekok/zerochip/index.html', tag: 'ÚJ',
@@ -13,7 +15,7 @@ const ZeroQuest = { id: 'zeroquest', name: 'ZERO QUEST', ext: 'jatekok/zeroquest
   desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében: küldetések, szintlépés, felszerelés és egy ébredő őr a romok alatt. Zárt béta.' };
 const Drift = window.HGDrift ? window.HGDrift({ G, Sfx, rr, store, hud }) : null;
 const Zombi = window.HGZombi ? window.HGZombi({ G, Sfx, rr, store, hud }) : null;
-const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Ugro, Torony, Birodalom, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
+const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Ugro, Torony, Birodalom, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
 const EXT = $('#ext'), EXF = $('#extf');
 let zqWait = false;
 function openExt(gm) { if (gm.lock && !window.HGZQ_OK) { zqWait = !window.HGZQ_SEEN; return; } EXF.src = gm.ext + '?v=' + Date.now().toString(36).slice(0, 5) + (gm.room ? '&room=' + encodeURIComponent(gm.room) : ''); gm.room = ''; EXT.hidden = false; document.body.classList.add('locked'); setTimeout(() => { try { EXF.focus(); } catch (_) {} }, 300); }
@@ -43,6 +45,11 @@ const ARTS = {
     const G = x.createLinearGradient(cx - 18, 0, cx + 18, 0); G.addColorStop(0, '#a8702a'); G.addColorStop(.4, '#fff3c4'); G.addColorStop(1, '#a8702a'); x.fillStyle = G; x.fillRect(cx - 5, cy - 22, 10, 22); x.fillRect(cx - 13, cy - 2, 26, 6); x.beginPath(); x.moveTo(cx - 8, cy - 22); x.lineTo(cx + 8, cy - 22); x.lineTo(cx + 15, cy - 36); x.lineTo(cx - 15, cy - 36); x.fill(); x.beginPath(); x.ellipse(cx, cy - 38, 18, 7, 0, 0, 6.283); x.fill();
     x.fillStyle = '#7a2f3a'; x.fillRect(cx - 34, cy + 4, 68, 30); x.fillStyle = '#e8b656'; x.fillRect(cx - 38, cy, 76, 5); x.strokeStyle = 'rgba(200,235,255,.8)'; x.lineWidth = 2; x.beginPath(); x.moveTo(cx - 30, cy); x.lineTo(cx - 30, cy - 46); x.arc(cx, cy - 46, 30, Math.PI, 0); x.lineTo(cx + 30, cy); x.stroke();
     for (let k = 0; k < 6; k++) { const o = (t * .5 + k / 6) % 1, px = cx - 110 + k * 44 + Math.sin(k * 3) * 10, py = 20 + o * 100; x.fillStyle = `rgba(108,198,255,${.9 - o * .6})`; x.beginPath(); x.moveTo(px, py - 7); x.bezierCurveTo(px + 6, py, px + 5, py + 6, px, py + 6); x.bezierCurveTo(px - 5, py + 6, px - 6, py, px, py - 7); x.fill(); } },
+  locsolohaboru: (c, x, t) => { const W = c.width, H = c.height, g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#8fc6ea'); g.addColorStop(.55, '#cfe6f2'); g.addColorStop(.56, '#5fa04e'); g.addColorStop(1, '#3f7a35'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    x.fillStyle = '#2c7d36'; x.fillRect(W * .08, H * .38, W * .22, H * .2); x.fillStyle = '#c9a66b'; x.fillRect(W * .68, H * .3, W * .2, H * .27); x.fillStyle = '#8a4b2e'; x.fillRect(W * .66, H * .27, W * .24, H * .05);
+    const ex = W * .46 + Math.sin(t * 1.3) * W * .12; x.fillStyle = '#2a2f38'; x.fillRect(ex - 6, H * .44, 12, 18); x.fillStyle = '#ff7a6e'; x.fillRect(ex - 8, H * .34, 16, 14); x.fillStyle = '#f0c9a0'; x.fillRect(ex - 5, H * .27, 10, 9);
+    x.fillStyle = 'rgba(190,230,255,.95)'; for (let i = 0; i < 12; i++) { const k = (t * 1.6 + i / 12) % 1, px = W * .72 + (ex - W * .72) * k, py = H * .86 + (H * .38 - H * .86) * k - Math.sin(k * 3.1) * 12; x.beginPath(); x.arc(px, py, 3.2 - k * 1.5, 0, 6.283); x.fill(); }
+    x.fillStyle = '#3f9a4a'; x.beginPath(); x.moveTo(W * .66, H); x.lineTo(W * .76, H * .8); x.lineTo(W * .86, H * .84); x.lineTo(W * .8, H); x.fill(); x.fillStyle = '#ffd84a'; x.fillRect(W * .72, H * .82, 10, 8); x.strokeStyle = '#fff'; x.lineWidth = 1.5; x.beginPath(); x.moveTo(W / 2 - 7, H / 2); x.lineTo(W / 2 + 7, H / 2); x.moveTo(W / 2, H / 2 - 7); x.lineTo(W / 2, H / 2 + 7); x.stroke(); },
   vizagyuio: (c, x, t) => { const W = c.width, H = c.height; x.fillStyle = '#2f6b3a'; x.fillRect(0, 0, W, H); x.fillStyle = '#285e33'; for (let i = 0; i < W; i += 40) for (let j = (i / 40 % 2) * 40; j < H; j += 80) x.fillRect(i, j, 40, 40);
     const car = (px, py, a, col) => { x.save(); x.translate(px, py); x.rotate(a); x.fillStyle = '#1a2230'; x.fillRect(-15, -11, 30, 22); x.fillStyle = col; x.fillRect(-13, -9, 26, 18); x.fillStyle = '#c3ced9'; x.fillRect(4, -3, 18, 6); x.restore(); };
     const a1 = Math.sin(t * .9) * .4, p1 = [W * .28, H * .5 + Math.sin(t * 1.3) * 18], p2 = [W * .72, H * .5 + Math.cos(t * 1.1) * 18]; car(p1[0], p1[1], a1, '#6cc6ff'); car(p2[0], p2[1], Math.PI + Math.sin(t * .7) * .4, '#ff7a6e');

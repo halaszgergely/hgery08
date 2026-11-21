@@ -1,8 +1,8 @@
 // HGWS – tag profiloldala (#/profil/<uid>): rang, tagek, bemutatkozás, Arcade-rekordok, értékelései
-import { FB, db, $, esc, bigNum, lbDec, avatar, toDate, timeLabel, isOnline, roleOf, OWNER_UID, notify } from './core.js?v=202611210141';
-import { I, bgOf } from './fx.js?v=202611210141';
-import * as Admin from './admin.js?v=202611210141';
-import { GAMES } from './browse.js?v=202611210141';
+import { FB, db, $, esc, bigNum, lbDec, avatar, toDate, timeLabel, isOnline, roleOf, OWNER_UID, notify } from './core.js?v=202611210219';
+import { I, bgOf } from './fx.js?v=202611210219';
+import * as Admin from './admin.js?v=202611210219';
+import { GAMES } from './browse.js?v=202611210219';
 
 let C = null, gen = 0;
 export function init(ctx) { C = ctx; }
@@ -23,18 +23,22 @@ export const BADGES = [
   { id: 'mpgyoztes', ic: 'droplets', n: 'Első győzelem', d: 'Megnyert egy Vízágyú.io meccset', c: '#6cc6ff', ok: x => x.mp.wins >= 1 },
   { id: 'mpszaz', ic: 'crosshair', n: 'Százas áztató', d: '100 kiütés a Vízágyú.io-ban', c: '#ff7a6e', ok: x => x.mp.kos >= 100 },
   { id: 'mpszilard', ic: 'sun', n: 'Szilárd legyőzője', d: 'Kooperatív módban eláztatta Szikkadt Szilárdot', c: '#ffa94d', ok: x => x.mp.boss >= 1 },
+  { id: 'lhgyoztes', ic: 'trophy', n: 'Locsolóbajnok', d: 'Megnyert egy Locsolóháború-meccset', c: '#4aa8ff', ok: x => x.fps.wins >= 1 },
+  { id: 'lhszaz', ic: 'target', n: 'Mesteráztató', d: '100 kiütés a Locsolóháborúban', c: '#ff5a4d', ok: x => x.fps.kos >= 100 },
+  { id: 'lhszilard', ic: 'flame', n: 'Aszályvégző', d: 'A Locsolóháborúban legyőzte Szikkadt Szilárdot', c: '#e8b656', ok: x => x.fps.boss >= 1 },
   { id: 'csapat', ic: 'shield-check', n: 'A csapat tagja', d: 'Moderátor vagy magasabb rang', c: '#6cc6ff', ok: x => x.staff }
 ];
 async function facts(id) {
   const u = C.S.users.get(id) || {}, self = id === C.uid();
-  const [rates, games, ideas, hosts, mp] = await Promise.all([
+  const [rates, games, ideas, hosts, mp, fps] = await Promise.all([
     FB.getDocs(FB.collectionGroup(db, 'ratings')).then(s => s.docs.filter(d => d.id === id).length).catch(() => 0),
     Promise.all(GAMES.map(g => FB.getDoc(FB.doc(db, 'leaderboards', g.id, 'scores', id)).then(s => lbDec(s.data()?.best || 0)).catch(() => 0))),
     FB.getDocs(self ? FB.query(FB.collection(db, 'ideas'), FB.where('uid', '==', id)) : FB.query(FB.collection(db, 'ideas'), FB.where('uid', '==', id), FB.where('public', '==', true))).then(s => s.size).catch(() => 0),
     FB.getDocs(FB.query(FB.collection(db, 'parties'), FB.where('host', '==', id))).then(s => s.size).catch(() => 0),
-    FB.getDoc(FB.doc(db, 'mpstats', id)).then(s => ({ wins: 0, kos: 0, boss: 0, games: 0, ...(s.exists() ? s.data() : {}) })).catch(() => ({ wins: 0, kos: 0, boss: 0, games: 0 }))
+    FB.getDoc(FB.doc(db, 'mpstats', id)).then(s => ({ wins: 0, kos: 0, boss: 0, games: 0, ...(s.exists() ? s.data() : {}) })).catch(() => ({ wins: 0, kos: 0, boss: 0, games: 0 })),
+    FB.getDoc(FB.doc(db, 'fpsstats', id)).then(s => ({ wins: 0, kos: 0, boss: 0, caps: 0, games: 0, ...(s.exists() ? s.data() : {}) })).catch(() => ({ wins: 0, kos: 0, boss: 0, caps: 0, games: 0 }))
   ]);
-  return { mp, rates, scores: games, games: games.filter(Boolean).length, ideas, hosts, bio: !!(u.bio || '').trim(),
+  return { mp, fps, rates, scores: games, games: games.filter(Boolean).length, ideas, hosts, bio: !!(u.bio || '').trim(),
     days: (Date.now() - (toDate(u.createdAt)?.getTime() || Date.now())) / DAY,
     champ: C.userTags(u).some(t => t.name === 'Arcade-bajnok'), staff: C.rankOfUser(u) >= 40 };
 }
@@ -105,6 +109,9 @@ export async function render(id) {
     $('#pMp')?.remove();
     if (x.mp.games) { const maps = { m_volgy: 'Locsolóvölgy', m_aszaly: 'Aszályföld', m_gyar: 'HGWS gyár', m_atemelo: 'Átemelőtelep' }, fav = Object.keys(maps).sort((a, b) => (x.mp[b] || 0) - (x.mp[a] || 0))[0];
       $('#pAch').insertAdjacentHTML('afterend', `<div id="pMp" class="hint" style="margin-top:10px">Vízágyú.io: ${x.mp.games} meccs · ${x.mp.wins} győzelem · ${x.mp.kos} kiütés${x.mp[fav] ? ' · kedvenc pálya: ' + maps[fav] : ''}</div>`); }
+    $('#pFps')?.remove();
+    if (x.fps.games) { const maps = { m_kert: 'Locsolóvölgy kertje', m_gyar: 'HGWS gyárcsarnok', m_atemelo: 'Átemelőtelep', m_aszaly: 'Aszályföld' }, fav = Object.keys(maps).sort((a, b) => (x.fps[b] || 0) - (x.fps[a] || 0))[0];
+      ($('#pMp') || $('#pAch')).insertAdjacentHTML('afterend', `<div id="pFps" class="hint" style="margin-top:6px">Locsolóháború: ${x.fps.games} meccs · ${x.fps.wins} győzelem · ${x.fps.kos} kiütés${x.fps.caps ? ' · ' + x.fps.caps + ' hazavitt locsolófej' : ''}${x.fps[fav] ? ' · kedvenc pálya: ' + maps[fav] : ''}</div>`); }
   });
   // Arcade-rekordok
   Promise.all(GAMES.map(g => FB.getDoc(FB.doc(db, 'leaderboards', g.id, 'scores', id)).then(s => [g, lbDec(s.data()?.best || 0), s.data()?.wins || 0]).catch(() => [g, 0, 0]))).then(l => {
