@@ -68,4 +68,16 @@ await t('érték nem csökkenthető', assertFails(st(anna, 'anna', { games: incr
 await t('szabályos második meccs', assertSucceeds(st(anna, 'anna', { games: increment(1), wins: increment(0), kos: increment(12), boss: increment(1), m_gyar: increment(1) })));
 await t('bárki (bejelentkezve) olvashatja', assertSucceeds(getDoc(doc(dora, 'mpstats', 'anna'))));
 
+console.log('--- Locsolóháború');
+await t('locsolóháborús szoba', assertSucceeds(setDoc(R(anna, 'lh1'), room('anna', { game: 'locsolohaboru', mode: 'ctf', map: 'gyar' }))));
+await t('ismeretlen játék szobája', assertFails(setDoc(R(anna, 'lh2'), room('anna', { game: 'mas' }))));
+const fs = (db, uid, d) => setDoc(doc(db, 'fpsstats', uid), { ...d, updatedAt: serverTimestamp() }, { merge: true });
+await t('első FPS-meccs', assertSucceeds(fs(bela, 'bela', { games: increment(1), wins: increment(1), kos: increment(18), caps: increment(2), boss: increment(0), m_gyar: increment(1) })));
+await t('FPS: más nevében nem', assertFails(fs(anna, 'bela', { games: increment(1) })));
+await env.withSecurityRulesDisabled(c => updateDoc(doc(c.firestore(), 'fpsstats', 'bela'), { updatedAt: new Date(Date.now() - 120e3) }));
+await t('FPS: legfeljebb 60 kiütés meccsenként', assertFails(fs(bela, 'bela', { games: increment(1), kos: increment(61) })));
+await t('FPS: legfeljebb 5 hazavitt locsolófej', assertFails(fs(bela, 'bela', { games: increment(1), caps: increment(6) })));
+await t('FPS: ismeretlen pálya mező', assertFails(fs(bela, 'bela', { games: increment(1), m_hold: increment(1) })));
+await t('FPS: szabályos második meccs', assertSucceeds(fs(bela, 'bela', { games: increment(1), kos: increment(9), boss: increment(1), m_kert: increment(1) })));
+
 console.log(`\n${n - bad} / ${n} rendben`); await env.cleanup(); process.exit(bad ? 1 : 0);
