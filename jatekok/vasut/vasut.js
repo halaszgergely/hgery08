@@ -179,11 +179,26 @@
       if (jobs.some(j => j.to === to)) continue; const C = CARGO[cg];
       const cap0 = rnd() < .25 ? LEN_LIC[Math.min(LEN_LIC.length - 1, S.lic.len + 1)] : licMax(), n = Math.max(2, Math.round(2 + rnd() * (cap0 - 2))), a = me, tl = LOCOS.m62.len + n * CAR_L, ra = routeTo([[a.e * 2, E[a.e].L - a.s]], ST[to], tl), rb = routeTo([[a.e * 2 + 1, a.s]], ST[to], tl), d = Math.min(ra ? ra.d : Infinity, rb ? rb.d : Infinity); if (!isFinite(d) || d > lim * 1.25) continue; const rt = rtOK() && rnd() < .35, back = rt ? (Object.keys(CARGO).filter(c => CARGO[c].wt === C.wt && (!ST[to].ind || IND[ST[to].ind].ki.includes(c) || !CARGO[c].x)).sort(() => rnd() - .5)[0] || cg) : null;
       const km = d / 1000 * (rt ? 2 : 1), pay = Math.round(n * km * C.r * 4 * (rt ? 1.1 : 1) * (1 + .3 * rnd()) / 100) * 100;
-      jobs.push({ id: JID++ + '_' + si + '_' + k + '_' + Math.floor(now), from: si, to, cg, n, km, pay, lim: Math.round(d * (rt ? 2 : 1) / (rt ? 10 : 13) + (rt ? 5400 : 1800)), state: 'board', rt: rt ? 1 : 0, cg2: back }); }
+      jobs.push({ id: JID++ + '_' + si + '_' + k + '_' + Math.floor(now), from: si, to, cg, n, km, pay, lim: Math.round(d * (rt ? 2 : 1) / 4.5 + (rt ? 10800 : 5400)), state: 'board', rt: rt ? 1 : 0, cg2: back }); }
     S.boards[si] = { t: now, jobs }; return jobs; }
   const carsNow = () => cars().length, licMax = () => LEN_LIC[S.lic.len];
   function take(j) { if (S.jobs.length >= 10) return toast('Egyszerre legfeljebb 10 munkád lehet.', 1); if (CARGO[j.cg].haz && !S.lic.haz) return toast('Veszélyesáru-engedély kell hozzá (Depó).', 1);
-    j.state = 'taken'; j.t0 = S.time; S.jobs.push(j); S.boards[j.from].jobs = S.boards[j.from].jobs.filter(q => q !== j); if (!S.nav) S.nav = j.id; plan(); ui(); toast('Munka felvéve: ' + j.n + ' × ' + CARGO[j.cg].n + ' → ' + ST[j.to].n); }
+    j.state = 'taken'; j.t0 = S.time; S.jobs.push(j); if (S.boards[j.from]) S.boards[j.from].jobs = S.boards[j.from].jobs.filter(q => q !== j); if (S.finds && S.finds[j.to]) S.finds[j.to].jobs = S.finds[j.to].jobs.filter(q => q.id !== j.id); if (!S.nav) S.nav = j.id; plan(); ui(); toast('Munka felvéve: ' + j.n + ' × ' + CARGO[j.cg].n + ' → ' + ST[j.to].n); }
+  // fuvarkereső: egy kiválasztott célhoz a környék feladóitól gyűjt megbízásokat
+  function findJobs(to) { S.finds = S.finds || {}; const c = S.finds[to]; if (c && S.time - c.t < 3 * 3600 && c.lv === (S.lic.dist || 0)) return c.jobs; const X = ST[to], reach = distMax() * 1000, R = dijkstra(stSeeds(X), reach);
+    const or = ST.map((st, i) => [i, stDist(R.D, st)]).filter(([i, d]) => i !== to && (ST[i].big || ST[i].ind) && d > 8000 && d < reach * .95), be = X.ind ? IND[X.ind].be : null, jobs = []; if ((be && !be.length) || !or.length) return (S.finds[to] = { t: S.time, lv: S.lic.dist || 0, jobs }).jobs;
+    let h = (to * 40503 + Math.floor(S.time / 10800) * 131) >>> 0; const rnd = () => { h = (h * 1664525 + 1013904223) >>> 0; return h / 4294967296; }, pick = a => a[Math.floor(rnd() * a.length)], base = Object.keys(CARGO).filter(k => !CARGO[k].x);
+    for (let k = 0; k < 40 && jobs.length < 10; k++) { const [o] = pick(or), O = ST[o]; if (jobs.filter(j => j.from === o).length >= 2) continue; let cg;
+      if (be) { const ok = O.ind ? IND[O.ind].ki.filter(c2 => be.includes(c2)) : be; if (!ok.length) continue; cg = pick(ok); } else cg = O.ind ? (IND[O.ind].ki.length ? pick(IND[O.ind].ki) : null) : pick(base); if (!cg) continue;
+      const C = CARGO[cg], n = Math.max(2, Math.round(2 + rnd() * (licMax() - 2))), tl = LOCOS.m62.len + n * CAR_L, ra = routeTo([[O.e * 2, E[O.e].L - O.s]], X, tl), rb = routeTo([[O.e * 2 + 1, O.s]], X, tl), d = Math.min(ra ? ra.d : Infinity, rb ? rb.d : Infinity); if (!isFinite(d) || d > reach * 1.2) continue;
+      jobs.push({ id: 'F' + JID++ + '_' + to + '_' + k + '_' + Math.floor(S.time), from: o, to, cg, n, km: d / 1000, pay: Math.round(n * d / 1000 * C.r * 4 * (1 + .3 * rnd()) / 100) * 100, lim: Math.round(d / 4.5 + 5400), state: 'board', rt: 0 }); }
+    jobs.sort((a, b) => a.km - b.km); S.finds[to] = { t: S.time, lv: S.lic.dist || 0, jobs }; return jobs; }
+  let FTO = -1;
+  function showFind(to) { if (to !== undefined) FTO = to; const head = `<div class="row"><h1 style="font-size:22px">🔎 Fuvarkereső</h1><div style="flex:1"></div><button class="b" data-x>✕</button></div><input id="fq" type="search" placeholder="Cél: állomás vagy üzem" autocomplete="off" style="width:100%;box-sizing:border-box;margin:10px 0 4px;background:#0b0f14;border:1px solid var(--ln);border-radius:10px;color:#eee;font:600 14px Inter;padding:10px 12px;outline:0"><div id="fr" class="row"></div>`;
+    if (FTO < 0) return panel(head); const X = ST[FTO], jobs = findJobs(FTO), free = 10 - S.jobs.length, okJ = jobs.filter(j => !(CARGO[j.cg].haz && !S.lic.haz));
+    panel(head + `<h2>${X.ind ? IND[X.ind].i + ' ' : '🚉 '}${X.n}${X.ind && IND[X.ind].be.length ? ' · fogad: ' + IND[X.ind].be.map(c => CARGO[c].n).join(', ') : ''}</h2>` + (jobs.length ? `<div class="row" style="justify-content:flex-end"><button class="b sm g" data-fall ${okJ.length && free > 0 ? '' : 'disabled'}>Mind elvállalom (${Math.min(free, okJ.length)})</button></div>` +
+      jobs.map(j => { const C = CARGO[j.cg], lock = C.haz && !S.lic.haz; return `<div class="it"><div class="grow"><b>${j.n} × ${C.n}</b> ← ${ST[j.from].n}<small>${C.w} · ${j.km.toFixed(0)} km · határidő ${Math.floor(j.lim / 3600)} ó ${Math.floor(j.lim % 3600 / 60)} p${C.haz ? ' · ☣ veszélyes áru' : ''}</small></div><b style="color:var(--gold2)">${money(j.pay)}</b><button class="b sm g" data-ft="${j.id}" ${lock ? 'disabled' : ''}>${lock ? 'Engedély kell' : 'Elvállalom'}</button></div>`; }).join('') : '<p class="mut">Ide most nincs fuvar a hatótávodon belül.</p>')); }
+  $('#pc').addEventListener('input', e => { if (e.target.id !== 'fq') return; const v = fold(e.target.value.trim()); $('#fr').innerHTML = v ? ST.map((st, i) => [st, i]).filter(([st]) => (st.big || (st.ind && IND[st.ind].be.length)) && fold(st.n).includes(v)).sort((a, b) => fold(a[0].n).indexOf(v) - fold(b[0].n).indexOf(v) || a[0].n.length - b[0].n.length).slice(0, 8).map(([st, i]) => `<button class="b sm" data-fd="${i}">${st.ind ? IND[st.ind].i + ' ' : ''}${st.n.replace(/[<>&]/g, '')}</button>`).join('') : ''; });
   const nearSt = () => { if (Math.abs(S.v) > .6) return -1; let best = -1, bd = 450; const L = trainLen(); for (let x = 0; x <= L; x += Math.max(10, L / 6)) { const p = along(x); for (const i of S.nearIdx) { const st = ST[i], d = Math.hypot(st.x - p[0], st.y - p[1]); if (d < bd) { bd = d; best = i; } } } return best; };
   const isDepot = si => si >= 0 && ST[si].big && S.depots.includes(ST[si].n);
   // own: saját kocsik a központi tárolóból (csak saját depóban), különben bérelt kocsik kaucióval
@@ -200,11 +215,12 @@
 
   /* ---------- állapot, mentés ---------- */
   function fresh() { let si = ST.findIndex(s => s.big && /Kelenföld/.test(s.n)); if (si < 0) si = ST.findIndex(s => s.big);
-    const st = ST[si]; S = { money: 300000, life: 0, time: 6 * 3600, loco: 'm44', own: ['m44'], fuel: LOCOS.m44.fuel, lic: { len: 0, haz: 0, el: 0, dist: 0 }, P: [{ e: st.e, d: 1 }], fu: Math.min(E[st.e].L, st.s + 30), ru: 0, v: 0, thr: 0, brk: 0, park: 1, rev: 1, cons: [{ l: 'm44' }], jobs: [], boards: {}, sw: {}, nav: null, auto: 1, done: 0, depots: [st.n], wag: {}, nv: NETV };
+    const st = ST[si]; S = { money: 300000, life: 0, time: 6 * 3600, loco: 'm44', own: ['m44'], fuel: LOCOS.m44.fuel, lic: { len: 0, haz: 0, el: 0, dist: 0 }, P: [{ e: st.e, d: 1 }], fu: Math.min(E[st.e].L, st.s + 30), ru: 0, v: 0, thr: 0, brk: 0, park: 1, rev: 1, cons: [{ l: 'm44' }], jobs: [], boards: {}, sw: {}, nav: null, auto: 1, done: 0, dl3: 1, sp: 0, depots: [st.n], wag: {}, nv: NETV };
     fixRear(); cam.x = st.x; cam.y = st.y; cam.s = .25; }
   function place(S0) { let si = ST.findIndex(s => s.big && /Kelenföld/.test(s.n)); if (si < 0) si = ST.findIndex(s => s.big); const st = ST[si]; S0.P = [{ e: st.e, d: 1 }]; S0.fu = Math.min(E[st.e].L, st.s + 30); S0.ru = 0; S0.v = 0; S0.brk = 0; S0.park = 1; S0.thr = 0; return st; }
   function save() { if (!S) return; try { const { route, nearIdx, stop, manualT, rlock, lastBack, gr, migr, ttAnim, ...o } = S; localStorage.setItem(KEY, JSON.stringify(o)); } catch (_) {} }
   function load() { try { const o = JSON.parse(localStorage.getItem(KEY)); if (!o || !o.P) return false; S = { ...o }; S.wag = S.wag || {}; for (const j of S.jobs || []) if (j.rt > 1) { j.rt0 = j.rt; j.rt = 0; if (j.leg2) { const a = j.from; j.from = j.to; j.to = a; delete j.leg2; } }
+    if (!S.dl3) { for (const j of S.jobs || []) j.lim = Math.round(j.lim * 3); S.dl3 = 1; }
     if (!S.cons) { S.cons = [{ l: S.loco || 'm44' }, ...(S.cars || [])]; delete S.cars; }
     if (S.nv !== NETV || S.P.some(sg => !E[sg.e])) { // a hálózat frissült: a régi élek és állomássorszámok érvénytelenek
       for (const j of S.jobs || []) { if (j.dep) S.money += j.dep; if (j.own) { const wt = CARGO[j.cg].wt; S.wag[wt] = (S.wag[wt] || 0) + j.n; } }
@@ -220,7 +236,7 @@
   function step(dt) { const T = TR(), M = (T.m + T.cm) * 1000, v = S.v, ad = Math.abs(v);
     const fe = E[S.P[S.P.length - 1].e], onEl = fe.el, dOn = S.fuel > 0 && T.dkw, pkw = (dOn ? T.dkw : 0) + (onEl ? T.ekw : 0), pf0 = (dOn ? T.df0 : 0) + (onEl ? T.ef0 : 0), power = pkw > 0;
     const Ft = S.rev && power ? Math.min(pf0 * 1000 * (S.sand ? 1.15 : 1), pkw * 1000 / Math.max(ad, 1.5)) * S.thr / 8 * (ad * 3.6 >= T.vmax ? 0 : 1) : 0;
-    const Fr = M * 9.81 * .0018 + 4 * v * v, Fb = (S.brk / 6) * M * 9.81 * .11 + (keys[' '] || S.eb ? M * 9.81 * .11 : 0); S.ft = pf0 ? Ft / (pf0 * 1000) : 0;
+    const Fr = M * 9.81 * .0018 + 4 * v * v, Fb = (Math.max(S.brk, S.ab || 0) / 6) * M * 9.81 * .11 + (keys[' '] || S.eb ? M * 9.81 * .11 : 0); S.ft = pf0 ? Ft / (pf0 * 1000) : 0;
     if (S.ttAnim) { S.ttAnim.t += dt / TS; S.v = 0; S.time += dt; if (S.ttAnim.t >= S.ttAnim.dur) ttDone(); return; }
     ccStep(dt);
     const gr = grade(); S.gr = gr; let a = (S.rev * Ft) / M - 9.81 * gr, dec = (Fr + Fb) / M; let nv = v + a * dt; if (nv > 0) nv = Math.max(0, nv - dec * dt); else if (nv < 0) nv = Math.min(0, nv + dec * dt); S.v = S.park ? 0 : nv;
@@ -369,6 +385,8 @@
       <div class="it"><div class="grow"><b>Veszélyes áru</b><small>Gázolaj-szállítás tartálykocsiban</small></div>${S.lic.haz ? '<span style="color:var(--ok)">megvan</span>' : `<button class="b sm g" data-lic="haz" ${S.money < HAZ_C ? 'disabled' : ''}>${money(HAZ_C)}</button>`}</div>
       <div class="it"><div class="grow"><b>Villamos vontatás</b><small>V43 és Taurus vezetése felsővezetékes vonalakon</small></div>${S.lic.el ? '<span style="color:var(--ok)">megvan</span>' : `<button class="b sm g" data-lic="el" ${S.money < EL_C ? 'disabled' : ''}>${money(EL_C)}</button>`}</div>`); }
   $('#pnl').addEventListener('click', e => { const t = e.target.closest('button'); if (e.target.id === 'pnl' || (t && t.dataset.x !== undefined)) return closeP(); if (!t) return;
+    if (t.dataset.fd) return showFind(+t.dataset.fd);
+    if (t.dataset.ft || t.dataset.fall !== undefined) { const js = findJobs(FTO).filter(j => t.dataset.ft ? j.id === t.dataset.ft : !(CARGO[j.cg].haz && !S.lic.haz)); for (const j of js) { if (S.jobs.length >= 10) break; take(j); } showFind(); ui(); save(); return; }
     if (t.dataset.t) { const si = nearSt(), j = (S.boards[si] || { jobs: [] }).jobs.find(q => q.id === t.dataset.t); if (j) { take(j); showBoard(); } }
     if (t.dataset.depot) { const si = +t.dataset.depot; if (S.money >= DEPOT_C && !S.depots.includes(ST[si].n)) { S.money -= DEPOT_C; S.depots.push(ST[si].n); toast('Depó elkészült: ' + ST[si].n); showDepo(); } }
     if (t.dataset.wag) { const w = WAGONS[t.dataset.wag]; if (S.money >= w.c) { S.money -= w.c; S.wag[t.dataset.wag] = (S.wag[t.dataset.wag] || 0) + 1; toast(w.n + ' a tárolóban.'); showDepo(); } }
@@ -385,10 +403,13 @@
   $('#jobs').addEventListener('click', e => { const t = e.target.closest('[data-n]'); if (!t) return; S.nav = t.dataset.n; plan(); const j = S.jobs.find(q => q.id === S.nav), st = ST[j.state === 'taken' ? j.from : j.to]; toast('Navigáció: ' + st.n); ui(); });
   $('#rev').addEventListener('click', e => { const t = e.target.closest('[data-r]'); if (t) setRev(+t.dataset.r); });
   // tempomat: a célsebességet (és a pálya sebességkorlátját) tartja gázzal és fékkel
-  function ccAuto() { if (S.ccA) { S.ccA = 0; ui(); return; } S.ccA = 1; if (!S.cc) cc(true); if (!S.cc) S.ccA = 0; ui(); }
-  function cc(on) { if (on === undefined) on = !S.cc; if (on) { if (S.park) return toast('Old ki a rögzítőféket (P).', 1); if (!S.rev) return toast('Állítsd be a menetirányt (R).', 1); S.cc = Math.max(10, Math.round(Math.abs(S.v) * 3.6 / 5) * 5 || 40); S.ccI = 0; } else { S.cc = 0; S.ccA = 0; S.thr = Math.round(S.thr); S.brk = Math.round(S.brk); } beep(on ? 760 : 380, .07); ui(); }
-  function ccStep(dt) { if (!S.cc) return; if (S.park || !S.rev) { S.cc = 0; return; } if (S.ccA) S.cc = TR().vmax; const lead = S.v < 0 ? S.P[0] : S.P[S.P.length - 1], tgt = Math.min(S.cc / 3.6, (E[lead.e].vm || 60) / 3.6, TR().vmax / 3.6, aheadLim()), err = tgt - Math.abs(S.v);
-    S.ccI = Math.max(-30, Math.min(80, (S.ccI || 0) + err * dt)); if (err < -.6 && S.ccI > 0) S.ccI = 0; if (err > .6 && S.ccI < 0) S.ccI = 0; const u = 1.6 * err + .05 * S.ccI; if (u > 0) { S.thr = Math.min(8, u); S.brk = 0; } else { S.thr = 0; S.brk = Math.min(6, -u * 1.4); if (S.brk < .3) S.brk = 0; } }
+  // sebességkar: S.sp 0–10 = a szerelvény végsebességének 0–100%-a; a szabályzó gázzal és fékkel tartja. AUTO: mindig a megengedett sebesség, megáll a célnál
+  const curSp = () => Math.min(10, Math.abs(S.v) * 3.6 / TR().vmax * 10);
+  function ccAuto() { if (S.ccA) { S.ccA = 0; S.sp = Math.round(curSp() * 20) / 20; ui(); return; } if (S.park) return toast('Old ki a rögzítőféket (P).', 1); if (!S.rev) return toast('Állítsd be a menetirányt (R).', 1); S.ccA = 1; S.ccI = 0; beep(760, .07); ui(); }
+  function cc() { S.ccA = 0; S.sp = Math.round(curSp() * 20) / 20; beep(600, .05); ui(); }
+  function ccStep(dt) { if (S.park || !S.rev || S.ttAnim) { S.thr = 0; S.ab = 0; return; } if (S.brk > 0 || S.eb || keys[' ']) { S.thr = 0; S.ab = 0; S.ccI = 0; return; }
+    const vm = TR().vmax / 3.6, lead = S.v < 0 ? S.P[0] : S.P[S.P.length - 1], tgt = S.ccA ? Math.min(vm, (E[lead.e].vm || 60) / 3.6, aheadLim()) : (S.sp || 0) / 10 * vm, err = tgt - Math.abs(S.v);
+    S.ccI = Math.max(-30, Math.min(80, (S.ccI || 0) + err * dt)); if (err < -.6 && S.ccI > 0) S.ccI = 0; if (err > .6 && S.ccI < 0) S.ccI = 0; const u = 1.6 * err + .05 * S.ccI; if (u > 0) { S.thr = Math.min(8, u); S.ab = 0; } else { S.thr = 0; S.ab = Math.min(6, -u * 1.4); if (S.ab < .3) S.ab = 0; } }
   // előretekintés: a menetirányban következő alacsonyabb sebességkorlátok fékgörbéje (m/s)
   function aheadLim() { const fw = S.v >= 0, P = S.P; let sg = fw ? P[P.length - 1] : P[0], dist = fw ? E[sg.e].L - S.fu : S.ru, best = 99;
     if (S.ccA && S.route && (S.route.back ? -1 : 1) === S.rev) { const sd = S.route.rev ? S.route.rev.dist : S.route.km * 1000; best = Math.sqrt(2 * .5 * Math.max(0, sd - 12)); if (sd < 12) best = 0; } const look = S.v * S.v / 1.0 + 300;
@@ -396,42 +417,41 @@
       sg = { e: c.e, d: fw ? (c.fromA ? 1 : -1) : (c.fromA ? -1 : 1) }; best = Math.min(best, Math.sqrt(((E[c.e].vm || 60) / 3.6) ** 2 + 2 * .5 * dist)); dist += E[c.e].L; }
     return best; }
   $('#bCC').onclick = () => cc(); $('#bCCA').onclick = ccAuto;
-  function park() { if (!S.park && Math.abs(S.v) * 3.6 > 3) return toast('A rögzítőfék csak megállva húzható be.', 1); S.park = !S.park; S.cc = 0; if (S.park) { S.thr = 0; S.v = 0; } beep(S.park ? 220 : 440, .1); ui(); }
+  function park() { if (!S.park && Math.abs(S.v) * 3.6 > 3) return toast('A rögzítőfék csak megállva húzható be.', 1); S.park = !S.park; S.ccA = 0; if (S.park) { S.thr = 0; S.v = 0; } beep(S.park ? 220 : 440, .1); ui(); }
   $('#bPark').onclick = park;
-  function setRev(r) { if (Math.abs(S.v) > .5 && r !== 0 && r !== S.rev) return toast('Irányváltás csak álló helyzetben.', 1); S.rev = r; if (!r) S.cc = 0; beep(500, .05); plan(); ui(); }
-  $('#bSw').onclick = flip; $('#bCons').onclick = showCons; $('#bBoard').onclick = showBoard; $('#bDepo').onclick = showDepo; $('#bFollow').onclick = () => { cam.follow = 1; PIN = null; };
+  function setRev(r) { if (Math.abs(S.v) > .5 && r !== 0 && r !== S.rev) return toast('Irányváltás csak álló helyzetben.', 1); S.rev = r; if (!r) S.ccA = 0; beep(500, .05); plan(); ui(); }
+  $('#bSw').onclick = flip; $('#bCons').onclick = showCons; $('#bFind').onclick = () => showFind(); $('#bBoard').onclick = showBoard; $('#bDepo').onclick = showDepo; $('#bFollow').onclick = () => { cam.follow = 1; PIN = null; };
   $('#bMap').onclick = () => { if (cam.s > .003) { cam.prev = cam.s; cam.s = Math.min(cv.width, cv.height) / (devicePixelRatio || 1) / 560000; cam.follow = 0; } else { cam.s = cam.prev || .25; cam.follow = 1; } };
   $('#bMenu').onclick = () => { save(); $('#menu').hidden = false; $('#mPlay').textContent = '▶ Folytatás'; };
   const hold = (el, f) => { let iv = null; el.addEventListener('pointerdown', e => { e.preventDefault(); f(); iv = setInterval(f, 180); }); for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, () => { clearInterval(iv); iv = null; }); };
   /* ---------- vezetőállás-konzol: karok, gombok, sebességmérő ---------- */
-  const LV = { T: { el: $('#lvT'), n: 8 }, B: { el: $('#lvB'), n: 7 } };
+  const LV = { T: { el: $('#lvT'), n: 10 }, B: { el: $('#lvB'), n: 7 } };
   for (const [k, L] of Object.entries(LV)) { L.el.querySelector('.tks').innerHTML = Array.from({ length: L.n + 1 }, (_, i) => { const y = k === 'T' ? (1 - i / L.n) : i / L.n; return `<i style="top:${y * 100}%"></i><b style="top:${y * 100}%">${k === 'B' && i === L.n ? 'V' : i}</b>`; }).join('');
     const set = e => { const r = L.el.getBoundingClientRect(), f = Math.max(0, Math.min(1, (e.clientY - r.top - 4) / (r.height - 8))), v = Math.round((k === 'T' ? 1 - f : f) * L.n);
-      if (k === 'T') { if (S.cc) { S.cc = 0; S.ccA = 0; } if (S.park && v) toast('Old ki a rögzítőféket (P).', 1); S.thr = v; } else { S.cc = 0; S.ccA = 0; S.eb = v === L.n; S.brk = Math.min(6, v); } ui(); };
+      if (k === 'T') { const sv = Math.round((1 - f) * 200) / 20; S.ccA = 0; if (S.park && sv && !L.drag) toast('Old ki a rögzítőféket (P).', 1); S.sp = sv; } else { S.ccA = 0; S.eb = v === L.n; S.brk = Math.min(6, v); } ui(); };
     L.el.addEventListener('pointerdown', e => { e.preventDefault(); L.el.setPointerCapture(e.pointerId); L.drag = 1; set(e); beep(250, .03); });
     L.el.addEventListener('pointermove', e => { if (L.drag) set(e); }); L.el.addEventListener('pointerup', () => { L.drag = 0; }); L.el.addEventListener('pointercancel', () => { L.drag = 0; }); }
-  $('#ccM').onclick = () => { if (S.cc) { S.ccA = 0; S.cc = Math.max(5, S.cc - 5); ui(); } }; $('#ccP').onclick = () => { if (S.cc) { S.ccA = 0; S.cc = Math.min(TR().vmax, S.cc + 5); ui(); } };
+  const spAdd = kmh => { S.sp = Math.max(0, Math.min(10, (S.ccA ? curSp() : S.sp || 0) + kmh / TR().vmax * 10)); S.ccA = 0; ui(); }; $('#ccM').onclick = () => spAdd(-5); $('#ccP').onclick = () => spAdd(5);
   $('#bHorn').addEventListener('pointerdown', () => horn(1)); for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) $('#bHorn').addEventListener(ev, () => horn(0));
   $('#bSand').onclick = () => { S.sand = S.sand ? 0 : 1; ui(); };
   let HN = null; function horn(on) { try { if (on && !HN) { AX = AX || new AudioContext(); const g2 = AX.createGain(); g2.gain.value = .0001; g2.gain.exponentialRampToValueAtTime(.06, AX.currentTime + .05); g2.connect(AX.destination); HN = { g: g2, o: [311, 370, 466].map(f => { const o = AX.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.connect(g2); o.start(); return o; }) }; }
       else if (!on && HN) { const h = HN; HN = null; h.g.gain.exponentialRampToValueAtTime(.0001, AX.currentTime + .12); setTimeout(() => h.o.forEach(o => o.stop()), 160); } } catch (_) {} }
-  function cabUI() { const T = TR(); for (const [k, L] of Object.entries(LV)) { const v = k === 'T' ? S.thr : S.eb ? 7 : S.brk, f = k === 'T' ? 1 - v / L.n : v / L.n, kn = L.el.querySelector('.knob'); kn.style.top = (4 + f * (L.el.clientHeight - 8) - 10) + 'px'; }
-    $('#lvB').classList.toggle('eb', !!S.eb); $('#thrT').textContent = Math.round(S.thr); $('#brkT').textContent = S.eb ? 'VÉSZ' : Math.round(S.brk);
-    $('#bCC').classList.toggle('on', !!S.cc); $('#bCC').lastChild.textContent = S.cc && !S.ccA ? S.cc + ' km/h' : 'Tempomat'; $('#bCCA').classList.toggle('on', !!S.ccA); $('#bPark').classList.toggle('on', !!S.park); $('#bSand').classList.toggle('on', !!S.sand);
+  function cabUI() { const T = TR(); for (const [k, L] of Object.entries(LV)) { const v = k === 'T' ? (S.ccA ? curSp() : S.sp || 0) : S.eb ? 7 : S.brk, f = k === 'T' ? 1 - v / L.n : v / L.n, kn = L.el.querySelector('.knob'); kn.style.top = (4 + f * (L.el.clientHeight - 8) - 10) + 'px'; }
+    $('#lvB').classList.toggle('eb', !!S.eb); $('#thrT').textContent = S.ccA ? 'AUTO' : (S.sp || 0).toFixed(2).replace('.', ',') + ' · ' + Math.round((S.sp || 0) / 10 * T.vmax) + ' km/h'; $('#brkT').textContent = S.eb ? 'VÉSZ' : Math.round(S.brk);
+    $('#bCCA').classList.toggle('on', !!S.ccA); $('#bPark').classList.toggle('on', !!S.park); $('#bSand').classList.toggle('on', !!S.sand);
     $('#amB').style.width = Math.min(100, (S.ft || 0) * 100) + '%'; gauge(T); }
   function gauge(T) { const c = $('#gauge'), x = c.getContext('2d'), W = c.width, R = W / 2 - 14, cx = W / 2, cy = W / 2, mx = Math.max(100, Math.ceil(T.vmax / 20) * 20), a0 = Math.PI * .75, sw = Math.PI * 1.5, ang = v => a0 + sw * Math.min(1, v / mx), v = Math.abs(S.v) * 3.6;
     x.clearRect(0, 0, W, W); const gr = x.createRadialGradient(cx, cy - 20, 10, cx, cy, R + 12); gr.addColorStop(0, '#2b3036'); gr.addColorStop(1, '#0c0e10'); x.fillStyle = gr; x.beginPath(); x.arc(cx, cy, R + 12, 0, 6.283); x.fill(); x.strokeStyle = '#6d757e'; x.lineWidth = 4; x.stroke();
     const lim = E[(S.v < 0 ? S.P[0] : S.P[S.P.length - 1]).e].vm || 60; x.strokeStyle = '#c0392b'; x.lineWidth = 7; x.beginPath(); x.arc(cx, cy, R - 4, ang(lim), a0 + sw); x.stroke();
     x.strokeStyle = '#d8dde3'; x.fillStyle = '#d8dde3'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = '700 17px Inter';
     for (let s2 = 0; s2 <= mx; s2 += 10) { const a = ang(s2), big = s2 % 20 === 0; x.lineWidth = big ? 3 : 1.5; x.beginPath(); x.moveTo(cx + Math.cos(a) * (R - (big ? 18 : 11)), cy + Math.sin(a) * (R - (big ? 18 : 11))); x.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R); x.stroke(); if (big && (mx <= 120 || s2 % 40 === 0)) x.fillText(s2, cx + Math.cos(a) * (R - 36), cy + Math.sin(a) * (R - 36)); }
-    if (S.cc) { const a = ang(Math.min(S.cc, lim, T.vmax)); x.fillStyle = '#5ee08a'; x.beginPath(); x.moveTo(cx + Math.cos(a) * (R + 2), cy + Math.sin(a) * (R + 2)); x.lineTo(cx + Math.cos(a - .06) * (R + 12), cy + Math.sin(a - .06) * (R + 12)); x.lineTo(cx + Math.cos(a + .06) * (R + 12), cy + Math.sin(a + .06) * (R + 12)); x.fill(); }
+    if (S.ccA || S.sp > 0) { const a = ang(S.ccA ? Math.min(lim, T.vmax) : S.sp / 10 * T.vmax); x.fillStyle = '#5ee08a'; x.beginPath(); x.moveTo(cx + Math.cos(a) * (R + 2), cy + Math.sin(a) * (R + 2)); x.lineTo(cx + Math.cos(a - .06) * (R + 12), cy + Math.sin(a - .06) * (R + 12)); x.lineTo(cx + Math.cos(a + .06) * (R + 12), cy + Math.sin(a + .06) * (R + 12)); x.fill(); }
     x.fillStyle = '#07080a'; x.fillRect(cx - 42, cy + 34, 84, 34); x.fillStyle = '#ffd96a'; x.font = '800 26px Inter'; x.fillText(Math.round(v), cx, cy + 52); x.fillStyle = '#8c949e'; x.font = '700 11px Inter'; x.fillText('km/h', cx, cy + 82);
     const a = ang(v); x.strokeStyle = '#ff5a4a'; x.lineWidth = 5; x.lineCap = 'round'; x.beginPath(); x.moveTo(cx - Math.cos(a) * 14, cy - Math.sin(a) * 14); x.lineTo(cx + Math.cos(a) * (R - 10), cy + Math.sin(a) * (R - 10)); x.stroke(); x.fillStyle = '#ccc'; x.beginPath(); x.arc(cx, cy, 9, 0, 6.283); x.fill(); }
 
   addEventListener('keydown', e => { if (!S || !$('#menu').hidden || e.target.tagName === 'INPUT') return; if (e.key === '/') { e.preventDefault(); $('#q').focus(); return; } const k = e.key.toLowerCase(); if (e.key === ' ') e.preventDefault(); if (keys[k]) return; keys[k] = 1;
-    if (k === 'c') cc(); else if (k === 'x') ccAuto(); else if (S.cc && (k === 'w' || k === 's')) { S.ccA = 0; S.cc = Math.max(5, Math.min(TR().vmax, S.cc + (k === 'w' ? 5 : -5))); }
-    else { if (k === 'w') { if (S.park) toast('Old ki a rögzítőféket (P).', 1); S.thr = Math.min(8, Math.round(S.thr) + 1); } if (k === 's') { S.thr = Math.max(0, Math.round(S.thr) - 1); } }
-    if (k === 'b' || k === ' ') S.cc = 0; if (k === 'b') S.brk = Math.min(6, Math.round(S.brk) + 1); if (k === 'n') { S.eb = 0; S.brk = Math.max(0, Math.round(S.brk) - 1); } if (k === 'h') horn(1);
+    if (k === 'c') cc(); else if (k === 'x') ccAuto(); else if (k === 'w' || k === 's') { if (k === 'w' && S.park) toast('Old ki a rögzítőféket (P).', 1); S.sp = Math.max(0, Math.min(10, Math.round(((S.ccA ? curSp() : S.sp || 0) + (k === 'w' ? .5 : -.5)) * 2) / 2)); S.ccA = 0; }
+    if (k === 'b' || k === ' ') S.ccA = 0; if (k === 'b') S.brk = Math.min(6, Math.round(S.brk) + 1); if (k === 'n') { S.eb = 0; S.brk = Math.max(0, Math.round(S.brk) - 1); } if (k === 'h') horn(1);
     if (k === 'p') park(); if (k === 'r') setRev(S.rev === 1 ? 0 : S.rev === 0 ? (S.v > .5 ? 1 : -1) : 0); if (k === 'v') flip(); if (k === 'm') $('#bMap').onclick(); if (k === 'escape') { if (!$('#pnl').hidden) closeP(); else $('#bMenu').onclick(); } ui(); });
   addEventListener('keyup', e => { keys[e.key.toLowerCase()] = 0; if (e.key.toLowerCase() === 'h') horn(0); });
   // kamera: görgő, húzás, kattintás váltóra
