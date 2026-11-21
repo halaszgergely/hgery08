@@ -454,7 +454,7 @@ const Birodalom = (() => {
   const cloudBtn = () => inFrame() && CL.life >= 0 && L ? { x: L.fx + L.fw - 42 * L.d, y: L.fy + 6 * L.d, w: 36 * L.d, h: 30 * L.d } : null;
   if (typeof addEventListener === 'function') addEventListener('message', e => { if (e.origin !== location.origin || e.source !== parent || !e.data || e.data.hgws !== 'cs' || e.data.game !== 'birodalom') return;
     const d = e.data; if (d.ack) { if (CL.man && S) S.bgMsg = { t: d.ok ? '☁️ Felhőbe mentve' : '☁️ Nem sikerült menteni' + (d.err ? ' (' + d.err + ')' : ''), l: 3.5 }; CL.man = 0; if (!d.ok) CL.at = 0; return; }
-    if (d.none) { CL.life = -1; return; } CL.life = +d.life || 0;
+    if (d.none) { CL.life = -1; return; } CL.life = Math.min(CAP, +d.life || 0); // a régi, végtelenre futott felhőmentés plafonnak számít
     if (d.st && CL.life > (S ? S.life : 0)) { try { JSON.parse(d.st); localStorage.setItem(KEY, d.st); } catch (_) { return; } if (GG && GG.game && GG.game.id === 'birodalom') { Birodalom.init(GG); S.bgMsg = { t: '☁️ Felhőmentés betöltve – ' + fmt(CL.life) + ' Ft összbevétel', l: 4 }; } }
     else if (S && S.life > CL.life && !CL.first) { CL.first = 1; CL.at = 0; cloudPush(true); } });
 
