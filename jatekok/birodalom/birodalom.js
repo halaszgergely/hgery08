@@ -564,10 +564,10 @@ const Birodalom = (() => {
 
   /* ---------- elrendezés ---------- */
   function layout(G) {
-    const d = G.d, [c0, r0] = size(), top = 112 * d, barH = 132 * d, bot = G.H - barH - 14 * d;
+    const d = G.d, [c0, r0] = size(), top = 112 * d, barH = 132 * d, bot = G.H - barH - 44 * d; // alul hely a leírás-sávnak
     const fx = 16 * d, fw = G.W - 32 * d, fy = top, fh = bot - top, pad = 14 * d;
     const fit = (a, b) => Math.min((fw - 2 * pad) / a, (fh - 2 * pad) / b), tr = fit(r0, c0) > fit(c0, r0) * 1.15, vw = tr ? r0 : c0, vh = tr ? c0 : r0;
-    const fitTs = Math.max(6 * d, Math.floor(fit(vw, vh))), maxTs = Math.max(fitTs, 56 * d);
+    const fitTs = Math.max(6 * d, Math.floor(fit(vw, vh))), maxTs = Math.max(Math.round(fitTs * 2), 56 * d);
     if (!CAM.z) CAM.z = Math.max(fitTs, Math.min(maxTs, 28 * d)) / d;
     const ts = Math.round(Math.max(fitTs, Math.min(maxTs, CAM.z * d)));
     // kamera: a látott terület közepe mezőkben; ha a kert kisebb a képernyőnél, középre kerül
