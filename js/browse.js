@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611210056';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611210056';
-import * as Player from './player.js?v=202611210056';
-import * as Party from './party.js?v=202611210056';
-import * as VP from './vplayer.js?v=202611210056';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611210056';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, bigNum, lbEnc, lbDec } from './core.js?v=202611210129';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611210129';
+import * as Player from './player.js?v=202611210129';
+import * as Party from './party.js?v=202611210129';
+import * as VP from './vplayer.js?v=202611210129';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611210129';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -257,7 +257,7 @@ export const GAMES = [
   { id: 'holtvaros', name: 'Holtváros', icon: '🧟', unit: 'pont', desc: 'Védd meg a várost a zombijárványtól: zóna, kapuk, őrség, légicsapás. A Zombies Aren\'t Real ihlette.', c: '#7dff4a', sponsor: 'A Zerosites támogatásával' },
   { id: 'birodalom', name: 'Öntöző Birodalom', icon: '🌱', unit: 'Ft', desc: 'Építs csőhálózatot, ültess kertet és ültetvényt – a kerted akkor is termel, amikor nem vagy itt.', c: '#6fcf6a' }
 ];
-const EXTRA = [{ id: 'aranylocsolofej', name: 'Az Arany Locsolófej', icon: '🏆', desc: 'Filmes kalandjáték: szerezd vissza az Arany Locsolófejet Szikkadt Szilárdtól!', c: '#e8b656', demo: 1, tag: 'ÚJ' }, { id: 'zerochip', name: 'Zero Chip', icon: '🔌', desc: 'Építs áramköröket a tranzisztortól a processzorig – 29 küldetés.', c: '#3ecf8e', demo: 1 }, { id: 'zerospace', name: 'Zero Space Demo', icon: '🚀', desc: 'Építs űrhajót modulról modulra és vezesd csatába – korai demó, egyjátékos sandbox.', c: '#b2382a', demo: 1 }];
+const EXTRA = [{ id: 'aranylocsolofej', name: 'Az Arany Locsolófej', icon: '🏆', desc: 'Filmes kalandjáték: szerezd vissza az Arany Locsolófejet Szikkadt Szilárdtól!', c: '#e8b656', demo: 1, tag: 'ÚJ' }, { id: 'vizagyuio', name: 'Vízágyú.io', icon: '🔫', desc: 'Valós idejű locsolóaréna 2–8 játékosnak – barátokkal vagy botok ellen.', c: '#6cc6ff', demo: 1, tag: 'ONLINE' }, { id: 'zerochip', name: 'Zero Chip', icon: '🔌', desc: 'Építs áramköröket a tranzisztortól a processzorig – 29 küldetés.', c: '#3ecf8e', demo: 1 }, { id: 'zerospace', name: 'Zero Space Demo', icon: '🚀', desc: 'Építs űrhajót modulról modulra és vezesd csatába – korai demó, egyjátékos sandbox.', c: '#b2382a', demo: 1 }];
 /* Zero Quest – zárt béta: adminok és a „Béta-tesztelő” taggel rendelkezők */
 const betaOk = () => { try { return !!C && !C.S.guest && (C.isAdmin() || (C.S.me?.tags || []).some(id => /b[eé]ta/i.test(C.S.tags.find(t => t.id === id)?.name || ''))); } catch (_) { return false; } };
 const ZQ = { id: 'zeroquest', name: 'Zero Quest', icon: '⚔️', desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében – zárt béta.', c: '#e8b656', demo: 1, beta: 1 };
@@ -273,8 +273,8 @@ export function tagsChanged() { const f = $('.arcframe'); if (f) sendBoards(f.co
 export function arcade(id) {
   cleanup();
   document.title = 'Arcade · HGWS';
-  const g = [...GAMES, ...extras()].find(x => x.id === id);
-  $('#page').innerHTML = `<iframe class="arcframe" src="arcade.html${new URL(import.meta.url).search}${g ? '#play=' + g.id : ''}" title="HGWS Arcade" allow="autoplay; fullscreen"></iframe>`;
+  const [gid, rid] = String(id || '').split('.'), g = [...GAMES, ...extras()].find(x => x.id === gid);
+  $('#page').innerHTML = `<iframe class="arcframe" src="arcade.html${new URL(import.meta.url).search}${g ? '#play=' + g.id + (rid && /^\w+$/.test(rid) ? '.' + rid : '') : ''}" title="HGWS Arcade" allow="autoplay; fullscreen"></iframe>`;
   const f = $('.arcframe');
   f.addEventListener('load', () => { try { f.contentWindow.focus(); } catch (_) {} });
   awardChampions();

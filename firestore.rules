@@ -194,7 +194,7 @@ service cloud.firestore {
           && request.resource.data.at == request.time
           && request.resource.data.text is string && request.resource.data.text.size() <= 200
           && request.resource.data.link is string && request.resource.data.link.size() <= 200
-          && request.resource.data.type in ['mention', 'idea', 'approve', 'reject', 'role', 'tag', 'premiere', 'party', 'vote', 'badge', 'friend']
+          && request.resource.data.type in ['mention', 'idea', 'approve', 'reject', 'role', 'tag', 'premiere', 'party', 'vote', 'badge', 'friend', 'game']
           && (request.resource.data.type != 'badge' || request.auth.uid == uid);   // kitüntetésről csak saját magának írhat
       }
     }
@@ -420,6 +420,68 @@ service cloud.firestore {
         && (l.size() < 1 || friendOrMe(l[0])) && (l.size() < 2 || friendOrMe(l[1])) && (l.size() < 3 || friendOrMe(l[2]))
         && (l.size() < 4 || friendOrMe(l[3])) && (l.size() < 5 || friendOrMe(l[4])) && (l.size() < 6 || friendOrMe(l[5]))
         && (l.size() < 7 || friendOrMe(l[6])) && (l.size() < 8 || friendOrMe(l[7]));
+    }
+    // ---- többjátékos szobák (js/net.js): WebRTC-bemutatkozás. A meccs alatt nem írunk ide. ----
+    // vis: akik a szobát a listájukban látják és beléphetnek (a gazda barátai / meghívottjai) – a belépésnél a barátságot külön is ellenőrizzük
+    function roomOk(d) {
+      return d.keys().hasOnly(['host', 'hostName', 'game', 'mode', 'map', 'max', 'open', 'state', 'members', 'vis', 'createdAt', 'updatedAt'])
+        && d.host is string && d.hostName is string && d.hostName.size() <= 40
+        && d.game in ['vizagyuio', 'drift'] && d.mode is string && d.mode.size() <= 16 && d.map is string && d.map.size() <= 16
+        && d.max is int && d.max >= 2 && d.max <= 8 && d.open is bool && d.state in ['lobby', 'play']
+        && d.members is list && d.members.size() >= 1 && d.members.size() <= d.max
+        && d.vis is list && d.vis.size() <= 100 && d.updatedAt == request.time;
+    }
+    match /rooms/{rid} {
+      allow get: if signedIn();   // a szobaazonosító maga a meghívó; a dokumentumban csak azonosítók és beállítások vannak
+      allow list: if signedIn() && (request.auth.uid in resource.data.vis || request.auth.uid in resource.data.members);
+      allow create: if active() && roomOk(request.resource.data)
+        && request.resource.data.host == request.auth.uid && request.resource.data.members == [request.auth.uid]
+        && request.resource.data.state == 'lobby' && request.resource.data.createdAt == request.time;
+      allow update: if active() && roomOk(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt && request.resource.data.game == resource.data.game
+        && (
+          // a gazda: beállítások, láthatóság, állapot; tagot csak kivehet (és ki is léphet)
+          (resource.data.host == request.auth.uid && request.resource.data.host == resource.data.host
+            && resource.data.members.hasAll(request.resource.data.members))
+          // belépés: csak a gazda barátja, ha szerepel a vis listán és van hely
+          || (changed().hasOnly(['members', 'updatedAt']) && !(request.auth.uid in resource.data.members)
+            && request.resource.data.members == resource.data.members.concat([request.auth.uid])
+            && request.auth.uid in resource.data.vis && areFriends(request.auth.uid, resource.data.host))
+          // kilépés
+          || (changed().hasOnly(['members', 'updatedAt']) && request.auth.uid in resource.data.members
+            && request.resource.data.members == resource.data.members.removeAll([request.auth.uid]))
+          // gazdaváltás: egy bent lévő tag veszi át a kiesett gazda helyét
+          || (changed().hasOnly(['host', 'hostName', 'updatedAt']) && request.auth.uid in resource.data.members
+            && request.resource.data.host == request.auth.uid)
+        );
+      // a gazda törölheti; elárvult (2 óránál régebbi) szobát bármelyik tagja
+      allow delete: if signedIn() && (resource.data.host == request.auth.uid
+        || (request.auth.uid in resource.data.members && resource.data.updatedAt < request.time - duration.value(2, 'h')));
+      match /sig/{sid} {
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(['from', 'to', 'k', 'n', 'd', 'name', 'at'])
+          && request.resource.data.from == request.auth.uid && request.resource.data.at == request.time
+          && request.resource.data.k in ['offer', 'answer'] && request.resource.data.d is string && request.resource.data.d.size() <= 12000
+          && request.auth.uid in get(/databases/$(db)/documents/rooms/$(rid)).data.members
+          && request.resource.data.to in get(/databases/$(db)/documents/rooms/$(rid)).data.members;
+        allow read, delete: if signedIn() && (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
+      }
+    }
+    // ---- többjátékos statisztika: mindenki a sajátját növeli, meccsenként korlátozott lépésekben, legfeljebb 45 mp-enként ----
+    function mpStep(k, mx) { return request.resource.data.get(k, 0) is int && request.resource.data.get(k, 0) >= resource.data.get(k, 0) && request.resource.data.get(k, 0) - resource.data.get(k, 0) <= mx; }
+    function mpNew(k, mx) { return request.resource.data.get(k, 0) is int && request.resource.data.get(k, 0) >= 0 && request.resource.data.get(k, 0) <= mx; }
+    match /mpstats/{uid} {
+      allow read: if signedIn();
+      allow create: if active() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['games', 'wins', 'kos', 'boss', 'm_volgy', 'm_aszaly', 'm_gyar', 'm_atemelo', 'updatedAt'])
+        && request.resource.data.games == 1 && mpNew('wins', 1) && mpNew('kos', 40) && mpNew('boss', 1)
+        && mpNew('m_volgy', 1) && mpNew('m_aszaly', 1) && mpNew('m_gyar', 1) && mpNew('m_atemelo', 1)
+        && request.resource.data.updatedAt == request.time;
+      allow update: if active() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['games', 'wins', 'kos', 'boss', 'm_volgy', 'm_aszaly', 'm_gyar', 'm_atemelo', 'updatedAt'])
+        && request.resource.data.games == resource.data.games + 1 && mpStep('wins', 1) && mpStep('kos', 40) && mpStep('boss', 1)
+        && mpStep('m_volgy', 1) && mpStep('m_aszaly', 1) && mpStep('m_gyar', 1) && mpStep('m_atemelo', 1)
+        && request.resource.data.updatedAt == request.time && resource.data.updatedAt < request.time - duration.value(45, 's');
     }
     match /friends/{fid} {
       allow read: if signedIn() && request.auth.uid in resource.data.users;
