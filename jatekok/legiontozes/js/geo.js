@@ -4,7 +4,7 @@
    - Részletes domborzat: AWS Terrain Tiles (Terrarium PNG, kulcs nélkül), a gép körül dinamikusan, memóriás LRU-cache-sel.
    - Ha egy csempe nem tölthető be, az alap domborzat + determinisztikus zaj a tartalék.
    - A repülőterek környéke kisimítva (fix magasság), hogy a pálya sík legyen. */
-import { KX, KY, LON0, LAT0, REPTEREK, W_MAX, H_MAX } from './config.js?v=202611212346';
+import { KX, KY, LON0, LAT0, REPTEREK, W_MAX, H_MAX } from './config.js?v=202611220039';
 
 const TZ = 10, TILE_URL = (z, x, y) => `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
 let Z = null, ZN = 0, ZM = 0, ZC = 1000, CLS = null, CW = 0, CH = 0, CR = 250, towns = [];
@@ -74,7 +74,7 @@ function rawH(x, z) {
 export function heightAt(x, z) {
   let h = rawH(x, z);
   for (let i = 0; i < REPTEREK.length; i++) { const r = REPTEREK[i]; const dx = x - r.x, dz = z - r.z; if (dx > 4000 || dx < -4000 || dz > 4000 || dz < -4000) continue;
-    const a = dx * r.dx + dz * r.dz, b = -dx * r.dz + dz * r.dx, hl = r.len / 2 + 450, hw = r.fo ? 600 : r.tip === 'beton' ? r.wid / 2 + 430 : Math.max(r.wid / 2 + 260, 320);
+    const a = dx * r.dx + dz * r.dz, b = -dx * r.dz + dz * r.dx, hl = r.len / 2 + (r.tip === 'heli' ? 90 : 450), hw = r.fo ? 600 : r.tip === 'beton' ? r.wid / 2 + 430 : r.tip === 'heli' ? 90 : Math.max(r.wid / 2 + 200, 230);
     const ex = Math.max(0, Math.abs(a) - hl), ey = Math.max(0, Math.abs(b) - hw), d = Math.hypot(ex, ey);
     if (d < 700) { const k = d / 700, s = k * k * (3 - 2 * k), e = r.tip === 'viz' ? Math.min(h, r.elev) : r.elev; h = e + (h - e) * s; } }
   return h; }
@@ -98,5 +98,5 @@ export function surfaceAt(x, z) {
   const c = cls(x, z); return { tip: c === 3 ? 'viz' : c === 1 ? 'erdo' : c === 2 ? 'varos' : 'terep' };
 }
 export function inAirport(x, z) { for (const r of REPTEREK) { if (r.tip === 'viz') continue; const dx = x - r.x, dz = z - r.z; if (dx > 3000 || dx < -3000 || dz > 3000 || dz < -3000) continue;
-  const a = dx * r.dx + dz * r.dz, b = -dx * r.dz + dz * r.dx; if (Math.abs(a) < r.len / 2 + 380 && Math.abs(b) < (r.fo ? 560 : r.tip === 'beton' ? r.wid / 2 + 400 : Math.max(r.wid / 2 + 230, 290))) return true; } return false; }
+  const a = dx * r.dx + dz * r.dz, b = -dx * r.dz + dz * r.dx; if (Math.abs(a) < r.len / 2 + (r.tip === 'heli' ? 60 : 380) && Math.abs(b) < (r.fo ? 560 : r.tip === 'beton' ? r.wid / 2 + 400 : r.tip === 'heli' ? 60 : Math.max(r.wid / 2 + 150, 190))) return true; } return false; }
 export function nearestAirport(x, z, ok) { let best = null, bd = 1e18; for (const r of REPTEREK) { if (ok && !ok(r)) continue; const d = Math.hypot(x - r.x, z - r.z); if (d < bd) { bd = d; best = r; } } return best; }

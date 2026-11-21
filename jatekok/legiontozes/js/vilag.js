@@ -2,62 +2,90 @@
    Parlament), Miskolc (Diósgyőri vár), repülőterek (pálya, hangár, torony, helipadok, HGWS víztöltő, kikötőárboc), vízfeliratok,
    a titkos ZERO felirat, termikek és szél. */
 import * as THREE from 'three';
-import { P, REPTEREK, VIZEK, NEVEZETES, ZERO_HELY, SZIN } from './config.js?v=202611212346';
-import { ground, cls, hash2, townList, heightAt } from './geo.js?v=202611212346';
+import { P, REPTEREK, VIZEK, NEVEZETES, ZERO_HELY, SZIN } from './config.js?v=202611220039';
+import { ground, cls, hash2, townList, heightAt } from './geo.js?v=202611220039';
+import { SU, withWorld, LOGV_PARS, LOGV, LOGF_PARS, LOGF } from './kozos.js?v=202611220039';
 
 const MC = new Map(); const M = (c, o = {}) => { const k = c + JSON.stringify(o); if (!MC.has(k)) MC.set(k, new THREE.MeshLambertMaterial({ color: c, flatShading: true, ...o })); return MC.get(k); };
 function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; }
 export function label(text, sub, color = '#fff', size = 1) {
-  const t = canvasTex(512, 128, (x, w, h) => { x.font = '800 56px Inter, Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineWidth = 10; x.strokeStyle = 'rgba(0,0,0,.65)'; x.strokeText(text, w / 2, sub ? 48 : 64); x.fillStyle = color; x.fillText(text, w / 2, sub ? 48 : 64);
+  const mc = document.createElement('canvas').getContext('2d'); mc.font = '800 56px Inter, Arial, sans-serif'; const tw = Math.max(512, Math.ceil(mc.measureText(text).width / 64 + 1) * 64 + 40), aspect = tw / 512;
+  const t = canvasTex(tw, 128, (x, w, h) => { x.font = '800 56px Inter, Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineWidth = 10; x.strokeStyle = 'rgba(0,0,0,.65)'; x.strokeText(text, w / 2, sub ? 48 : 64); x.fillStyle = color; x.fillText(text, w / 2, sub ? 48 : 64);
     if (sub) { x.font = '700 30px Inter, Arial'; x.strokeText(sub, w / 2, 100); x.fillStyle = '#cfe6ff'; x.fillText(sub, w / 2, 100); } });
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, sizeAttenuation: false, depthTest: true, transparent: true, fog: false })); s.scale.set(.22 * size, .055 * size, 1); s.renderOrder = 5; return s; }
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, sizeAttenuation: false, depthTest: true, transparent: true, fog: false })); s.scale.set(.22 * size * aspect, .055 * size, 1); s.renderOrder = 5; return s; }
 
 export function createWorld(scene, opt) {
   const W = new THREE.Group(); scene.add(W);
   /* ---- égbolt, fények, köd ---- */
   const hemi = new THREE.HemisphereLight(0xcfe7ff, 0x5b6b45, .9), sun = new THREE.DirectionalLight(0xfff1d8, 2.2); scene.add(hemi, sun, sun.target);
-  sun.castShadow = false; sun.shadow.mapSize.set(2048, 2048); const sc = sun.shadow.camera; sc.left = sc.bottom = -120; sc.right = sc.top = 120; sc.near = 10; sc.far = 1200; sun.shadow.bias = -.0006;
-  scene.fog = new THREE.Fog(0xbcd6ea, 2000, 40000);
-  const skyU = { top: { value: new THREE.Color() }, hor: { value: new THREE.Color() }, sunDir: { value: new THREE.Vector3() }, sunCol: { value: new THREE.Color() } };
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12), new THREE.ShaderMaterial({ uniforms: skyU, side: THREE.BackSide, depthWrite: false, fog: false,
-    vertexShader: 'varying vec3 vD; void main(){ vD = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.); gl_Position = p.xyww; }',
-    fragmentShader: `uniform vec3 top, hor, sunDir, sunCol; varying vec3 vD;
-      void main(){ vec3 d = normalize(vD); float h = max(d.y, 0.); vec3 c = mix(hor, top, pow(h, .55)); if (d.y < 0.) c = hor * .82;
-        float s = max(dot(d, sunDir), 0.); c += sunCol * (pow(s, 600.) * 2.5 + pow(s, 12.) * .25); gl_FragColor = vec4(c, 1.); }` }));
+  sun.castShadow = false; sun.shadow.mapSize.set(2048, 2048); const sc = sun.shadow.camera; sc.left = sc.bottom = -90; sc.right = sc.top = 90; sc.near = 10; sc.far = 1400; sun.shadow.bias = -.0004; sun.shadow.normalBias = .4;
+  scene.fog = new THREE.Fog(0xbcd6ea, 2000, 40000); scene.background = new THREE.Color(0xbcd6ea);
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), new THREE.ShaderMaterial({ uniforms: { uSkyTop: SU.uSkyTop, uSkyHor: SU.uSkyHor, uSunDir: SU.uSunDir, uSunCol: SU.uSunCol, uSunFog: SU.uSunFog, uDay: SU.uDay }, side: THREE.BackSide, depthWrite: false, fog: false,
+    vertexShader: LOGV_PARS + 'varying vec3 vD; void main(){ vD = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.); gl_Position = vec4(p.xy, p.w * .9999, p.w); ' + LOGV + '}',
+    fragmentShader: LOGF_PARS + `uniform vec3 uSkyTop, uSkyHor, uSunDir, uSunCol, uSunFog; uniform float uDay; varying vec3 vD;
+      void main(){ ${LOGF} vec3 d = normalize(vD); float h = max(d.y, 0.), s = max(dot(d, uSunDir), 0.);
+        vec3 hor = mix(uSkyHor, uSunFog, pow(s, 4.) * .75 * smoothstep(-.2, .3, uSunDir.y + .25));                     // a nap felőli horizont melegebb
+        vec3 c = mix(hor, uSkyTop, pow(h, .45)); c = mix(c, hor * 1.06, exp(-h * 22.) * .65);                          // párás sáv a horizonton
+        if (d.y < 0.) c = hor * (.86 + .1 * exp(d.y * 8.));
+        float disk = smoothstep(.99965, .99985, s); c += uSunCol * (disk * 18. + pow(s, 260.) * 2.2 + pow(s, 24.) * .35 + pow(s, 5.) * .12) * smoothstep(-.06, .02, uSunDir.y);
+        gl_FragColor = vec4(c, 1.); }` }));
   sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
-  const stars = (() => { const n = 900, p = new Float32Array(n * 3); for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, z = Math.random() * .95 + .05, r = Math.sqrt(1 - z * z); p.set([Math.cos(a) * r, z, Math.sin(a) * r], i * 3); }
+  const stars = (() => { const n = 1400, p = new Float32Array(n * 3); for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, z = Math.random() * .95 + .05, r = Math.sqrt(1 - z * z); p.set([Math.cos(a) * r, z, Math.sin(a) * r], i * 3); }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3)); const s = new THREE.Points(g, new THREE.PointsMaterial({ size: 1.6, sizeAttenuation: false, color: 0xffffff, transparent: true, opacity: 0, fog: false, depthWrite: false }));
     s.frustumCulled = false; s.renderOrder = -9; scene.add(s); return s; })();
-  let tod = 13, todSpeed = 0;
-  const C1 = new THREE.Color(), C2 = new THREE.Color(), SUNV = new THREE.Vector3();
-  function setTime(h) { tod = (h % 24 + 24) % 24; const a = (tod - 6) / 12 * Math.PI, el = Math.sin(a), az = (tod / 24) * Math.PI * 2 + Math.PI;
-    SUNV.set(Math.cos(az) * Math.cos(Math.asin(Math.max(-1, Math.min(1, el)))), el, Math.sin(az) * .6).normalize(); skyU.sunDir.value.copy(SUNV);
+  let tod = 13, todSpeed = 0, envDirty = true;
+  const C1 = new THREE.Color(), C2 = new THREE.Color(), SUNV = SU.uSunDir.value;
+  function setTime(h) { const prev = tod; tod = (h % 24 + 24) % 24; const a = (tod - 6) / 12 * Math.PI, el = Math.sin(a), az = (tod / 24) * Math.PI * 2 + Math.PI;
+    SUNV.set(Math.cos(az) * Math.cos(Math.asin(Math.max(-1, Math.min(1, el)))), el, Math.sin(az) * .6).normalize();
     const day = THREE.MathUtils.smoothstep(el, -.12, .25), dusk = Math.max(0, 1 - Math.abs(el - .02) / .22) * (el > -.2 ? 1 : 0);
-    C1.setHex(0x0b1324).lerp(C2.setHex(0x3f86d6), day); skyU.top.value.copy(C1);
-    C1.setHex(0x1a2236).lerp(C2.setHex(0xbcd8ee), day).lerp(C2.setHex(0xf2a35e), dusk * .7); skyU.hor.value.copy(C1); scene.fog.color.copy(C1);
-    skyU.sunCol.value.setHex(0xfff0d0).lerp(C2.setHex(0xff8a40), dusk).multiplyScalar(day > .05 ? 1 : 0);
-    sun.intensity = 2.4 * day + .05; sun.color.setHex(0xfff1d8).lerp(C2.setHex(0xffa060), dusk); hemi.intensity = .25 + .75 * day; hemi.color.setHex(0x8ea6d8).lerp(C2.setHex(0xcfe7ff), day);
-    stars.material.opacity = Math.max(0, 1 - day * 1.6); lampsOn = day < .35; }
+    SU.uDay.value = day; SU.uNight.value = 1 - THREE.MathUtils.smoothstep(el, -.15, .08);
+    C1.setHex(0x060b18).lerp(C2.setHex(0x2f6fc4), day); SU.uSkyTop.value.copy(C1);
+    C1.setHex(0x141c30).lerp(C2.setHex(0xb8d3ea), day).lerp(C2.setHex(0xe9a466), dusk * .6); SU.uSkyHor.value.copy(C1); scene.fog.color.copy(C1); scene.background.copy(C1); SU.uFogC.value.copy(C1);
+    SU.uSunFog.value.setHex(0xffe2b8).lerp(C2.setHex(0xff9a50), dusk).multiplyScalar(.4 + .6 * day).lerp(C1, 1 - day * .9);
+    SU.uSunCol.value.setHex(0xfff0d0).lerp(C2.setHex(0xff8a40), dusk).multiplyScalar(day > .02 ? 1 : 0);
+    sun.intensity = 2.6 * day + .04; sun.color.setHex(0xfff1d8).lerp(C2.setHex(0xffa060), dusk); hemi.intensity = .22 + .8 * day; hemi.color.setHex(0x6f86c0).lerp(C2.setHex(0xcfe7ff), day); hemi.groundColor.setHex(0x2a2f22).lerp(C2.setHex(0x5b6b45), day);
+    stars.material.opacity = Math.max(0, 1 - day * 1.6); lampsOn = day < .35; if (Math.abs(prev - tod) > .25) envDirty = true; }
   let lampsOn = false;
+  // környezeti térkép a gépek fényes festékéhez (az égboltból, PMREM)
+  let pmrem = null, envRT = null; const envScene = new THREE.Scene(); const envSky = new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), sky.material.clone()); envSky.material.uniforms = sky.material.uniforms;
+  envScene.add(envSky); const envGround = new THREE.Mesh(new THREE.CircleGeometry(9, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x4f5a3a })); envGround.position.y = -1; envScene.add(envGround);
+  function updateEnv(renderer) { if (!envDirty || !renderer) return; envDirty = false; pmrem = pmrem || new THREE.PMREMGenerator(renderer); envGround.material.color.setHex(0x3e4a2e).multiplyScalar(.3 + .7 * SU.uDay.value);
+    const lp = envSky.material.vertexShader; void lp; if (envRT) envRT.dispose(); envRT = pmrem.fromScene(envScene, 0, .1, 100); scene.environment = envRT.texture; }
 
-  /* ---- felhők: egyetlen instancolt, kamera felé forduló sík ---- */
-  const cloudTex = canvasTex(128, 128, (x, w) => { const g = x.createRadialGradient(64, 64, 4, 64, 64, 62); g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(.55, 'rgba(255,255,255,.5)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, w, w); });
-  const CN = 420, cGeo = new THREE.InstancedBufferGeometry().copy(new THREE.PlaneGeometry(1, 1)); const cOff = new Float32Array(CN * 4); cGeo.setAttribute('off', new THREE.InstancedBufferAttribute(cOff, 4)); cGeo.instanceCount = 0;
-  const cU = { map: { value: cloudTex }, fogC: { value: scene.fog.color }, fogF: { value: 40000 }, lit: { value: 1 } };
+  /* ---- felhők: instancolt, kamera felé forduló puffok; lapos, árnyalt aljjal, a nap felől ezüstös szegéllyel ---- */
+  const cloudTex = canvasTex(256, 256, (x, w) => { for (let i = 0; i < 26; i++) { const r = 28 + Math.random() * 44, cx = 128 + (Math.random() - .5) * 120, cy = 140 + (Math.random() - .5) * 70 - r * .3, g = x.createRadialGradient(cx, cy, r * .2, cx, cy, r);
+      g.addColorStop(0, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.beginPath(); x.arc(cx, cy, r, 0, 6.3); x.fill(); }
+    const id = x.getImageData(0, 0, w, w), d = id.data; for (let i = 0; i < w * w; i++) { const yy = (i / w) | 0; d[i * 4 + 3] = Math.min(255, d[i * 4 + 3] * 1.6) * Math.min(1, (226 - yy) / 40); } x.putImageData(id, 0, 0); });
+  const CN = 900, cGeo = new THREE.InstancedBufferGeometry().copy(new THREE.PlaneGeometry(1, 1)); const cOff = new Float32Array(CN * 4); cGeo.setAttribute('off', new THREE.InstancedBufferAttribute(cOff, 4)); cGeo.instanceCount = 0;
+  const cU = { map: { value: cloudTex }, uFogC: SU.uFogC, uFogF: SU.uFogF, uSunDir: SU.uSunDir, uSunCol: SU.uSunCol, uDay: SU.uDay, uSkyHor: SU.uSkyHor };
   const clouds = new THREE.Mesh(cGeo, new THREE.ShaderMaterial({ uniforms: cU, transparent: true, depthWrite: false, fog: false,
-    vertexShader: 'attribute vec4 off; varying vec2 vU; varying float vF; void main(){ vU = uv; vec4 mv = viewMatrix * vec4(off.xyz, 1.); mv.xy += position.xy * off.w; vF = clamp(-mv.z / 1., 0., 1e9); gl_Position = projectionMatrix * mv; }',
-    fragmentShader: 'uniform sampler2D map; uniform vec3 fogC; uniform float fogF, lit; varying vec2 vU; varying float vF; void main(){ vec4 t = texture2D(map, vU); float f = smoothstep(fogF * .45, fogF, vF); vec3 c = mix(vec3(lit), fogC, f * .8); gl_FragColor = vec4(c, t.a * .82 * (1. - f)); if (gl_FragColor.a < .01) discard; }' }));
+    vertexShader: LOGV_PARS + 'attribute vec4 off; varying vec2 vU; varying float vF; varying vec3 vC; void main(){ vU = uv; vC = off.xyz; vec4 mv = viewMatrix * vec4(off.xyz, 1.); mv.xy += position.xy * off.w; vF = -mv.z; gl_Position = projectionMatrix * mv; ' + LOGV + '}',
+    fragmentShader: LOGF_PARS + `uniform sampler2D map; uniform vec3 uFogC, uSunDir, uSunCol, uSkyHor; uniform float uFogF, uDay; varying vec2 vU; varying float vF; varying vec3 vC;
+      void main(){ ${LOGF} vec4 t = texture2D(map, vU); if (t.a < .01) discard;
+        vec3 vd = normalize(vC - cameraPosition); float toward = pow(max(dot(vd, uSunDir), 0.), 6.);
+        float lit = mix(.52, 1., smoothstep(.15, .85, vU.y));                                                      // árnyalt alj, világos tető
+        vec3 c = mix(uSkyHor * .55 + vec3(.25), vec3(1.), lit) * (.18 + .82 * uDay) + uSunCol * (toward * (1. - t.a) * 1.4 + .06) * uDay;
+        float f = smoothstep(uFogF * .45, uFogF * 1.05, vF); c = mix(c, uFogC, f * .85); gl_FragColor = vec4(c, t.a * .9 * (1. - f)); }` }));
   clouds.frustumCulled = false; clouds.renderOrder = 2; scene.add(clouds);
   let cloudCover = .5, cloudLast = [1e9, 1e9];
-  function placeClouds(cx, cz) { const R = 36000, cell = 5200; let n = 0;
+  function placeClouds(cx, cz) { const R = 40000, cell = 5200; let n = 0;
     for (let gz = Math.floor((cz - R) / cell); gz <= Math.floor((cz + R) / cell); gz++) for (let gx = Math.floor((cx - R) / cell); gx <= Math.floor((cx + R) / cell); gx++) {
-      if (hash2(gx * 3 + 1, gz * 5 + 2) > cloudCover) continue; const x0 = (gx + hash2(gx, gz)) * cell, z0 = (gz + hash2(gz, gx)) * cell, y0 = 1500 + hash2(gx + 7, gz) * 900, parts = 3 + Math.floor(hash2(gz + 3, gx) * 5);
-      for (let p = 0; p < parts && n < CN; p++) { const s = 500 + hash2(gx + p, gz - p) * 700; cOff.set([x0 + (hash2(p, gx) - .5) * 900, y0 + hash2(gz, p) * 160, z0 + (hash2(gz, p + 9) - .5) * 600, s], n * 4); n++; } }
+      if (hash2(gx * 3 + 1, gz * 5 + 2) > cloudCover) continue; const x0 = (gx + hash2(gx, gz)) * cell, z0 = (gz + hash2(gz, gx)) * cell, y0 = 1500 + hash2(gx + 7, gz) * 900, parts = 7 + Math.floor(hash2(gz + 3, gx) * 8), wid = 700 + hash2(gx, gz + 1) * 1400;
+      for (let p = 0; p < parts && n < CN; p++) { const s = 420 + hash2(gx + p, gz - p) * 620, u = (hash2(p, gx) - .5) * wid, h = hash2(gz, p) * (1 - Math.abs(u) / wid) * 420;
+        cOff.set([x0 + u, y0 + h + s * .25, z0 + (hash2(gz, p + 9) - .5) * wid * .6, s], n * 4); n++; } }
     cGeo.instanceCount = n; cGeo.attributes.off.needsUpdate = true; cloudLast = [cx, cz]; }
 
   /* ---- városok ---- */
   const bGeo = new THREE.BoxGeometry(1, 1, 1).translate(0, .5, 0), rGeo = new THREE.ConeGeometry(.75, .6, 4).rotateY(Math.PI / 4).translate(0, .3, 0);
   const bMat = new THREE.MeshLambertMaterial({ flatShading: true }), rMat = new THREE.MeshLambertMaterial({ flatShading: true });
+  // ablakok a falakon (világkoordinátából), éjszaka véletlenszerűen világítanak
+  bMat.onBeforeCompile = sh => { withWorld(sh); sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+    { vec3 fn = normalize(cross(dFdx(vWPos), dFdy(vWPos))); if (abs(fn.y) < .5) { float u = abs(fn.x) > abs(fn.z) ? vWPos.z : vWPos.x; vec2 cw = vec2(u / 3.6, vWPos.y / 3.3);
+      vec2 f = fract(cw); float win = step(.22, f.x) * step(f.x, .78) * step(.3, f.y) * step(f.y, .82);
+      float lit = step(.58, h21(floor(cw) + floor(vWPos.xz / 50.))) * uNight;
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.16,.22,.28), win * .85); totalEmissiveRadiance += win * lit * vec3(2.2, 1.6, .9); } }`); };
+  bMat.customProgramCacheKey = () => 'epulet';
+  const lampMat = new THREE.PointsMaterial({ color: 0xffc070, size: 9, sizeAttenuation: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: true });
   const towns = [], tMat = new THREE.Matrix4(), tQ = new THREE.Quaternion(), tS = new THREE.Vector3(), tP = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0), tCol = new THREE.Color();
   const WALL = [0xe9e2d2, 0xd8cfbd, 0xf1ecde, 0xcfc6b8, 0xe2d6bf, 0xbfc3c6], ROOF = [0xa4523a, 0x8f4433, 0xb3643f, 0x6d6a66, 0x7b3b2c];
   for (const [n, x, z, pop] of townList()) if (pop >= 2.5) towns.push({ n, x, z, pop, r: 300 + Math.sqrt(pop) * 140, g: null, lab: null });
@@ -68,7 +96,11 @@ export function createWorld(scene, opt) {
       tQ.setFromAxisAngle(Y, Math.round(hash2(i, 9) * 4) * Math.PI / 2 + a * .15); tS.set(w, tall, l); tP.set(x - t.x, h - 2, z - t.z); tMat.compose(tP, tQ, tS); bm.setMatrixAt(k, tMat);
       tCol.setHex(WALL[Math.floor(hash2(i, 11) * WALL.length)]); bm.setColorAt(k, tCol);
       const flat = big && core > .55; tS.set(w, flat ? .01 : Math.min(w, l) * .9, l); tP.y = h - 2 + tall; tMat.compose(tP, tQ, tS); rm.setMatrixAt(k, tMat); tCol.setHex(ROOF[Math.floor(hash2(i, 13) * ROOF.length)]); rm.setColorAt(k, tCol); k++; }
-    bm.count = rm.count = k; const g = new THREE.Group(); g.position.set(t.x, 0, t.z); g.add(bm, rm); bm.computeBoundingSphere(); rm.computeBoundingSphere(); W.add(g); t.g = g; }
+    bm.count = rm.count = k; const g = new THREE.Group(); g.position.set(t.x, 0, t.z); g.add(bm, rm); bm.computeBoundingSphere(); rm.computeBoundingSphere();
+    // utcai lámpák (éjszaka)
+    const ln = Math.min(900, Math.round(k * .8)), lp = new Float32Array(ln * 3); let li = 0; for (let i = 0; i < ln * 2 && li < ln; i++) { const a = hash2(i, 77) * 6.283, d = Math.sqrt(hash2(91, i)) * t.r, x = t.x + Math.cos(a) * d, z = t.z + Math.sin(a) * d; if (cls(x, z) === 3) continue; lp.set([x - t.x, ground(x, z) + 7, z - t.z], li * 3); li++; }
+    const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(lp.subarray(0, li * 3), 3)); const lamps = new THREE.Points(lg, lampMat); lamps.visible = lampsOn; g.add(lamps); g.userData.lamps = lamps;
+    W.add(g); t.g = g; }
   function nearRunway(x, z) { for (const r of REPTEREK) { const dx = x - r.x, dz = z - r.z; if (Math.abs(dx) < 2500 && Math.abs(dz) < 2500) { const a = dx * r.dx + dz * r.dz, b = -dx * r.dz + dz * r.dx; if (Math.abs(a) < r.len / 2 + 500 && Math.abs(b) < r.wid / 2 + 350) return true; } } return false; }
   const fixList = []; const fix = (o, x, z, off) => { o.userData.fy = [x, z, off]; fixList.push(o); };
   const labels = []; function addLabel(s, x, y, z, maxD, minD = 0) { s.position.set(x, y, z); s.userData = { maxD, minD }; W.add(s); labels.push(s); return s; }
@@ -159,14 +191,14 @@ export function createWorld(scene, opt) {
     W, sun, hemi, sky, stations, masts, pads, wind, thermal, labels, towns,
     setTime, get tod() { return tod; }, setTimeSpeed(v) { todSpeed = v; }, setWind(s, d) { windSpd = s; if (d !== undefined) windDir = d; }, get windDir() { return windDir; }, get windSpd() { return windSpd; },
     setClouds(c) { cloudCover = c; cloudLast = [1e9, 1e9]; },
-    setShadows(on) { sun.castShadow = on; },
-    update(cam, dt, far) { gustT += dt; if (todSpeed) setTime(tod + dt * todSpeed / 3600);
+    setShadows(on, size = 2048) { sun.castShadow = on; if (sun.shadow.mapSize.x !== size) { sun.shadow.mapSize.set(size, size); sun.shadow.map?.dispose(); sun.shadow.map = null; } }, updateEnv,
+    update(cam, dt, far, focus) { gustT += dt; if (todSpeed) setTime(tod + dt * todSpeed / 3600);
       sky.position.copy(cam.position); sky.scale.setScalar(far * .92); stars.position.copy(cam.position); stars.scale.setScalar(far * .9);
-      sun.position.copy(cam.position).addScaledVector(SUNV, 600); sun.target.position.copy(cam.position);
-      cU.fogF.value = scene.fog.far; cU.lit.value = .45 + .55 * Math.max(0, Math.min(1, SUNV.y * 3 + .3));
+      const fc = focus || cam.position; sun.position.copy(fc).addScaledVector(SUNV, 700); sun.target.position.copy(fc); sun.target.updateMatrixWorld();   // az árnyékkamera a gépet követi
+      SU.uFogN.value = scene.fog.near; SU.uFogF.value = scene.fog.far;
       if (Math.hypot(cam.position.x - cloudLast[0], cam.position.z - cloudLast[1]) > 3000) placeClouds(cam.position.x, cam.position.z);
       const p = cam.position;
-      for (const t of towns) { const d = Math.hypot(p.x - t.x, p.z - t.z) - t.r; if (d < 24000 && !t.g) buildTown(t); else if (t.g) { t.g.visible = d < 34000; if (d > 45000) { W.remove(t.g); t.g.children.forEach(m => m.dispose()); t.g = null; } } }
+      for (const t of towns) { const d = Math.hypot(p.x - t.x, p.z - t.z) - t.r; if (d < 24000 && !t.g) buildTown(t); else if (t.g) { t.g.visible = d < 34000; if (t.g.userData.lamps) t.g.userData.lamps.visible = lampsOn; if (d > 45000) { W.remove(t.g); t.g.children.forEach(m => { m.dispose?.(); if (m.isPoints) m.geometry.dispose(); }); t.g = null; } } }
       for (const s of labels) { const d = s.position.distanceTo(p); s.visible = d < s.userData.maxD && d > s.userData.minD; }
       zeroMesh.visible = Math.hypot(p.x - ZERO_HELY[0], p.z - ZERO_HELY[1]) < 60000; },
     fixGround(bd) { for (const o of fixList) { const [x, z, off] = o.userData.fy; if (x > bd[0] - 100 && x < bd[2] + 100 && z > bd[1] - 100 && z < bd[3] + 100) o.position.y = ground(x, z) + off; }

@@ -1,8 +1,9 @@
 /* Játékmódok: öntözés (kiszáradt mezők), tűzoltás (terjedő tűz), precíziós kihívás (apró célok), gyorsasági verseny (vízikarikák).
    Minden mód ugyanazt az interfészt adja: update(dt, b), hit(x, z, liter), target() → [x, y, z] | null, status(), finish(landing) → eredmény. */
 import * as THREE from 'three';
-import { P, REPTER, SZIN } from './config.js?v=202611212346';
-import { ground, cls, hash2, isWater } from './geo.js?v=202611212346';
+import { P, REPTER, SZIN } from './config.js?v=202611220039';
+import { ground, cls, hash2, isWater } from './geo.js?v=202611220039';
+import { LOGV_PARS, LOGV, LOGF_PARS, LOGF } from './kozos.js?v=202611220039';
 
 const CELL = 8;   // a mezők nedvességrácsa (m)
 function canvasTex(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter; return [c, c.getContext('2d', { willReadFrequently: true }), t]; }
@@ -58,13 +59,13 @@ export function createMission(def, scene, gep, rnd = Math.random) {
     const MAXF = 1600, fp = new Float32Array(MAXF * 3), fs = new Float32Array(MAXF), fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.BufferAttribute(fp, 3)); fg.setAttribute('sz', new THREE.BufferAttribute(fs, 1));
     const fu = { t: { value: 0 } };
     const flames = new THREE.Points(fg, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: fu,
-      vertexShader: 'attribute float sz; uniform float t; varying float vS; void main(){ vec3 p = position; float ph = fract(sin(dot(p.xz, vec2(12.9, 78.2))) * 43758.); p.y += sz * (.3 + .3 * sin(t * 6. + ph * 30.)); vec4 mv = modelViewMatrix * vec4(p, 1.); vS = sz; gl_PointSize = clamp(sz * 900. / -mv.z, 0., 140.); gl_Position = projectionMatrix * mv; }',
-      fragmentShader: 'varying float vS; void main(){ vec2 d = gl_PointCoord - .5; float r = length(d) * 2.; if (r > 1. || vS <= 0.) discard; vec3 c = mix(vec3(1., .85, .3), vec3(1., .25, .05), r); gl_FragColor = vec4(c, (1. - r) * .9); }' }));
+      vertexShader: LOGV_PARS + 'attribute float sz; uniform float t; varying float vS; void main(){ vec3 p = position; float ph = fract(sin(dot(p.xz, vec2(12.9, 78.2))) * 43758.); p.y += sz * (.3 + .3 * sin(t * 6. + ph * 30.)); vec4 mv = modelViewMatrix * vec4(p, 1.); vS = sz; gl_PointSize = clamp(sz * 900. / -mv.z, 0., 140.); gl_Position = projectionMatrix * mv; ' + LOGV + '}',
+      fragmentShader: LOGF_PARS + 'varying float vS; void main(){ ' + LOGF + ' vec2 d = gl_PointCoord - .5; float r = length(d) * 2.; if (r > 1. || vS <= 0.) discard; vec3 c = mix(vec3(1., .85, .3), vec3(1., .25, .05), r) * 2.2; gl_FragColor = vec4(c, (1. - r) * .9); }' }));
     flames.frustumCulled = false; G.add(flames);
     const sp = new Float32Array(MAXF * 3), ss = new Float32Array(MAXF), sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3)); sg.setAttribute('sz', new THREE.BufferAttribute(ss, 1));
     const smoke = new THREE.Points(sg, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, uniforms: fu,
-      vertexShader: 'attribute float sz; uniform float t; varying float vA; void main(){ vec3 p = position; float ph = fract(sin(dot(p.xz, vec2(4.1, 7.7))) * 9137.); float k = fract(t * .08 + ph); p.y += k * 420.; p.x += k * 140.; vec4 mv = modelViewMatrix * vec4(p, 1.); vA = (1. - k) * step(.01, sz); gl_PointSize = clamp((60. + k * 260.) * sz * 700. / -mv.z, 0., 400.); gl_Position = projectionMatrix * mv; }',
-      fragmentShader: 'varying float vA; void main(){ vec2 d = gl_PointCoord - .5; float r = length(d) * 2.; if (r > 1.) discard; gl_FragColor = vec4(vec3(.32, .3, .28), (1. - r) * .35 * vA); }' }));
+      vertexShader: LOGV_PARS + 'attribute float sz; uniform float t; varying float vA; void main(){ vec3 p = position; float ph = fract(sin(dot(p.xz, vec2(4.1, 7.7))) * 9137.); float k = fract(t * .08 + ph); p.y += k * 420.; p.x += k * 140.; vec4 mv = modelViewMatrix * vec4(p, 1.); vA = (1. - k) * step(.01, sz); gl_PointSize = clamp((60. + k * 260.) * sz * 700. / -mv.z, 0., 400.); gl_Position = projectionMatrix * mv; ' + LOGV + '}',
+      fragmentShader: LOGF_PARS + 'varying float vA; void main(){ ' + LOGF + ' vec2 d = gl_PointCoord - .5; float r = length(d) * 2.; if (r > 1.) discard; gl_FragColor = vec4(vec3(.32, .3, .28), (1. - r) * .35 * vA); }' }));
     smoke.frustumCulled = false; G.add(smoke);
     const burnt = new THREE.InstancedMesh(new THREE.PlaneGeometry(FC, FC).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x1d1a17, transparent: true, opacity: .75, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -5 }), N * N); burnt.count = 0; burnt.frustumCulled = false; G.add(burnt);
     let spreadT = 0, burntN = 0, lastBurnt = 0; const BM = new THREE.Matrix4(); const initial = def.tuz;
