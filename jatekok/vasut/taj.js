@@ -30,7 +30,8 @@ window.Taj = (() => {
     fetch(MDIR + id + '.json' + q).then(r => r.json()).then(md => { const p = T.m[id]; c.ax = p[0]; c.sx = p[1]; c.ay = p[2]; c.W = md.W; c.H = md.H;
       c.green = md.green.map(([k, rs]) => ({ k, ...pathOf(rs, true) })); c.wpoly = md.wpoly.map(rs => pathOf(rs, true)); c.water = md.water.map(([w, f]) => ({ w, ...pathOf([f]) }));
       c.roads = md.roads.map(([t, f]) => ({ t, ...pathOf([f]) })).sort((a, b) => a.t - b.t); c.st = 1; GEN++; }).catch(() => { c.st = -1; GEN++; });
-    if (CNT.size > 4) { let o = null; for (const v of CNT.values()) if (v !== c && (!o || v.used < o.used)) o = v; if (o) CNT.delete(o.id); }
+    // csak a régóta nem használt megyét dobjuk el (megyehatárnál egyszerre 5–6 megye is látszhat)
+    if (CNT.size > 6) { let o = null; const now = performance.now(); for (const v of CNT.values()) if (v !== c && now - v.used > 20000 && (!o || v.used < o.used)) o = v; if (o) CNT.delete(o.id); }
     more(c, need); return c; }
   function more(c, need) { if (need >= 2 && c.need < 2) { const q = '?v=' + ver; c.need = 2;
       fetch(MDIR + c.id + '.bin' + q).then(r => r.arrayBuffer()).then(b => { c.bin = new DataView(b); c.TXN = c.bin.getUint16(4, true); c.TYN = c.bin.getUint16(6, true); GEN++; }).catch(() => { c.fail2 = 1; GEN++; });
