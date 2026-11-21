@@ -629,6 +629,11 @@ const Birodalom = (() => {
       arr: pages > 1 ? [{ dir: -1, x: ix - arr - 2 * d, y: iy, w: arr, h: ih }, { dir: 1, x: ix + iw * vis.length + 2 * d, y: iy, w: arr, h: ih }] : [] };
   }
 
+  // középső gomb (görgő) kattintás: a mezőn lévő elem a kézbe kerül, mint a Minecraftban
+  function pick(i) { if (galView() || i < 0) return; const k = kAt(i), it = MOD[k] || PL[k]; if (!it || k === 'src' || k === 'del') return;
+    if (!unlocked(it) || ((it.loc || 'earth') !== S.loc && k !== 'pipe' && k !== 'szelep')) return Sfx.blip(140, .1, 'square', .05);
+    S.tool = k; S.tab = PL[k] ? 'pl' : 'mod'; const its = items(), j = its.findIndex(o => o.k === k), per = Math.max(1, bar(GG).its.length || 1); if (j >= 0) { S.pg = S.pg || {}; S.pg[S.tab] = Math.floor(j / per); }
+    S.info = { it: { k, kind: PL[k] ? 'pl' : 'mod', ...it, c: costOf(k) }, l: 4 }; Sfx.blip(700, .04, 'sine', .05); }
   let RDEL = false; // jobb klikkes bontás előtti eszköz
   const DN = { n: 0, c: 0, k: '', t: 0, x: 0, y: 0, last: -1 }; // húzásos lerakás számlálója
   // hatótávos modulok húzása (mint a villanypóznák): a következő ott kerül le, ahol a körzetek épp nem fednek át
@@ -1361,7 +1366,7 @@ const Birodalom = (() => {
       const i = tileAt(x, y);
       // eszköz nélkül (vagy jobb/középső gombbal) húzva a kertet görgeti; koppintásra arat / szelepet kapcsol
       if (e && e.button === 2 && i >= 0 && !galView()) { RDEL = S.tool === undefined ? null : S.tool; S.tool = 'del'; DN.n = 0; DN.c = 0; place(G, i, true); lastTile = i; drag = 1; return; } // jobb klikk = bontás (húzva is)
-      if (!S.tool || i < 0 || (e && (e.button === 1 || e.button === 2))) { panS = { x, y, moved: 0, i: e && e.button ? -1 : i }; return; }
+      if (!S.tool || i < 0 || (e && (e.button === 1 || e.button === 2))) { panS = { x, y, moved: 0, i: e && e.button ? -1 : i, mid: e && e.button === 1 ? i : -1 }; return; }
       // érintésnél kicsit várunk: ha jön a második ujj (csípés), nem rakunk le semmit
       if (e && e.pointerType === 'touch') { pend = { i, x, y, t: performance.now() }; return; }
       DN.n = 0; DN.c = 0; DN.x = x; DN.y = y; DN.last = -1; place(G, i, true); lastTile = i; drag = S.tool === 'pipe' || S.tool === 'del' || PL[S.tool] ? 1 : rangeOf(S.tool) ? 'r' : null;
@@ -1378,6 +1383,7 @@ const Birodalom = (() => {
     up(G, x, y, e) { const id = e && e.pointerId != null ? e.pointerId : 0; PT.delete(id);
       if (pinch) { if (PT.size < 2) pinch = null; panS = null; drag = null; pend = null; lastTile = -1; return; }
       if (pend) this.commit(G);
+      if (panS && panS.moved < 10 * L.d && panS.mid >= 0) pick(panS.mid);
       if (panS && panS.moved < 10 * L.d && panS.i >= 0) place(G, panS.i, true);
       if (drag) DN.t = 1.2; if (RDEL !== false) { S.tool = RDEL; RDEL = false; } panS = null; drag = null; lastTile = -1; },
     update(G, fdt) {
