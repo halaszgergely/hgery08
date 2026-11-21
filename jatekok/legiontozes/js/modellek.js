@@ -1,7 +1,7 @@
 /* A gépek kódból épített low-poly modelljei (HGWS sárga–zöld–vízkék). Orr: −Z, fel: +Y, jobb: +X, méterben.
    Minden modell { g, prop[], rotor[], gear, flap[], burner, ramp, eye, spray[], hook, len } – a fizika és a kamera ezeket használja. */
 import * as THREE from 'three';
-import { SZIN } from './config.js?v=202611212314';
+import { SZIN } from './config.js?v=202611212316';
 
 const MC = new Map();
 const M = (c, o = {}) => { const k = c + JSON.stringify(o); if (!MC.has(k)) MC.set(k, new THREE.MeshLambertMaterial({ color: c, flatShading: true, ...o })); return MC.get(k); };

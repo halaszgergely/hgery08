@@ -442,6 +442,8 @@
     L.el.addEventListener('pointerdown', e => { e.preventDefault(); L.el.setPointerCapture(e.pointerId); L.drag = 1; set(e); beep(250, .03); });
     L.el.addEventListener('pointermove', e => { if (L.drag) set(e); }); L.el.addEventListener('pointerup', () => { L.drag = 0; }); L.el.addEventListener('pointercancel', () => { L.drag = 0; }); }
   const spAdd = kmh => { S.sp = Math.max(0, Math.min(10, (S.ccA ? curSp() : S.sp || 0) + kmh / TR().vmax * 10)); S.ccA = 0; ui(); }; $('#ccM').onclick = () => spAdd(-5); $('#ccP').onclick = () => spAdd(5);
+  $('#lvT').addEventListener('wheel', e => { e.preventDefault(); const up = e.deltaY < 0; if (up && S.park) toast('Old ki a rögzítőféket (P).', 1); S.sp = Math.max(0, Math.min(10, Math.round(((S.ccA ? curSp() : S.sp || 0) + (up ? .25 : -.25)) * 20) / 20)); S.ccA = 0; cam.follow = 1; ui(); }, { passive: false });
+  $('#lvB').addEventListener('wheel', e => { e.preventDefault(); const v = Math.max(0, Math.min(7, (S.eb ? 7 : Math.round(S.brk)) + (e.deltaY > 0 ? 1 : -1))); S.ccA = 0; S.eb = v === 7; S.brk = Math.min(6, v); ui(); }, { passive: false });
   $('#bHorn').addEventListener('pointerdown', () => horn(1)); for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) $('#bHorn').addEventListener(ev, () => horn(0));
   $('#bSand').onclick = () => { S.sand = S.sand ? 0 : 1; ui(); };
   let HN = null; function horn(on) { try { if (on && !HN) { AX = AX || new AudioContext(); const g2 = AX.createGain(); g2.gain.value = .0001; g2.gain.exponentialRampToValueAtTime(.06, AX.currentTime + .05); g2.connect(AX.destination); HN = { g: g2, o: [311, 370, 466].map(f => { const o = AX.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.connect(g2); o.start(); return o; }) }; }
