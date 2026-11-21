@@ -340,8 +340,9 @@
     // sofőrök (botok) és a forgalom (NPC-vonatok)
     const drawAg = (a, name) => { if (!a || !a.segs) return; const f = agPt(a, a.pos); if (f[0] < x0 - 800 || f[0] > x1 + 800 || f[1] < y0 - 800 || f[1] > y1 + 800) return; const px = X(f[0]), py = Y(f[1]);
       if (s < .03 * d) { if (!name && s < .006 * d) return; g.fillStyle = name ? '#4fd8ff' : '#c9c2b4'; g.strokeStyle = '#000'; g.lineWidth = d; g.beginPath(); g.arc(px, py, (name ? 5 : 3) * d, 0, 6.283); g.fill(); g.stroke(); }
-      else { let q = 0; const al = v => agPt(a, a.pos - a.tl + v), C = a.cons; for (let k = C.length - 1; k >= 0; k--) { const u = C[k]; if (u.l) { const Lo = LOCOS[u.l]; drawVeh(q, Lo.len, Lo, 1, 0, al); q += Lo.len; } else { drawVeh(q + .6, CAR_L - 1.2, u.cg, 0, 0, al); q += CAR_L; } } }
+      else { let q = 0; const al = v => agPt(a, a.pos - a.tl + v), C = a.cons; for (let k = C.length - 1; k >= 0; k--) { const u = C[k]; if (u.l) { const Lo = name ? { ...LOCOS[u.l], col: '#22b8cf', stripe: '#fff' } : LOCOS[u.l]; drawVeh(q, Lo.len, Lo, 1, 0, al); q += Lo.len; } else { drawVeh(q + .6, CAR_L - 1.2, u.cg, 0, 0, al); q += CAR_L; } } }
       if (name && s > .004 * d) { g.font = `800 ${11 * d}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'bottom'; g.lineWidth = 3 * d; g.strokeStyle = 'rgba(0,0,0,.85)'; g.strokeText('🤖 ' + name, px, py - 9 * d); g.fillStyle = '#9fe8ff'; g.fillText('🤖 ' + name, px, py - 9 * d); } };
+    if (!cam.follow) { const f = front(), px = Math.max(30 * d, Math.min(W - 30 * d, X(f[0]))), py = Math.max(70 * d, Math.min(Hh - 200 * d, Y(f[1]))); g.font = `800 ${11 * d}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'bottom'; g.lineWidth = 3 * d; g.strokeStyle = 'rgba(0,0,0,.85)'; g.strokeText('▼ TE', px, py - 8 * d); g.fillStyle = '#ffe29a'; g.fillText('▼ TE', px, py - 8 * d); }
     for (const a of NPC) drawAg(a); for (const b of S.bots || []) drawAg(botAgent(b), b.n);
     if (s < .02 * d) { const p = front(); g.strokeStyle = '#ffe29a'; g.lineWidth = 2 * d; g.beginPath(); g.arc(X(p[0]), Y(p[1]), 9 * d, 0, 6.283); g.stroke(); }
     if (PIN) { const px = X(PIN.x), py = Y(PIN.y); g.fillStyle = '#ff5a4a'; g.strokeStyle = '#000'; g.lineWidth = 1.5 * d; g.beginPath(); g.arc(px, py - 14 * d, 7 * d, Math.PI * .85, Math.PI * .15); g.lineTo(px, py); g.closePath(); g.fill(); g.stroke(); g.fillStyle = '#fff'; g.beginPath(); g.arc(px, py - 14 * d, 2.6 * d, 0, 6.283); g.fill();
@@ -414,7 +415,7 @@
   // tempomat: a célsebességet (és a pálya sebességkorlátját) tartja gázzal és fékkel
   // sebességkar: S.sp 0–10 = a szerelvény végsebességének 0–100%-a; a szabályzó gázzal és fékkel tartja. AUTO: mindig a megengedett sebesség, megáll a célnál
   const curSp = () => Math.min(10, Math.abs(S.v) * 3.6 / TR().vmax * 10);
-  function ccAuto() { if (S.ccA) { S.ccA = 0; S.sp = Math.round(curSp() * 20) / 20; ui(); return; } if (S.park) return toast('Old ki a rögzítőféket (P).', 1); if (!S.rev) return toast('Állítsd be a menetirányt (R).', 1); S.ccA = 1; S.ccI = 0; beep(760, .07); ui(); }
+  function ccAuto() { if (S.ccA) { S.ccA = 0; S.sp = Math.round(curSp() * 20) / 20; ui(); return; } if (S.park) return toast('Old ki a rögzítőféket (P).', 1); if (!S.rev) return toast('Állítsd be a menetirányt (R).', 1); cam.follow = 1; S.ccA = 1; S.ccI = 0; beep(760, .07); ui(); }
   function cc() { S.ccA = 0; S.sp = Math.round(curSp() * 20) / 20; beep(600, .05); ui(); }
   function ccStep(dt) { if (S.park || !S.rev || S.ttAnim) { S.thr = 0; S.ab = 0; return; } if (S.brk > 0 || S.eb || keys[' ']) { S.thr = 0; S.ab = 0; S.ccI = 0; return; }
     const vm = TR().vmax / 3.6, lead = S.v < 0 ? S.P[0] : S.P[S.P.length - 1], tgt = S.ccA ? Math.min(vm, (E[lead.e].vm || 60) / 3.6, aheadLim()) : (S.sp || 0) / 10 * vm, err = tgt - Math.abs(S.v);
@@ -437,7 +438,7 @@
   const LV = { T: { el: $('#lvT'), n: 10 }, B: { el: $('#lvB'), n: 7 } };
   for (const [k, L] of Object.entries(LV)) { L.el.querySelector('.tks').innerHTML = Array.from({ length: L.n + 1 }, (_, i) => { const y = k === 'T' ? (1 - i / L.n) : i / L.n; return `<i style="top:${y * 100}%"></i><b style="top:${y * 100}%">${k === 'B' && i === L.n ? 'V' : i}</b>`; }).join('');
     const set = e => { const r = L.el.getBoundingClientRect(), f = Math.max(0, Math.min(1, (e.clientY - r.top - 4) / (r.height - 8))), v = Math.round((k === 'T' ? 1 - f : f) * L.n);
-      if (k === 'T') { const sv = Math.round((1 - f) * 200) / 20; S.ccA = 0; if (S.park && sv && !L.drag) toast('Old ki a rögzítőféket (P).', 1); S.sp = sv; } else { S.ccA = 0; S.eb = v === L.n; S.brk = Math.min(6, v); } ui(); };
+      if (k === 'T') { const sv = Math.round((1 - f) * 200) / 20; S.ccA = 0; cam.follow = 1; if (S.park && sv && !L.drag) toast('Old ki a rögzítőféket (P).', 1); S.sp = sv; } else { S.ccA = 0; S.eb = v === L.n; S.brk = Math.min(6, v); } ui(); };
     L.el.addEventListener('pointerdown', e => { e.preventDefault(); L.el.setPointerCapture(e.pointerId); L.drag = 1; set(e); beep(250, .03); });
     L.el.addEventListener('pointermove', e => { if (L.drag) set(e); }); L.el.addEventListener('pointerup', () => { L.drag = 0; }); L.el.addEventListener('pointercancel', () => { L.drag = 0; }); }
   const spAdd = kmh => { S.sp = Math.max(0, Math.min(10, (S.ccA ? curSp() : S.sp || 0) + kmh / TR().vmax * 10)); S.ccA = 0; ui(); }; $('#ccM').onclick = () => spAdd(-5); $('#ccP').onclick = () => spAdd(5);
@@ -459,7 +460,7 @@
     const a = ang(v); x.strokeStyle = '#ff5a4a'; x.lineWidth = 5; x.lineCap = 'round'; x.beginPath(); x.moveTo(cx - Math.cos(a) * 14, cy - Math.sin(a) * 14); x.lineTo(cx + Math.cos(a) * (R - 10), cy + Math.sin(a) * (R - 10)); x.stroke(); x.fillStyle = '#ccc'; x.beginPath(); x.arc(cx, cy, 9, 0, 6.283); x.fill(); }
 
   addEventListener('keydown', e => { if (!S || !$('#menu').hidden || e.target.tagName === 'INPUT') return; if (e.key === '/') { e.preventDefault(); $('#q').focus(); return; } const k = e.key.toLowerCase(); if (e.key === ' ') e.preventDefault(); if (keys[k]) return; keys[k] = 1;
-    if (k === 'c') cc(); else if (k === 'x') ccAuto(); else if (k === 'w' || k === 's') { if (k === 'w' && S.park) toast('Old ki a rögzítőféket (P).', 1); S.sp = Math.max(0, Math.min(10, Math.round(((S.ccA ? curSp() : S.sp || 0) + (k === 'w' ? .5 : -.5)) * 2) / 2)); S.ccA = 0; }
+    if (k === 'c') cc(); else if (k === 'x') ccAuto(); else if (k === 'w' || k === 's') { cam.follow = 1; if (k === 'w' && S.park) toast('Old ki a rögzítőféket (P).', 1); S.sp = Math.max(0, Math.min(10, Math.round(((S.ccA ? curSp() : S.sp || 0) + (k === 'w' ? .5 : -.5)) * 2) / 2)); S.ccA = 0; }
     if (k === 'b' || k === ' ') S.ccA = 0; if (k === 'b') S.brk = Math.min(6, Math.round(S.brk) + 1); if (k === 'n') { S.eb = 0; S.brk = Math.max(0, Math.round(S.brk) - 1); } if (k === 'h') horn(1);
     if (k === 'p') park(); if (k === 'r') setRev(S.rev === 1 ? 0 : S.rev === 0 ? (S.v > .5 ? 1 : -1) : 0); if (k === 'v') flip(); if (k === 'm') $('#bMap').onclick(); if (k === 'escape') { if (!$('#pnl').hidden) closeP(); else $('#bMenu').onclick(); } ui(); });
   addEventListener('keyup', e => { keys[e.key.toLowerCase()] = 0; if (e.key.toLowerCase() === 'h') horn(0); });
