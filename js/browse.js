@@ -1,11 +1,11 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611220021';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611220021';
-import * as Player from './player.js?v=202611220021';
-import * as Party from './party.js?v=202611220021';
-import * as VP from './vplayer.js?v=202611220021';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611220021';
-import * as ArcL from './arcade-lista.js?v=202611220021';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611220026';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611220026';
+import * as Player from './player.js?v=202611220026';
+import * as Party from './party.js?v=202611220026';
+import * as VP from './vplayer.js?v=202611220026';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611220026';
+import * as ArcL from './arcade-lista.js?v=202611220026';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -300,6 +300,8 @@ function countPlay(id) {
 const best = id => { try { return +localStorage.getItem('hgws_best_' + id) || 0; } catch (_) { return 0; } };
 /* az Arcade listaoldal (js/arcade-lista.js) csak ezeken át olvas: saját rekord, formázás, játékszám, top 10 */
 const arcCtx = { best, num: bigNum, beta: () => betaOk(), fmt: (id, v) => { const g = GAMES.find(x => x.id === id); return g && g.fmt ? g.fmt(v) : null; }, playsNow: () => PLAYS, plays: () => loadPlays(),
+  profile: (uid, nick) => lbProfile(uid, nick),
+  boards: async week => { const wk = weekKey(); return Promise.all(GAMES.map(async g => ({ id: g.id, name: g.name, icon: g.icon, rows: (await topOf(week ? g.id + '_' + wk : g.id, 10)).map(r => ({ uid: r.uid, nick: r.nick || '', name: lbName(r.uid, r.nick), wins: r.wins, me: r.uid === C.uid(), score: g.fmt ? g.fmt(r.score) : bigNum(r.score) + (g.unit ? ' ' + g.unit : '') })) }))); },
   top: async id => { const g = GAMES.find(x => x.id === id); return (await topOf(id, 10)).map(r => ({ name: lbName(r.uid, r.nick), me: r.uid === C.uid(), score: g && g.fmt ? g.fmt(r.score) : bigNum(r.score) + (g && g.unit ? ' ' + g.unit : '') })); } };
 function arcadeRow() { return ArcL.homeRow(arcCtx); }
 /* ha a tagek vagy a saját fiók megváltozik, a zárt béta jogosultságot újraküldjük az Arcade-nak */
