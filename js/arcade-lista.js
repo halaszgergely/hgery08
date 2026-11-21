@@ -1,6 +1,6 @@
 /* HGWS Arcade – listaoldal: kiemeltek, szűrők, kategóriasorok, részletező panel.
    Az adatok a js/arcade-manifest.js-ből jönnek; a ranglistát és a játékszámokat csak olvassa (a ctx függvényein át). */
-import { JATEKOK, KATEGORIAK, UJ_NAPOK } from './arcade-manifest.js?v=202611220021';
+import { JATEKOK, KATEGORIAK, UJ_NAPOK } from './arcade-manifest.js?v=202611220026';
 
 const V = new URL(import.meta.url).search, RK = 'hgws_arc_recent';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -32,13 +32,14 @@ export function render(page, ctx) {
   const S = readQ(); let plays = ctx.playsNow() || {}; document.title = 'Arcade · HGWS';
   const all = () => visible(ctx), feat = all().filter(g => g.kiemelt).sort((a, b) => b.kiemelt - a.kiemelt), hero = feat[0], side = feat.slice(1, 4);
   page.innerHTML = `<div class="arclw"><div class="arcl">
-    <header class="al-ah"><h1><i class="ic ic-gamepad-2"></i> HGWS Arcade</h1><span class="al-spon">${SPON}</span></header>
+    <header class="al-ah"><h1><i class="ic ic-gamepad-2"></i> HGWS Arcade</h1><button class="al-lbgo">🏆 Ranglista</button><span class="al-spon">${SPON}</span></header>
     ${hero ? `<section class="ahero"><article class="al-hbig" data-g="${esc(hero.id)}" tabindex="0" style="--c:${esc(hero.szin)}">${cover(hero, 1)}<div class="al-hb"><span class="al-chips"><span class="al-kat">${esc(KN[hero.kat]?.n || '')}</span>${ST[hero.statusz] ? `<span class="al-st al-st-${esc(hero.statusz)}">${ST[hero.statusz]}</span>` : ''}</span><h2>${esc(hero.cim)}</h2><p>${esc(hero.hosszu)}</p><span class="al-hbtn"><a class="al-pl al-big" href="${esc(linkOf(hero))}">▸ Játék</a><em>${esc(statLine(hero, ctx))}</em></span></div></article>
       <div class="al-hside">${side.map(g => card(g, ctx, 'al-mini')).join('')}</div></section>` : ''}
     <div class="fbar"><div class="fchips"><button data-k="">Összes</button>${KATEGORIAK.filter(k => all().some(g => g.kat === k.k)).map(k => `<button data-k="${k.k}">${esc(k.n)}</button>`).join('')}</div>
       <input type="search" class="fq" placeholder="Keresés cím vagy címke szerint" value="${esc(S.q)}" autocomplete="off"><select class="fs"><option value="">Kategóriák szerint</option><option value="uj">Újak elöl</option><option value="az">A–Z</option><option value="nepszeru">Legtöbbet játszott</option></select></div>
-    <div class="abody"></div><footer class="afoot">${SPON}</footer></div><div class="apnl" hidden></div></div>`; const root = page.firstElementChild;
-  const body = page.querySelector('.abody'), pnl = page.querySelector('.apnl'), sel = page.querySelector('.fs'); sel.value = S.rend;
+    <div class="abody"></div><section class="al-lb" id="al-lb"><div class="rowh"><h2>🏆 Ranglista</h2><span class="al-lbt"><button data-w="1" class="on">Heti</button><button data-w="0">Mindenkori</button></span></div><div class="al-lbg"><p class="al-none">Betöltés…</p></div></section><footer class="afoot">${SPON}</footer></div></div>`; const root = page.firstElementChild;
+  document.querySelectorAll('body > .apnl').forEach(x => x.remove()); const pnl = document.createElement('div'); pnl.className = 'apnl'; pnl.hidden = true; document.body.appendChild(pnl);
+  const body = page.querySelector('.abody'), sel = page.querySelector('.fs'); sel.value = S.rend;
   const sorted = l => { const r = S.rend || (S.kat || S.q ? 'uj' : ''); return l.slice().sort(r === 'az' ? (a, b) => a.cim.localeCompare(b.cim, 'hu') : r === 'nepszeru' ? (a, b) => (plays[b.id] || 0) - (plays[a.id] || 0) : (a, b) => String(b.hozzaadva).localeCompare(String(a.hozzaadva)) || (b.kiemelt || 0) - (a.kiemelt || 0)); };
   const rowH = (t, l) => l.length ? `<section class="row"><div class="rowh"><h2>${esc(t)}</h2></div><div class="arow">${l.map(g => card(g, ctx)).join('')}</div></section>` : '';
   function draw() { page.querySelectorAll('.fchips button').forEach(b => b.classList.toggle('on', b.dataset.k === S.kat)); const gs = all();
@@ -61,14 +62,23 @@ export function render(page, ctx) {
       ol.innerHTML = l.length ? l.map(r => `<li class="${r.me ? 'al-me' : ''}"><span>${esc(r.name)}</span><b>${esc(r.score)}</b></li>`).join('') : '<li class="al-ld">Még senki – légy te az első!</li>'; }).catch(() => { const ol = pnl.querySelector('.al-top'); if (ol) ol.innerHTML = '<li class="al-ld">A ranglista most nem érhető el.</li>'; }); }
   const closeP = () => { pnl.hidden = true; pnl.innerHTML = ''; document.body.classList.remove('arcl-lock'); };
 
-  root.addEventListener('click', e => { const pl = e.target.closest('a.al-pl'); if (pl) { closeP(); return; }
+  // központi ranglista: minden játék top 10-e, heti vagy mindenkori
+  let lbW = 1, lbN = 0; const lbg = root.querySelector('.al-lbg');
+  function loadLb() { const n = ++lbN; lbg.innerHTML = '<p class="al-none">Betöltés…</p>'; ctx.boards(!!lbW).then(bs => { if (n !== lbN || !document.contains(lbg)) return;
+    lbg.innerHTML = bs.map(b => `<div class="al-lbc"><h4>${esc(b.icon || '')} ${esc(b.name)}</h4>${b.rows.length ? '<ol>' + b.rows.map((r, i) => `<li class="${r.me ? 'al-me' : ''}"><i>${['🥇', '🥈', '🥉'][i] || i + 1}</i><span data-prof="${esc(r.uid || '')}" data-pn="${esc(r.nick || '')}">${esc(r.name)}</span><b>${r.wins ? '🏆×' + r.wins + ' ' : ''}${esc(r.score)}</b></li>`).join('') + '</ol>' : '<p class="al-ld">Még senki – légy te az első!</p>'}</div>`).join(''); }).catch(() => { if (n === lbN) lbg.innerHTML = '<p class="al-none">A ranglista most nem érhető el.</p>'; }); }
+  loadLb();
+  pnl.addEventListener('click', e => { if (e.target.closest('a.al-pl') || e.target.closest('.al-ax') || e.target === pnl) closeP(); });
+  root.addEventListener('click', e => { const lt = e.target.closest('.al-lbt button'); if (lt) { lbW = +lt.dataset.w; root.querySelectorAll('.al-lbt button').forEach(b => b.classList.toggle('on', b === lt)); loadLb(); return; }
+    if (e.target.closest('.al-lbgo')) { root.querySelector('#al-lb').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; } const pr = e.target.closest('[data-prof]'); if (pr && pr.dataset.prof) { ctx.profile(pr.dataset.prof, pr.dataset.pn); return; }
+    const pl = e.target.closest('a.al-pl'); if (pl) { closeP(); return; }
     if (e.target.closest('.al-ax') || e.target === pnl) return closeP(); const ch = e.target.closest('.fchips button'); if (ch) { S.kat = ch.dataset.k; writeQ(S, true); draw(); return; }
     const c = e.target.closest('[data-g]'); if (c && !e.target.closest('.apc')) detail(c.dataset.g); });
-  root.addEventListener('keydown', e => { if (e.key === 'Escape' && !pnl.hidden) return closeP(); if (e.key === 'Enter' && e.target.matches?.('[data-g]')) detail(e.target.dataset.g); });
+  const onEsc = e => { if (e.key === 'Escape' && !pnl.hidden) closeP(); }; addEventListener('keydown', onEsc);
+  root.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches?.('[data-g]')) detail(e.target.dataset.g); });
   page.querySelector('.fq').addEventListener('input', e => { S.q = e.target.value.trim(); writeQ(S, false); draw(); });
   sel.addEventListener('change', () => { S.rend = sel.value; writeQ(S, true); draw(); });
-  return () => { document.body.classList.remove('arcl-lock'); };
+  return () => { document.body.classList.remove('arcl-lock'); removeEventListener('keydown', onEsc); pnl.remove(); };
 }
 // több borítókép: 4 másodpercenként váltakoznak
 setInterval(() => { if (document.hidden) return; document.querySelectorAll('.al-cov').forEach(c => { const im = c.querySelectorAll('img'); if (im.length < 2) return; const i = [...im].findIndex(x => x.classList.contains('on')); im[i < 0 ? 0 : i].classList.remove('on'); im[(i + 1) % im.length].classList.add('on'); }); }, 4000);
-addEventListener('hashchange', () => document.body.classList.remove('arcl-lock'));
+addEventListener('hashchange', () => { document.body.classList.remove('arcl-lock'); if (!document.querySelector('.arcl')) document.querySelectorAll('body > .apnl').forEach(x => x.remove()); else document.querySelectorAll('body > .apnl').forEach(x => { x.hidden = true; x.innerHTML = ''; }); });
