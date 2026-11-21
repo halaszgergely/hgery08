@@ -31,7 +31,7 @@ const Ugro = (() => {
     move(G, x) { this.aim(G, x); },
     up(G, x, y, e) { if (e && e.pointerType === 'touch') tx = null; },
     update(G, dt) { const d = G.d, p = this.p, r = 14 * d; if (this.dead) return;
-      const dir = K.R - K.L, mx = 520 * d; if (dir) { p.vx += dir * 2600 * d * dt; p.vx = Math.max(-mx, Math.min(mx, p.vx)); } else if (tx != null) { const t = Math.max(-mx, Math.min(mx, (tx - p.x) * 9)); p.vx += (t - p.vx) * Math.min(1, dt * 14); } else p.vx *= Math.pow(.02, dt);
+      const dir = K.R - K.L, mx = 520 * d; if (dir) { if (p.vx * dir < 0) p.vx = 0; p.vx += dir * 3400 * d * dt; p.vx = Math.max(-mx, Math.min(mx, p.vx)); } else if (tx != null) { const t = Math.max(-mx, Math.min(mx, (tx - p.x) * 9)); p.vx += (t - p.vx) * Math.min(1, dt * 14); } else p.vx *= Math.pow(1e-9, dt);   // elengedés után szinte azonnal megáll
       if (Math.abs(p.vx) > 20 * d) p.face = p.vx > 0 ? 1 : -1;
       const y0 = p.y; if (this.jet > 0) { this.jet -= dt; p.vy = -JET * d; if (Math.random() < .6) G.splash(this.ox + p.x, p.y - this.cam + r, '150,215,255', 2, 3); } else p.vy += GR * d * dt;
       p.x += p.vx * dt; p.y += p.vy * dt; if (p.x < -r) { p.x += this.fw + 2 * r; if (tx != null) tx = Math.max(tx, this.fw * .5); } if (p.x > this.fw + r) { p.x -= this.fw + 2 * r; if (tx != null) tx = Math.min(tx, this.fw * .5); }

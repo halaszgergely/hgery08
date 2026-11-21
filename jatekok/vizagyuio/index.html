@@ -1,0 +1,54 @@
+<!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="robots" content="noindex,nofollow"><title>Vízágyú.io – HGWS Arcade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#070b12;--pn:#0e1522;--pn2:#162033;--ln:rgba(140,180,230,.18);--ink:#e9eef6;--mut:#8b9ab0;--gold:#e8b656;--ok:#5ee08a;--bad:#ff5a4d;--blue:#6cc6ff}
+*{box-sizing:border-box;margin:0}html,body{height:100%;background:var(--bg);color:var(--ink);font:500 14px/1.45 Inter,system-ui,"Segoe UI",Roboto,sans-serif;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;touch-action:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.scr{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:14px;background:radial-gradient(ellipse at 50% 20%,rgba(20,60,90,.55),rgba(5,9,15,.92));overflow:auto;touch-action:pan-y}
+.scr[hidden]{display:none}
+.card{width:min(860px,100%);background:var(--pn);border:1px solid var(--ln);border-radius:18px;padding:20px 22px;box-shadow:0 20px 60px rgba(0,0,0,.5);max-height:100%;overflow:auto}
+h1{font:900 30px/1.05 Cinzel,Georgia,serif;letter-spacing:.06em;color:var(--gold)}h1 small{display:block;font:700 10px Inter,sans-serif;letter-spacing:.24em;color:var(--mut);margin-top:6px}
+h2{font:800 11px Inter,sans-serif;letter-spacing:.2em;color:var(--mut);margin:18px 0 8px;text-transform:uppercase}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.grow{flex:1}
+.b{border:1px solid var(--ln);background:var(--pn2);color:var(--ink);border-radius:11px;padding:9px 15px;font:700 13px Inter,sans-serif;cursor:pointer}
+.b:hover{border-color:rgba(232,182,86,.6)}.b.go{background:linear-gradient(180deg,#f2c76d,#d59d3a);color:#1b1304;border-color:transparent}.b.sm{padding:5px 10px;font-size:12px}.b[disabled]{opacity:.4;cursor:default}.b.on{border-color:var(--gold);color:#ffe29a}
+select{background:var(--pn2);color:var(--ink);border:1px solid var(--ln);border-radius:10px;padding:8px 10px;font:600 13px Inter,sans-serif}
+label{display:flex;flex-direction:column;gap:4px;font:700 10px Inter,sans-serif;letter-spacing:.14em;color:var(--mut);text-transform:uppercase}
+.pl{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+.p{display:flex;align-items:center;gap:9px;background:var(--pn2);border:1px solid var(--ln);border-radius:12px;padding:8px 10px}.p i{width:14px;height:14px;border-radius:50%;flex:none}.p b{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.p small{color:var(--mut);font-weight:700}.p.rdy small{color:var(--ok)}
+.sw{display:flex;gap:6px}.sw button{width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer}.sw button.on{border-color:#fff}
+#st{min-height:20px;color:var(--mut);font-weight:600;margin-top:10px}#st.warn{color:var(--gold)}#st.err{color:var(--bad)}
+.rm{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--ln);border-radius:12px;background:var(--pn2);margin-bottom:6px}
+table{width:100%;border-collapse:collapse;margin-top:8px}th{font:800 10px Inter;letter-spacing:.14em;color:var(--mut);text-align:right;padding:6px 8px}th:first-child,td:first-child{text-align:left}td{padding:7px 8px;border-top:1px solid var(--ln);text-align:right;font-weight:600}tr.me td{color:#ffe29a}tr.win td:first-child::after{content:" 🏆"}
+#hudq{position:fixed;top:10px;right:10px;z-index:5;display:flex;gap:8px}#hudq[hidden]{display:none}
+#toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);background:rgba(14,21,34,.95);border:1px solid var(--ln);border-radius:12px;padding:9px 16px;font-weight:700;z-index:9;opacity:0;transition:opacity .25s;pointer-events:none}#toast.on{opacity:1}
+input.lnk{width:100%;background:var(--pn2);border:1px solid var(--ln);border-radius:10px;color:var(--ink);padding:8px 10px;font:600 12px Inter;-webkit-user-select:text;user-select:text}
+@media(max-width:600px){h1{font-size:22px}.card{padding:14px}}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="hudq" hidden><button class="b sm" id="qLeave">Kilépés</button></div>
+<div class="scr" id="menu"><div class="card">
+  <h1>VÍZÁGYÚ.IO<small>VALÓS IDEJŰ LOCSOLÓARÉNA · 2–8 JÁTÉKOS</small></h1>
+  <h2>Játék</h2>
+  <div class="row"><label>Mód<select id="mMode"></select></label><label>Pálya<select id="mMap"></select></label><label>Létszám (botokkal)<select id="mFill"></select></label></div>
+  <div class="row" style="margin-top:14px"><button class="b go" id="mSolo">Gyakorlás botokkal</button><button class="b" id="mCreate">Szoba létrehozása</button><label class="row" style="flex-direction:row;letter-spacing:.06em"><input type="checkbox" id="mOpen" checked> barátaim szabadon beléphetnek</label></div>
+  <h2 id="rmH">Barátok szobái</h2><div id="rooms"></div>
+  <div id="st"></div>
+</div></div>
+<div class="scr" id="lobby" hidden><div class="card">
+  <div class="row"><h1 class="grow">VÁRÓTEREM<small id="lSub"></small></h1><button class="b sm" id="lLeave">Kilépés</button></div>
+  <h2>Játékosok</h2><div class="pl" id="lPl"></div>
+  <h2>Színed</h2><div class="sw" id="lSw"></div>
+  <div id="lHost"><h2>Beállítások</h2><div class="row"><label>Mód<select id="lMode"></select></label><label>Pálya<select id="lMap"></select></label><label>Létszám (botokkal)<select id="lFill"></select></label></div>
+    <h2>Meghívás</h2><div id="lFr" class="row"></div><div class="row" style="margin-top:8px"><input class="lnk grow" id="lLink" readonly><button class="b sm" id="lCopy">Link másolása</button></div></div>
+  <div id="lInfo" style="margin-top:12px;color:var(--mut);font-weight:600"></div>
+  <div class="row" style="margin-top:16px"><button class="b" id="lReady">Kész</button><button class="b go" id="lStart">Indítás</button><span id="lSt" class="grow" style="color:var(--mut);font-weight:600"></span></div>
+</div></div>
+<div class="scr" id="res" hidden><div class="card">
+  <h1 id="rT"></h1><div id="rS" style="margin-top:6px;color:var(--mut);font-weight:600"></div>
+  <table id="rTab"></table>
+  <div class="row" style="margin-top:16px"><button class="b go" id="rAgain">Visszavágó</button><button class="b" id="rLeave">Kilépés</button><span id="rSt" class="grow" style="color:var(--mut);font-weight:600"></span></div>
+</div></div>
+<div id="toast"></div>
+<script type="module" src="./kliens.js?v=202611210156"></script>
+</body></html>

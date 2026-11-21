@@ -7,17 +7,19 @@ const AranyLocsolofej = { id: 'aranylocsolofej', name: 'AZ ARANY LOCSOLÓFEJ', e
 /* Öntöző Birodalom Online: a közösségi oldal #/birodalom nézete – a kártya a szülőoldalt navigálja oda */
 const BoOnline = { id: 'boonline', name: 'ÖNTÖZŐ BIRODALOM ONLINE', go: '#/birodalom', ext: 1, tag: 'ONLINE', sponsor: 'A Zerosites támogatásával',
   desc: 'Közös világ 13 régióval: telkek, piac, vezetékek, szövetkezetek és heti ostrom Szikkadt Szilárd erődje ellen.' };
+const VizagyuIo = { id: 'vizagyuio', name: 'VÍZÁGYÚ.IO', ext: 'jatekok/vizagyuio/index.html', tag: 'ONLINE',
+  desc: 'Valós idejű locsolóaréna 2–8 játékosnak: hívd meg a barátaidat, vagy gyakorolj botok ellen. Négy mód, négy pálya.' };
 const ZeroChip = { id: 'zerochip', name: 'ZERO CHIP', ext: 'jatekok/zerochip/index.html', tag: 'ÚJ',
-  desc: 'Építs áramköröket a tranzisztortól a processzor számlálójáig. 29 küldetés: szilícium, logikai kapuk, összeadók, memória.' };
+  desc: 'Építs áramköröket a tranzisztortól a processzor számlálójáig. 61 küldetés: szilícium, logikai kapuk, összeadók, memória, majd haladó chiptervezés.' };
 /* zárt béta: csak adminok és „Béta-tesztelő” taggel rendelkezők látják és indíthatják (a jogosultságot a főoldal küldi) */
 const ZeroQuest = { id: 'zeroquest', name: 'ZERO QUEST', ext: 'jatekok/zeroquest/index.html', tag: 'ZÁRT BÉTA', lock: 1,
   desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében: küldetések, szintlépés, felszerelés és egy ébredő őr a romok alatt. Zárt béta.' };
 const Drift = window.HGDrift ? window.HGDrift({ G, Sfx, rr, store, hud }) : null;
 const Zombi = window.HGZombi ? window.HGZombi({ G, Sfx, rr, store, hud }) : null;
-const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Ugro, Torony, Birodalom, BoOnline, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, ZeroSpace, ZeroChip, ZeroQuest];
+const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Ugro, Torony, Birodalom, BoOnline, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
 const EXT = $('#ext'), EXF = $('#extf');
 let zqWait = false;
-function openExt(gm) { if (gm.go) { if (window.top !== window) parent.postMessage({ hgws: 'nav', to: gm.go }, location.origin); else location.href = './' + gm.go; return; } if (gm.lock && !window.HGZQ_OK) { zqWait = !window.HGZQ_SEEN; return; } EXF.src = gm.ext + '?v=' + Date.now().toString(36).slice(0, 5); EXT.hidden = false; document.body.classList.add('locked'); setTimeout(() => { try { EXF.focus(); } catch (_) {} }, 300); }
+function openExt(gm) { if (gm.go) { if (window.top !== window) parent.postMessage({ hgws: 'nav', to: gm.go }, location.origin); else location.href = './' + gm.go; return; } if (gm.lock && !window.HGZQ_OK) { zqWait = !window.HGZQ_SEEN; return; } EXF.src = gm.ext + '?v=' + Date.now().toString(36).slice(0, 5) + (gm.room ? '&room=' + encodeURIComponent(gm.room) : ''); gm.room = ''; EXT.hidden = false; document.body.classList.add('locked'); setTimeout(() => { try { EXF.focus(); } catch (_) {} }, 300); }
 function closeExt() { EXT.hidden = true; EXF.src = 'about:blank'; document.body.classList.remove('locked'); }
 $('#extX').onclick = closeExt;
 const ARTS = {
@@ -52,6 +54,10 @@ const ARTS = {
     const G = x.createLinearGradient(cx - 18, 0, cx + 18, 0); G.addColorStop(0, '#a8702a'); G.addColorStop(.4, '#fff3c4'); G.addColorStop(1, '#a8702a'); x.fillStyle = G; x.fillRect(cx - 5, cy - 22, 10, 22); x.fillRect(cx - 13, cy - 2, 26, 6); x.beginPath(); x.moveTo(cx - 8, cy - 22); x.lineTo(cx + 8, cy - 22); x.lineTo(cx + 15, cy - 36); x.lineTo(cx - 15, cy - 36); x.fill(); x.beginPath(); x.ellipse(cx, cy - 38, 18, 7, 0, 0, 6.283); x.fill();
     x.fillStyle = '#7a2f3a'; x.fillRect(cx - 34, cy + 4, 68, 30); x.fillStyle = '#e8b656'; x.fillRect(cx - 38, cy, 76, 5); x.strokeStyle = 'rgba(200,235,255,.8)'; x.lineWidth = 2; x.beginPath(); x.moveTo(cx - 30, cy); x.lineTo(cx - 30, cy - 46); x.arc(cx, cy - 46, 30, Math.PI, 0); x.lineTo(cx + 30, cy); x.stroke();
     for (let k = 0; k < 6; k++) { const o = (t * .5 + k / 6) % 1, px = cx - 110 + k * 44 + Math.sin(k * 3) * 10, py = 20 + o * 100; x.fillStyle = `rgba(108,198,255,${.9 - o * .6})`; x.beginPath(); x.moveTo(px, py - 7); x.bezierCurveTo(px + 6, py, px + 5, py + 6, px, py + 6); x.bezierCurveTo(px - 5, py + 6, px - 6, py, px, py - 7); x.fill(); } },
+  vizagyuio: (c, x, t) => { const W = c.width, H = c.height; x.fillStyle = '#2f6b3a'; x.fillRect(0, 0, W, H); x.fillStyle = '#285e33'; for (let i = 0; i < W; i += 40) for (let j = (i / 40 % 2) * 40; j < H; j += 80) x.fillRect(i, j, 40, 40);
+    const car = (px, py, a, col) => { x.save(); x.translate(px, py); x.rotate(a); x.fillStyle = '#1a2230'; x.fillRect(-15, -11, 30, 22); x.fillStyle = col; x.fillRect(-13, -9, 26, 18); x.fillStyle = '#c3ced9'; x.fillRect(4, -3, 18, 6); x.restore(); };
+    const a1 = Math.sin(t * .9) * .4, p1 = [W * .28, H * .5 + Math.sin(t * 1.3) * 18], p2 = [W * .72, H * .5 + Math.cos(t * 1.1) * 18]; car(p1[0], p1[1], a1, '#6cc6ff'); car(p2[0], p2[1], Math.PI + Math.sin(t * .7) * .4, '#ff7a6e');
+    x.fillStyle = 'rgba(170,225,255,.95)'; for (let i = 0; i < 7; i++) { const k = ((t * 2.2 + i / 7) % 1); x.beginPath(); x.arc(p1[0] + Math.cos(a1) * (24 + k * W * .34), p1[1] + Math.sin(a1) * (24 + k * W * .34), 3, 0, 6.283); x.fill(); } },
   zerochip: (c, x, t) => { const W = c.width, H = c.height; x.fillStyle = '#0a3324'; x.fillRect(0, 0, W, H); x.fillStyle = 'rgba(160,230,190,.25)'; for (let i = 8; i < W; i += 16) for (let j = 8; j < H; j += 16) x.fillRect(i, j, 1.5, 1.5);
     x.lineWidth = 3; x.lineCap = 'round'; const on = k => Math.sin(t * 3 - k * .9) > 0; for (const [k, pts] of [[0, [[20, 40], [90, 40], [90, 56], [128, 56]]], [1, [[20, 104], [90, 104], [90, 84], [128, 84]]], [2, [[192, 70], [250, 70], [250, 40], [300, 40]]], [3, [[250, 70], [250, 104], [300, 104]]]]) { x.strokeStyle = on(k) ? '#ffd35a' : '#3f6f9a'; x.beginPath(); pts.forEach((p, i) => i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1])); x.stroke(); }
     x.fillStyle = '#1b222d'; x.beginPath(); x.roundRect(128, 44, 64, 52, 7); x.fill(); x.strokeStyle = '#6f8196'; x.lineWidth = 1.5; x.stroke(); x.fillStyle = '#ffe29a'; x.font = '800 15px system-ui'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('NAND', 160, 71); x.fillStyle = on(2) ? '#ff5a4d' : '#4a1f1c'; x.beginPath(); x.arc(304, 40, 9, 0, 6.283); x.fill(); x.fillStyle = on(3) ? '#ff5a4d' : '#4a1f1c'; x.beginPath(); x.arc(304, 104, 9, 0, 6.283); x.fill(); },
@@ -106,7 +112,7 @@ function renderCards() {
 renderCards();
 $('#yr').textContent = new Date().getFullYear();
 startHero();
-function deep() { const m = location.hash.match(/^#play=(\w+)/); const gm = m && GAMES.find(x => x.id === m[1]); if (gm) { openGame(gm); history.replaceState(null, '', location.pathname + location.search); } }
+function deep() { const m = location.hash.match(/^#play=(\w+)(?:\.(\w+))?/); const gm = m && GAMES.find(x => x.id === m[1]); if (gm) { gm.room = m[2] || ''; openGame(gm); history.replaceState(null, '', location.pathname + location.search); } }
 deep(); addEventListener('hashchange', deep);
 /* online ranglista: az adatokat a HGWS főoldal küldi (ott van a bejelentkezés) */
 let LB = null, lbt = 'week';
