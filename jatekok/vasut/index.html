@@ -8,7 +8,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}[hidden]{di
 .gl{background:var(--glass);border:1px solid rgba(140,180,230,.15);border-radius:14px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .b{border:1px solid var(--ln);background:var(--pn2);color:var(--ink);border-radius:11px;padding:8px 13px;font:700 13px Inter;cursor:pointer;display:inline-flex;align-items:center;gap:6px;pointer-events:auto;white-space:nowrap}
 .b:hover{border-color:rgba(232,182,86,.6)}.b.g{background:linear-gradient(180deg,#f0c56a,#d79a32);color:#1a1004;border:0}.b.sm{padding:5px 9px;font-size:12px;border-radius:9px}.b:disabled{opacity:.4;cursor:default}
-.b.on{border-color:var(--gold);color:var(--gold2)}#bCC.on,#cCC.on{border-color:#5ee08a;color:#fff;background:#1f5a35}#bPark.on,#cPk.on{border-color:#ff6a5a;color:#fff;background:#8a2a22}
+.b.on{border-color:var(--gold);color:var(--gold2)}#cs{display:flex;gap:6px;overflow-x:auto;padding:10px 2px 14px;align-items:stretch;touch-action:pan-y}#cs.lock .cu{opacity:.6;cursor:default}#cs .dir{align-self:center;color:#888;font:600 11px Inter;white-space:nowrap}.cu{position:relative;flex:0 0 auto;width:86px;min-height:74px;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:rgba(255,255,255,.04);padding:7px;cursor:grab;user-select:none;display:flex;flex-direction:column;gap:3px;transition:margin .12s}.cu i{display:block;height:16px;border-radius:4px;border:1px solid #000}.cu.loco{border-color:var(--gold)}.cu b{font:700 12px Inter}.cu small{color:#aaa;font-size:10.5px;line-height:1.2}.cu.drag{z-index:5;cursor:grabbing;box-shadow:0 6px 18px rgba(0,0,0,.5);transition:none;background:#2a2622}.cu.gap{margin-left:40px}.cu .x{position:absolute;top:2px;right:2px;border:0;background:none;color:#f88;cursor:pointer;font-size:12px}#bCCA.on{border-color:#5ee08a;color:#fff;background:#1f5a35}#bCC.on,#cCC.on{border-color:#5ee08a;color:#fff;background:#1f5a35}#bPark.on,#cPk.on{border-color:#ff6a5a;color:#fff;background:#8a2a22}
 #top{position:fixed;left:10px;right:10px;top:10px;display:flex;gap:8px;align-items:flex-start;pointer-events:none;z-index:3}
 #money{padding:8px 14px;font:800 17px Inter;color:var(--gold2)}#clock{padding:8px 12px;font:700 13px Inter;color:var(--mut)}
 #top .sp{flex:1}#srch{pointer-events:auto;position:relative;padding:0;width:min(320px,34vw)}#q{width:100%;box-sizing:border-box;background:transparent;border:0;outline:0;color:#eee;font:600 14px Inter,sans-serif;padding:10px 12px}#qr{position:absolute;left:0;right:0;top:calc(100% + 6px);background:rgba(16,18,22,.96);border:1px solid rgba(255,255,255,.12);border-radius:12px;max-height:60vh;overflow:auto;padding:4px}#qr div{padding:7px 10px;border-radius:8px;cursor:pointer;display:flex;gap:8px;align-items:baseline;font:500 13.5px Inter,sans-serif;color:#e6e6e6}#qr div.on,#qr div:hover{background:rgba(232,182,86,.16)}#qr small{color:#999;margin-left:auto;font-size:11.5px;white-space:nowrap}@media(max-width:700px){#srch{width:42vw}}
@@ -20,7 +20,22 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}[hidden]{di
 .notch{display:flex;gap:3px;margin:5px 0 8px}.notch i{flex:1;height:10px;border-radius:3px;background:rgba(255,255,255,.1)}.notch i.on{background:var(--ok)}.notch.br i.on{background:var(--bad)}
 .bar{height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden;margin:4px 0 2px}.bar i{display:block;height:100%;background:var(--gold)}
 #rev{display:flex;gap:4px}#rev .b{padding:5px 10px}
-#sw{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);padding:9px 12px;z-index:3;pointer-events:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 340px)}
+#cab{position:fixed;left:0;right:0;bottom:0;height:168px;z-index:3;display:flex;gap:14px;align-items:stretch;padding:10px 16px 10px;background:linear-gradient(180deg,#3a3f46 0,#24282d 10%,#1a1d21 100%);border-top:2px solid #555c64;box-shadow:0 -8px 24px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12);overflow-x:auto;overflow-y:hidden;pointer-events:auto}
+#cab::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.015) 0 2px,transparent 2px 5px);pointer-events:none}
+#cab .lab{font:800 9px Inter;letter-spacing:.16em;color:#9aa3ad;text-transform:uppercase;text-align:center}
+.cg{position:relative;flex:0 0 148px}.cg canvas{width:148px;height:148px;display:block}#lim{position:absolute;right:-4px;top:0;width:34px;height:34px;border-radius:50%;border:4px solid #d23;background:#fff;color:#111;font:900 12px/26px Inter;text-align:center;box-sizing:border-box}
+.cv{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:5px}
+.lever{position:relative;width:64px;height:112px;touch-action:none;cursor:ns-resize}.lever .trk{position:absolute;left:27px;top:4px;bottom:4px;width:10px;border-radius:5px;background:#07080a;box-shadow:inset 0 2px 4px #000,0 1px 0 rgba(255,255,255,.1)}
+.lever .tks{position:absolute;inset:4px 0}.lever .tks i{position:absolute;left:4px;width:14px;height:2px;background:#68707a}.lever .tks b{position:absolute;right:0;font:700 9px Inter;color:#8c949e;transform:translateY(-50%)}
+.lever .knob{position:absolute;left:10px;width:44px;height:20px;border-radius:6px;background:linear-gradient(180deg,#4d9b5a,#25602f);border:1px solid #0b1c0e;box-shadow:0 3px 6px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.35)}
+.lever.br .knob{background:linear-gradient(180deg,#d2493a,#7d1f17);border-color:#2a0805}.lever.eb .knob{background:linear-gradient(180deg,#ffd24a,#c98a00)}
+.lv{font:800 13px Inter;color:#e8e8e8;min-width:30px;text-align:center;background:#07080a;border-radius:5px;padding:1px 6px;box-shadow:inset 0 1px 3px #000}
+#rev{display:flex;flex-direction:column;gap:6px;margin-top:4px}#rev button{width:52px;height:28px;border-radius:7px;border:1px solid #0a0b0d;background:linear-gradient(180deg,#4a5058,#2d3238);color:#cfd5dc;font:900 14px Inter;cursor:pointer;box-shadow:0 2px 0 #0a0b0d}#rev button.on{background:linear-gradient(180deg,#f0c56a,#c98a2a);color:#1a1004;transform:translateY(2px);box-shadow:none}
+.cb{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,auto);gap:6px;align-content:center}
+.pb{height:40px;min-width:62px;padding:0 10px;border-radius:8px;border:1px solid #0a0b0d;background:linear-gradient(180deg,#4a5058,#2b3036);color:#dfe4ea;font:800 11.5px Inter;cursor:pointer;box-shadow:0 3px 0 #0a0b0d,inset 0 1px 0 rgba(255,255,255,.15);display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.pb:active{transform:translateY(2px);box-shadow:0 1px 0 #0a0b0d}.pb i{width:8px;height:8px;border-radius:50%;background:#20262b;box-shadow:inset 0 1px 2px #000}.pb.on i{background:#5ee08a;box-shadow:0 0 8px #5ee08a}.pb.red.on i{background:#ff5a4a;box-shadow:0 0 8px #ff5a4a}.pb.on{color:#fff}
+.ci{flex:1 1 200px;min-width:190px;display:flex;flex-direction:column;justify-content:center;gap:3px}.ci .mut{font-size:11.5px;color:#aab3bc}.bar.am i{background:linear-gradient(90deg,#5ee08a,#e8c547,#ff6a5a)}
+#sw{position:fixed;left:50%;bottom:178px;transform:translateX(-50%);padding:9px 12px;z-index:3;pointer-events:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 40px)}
 #acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
 #jobs{position:fixed;right:10px;top:64px;width:min(300px,calc(100vw - 20px));padding:10px 12px;z-index:3;pointer-events:auto;max-height:45vh;overflow:auto}
 .job{border:1px solid var(--ln);border-radius:10px;padding:7px 9px;margin-top:6px;cursor:pointer;font-size:12.5px}.job.nav{border-color:var(--gold);background:rgba(232,182,86,.08)}.job b{font-weight:800}
@@ -35,29 +50,31 @@ h2{font:800 11px Inter;letter-spacing:.18em;color:var(--mut);margin:14px 0 6px;t
 #toast{position:fixed;left:50%;top:64px;transform:translateX(-50%);padding:8px 14px;z-index:7;font:700 13px Inter;pointer-events:none;transition:opacity .3s}
 #menu{position:fixed;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 30%,rgba(20,40,30,.6),rgba(2,4,8,.92));padding:14px}
 .keys{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;margin-top:8px}.keys b{color:var(--gold2)}
-@media (max-width:700px){#jobs{top:auto;bottom:212px;max-height:25vh}#sw{left:10px;right:10px;transform:none;bottom:186px;max-width:none}#loco{width:calc(100vw - 168px)}#spd{font-size:30px}}
-@media (hover:hover) and (pointer:fine){#ctl{display:none}}
+@media (max-width:700px){#top{flex-wrap:wrap}#clock{display:none}#money{font-size:14px;padding:8px 10px}#top .b{padding:7px 9px;font-size:12px}#srch{order:9;width:100%}#jobs{top:auto;bottom:390px;max-height:16vh}#sw{left:8px;right:8px;transform:none;max-width:none;bottom:338px}#cab{height:auto;flex-wrap:wrap;gap:8px 10px;padding:8px;overflow:visible;justify-content:center}.cg{flex-basis:112px}.cg canvas{width:112px;height:112px}.lever{height:92px;width:54px}.lever .knob{left:6px}.lever .trk{left:22px}.cb{grid-template-columns:repeat(4,1fr);width:100%}.pb{min-width:0;height:34px;font-size:10.5px;padding:0 5px}.ci{flex-basis:100%;min-width:0}}
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="top"><div id="money" class="gl">–</div><div id="clock" class="gl">–</div><div id="srch" class="gl"><input id="q" type="search" placeholder="🔍 Település, állomás, üzem" autocomplete="off" spellcheck="false"><div id="qr" hidden></div></div><div class="sp"></div>
-  <button class="b" id="bFollow" hidden>🎯 Követés</button><button class="b" id="bMap">🗺️ Térkép</button><button class="b" id="bBoard">📋 Munkák</button><button class="b" id="bDepo">🏭 Depó</button><button class="b" id="bMenu">☰</button></div>
+  <button class="b" id="bFollow" hidden>🎯 Követés</button><button class="b" id="bMap">🗺️ Térkép</button><button class="b" id="bCons">🚃 Szerelvény</button><button class="b" id="bBoard">📋 Munkák</button><button class="b" id="bDepo">🏭 Depó</button><button class="b" id="bMenu">☰</button></div>
 <div id="jobs" class="gl" hidden></div>
-<div id="loco" class="gl">
-  <div class="row"><div id="spd">0<small>km/h</small></div><div id="lim">–</div><div class="grow" style="flex:1"></div><div id="rev"><button class="b sm" data-r="-1">H</button><button class="b sm" data-r="0">N</button><button class="b sm" data-r="1">E</button></div></div>
-  <div class="row" style="margin-top:6px"><div class="lab" style="flex:1">Teljesítmény <span id="thrT"></span></div><button class="b sm" id="bCC" title="Tempomat (C) · W/S: ±5 km/h">🎛 Tempomat</button></div><div class="notch" id="thr"></div>
-  <div class="row"><div class="lab" style="flex:1">Fék</div><button class="b sm" id="bPark" title="Rögzítőfék (P)">🅿 Rögzítőfék</button></div><div class="notch br" id="brk"></div>
-  <div class="lab"><span id="fuT">Üzemanyag</span></div><div class="bar"><i id="fuB"></i></div>
-  <div class="mut" id="locoN" style="font-size:12px;margin-top:4px"></div>
+<div id="cab">
+  <div class="cg"><canvas id="gauge" width="280" height="280"></canvas><div id="lim">–</div></div>
+  <div class="cv"><div class="lab">Gáz</div><div class="lever" id="lvT"><div class="trk"></div><div class="tks"></div><div class="knob"></div></div><div class="lv" id="thrT">0</div></div>
+  <div class="cv"><div class="lab">Fék</div><div class="lever br" id="lvB"><div class="trk"></div><div class="tks"></div><div class="knob"></div></div><div class="lv" id="brkT">0</div></div>
+  <div class="cv"><div class="lab">Irányváltó</div><div id="rev"><button data-r="1">E</button><button data-r="0">N</button><button data-r="-1">H</button></div></div>
+  <div class="cb">
+    <button class="pb" id="bCC"><i></i>Tempomat</button><button class="pb" id="bCCA"><i></i>AUTO</button><button class="pb" id="ccM">−5</button><button class="pb" id="ccP">+5</button>
+    <button class="pb red" id="bPark"><i></i>Rögzítőfék</button><button class="pb" id="bHorn">📯 Kürt</button><button class="pb" id="bSw">↔ Váltó</button><button class="pb" id="bSand">Homok</button>
+  </div>
+  <div class="ci"><div class="lab">Vonóerő</div><div class="bar am"><i id="amB"></i></div><div class="lab"><span id="fuT">Üzemanyag</span></div><div class="bar"><i id="fuB"></i></div><div class="mut" id="locoN"></div></div>
 </div>
-<div id="sw" class="gl"><span id="swT" class="mut">–</span><button class="b sm" id="bSw">↔ Váltó (V)</button><div id="acts"></div></div>
-<div id="ctl"><button class="b" id="cUp">▲</button><button class="b" id="cBr">⛔</button><button class="b" id="cDn">▼</button><button class="b" id="cSw">↔</button><button class="b" id="cPk">🅿</button><button class="b" id="cCC">🎛</button></div>
+<div id="sw" class="gl"><span id="swT" class="mut">–</span><div id="acts"></div></div>
 <div id="toast" class="gl" hidden></div>
 <div id="pnl" hidden><div class="card" id="pc"></div></div>
 <div id="menu"><div class="card" style="width:min(520px,100%)"><h1>Mozdonyvezető<small>TEHERFUVAROZÁS MAGYARORSZÁG VALÓDI VASÚTHÁLÓZATÁN</small></h1>
   <p class="mut" id="mLoad" style="margin-top:12px">Vasúthálózat betöltése…</p>
   <div class="row" style="margin-top:14px"><button class="b g" id="mPlay" disabled>▶ Játék</button><button class="b" id="mNew" hidden>Új játék</button></div>
-  <h2>Irányítás</h2><div class="keys"><b>W / S</b><span>teljesítmény fel / le</span><b>Szóköz, B / N</b><span>fék (tartva) · fékfokozat fel / le</span><b>C</b><span>tempomat be / ki · bekapcsolva W / S: ±5 km/h</span><b>P</b><span>rögzítőfék be / ki</span><b>R</b><span>irány: előre – üres – hátra</span><b>V</b><span>a következő váltó állítása</span><b>M</b><span>térkép</span><b>Egér</b><span>görgő: nagyítás · húzás: mozgatás · kattintás a váltóra: állítás</span></div>
+  <h2>Irányítás</h2><div class="keys"><b>W / S</b><span>teljesítmény fel / le</span><b>Szóköz, B / N</b><span>fék (tartva) · fékfokozat fel / le</span><b>C</b><span>tempomat be / ki · bekapcsolva W / S: ±5 km/h</span><b>X</b><span>automata tempomat</span><b>P</b><span>rögzítőfék be / ki</span><b>H</b><span>kürt</span><b>R</b><span>irány: előre – üres – hátra</span><b>V</b><span>a következő váltó állítása</span><b>M</b><span>térkép</span><b>Egér</b><span>görgő: nagyítás · húzás: mozgatás · kattintás a váltóra: állítás</span></div>
   <p class="mut" style="margin-top:12px;font-size:12px">Térkép és vasúthálózat: © OpenStreetMap-közreműködők (ODbL)</p></div></div>
-<script src="taj.js?v=202611212217"></script>
-<script src="vasut.js?v=202611212217"></script>
+<script src="taj.js?v=202611212233"></script>
+<script src="vasut.js?v=202611212233"></script>
 </body></html>
