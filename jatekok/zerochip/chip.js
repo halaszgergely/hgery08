@@ -107,6 +107,9 @@ LV.forEach((l, k) => { l.id = k; if (!l.ch) l.ch2 = 1; });
 /* ---------- állapot ---------- */
 let DB = { solved: {}, designs: {} }; try { DB = { ...DB, ...JSON.parse(localStorage.getItem(SAVE) || '{}') }; } catch (_) {}
 const store = () => { try { localStorage.setItem(SAVE, JSON.stringify(DB)); } catch (_) {} };
+/* rétegek: a k. réteg vezetékei x + k·OFF koordinátán élnek (így a meglévő mentések az 1. rétegen maradnak); az átkötés (via) egy rácspontot köt össze minden rétegen */
+const OFF = 1000, LAYERS = 3, LCOL = ['#ffd35a', '#6cc6ff', '#ff8fc7'];
+let layer = 0;
 let L = null, B = null, tool = 'wire', NET = null, dirty = true, CS = 24, COLS = 30, ROWS = 18, results = null, drag = null, hover = null, T = 0;
 const cv = $('#c'), g = cv.getContext('2d');
 const prevQ = k => { let j = k - 1; while (j >= 0 && LV[j].free) j--; return j; };
@@ -114,16 +117,17 @@ const unlocked = k => k === 0 || DB.solved[prevQ(k)] || LV[k].free && Object.key
 const parts = () => L.parts[0] === '*' ? ['vcc', 'gnd', 'nmos', 'pmos', ...LV.filter(l => l.un && DB.solved[l.id]).map(l => l.un)] : L.parts;
 function say(t, cls = '') { const el = $('#toast'); el.textContent = t; el.className = 'on ' + cls; clearTimeout(say.t); say.t = setTimeout(() => el.className = cls, 2400); }
 function open(k) { L = LV[k]; [COLS, ROWS] = L.size || [30, 18]; const d = DB.designs[k]; results = null; tool = 'wire';
-  if (d) B = { comps: d.comps.map(c => ({ ...c })), edges: new Set(d.edges), dots: new Set(d.dots) };
-  else { B = { comps: [], edges: new Set(), dots: new Set() }; const place = (list, t, x) => list.forEach((n, i) => B.comps.push({ t, x, y: Math.round((ROWS - 2) * (i + 1) / (list.length + 1)), label: n, fixed: 1, v: 0 })); place(L.ins, 'in', 1); place(L.outs, 'out', COLS - 3); }
+  layer = 0; if (d) B = { comps: d.comps.map(c => ({ ...c })), edges: new Set(d.edges), dots: new Set(d.dots), vias: new Set(d.vias || []) };
+  else { B = { comps: [], edges: new Set(), dots: new Set(), vias: new Set() }; const place = (list, t, x) => list.forEach((n, i) => B.comps.push({ t, x, y: Math.round((ROWS - 2) * (i + 1) / (list.length + 1)), label: n, fixed: 1, v: 0 })); place(L.ins, 'in', 1); place(L.outs, 'out', COLS - 3); }
   dirty = true; ui(); fit(); }
-function keep() { DB.designs[L.id] = { comps: B.comps.map(({ t, x, y, label, fixed }) => ({ t, x, y, label, fixed, v: 0 })), edges: [...B.edges], dots: [...B.dots] }; store(); }
+function keep() { DB.designs[L.id] = { comps: B.comps.map(({ t, x, y, label, fixed }) => ({ t, x, y, label, fixed, v: 0 })), edges: [...B.edges], dots: [...B.dots], vias: [...B.vias] }; store(); }
 
 /* ---------- hálózat és szimuláció ---------- */
 const pk = (x, y) => x + ',' + y, ends = e => { const [x, y, d] = e.split(','); return d === 'h' ? [[+x, +y], [+x + 1, +y]] : [[+x, +y], [+x, +y + 1]]; };
 function build() { const deg = new Map(), pinAt = new Set(); for (const e of B.edges) for (const p of ends(e)) deg.set(pk(...p), (deg.get(pk(...p)) || 0) + 1); for (const c of B.comps) for (const p of DEF[c.t].pins) pinAt.add(pk(c.x + p.dx, c.y + p.dy));
   const bridge = k => deg.get(k) === 4 && !B.dots.has(k) && !pinAt.has(k), par = new Map(), find = a => { let r = a; while (par.get(r) !== r) r = par.get(r); while (par.get(a) !== r) { const n = par.get(a); par.set(a, r); a = n; } return r; }, node = (k, ax) => { const id = bridge(k) ? k + ax : k; if (!par.has(id)) par.set(id, id); return id; };
   for (const e of B.edges) { const ax = e.endsWith('h') ? 'h' : 'v', [p, q] = ends(e), a = find(node(pk(...p), ax)), b = find(node(pk(...q), ax)); if (a !== b) par.set(a, b); }
+  for (const k of B.vias) { const [vx, vy] = k.split(',').map(Number); let first = null; for (let l = 0; l < LAYERS; l++) { const kk = pk(vx + OFF * l, vy); if (!deg.has(kk) && !(l === 0 && pinAt.has(kk))) continue; for (const ax of ['h', 'v']) { const r = find(node(kk, ax)); if (first == null) first = r; else if (r !== first) par.set(r, first); } } }
   const ids = new Map(), net = id => { const r = find(id); if (!ids.has(r)) ids.set(r, ids.size); return ids.get(r); }, pinNet = (c, p) => net(node(pk(c.x + p.dx, c.y + p.dy), 'h'));
   const N = { fix: [], ins: [], outs: [], tr: [], chips: [], edge: new Map() };
   for (const c of B.comps) { const D = DEF[c.t], pn = D.pins.map(p => pinNet(c, p)); if (c.t === 'vcc') N.fix.push([pn[0], 1]); else if (c.t === 'gnd') N.fix.push([pn[0], 0]); else if (c.t === 'in') N.ins.push({ c, n: pn[0] }); else if (c.t === 'out') N.outs.push({ c, n: pn[0] });
@@ -149,7 +153,7 @@ function runTests() { if (L.free) return; keep(); NET = build(); dirty = false; 
 /* ---------- felület ---------- */
 function ui() { const quests = LV.filter(l => !l.free), nd = quests.filter(l => DB.solved[l.id]).length; let h = `<h1>ZERO CHIP<small>A TRANZISZTORTÓL A PROCESSZORIG</small></h1><div class="ch" style="margin-top:10px;color:#e8b656">KÜLDETÉSEK ${nd} / ${quests.length}</div>`; LV.forEach((l, k) => { if (l.ch) h += `<div class="ch">${l.ch}</div>`; h += `<button class="lv${L === l ? ' on' : ''}${DB.solved[k] ? ' done' : ''}" data-l="${k}"${unlocked(k) ? '' : ' disabled'}><i>${DB.solved[k] ? '✓' : unlocked(k) ? k + 1 : '🔒'}</i>${l.name}</button>`; }); $('#side').innerHTML = h;
   $('#head').innerHTML = `<button class="b" data-a="doc" data-d="${(window.ZC_DOCMAP || {})[L.name] || (L.ch || LV.slice(0, L.id).reverse().find(l => l.ch)?.ch) === 'KAPUK' && 'kapu' || 'kez'}" style="float:right;margin-left:12px">📖 Kézikönyv</button><b>${L.name}</b><p>${L.desc}</p>`;
-  let b = `<button class="b${tool === 'wire' ? ' on' : ''}" data-t="wire">〰 Vezeték</button><button class="b${tool === 'erase' ? ' on' : ''}" data-t="erase">✕ Törlés</button><span class="sep"></span>`;
+  let b = `<button class="b${tool === 'wire' ? ' on' : ''}" data-t="wire">〰 Vezeték</button><button class="b${tool === 'erase' ? ' on' : ''}" data-t="erase">✕ Törlés</button><button class="b${tool === 'via' ? ' on' : ''}" data-t="via">◎ Átkötés</button>${[0, 1, 2].map(k => `<button class="b${layer === k ? ' on' : ''}" data-ly="${k}" style="padding-left:10px;padding-right:10px;color:${LCOL[k]}">${k + 1}. réteg</button>`).join('')}<span class="sep"></span>`;
   for (const p of parts()) b += `<button class="b${tool === p ? ' on' : ''}" data-t="${p}">${DEF[p].name}</button>`;
   b += `<button class="b" data-a="clear" style="margin-left:auto">Üres lap</button>`; if (!L.free) b += `<button class="b go" data-a="test" style="margin-left:0">▶ Teszt</button>`; if (DB.solved[L.id] && LV[L.id + 1]) b += `<button class="b nx" data-a="next">Következő ›</button>`; $('#bar').innerHTML = b;
   let t = ''; if (!L.free) { const cols = [...L.ins, ...L.outs], head = `<tr>${L.ins.map(n => `<th>${n}</th>`).join('')}${L.outs.map((n, k) => `<th class="${k ? '' : 's'}">${n}</th>`).join('')}<th></th></tr>`;
@@ -159,9 +163,9 @@ function ui() { const quests = LV.filter(l => !l.free), nd = quests.filter(l => 
     else if (L.ins.length <= 4) t = `<h3>IGAZSÁGTÁBLA</h3><table>${head}${Array.from({ length: 1 << L.ins.length }, (_, v) => { const bb = bits(v, L.ins.length).reverse(), o = L.fn(bb); return row(Object.fromEntries(L.ins.map((n, k) => [n, bb[k]])), Object.fromEntries(L.outs.map((n, k) => [n, o[k]]))); }).join('')}</table>`;
     else t = `<h3>IGAZSÁGTÁBLA</h3><div id="res">${1 << L.ins.length} eset – a teszt mindet végigpróbálja.</div>`; }
   $('#info').innerHTML = t; }
-document.addEventListener('click', e => { const l = e.target.closest('[data-l]'); if (l && !l.disabled) return open(+l.dataset.l); const t = e.target.closest('[data-t]'); if (t) { tool = t.dataset.t; return ui(); }
+document.addEventListener('click', e => { const l = e.target.closest('[data-l]'); if (l && !l.disabled) return open(+l.dataset.l); const t = e.target.closest('[data-t]'); if (t) { tool = t.dataset.t; return ui(); } const ly = e.target.closest('[data-ly]'); if (ly) { layer = +ly.dataset.ly; return ui(); }
   const a = e.target.closest('[data-a]'); if (!a) return; if (a.dataset.a === 'doc') return doc(a.dataset.d); if (a.dataset.a === 'docx') return $('#doc').classList.remove('on'); if (a.dataset.a === 'test') runTests(); else if (a.dataset.a === 'next') open(L.id + 1); else if (a.dataset.a === 'clear') { if (a.dataset.sure) { delete DB.designs[L.id]; store(); open(L.id); } else { a.dataset.sure = 1; a.textContent = 'Biztos?'; setTimeout(() => { if (a.isConnected) { delete a.dataset.sure; a.textContent = 'Üres lap'; } }, 2500); } } });
-addEventListener('keydown', e => { if (e.key === 'Escape') { if ($('#doc').classList.contains('on')) return $('#doc').classList.remove('on'); tool = 'wire'; ui(); } });
+addEventListener('keydown', e => { if (['1', '2', '3'].includes(e.key) && !$('#doc').classList.contains('on')) { layer = +e.key - 1; return ui(); } if (e.key === 'Escape') { if ($('#doc').classList.contains('on')) return $('#doc').classList.remove('on'); tool = 'wire'; ui(); } });
 /* kézikönyv */
 function doc(id) { const el = $('#doc'), body = $('#dbody'); if (!body.dataset.ok) { body.dataset.ok = 1; body.innerHTML = '<button class="b" id="dx" data-a="docx">✕ Bezárás</button>' + window.ZC_DOC; $('#dnav').innerHTML = '<b>Kézikönyv</b>' + [...body.querySelectorAll('section')].map(s => `<a data-a="doc" data-d="${s.id.slice(2)}">${s.querySelector('h2').textContent}</a>`).join(''); }
   el.classList.add('on'); const t = body.querySelector('#d-' + id); body.scrollTop = t ? t.offsetTop - 4 : 0; }
@@ -173,15 +177,16 @@ addEventListener('resize', fit);
 const gp = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / CS, (e.clientY - r.top) / CS]; }, compAt = (x, y) => B.comps.find(c => x > c.x + .25 && x < c.x + DEF[c.t].w - .25 && y > c.y + .15 && y < c.y + DEF[c.t].h - .15);
 const inside = (c, x, y) => x >= 0 && y >= 0 && x + DEF[c.t].w <= COLS && y + DEF[c.t].h <= ROWS, clash = (c, x, y) => B.comps.some(o => o !== c && x < o.x + DEF[o.t].w && o.x < x + DEF[c.t].w && y < o.y + DEF[o.t].h && o.y < y + DEF[c.t].h);
 const ekey = (a, b) => a[0] !== b[0] ? pk(Math.min(a[0], b[0]), a[1]) + ',h' : pk(a[0], Math.min(a[1], b[1])) + ',v';
-function wipe(p) { for (const e of [pk(p[0], p[1]) + ',h', pk(p[0], p[1]) + ',v', pk(p[0] - 1, p[1]) + ',h', pk(p[0], p[1] - 1) + ',v']) B.edges.delete(e); B.dots.delete(pk(...p)); }
+function wipe(p) { B.vias.delete(pk(p[0] % OFF, p[1])); for (const e of [pk(p[0], p[1]) + ',h', pk(p[0], p[1]) + ',v', pk(p[0] - 1, p[1]) + ',h', pk(p[0], p[1] - 1) + ',v']) B.edges.delete(e); B.dots.delete(pk(...p)); }
 cv.addEventListener('contextmenu', e => e.preventDefault());
-cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); const [fx, fy] = gp(e), p = [Math.round(fx), Math.round(fy)], er = tool === 'erase' || e.button === 2, c = compAt(fx, fy); results = null;
+cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); const [fx, fy] = gp(e), p = [Math.round(fx) + OFF * layer, Math.round(fy)], er = tool === 'erase' || e.button === 2, c = compAt(fx, fy); results = null;
+  if (tool === 'via' && !er) { const k = pk(Math.round(fx), Math.round(fy)); B.vias.has(k) ? B.vias.delete(k) : B.vias.add(k); dirty = true; keep(); return; }
   if (DEF[tool] && !er) { const d = DEF[tool], nc = { t: tool, x: Math.round(fx - d.w / 2), y: Math.round(fy - d.h / 2) }; if (!inside(nc, nc.x, nc.y) || clash(nc, nc.x, nc.y)) return say('Ide nem fér.', 'bad'); B.comps.push(nc); dirty = true; keep(); return; }
   if (c) { if (er) { if (c.fixed) return say('A pálya be- és kimenetei nem törölhetők.', 'bad'); B.comps = B.comps.filter(q => q !== c); dirty = true; keep(); return; } drag = { c, ox: fx - c.x, oy: fy - c.y, moved: 0 }; return; }
   drag = { last: p, er, moved: 0, start: p }; if (er) { wipe(p); dirty = true; } });
 cv.addEventListener('pointermove', e => { const [fx, fy] = gp(e); hover = [fx, fy]; if (!drag) return;
   if (drag.c) { const x = Math.round(fx - drag.ox), y = Math.round(fy - drag.oy), c = drag.c; if ((x !== c.x || y !== c.y) && inside(c, x, y) && !clash(c, x, y)) { c.x = x; c.y = y; drag.moved = 1; dirty = true; } return; }
-  const t = [Math.max(0, Math.min(COLS, Math.round(fx))), Math.max(0, Math.min(ROWS, Math.round(fy)))]; let n = 0;
+  const t = [Math.max(0, Math.min(COLS, Math.round(fx))) + OFF * layer, Math.max(0, Math.min(ROWS, Math.round(fy)))]; let n = 0;
   while ((drag.last[0] !== t[0] || drag.last[1] !== t[1]) && n++ < 200) { const a = drag.last, dx = t[0] - a[0], dy = t[1] - a[1], b = Math.abs(dx) >= Math.abs(dy) ? [a[0] + Math.sign(dx), a[1]] : [a[0], a[1] + Math.sign(dy)]; if (drag.er) wipe(b); else { const k = ekey(a, b); B.edges.has(k) && drag.back === k ? B.edges.delete(k) : B.edges.add(k); drag.back = k; } drag.last = b; drag.moved = 1; dirty = true; } });
 const up = () => { if (!drag) return; const d = drag; drag = null; if (d.c && !d.moved && d.c.t === 'in') { d.c.v = d.c.v ? 0 : 1; } else if (!d.c && !d.moved && !d.er) { const k = pk(...d.start); let deg = 0; for (const e of B.edges) for (const q of ends(e)) if (pk(...q) === k) deg++; if (deg === 4) { B.dots.has(k) ? B.dots.delete(k) : B.dots.add(k); dirty = true; } } if (d.moved || dirty) keep(); };
 cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); cv.addEventListener('pointerleave', () => { hover = null; });
@@ -193,8 +198,11 @@ function draw() { T += 1 / 60; sim(); const s = CS, dpr = cv.dpr || 1; g.setTran
   if (wafer) { for (let k = 0; k < 5; k++) { const x = (k * .23 + .08) * W, gr = g.createLinearGradient(x - W * .3, 0, x + W * .3, H); gr.addColorStop(0, 'rgba(120,200,255,0)'); gr.addColorStop(.5, `rgba(${k & 1 ? '255,120,220' : '120,220,255'},.07)`); gr.addColorStop(1, 'rgba(120,200,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, W, H); } }
   g.fillStyle = wafer ? 'rgba(190,170,255,.22)' : 'rgba(160,230,190,.2)'; for (let x = 0; x <= COLS; x++) for (let y = 0; y <= ROWS; y++) g.fillRect(x * s - 1, y * s - 1, 2, 2);
   /* vezetékek */
-  g.lineCap = 'round'; for (const pass of [0, 1]) for (const e of B.edges) { const [a, b] = ends(e), n = NET.edge.get(e), v = NET.val[n], sh = NET.short[n]; g.strokeStyle = pass ? (sh ? (Math.sin(T * 14) > 0 ? '#ff5a4d' : '#7a1f1a') : COL(v)) : 'rgba(0,0,0,.45)'; g.lineWidth = pass ? Math.max(2.4, s * .16) : Math.max(4.5, s * .3); if (pass && v < 0 && !sh) g.setLineDash([s * .2, s * .22]); g.beginPath(); g.moveTo(a[0] * s, a[1] * s); g.lineTo(b[0] * s, b[1] * s); g.stroke(); g.setLineDash([]); }
-  for (const k of B.dots) { const [x, y] = k.split(',').map(Number); g.fillStyle = '#fff'; g.beginPath(); g.arc(x * s, y * s, s * .17, 0, 6.283); g.fill(); }
+  g.lineCap = 'round'; const lyOf = x => Math.floor(x / OFF);
+  for (const e of B.edges) { const [a, b] = ends(e), ly = lyOf(a[0]); if (ly === layer) continue; g.strokeStyle = LCOL[ly]; g.globalAlpha = .28; g.lineWidth = Math.max(1.6, s * .1); g.beginPath(); g.moveTo((a[0] - OFF * ly) * s, a[1] * s); g.lineTo((b[0] - OFF * ly) * s, b[1] * s); g.stroke(); } g.globalAlpha = 1;
+  for (const pass of [0, 1]) for (const e of B.edges) { const [a, b] = ends(e), n = NET.edge.get(e), v = NET.val[n], sh = NET.short[n]; if (lyOf(a[0]) !== layer) continue; a[0] -= OFF * layer; b[0] -= OFF * layer; g.strokeStyle = pass ? (sh ? (Math.sin(T * 14) > 0 ? '#ff5a4d' : '#7a1f1a') : COL(v)) : 'rgba(0,0,0,.45)'; g.lineWidth = pass ? Math.max(2.4, s * .16) : Math.max(4.5, s * .3); if (pass && v < 0 && !sh) g.setLineDash([s * .2, s * .22]); g.beginPath(); g.moveTo(a[0] * s, a[1] * s); g.lineTo(b[0] * s, b[1] * s); g.stroke(); g.setLineDash([]); }
+  for (const k of B.vias) { const [x, y] = k.split(',').map(Number); g.fillStyle = '#10151f'; g.beginPath(); g.arc(x * s, y * s, s * .3, 0, 6.283); g.fill(); g.strokeStyle = '#e8b656'; g.lineWidth = Math.max(2, s * .1); g.stroke(); g.fillStyle = '#e8b656'; g.beginPath(); g.arc(x * s, y * s, s * .1, 0, 6.283); g.fill(); }
+  for (const k of B.dots) { let [x, y] = k.split(',').map(Number); if (lyOf(x) !== layer) continue; x -= OFF * layer; g.fillStyle = '#fff'; g.beginPath(); g.arc(x * s, y * s, s * .17, 0, 6.283); g.fill(); }
   /* alkatrészek */
   g.textAlign = 'center'; g.textBaseline = 'middle';
   for (const c of B.comps) { const D = DEF[c.t], x = c.x * s, y = c.y * s, w = D.w * s, h = D.h * s, cx = x + w / 2, cy = y + h / 2, pv = p => { const N = NET, k = c.t === 'out' ? N.outs.find(o => o.c === c) : null; return k ? N.val[k.n] : -1; };
