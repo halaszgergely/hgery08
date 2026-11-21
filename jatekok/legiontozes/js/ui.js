@@ -1,6 +1,6 @@
 /* Menük: főmenü, hangár (3D előnézet a bázison), küldetések, ranglista, beállítások, irányítás-súgó, szünet, küldetés vége. */
-import { GEPEK, GEP, KULDETESEK, MODOK, REPTEREK, FORGO } from './config.js?v=202611212346';
-import * as RL from './ranglista.js?v=202611212346';
+import { GEPEK, GEP, KULDETESEK, MODOK, REPTEREK, FORGO } from './config.js?v=202611220039';
+import * as RL from './ranglista.js?v=202611220039';
 
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const KONNYU = { permetezo: .92, ancsa: .85, vadasz: .38, concorde: .28, jumbo: .22, herkules: .42, ketelt: .55, hidro: .8, vitorlazo: .6, kopter: .5, kamov: .72, chinook: .45, giro: .88, dron: .96, leghajo: .7, slag: .04, zero: .82 };
@@ -93,16 +93,16 @@ export function createUI(app) {
   function pause() { backTo = () => { hideAll(); app.resume(); }; const free = app.mode === 'szabad';
     const b = sheet('Szünet', `<div style="display:flex;flex-direction:column;gap:9px;max-width:340px">
       <button class="btn y" data-p="go">Folytatás</button>${free ? '' : '<button class="btn" data-p="re">Küldetés újrakezdése</button>'}<button class="btn" data-p="ap">Újraindulás a legközelebbi reptéren</button>
-      <button class="btn" data-p="set">Beállítások</button><button class="btn" data-p="help">Irányítás</button><button class="btn" data-p="menu">Kilépés a menübe</button></div>`);
+      ${document.fullscreenEnabled || document.webkitFullscreenEnabled ? '<button class="btn" data-p="fs">Teljes képernyő</button>' : ''}<button class="btn" data-p="set">Beállítások</button><button class="btn" data-p="help">Irányítás</button><button class="btn" data-p="menu">Kilépés a menübe</button></div>`);
     b.querySelectorAll('[data-p]').forEach(x => x.onclick = () => { const p = x.dataset.p; app.audio.fx.click();
-      if (p === 'go') { hideAll(); app.resume(); } if (p === 're') { hideAll(); app.restart(); } if (p === 'ap') { hideAll(); app.respawn(); app.resume(); } if (p === 'set') settings(pause); if (p === 'help') help(pause); if (p === 'menu') menu(); }); }
+      if (p === 'go') { hideAll(); app.resume(); } if (p === 're') { hideAll(); app.restart(); } if (p === 'ap') { hideAll(); app.respawn(); app.resume(); } if (p === 'set') settings(pause); if (p === 'help') help(pause); if (p === 'menu') menu(); if (p === 'fs') document.querySelector('#hudFs').click(); }); }
 
   /* ---- küldetés vége ---- */
-  function end(res, m, gep, newly) { show('#end'); const st = RL.status(), ranked = !gep.csakSzabad;
+  function end(res, m, gep, newly) { show('#end'); const st = RL.status(), dev = !!app.DEV.on, ranked = !gep.csakSzabad && !dev;
     $('#endT').textContent = (m.lost ? 'Elveszett küldetés – ' : m.allDone ? 'Küldetés teljesítve – ' : 'Lejárt az idő – ') + m.def.nev;
     const row = (a, b) => `<span>${a}</span><b>${b}</b>`;
     $('#endB').innerHTML = `<div class="rows">${row(m.mode === 'verseny' ? 'Idő' : 'Teljesítés', m.mode === 'verseny' ? Math.round(m.t) + ' s' : Math.round((m.frac || 0) * 100) + '%')}${row('Alappont', res.base.toLocaleString('hu-HU'))}${row('Pontosság', Math.round(res.acc * 100) + '%')}${row('Időbónusz', '+' + res.time)}${row('Landolás', res.land ? '+' + res.land + (res.land >= 600 ? ' (sima)' : '') : '–')}${res.pen ? row('Büntetés', '−' + res.pen) : ''}${row('Gépszorzó', '×' + res.k.toFixed(2))}</div>
-      <div class="tot">${res.total.toLocaleString('hu-HU')}</div><div class="mut" style="text-align:center;margin-bottom:10px">+${Math.round(res.total / 10)} küldetéspont${newly.length ? ' · Feloldva: <b class="y">' + newly.map(esc).join(', ') + '</b>' : ''}</div>
+      <div class="tot">${res.total.toLocaleString('hu-HU')}</div><div class="mut" style="text-align:center;margin-bottom:10px">${dev ? '<span class="devB">DEV</span> nincs pont, rekord és ranglista' : '+' + Math.round(res.total / 10) + ' küldetéspont'}${newly.length ? ' · Feloldva: <b class="y">' + newly.map(esc).join(', ') + '</b>' : ''}</div>
       ${ranked && res.total > 0 && st.guest ? `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><span>Beceneved:</span><input type="text" id="nick" maxlength="16" value="${esc(RL.getNick())}" style="flex:1"></div><div id="nickE" class="mut" style="color:var(--bad);font-size:12px"></div>` : ''}
       <div id="sub" class="mut" style="font-size:12px;margin-bottom:10px"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">${ranked && res.total > 0 ? '<button class="btn y" id="eSave">Mentés a ranglistára</button>' : ''}<button class="btn" id="eAgain">Újra</button><button class="btn" id="eMenu">Menü</button></div>`;
@@ -110,6 +110,13 @@ export function createUI(app) {
     const sv = $('#eSave'); if (sv) { const go = async () => { const n = $('#nick'); if (n) { const e = RL.nickError(n.value); if (e) { $('#nickE').textContent = e; return; } RL.setNick(n.value.trim()); }
         sv.disabled = true; $('#sub').textContent = 'Mentés…'; const r = await RL.submit(res.total, m.mode, gep.id); $('#sub').textContent = r.ok ? 'Felkerültél a ranglistára!' : (r.why || 'A mentés nem sikerült.'); if (r.ok) app.audio.fx.ok(); };
       sv.onclick = go; if (!st.guest && st.user) go(); } }
+  /* titkos fejlesztői menü */
+  function dev() { backTo = menu; const D = app.DEV, ck = (k, t) => `<label class="card" style="flex-direction:row;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" data-d="${k}" ${D[k] ? 'checked' : ''}> ${t}</label>`;
+    const b = sheet('DEV', `<div class="grid">${ck('all', 'Minden gép feloldása (Zero gépével együtt)')}${ck('water', 'Végtelen víz')}${ck('god', 'Sérthetetlen gép')}${ck('fps', 'FPS és teljesítmény kijelző')}
+      <div class="card"><b>Teleport</b><div class="meta">Térkép (M) → kattintás bárhová, küldetés közben is.</div></div></div>
+      <div style="margin-top:14px"><button class="btn" id="devOff" style="border-color:#e0322a">Dev mód kikapcsolása</button></div>`, '<span class="devB">DEV</span>');
+    b.querySelectorAll('[data-d]').forEach(x => x.onchange = () => { D[x.dataset.d] = x.checked ? 1 : 0; app.persistDev(); app.applySettings('fps'); });
+    b.querySelector('#devOff').onclick = () => { app.setDev(0); menu(); }; }
   function crash(why, onR, onM) { show('#crash'); $('#crashW').textContent = why || ''; $('#crashR').onclick = () => { hideAll(); onR(); }; $('#crashM').onclick = () => menu(); }
-  return { menu, hangar, missions, pause, end, crash, hideAll, settings, help, refreshHangar: drawHangar };
+  return { menu, hangar, missions, pause, end, crash, dev, hideAll, settings, help, refreshHangar: drawHangar };
 }

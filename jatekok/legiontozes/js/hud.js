@@ -1,6 +1,6 @@
 /* HUD: sebesség, magasság, emelkedés, gáz/kollektív, víz, akku, mesterséges horizont + iránytű, minitérkép, szélirány,
    átesés-figyelmeztetés, küldetés-időzítő és célnyíl. Nagy térkép (M) gyorsutazással. A DOM-írások gyorsítótárazva. */
-import { REPTEREK, VIZEK, P, FORGO, W_MAX, H_MAX } from './config.js?v=202611212346';
+import { REPTEREK, VIZEK, P, FORGO, W_MAX, H_MAX } from './config.js?v=202611220039';
 
 const $ = s => document.querySelector(s);
 const cache = new Map(); const setH = (el, k, v) => { if (cache.get(k) !== v) { cache.set(k, v); el.innerHTML = v; } };
@@ -76,4 +76,4 @@ export function drawMap(cv, s, towns, onPick) { const W = cv.clientWidth, H = cv
     x.fillStyle = '#ffe29a'; x.font = '800 11px Inter'; x.fillText(r.nev.split(' – ')[0].split(' (')[0], px, py + 18); hits.push([px, py, r]); }
   if (s.marks) for (const [mx, mz, kk] of s.marks) { x.fillStyle = kk === 'ok' ? '#3fbf63' : kk === 'tuz' ? '#ff6b2e' : '#ff5a4d'; x.beginPath(); x.arc(X(mx), Y(mz), 5, 0, 6.3); x.fill(); }
   if (s.b) { const px = X(s.b.pos.x), py = Y(s.b.pos.z); x.save(); x.translate(px, py); x.rotate(s.hdg / 57.3); x.fillStyle = '#fff'; x.strokeStyle = '#000'; x.beginPath(); x.moveTo(0, -12); x.lineTo(-8, 9); x.lineTo(8, 9); x.closePath(); x.fill(); x.stroke(); x.restore(); }
-  cv.onclick = e => { if (!onPick) return; const r = cv.getBoundingClientRect(), cx = e.clientX - r.left, cy = e.clientY - r.top; let best = null, bd = 22; for (const [px, py, ap] of hits) { const d = Math.hypot(px - cx, py - cy); if (d < bd) { bd = d; best = ap; } } if (best) onPick(best); }; }
+  cv.onclick = e => { if (!onPick) return; const r = cv.getBoundingClientRect(), cx = e.clientX - r.left, cy = e.clientY - r.top; let best = null, bd = 22; for (const [px, py, ap] of hits) { const d = Math.hypot(px - cx, py - cy); if (d < bd) { bd = d; best = ap; } } onPick(best, (cx - ox) / k, (cy - oy) / k); }; }
