@@ -397,7 +397,18 @@ const Birodalom = (() => {
     } catch (_) {}
     return fresh();
   }
-  function save() { if (!S) return; S.t = Date.now(); try { const { bgMsg, lr, gxT, rt, away, saveT, syncT, hudT, info, hover, tip, lp, anim, linc, lincT, ...o } = S; if (o.gx) o.gx = { ...o.gx, pick: null }; localStorage.setItem(KEY, JSON.stringify(o)); } catch (_) {} }
+  function save() { if (!S) return; S.t = Date.now(); try { localStorage.setItem(KEY, ser()); } catch (_) {} }
+  function ser() { const { bgMsg, lr, gxT, rt, away, saveT, syncT, hudT, info, hover, tip, lp, anim, linc, lincT, cloudT, ...o } = S; if (o.gx) o.gx = { ...o.gx, pick: null }; return JSON.stringify(o); }
+  /* felhőmentés (bejelentkezve): a főoldal tárolja a Firestore-ban. Mindig a legnagyobb összbevételű (life) mentés győz:
+     betöltéskor a nagyobbik marad meg, feltöltés csak akkor megy, ha a helyi legalább akkora, mint a felhőben lévő. */
+  let CL = { asked: 0, life: -1, at: 0 }, GG = null;
+  const inFrame = () => { try { return window.top !== window; } catch (_) { return false; } };
+  function cloudPush(force) { if (!S || !inFrame() || CL.life < 0 || S.life < CL.life) return; const now = Date.now(); if (!force && now - CL.at < 60e3) return; if (now - CL.at < 11e3) return; CL.at = now; S.t = now;
+    const st = ser(); if (st.length > 900000) return; CL.life = S.life; parent.postMessage({ hgws: 'cssave', game: 'birodalom', life: S.life, st }, location.origin); }
+  if (typeof addEventListener === 'function') addEventListener('message', e => { if (e.origin !== location.origin || e.source !== parent || !e.data || e.data.hgws !== 'cs' || e.data.game !== 'birodalom') return;
+    const d = e.data; if (d.none) { CL.life = -1; return; } CL.life = +d.life || 0;
+    if (d.st && CL.life > (S ? S.life : 0)) { try { JSON.parse(d.st); localStorage.setItem(KEY, d.st); } catch (_) { return; } if (GG && GG.game && GG.game.id === 'birodalom') { Birodalom.init(GG); S.bgMsg = { t: '☁️ Felhőmentés betöltve – ' + fmt(CL.life) + ' Ft összbevétel', l: 4 }; } }
+    else if (S && S.life > CL.life) cloudPush(true); });
 
   function net() {
     const [cw, rh] = size(), N = COLS * ROWS, on = new Uint8Array(N), dist = new Int16Array(N).fill(-1), q = [SRC];
@@ -1174,6 +1185,7 @@ const Birodalom = (() => {
     how: 'VÁLASSZ ESZKÖZT · ÉRINTSD A MEZŐT · ARATÁS: ÉRETT NÖVÉNYRE KOPPINTS · GÖRGETÉS: HÚZÁS ESZKÖZ NÉLKÜL, NAGYÍTÁS: GÖRGŐ / CSÍPÉS',
     ranks: [[0, 'Palántanevelő'], [1000, 'Kiskertész'], [50000, 'Kertész'], [1e6, 'Ültetvényes'], [5e7, 'Vízmester'], [1e9, 'Öntöző Birodalom ura'], [1e11, 'Vízcsászár'], [1e13, 'Bolygóöntöző'], [1e15, 'A Víz Istene']],
     init(G) {
+      GG = G; if (inFrame() && !CL.asked) { CL.asked = 1; parent.postMessage({ hgws: 'csreq', game: 'birodalom' }, location.origin); }
       S = load(); S.tab = S.tab || 'mod'; S.tool = S.tool === undefined ? 'pipe' : S.tool; fl = []; dust = []; drag = null; confirmT = 0;
       MO = new Float32Array(COLS * ROWS); RP = new Float32Array(COLS * ROWS); CB = []; DR = []; syncCB(); panS = null; pinch = null; PT.clear();
       S.nek = S.nek || 0; S.cp = S.cp || 0; S.met = { vas: 0, rez: 0, tit: 0, iri: 0, neu: 0, ...(S.met || {}) }; S.gx = { gals: [], cur: 0, sel: 0, up: {}, won: {}, ...(S.gx || {}) }; S.gx.pick = null; for (const gal of S.gx.gals) for (const st of gal.stars) for (const p of st.pl) if (!PCLS[p.c].al.includes(p.des)) p.des = PCLS[p.c].al[0]; GR = gnet(); S.loc = S.loc || 'earth'; S.locs = S.locs || {}; S.unl = S.unl || ['earth']; S.anim = null; S.lp = false;
@@ -1196,7 +1208,7 @@ const Birodalom = (() => {
       S.saveT = 0; S.syncT = 0; S.hudT = 0; S.rt = 0;
     },
     resize(G) { if (S) layout(G); },
-    leave(G) { save(); this.sync(G, true); },
+    leave(G) { save(); this.sync(G, true); cloudPush(true); },
     sync(G) { const sc = Math.min(CAP, Math.floor(S.life)); if (sc > (S.sent || 0)) { S.sent = sc; save(); store.set('best_' + this.id, Math.max(store.get('best_' + this.id), sc));
       if (window.top !== window) parent.postMessage({ hgws: 'score', game: this.id, score: sc }, location.origin); } },
     down(G, x, y, e) {
@@ -1294,7 +1306,7 @@ const Birodalom = (() => {
       const sc = Math.min(CAP, Math.floor(S.life));
       S.hudT -= dt; if (sc !== G.score && S.hudT <= 0) { G.score = sc; S.hudT = .25; if (sc > store.get('best_' + this.id)) store.set('best_' + this.id, sc); hud(); }
       if ((S.saveT += dt) > 5) { S.saveT = 0; save(); }
-      if ((S.syncT += dt) > 60) { S.syncT = 0; this.sync(G); }
+      if ((S.syncT += dt) > 60) { S.syncT = 0; this.sync(G); cloudPush(); }
       if (S.away) S.away.l -= dt; if (S.info) S.info.l -= dt;
       if (confirmT > 0) confirmT -= dt;
       for (const f of fl) { f.y -= 22 * L.d * dt; f.l -= dt * .9; } fl = fl.filter(f => f.l > 0);
