@@ -403,10 +403,14 @@ const Birodalom = (() => {
      betöltéskor a nagyobbik marad meg, feltöltés csak akkor megy, ha a helyi legalább akkora, mint a felhőben lévő. */
   let CL = { asked: 0, life: -1, at: 0 }, GG = null;
   const inFrame = () => { try { return window.top !== window; } catch (_) { return false; } };
-  function cloudPush(force) { if (!S || !inFrame() || CL.life < 0 || S.life < CL.life) return; const now = Date.now(); if (!force && now - CL.at < 60e3) return; if (now - CL.at < 11e3) return; CL.at = now; S.t = now;
-    const st = ser(); if (st.length > 900000) return; CL.life = S.life; parent.postMessage({ hgws: 'cssave', game: 'birodalom', life: S.life, st }, location.origin); }
+  function cloudPush(force, manual) { const say = t => { if (manual && S) S.bgMsg = { t, l: 3.5 }; };
+    if (!S || !inFrame() || CL.life < 0) return say('☁️ Felhőmentés csak bejelentkezve érhető el'); if (S.life < CL.life) return say('☁️ A felhőben nagyobb mentés van (' + fmt(CL.life) + ' Ft) – az marad meg');
+    const now = Date.now(); if (!force && now - CL.at < 60e3) return; if (now - CL.at < 11e3) return say('☁️ Pár másodperc múlva próbáld újra'); CL.at = now; S.t = now; save();
+    const st = ser(); if (st.length > 900000) return say('☁️ A mentés túl nagy'); CL.life = S.life; CL.man = manual ? 1 : 0; if (manual) say('☁️ Mentés folyamatban…'); parent.postMessage({ hgws: 'cssave', game: 'birodalom', life: S.life, st, ack: 1 }, location.origin); }
+  const cloudBtn = () => inFrame() && CL.life >= 0 && L ? { x: L.fx + L.fw - 42 * L.d, y: L.fy + 6 * L.d, w: 36 * L.d, h: 30 * L.d } : null;
   if (typeof addEventListener === 'function') addEventListener('message', e => { if (e.origin !== location.origin || e.source !== parent || !e.data || e.data.hgws !== 'cs' || e.data.game !== 'birodalom') return;
-    const d = e.data; if (d.none) { CL.life = -1; return; } CL.life = +d.life || 0;
+    const d = e.data; if (d.ack) { if (CL.man && S) S.bgMsg = { t: d.ok ? '☁️ Felhőbe mentve' : '☁️ Nem sikerült menteni' + (d.err ? ' (' + d.err + ')' : ''), l: 3.5 }; CL.man = 0; if (!d.ok) CL.at = 0; return; }
+    if (d.none) { CL.life = -1; return; } CL.life = +d.life || 0;
     if (d.st && CL.life > (S ? S.life : 0)) { try { JSON.parse(d.st); localStorage.setItem(KEY, d.st); } catch (_) { return; } if (GG && GG.game && GG.game.id === 'birodalom') { Birodalom.init(GG); S.bgMsg = { t: '☁️ Felhőmentés betöltve – ' + fmt(CL.life) + ' Ft összbevétel', l: 4 }; } }
     else if (S && S.life > CL.life) cloudPush(true); });
 
@@ -1227,6 +1231,7 @@ const Birodalom = (() => {
         const ar = b.arr.find(hit); if (ar) { S.pg[S.tab] = (b.pg + ar.dir + b.pages) % b.pages; Sfx.blip(650, .03, 'sine', .04); return; }
         const it = b.its.find(hit); if (it) buy(G, it); return; }
       if (S.anim) return;
+      const cbt = cloudBtn(); if (cbt && hit(cbt)) { cloudPush(true, true); Sfx.blip(760, .05, 'sine', .05); return; }
       const lpb = locPill(G); if (lpb && hit(lpb)) { S.lp = !S.lp; Sfx.blip(600, .03, 'sine', .04); return; }
       if (S.lp) { const row = locRows(G).find(hit); S.lp = false;
         if (row && row.id === 'gal') { if (S.gx.gals.length) { S.gv = true; S.tab = 'gsys'; S.pg = {}; Sfx.blip(600, .05, 'sine', .05); return; }
@@ -1429,6 +1434,7 @@ const Birodalom = (() => {
           let bx = S.tip.x + 16 * d, by = S.tip.y + 14 * d; if (bx + w > G.W - 6 * d) bx = S.tip.x - w - 12 * d; if (by + h > L.barY - 4 * d) by = S.tip.y - h - 10 * d;
           g.fillStyle = 'rgba(4,7,14,.92)'; g.strokeStyle = 'rgba(232,182,86,.55)'; g.lineWidth = d; rr(bx, by, w, h, 8 * d); g.fill(); g.stroke();
           g.textAlign = 'left'; g.textBaseline = 'middle'; lines.forEach((l, j) => { g.font = `${j ? 500 : 800} ${fs}px Inter, sans-serif`; g.fillStyle = j ? 'rgba(255,255,255,.82)' : '#ffe29a'; g.fillText(l, bx + pad, by + pad * .7 + fs * 1.35 * (j + .5)); }); g.textAlign = 'center'; } }
+      { const cbt = cloudBtn(); if (cbt) { g.fillStyle = 'rgba(4,7,14,.82)'; g.strokeStyle = 'rgba(159,214,245,.6)'; g.lineWidth = d; rr(cbt.x, cbt.y, cbt.w, cbt.h, 9 * d); g.fill(); g.stroke(); g.font = `${15 * d}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.fillText('☁️', cbt.x + cbt.w / 2, cbt.y + cbt.h / 2 + d); } }
       { const lpb = locPill(G); if (lpb) { const LCc = LOCS[S.loc]; g.fillStyle = 'rgba(4,7,14,.82)'; g.strokeStyle = 'rgba(232,182,86,.6)'; g.lineWidth = d; rr(lpb.x, lpb.y, lpb.w, lpb.h, lpb.h / 2); g.fill(); g.stroke();
           g.fillStyle = '#ffe29a'; g.font = `800 ${12 * d}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText((galView() ? '🌌 ' + curGal().name : LCc.ic + ' ' + LCc.n) + (S.lp ? '  ▴' : '  ▾'), lpb.x + lpb.w / 2, lpb.y + lpb.h / 2 + d);
           for (const r of locRows(G)) { if (r.id === 'gal') { const own = S.gx.gals.length, c = galCost(0), ok = own || canPay(c), cur = galView();
