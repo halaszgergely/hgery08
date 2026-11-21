@@ -1,7 +1,7 @@
 // HGWS – kezelőfelület: tagok és rangok, tagek, filmek, zenék, csatornák, jóváhagyások, rangok szerkesztése
-import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG } from './core.js?v=202611210129';
-import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611210129';
-import { githubRepo } from '../firebase-config.js?v=202611210129';
+import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611210130';
+import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611210130';
+import { githubRepo } from '../firebase-config.js?v=202611210130';
 
 let C = null, current = null;
 /* e-mail címek: csak adminok és a tulaj olvashatják (emails/{uid}); a lista megnyitásakor egyszer töltjük be */
@@ -78,8 +78,9 @@ function members(v, again) {
     ${(() => { const bad = [...C.S.users.values()].filter(u => badName(u.name));
       if (!bad.length) return '';
       const fixable = bad.filter(u => u.id !== me && u.id !== OWNER_UID && C.can('moderate') && C.rankOfUser(u) < C.myRank());
-      return `<div class="badnames"><i class="ic ic-triangle-alert"></i><div><b>${bad.length} tag neve trágár vagy sértő szót tartalmaz</b>
-        <span>${bad.map(u => `<b data-u="${esc(u.id)}">${esc(u.name)}</b>`).join(', ')}. Belépéskor kötelezően új nevet kell választaniuk – vagy itt azonnal átnevezheted őket.</span></div>
+      const why = u => badReason(u.name) === 'karakter' ? 'nem engedett karakter' : 'trágár/sértő szó';
+      return `<div class="badnames"><i class="ic ic-triangle-alert"></i><div><b>${bad.length} tag neve nem megfelelő</b>
+        <span>${bad.map(u => `<b data-u="${esc(u.id)}">${esc(u.name)}</b> <small>(${why(u)})</small>`).join(', ')}. Belépéskor kötelezően új nevet kell választaniuk – vagy itt azonnal átnevezheted őket.</span></div>
         ${fixable.length ? `<button class="btn danger sm" data-fixbad>Átnevezés (${fixable.length}) → Tag-xxxxx</button>` : ''}</div>`; })()}
     <div class="search" style="margin:1.2rem 0 0;max-width:380px"><input type="search" id="aq" placeholder="Keresés név szerint…" value="${esc(mq)}"></div>
     <div class="atable">${(loadEmails(), list).map(u => {
@@ -96,7 +97,7 @@ function members(v, again) {
       return `<div class="arow"><span class="avw">${avatar(u, 42)}<i class="on${isOnline(u) ? ' y' : ''}" style="border-color:#0d1830"></i></span>
         <div class="who"><b data-u="${esc(u.id)}" style="cursor:pointer;color:${k !== 'user' ? roleOf(k).color : 'inherit'}">${esc(u.name)}</b>${self ? ' <span class="hint">(te)</span>' : ''}
           <small>${u.createdAt ? 'Tag ' + toDate(u.createdAt).toLocaleDateString('hu-HU') + ' óta' : ''}${u.lastSeen ? ' · ' + (isOnline(u) ? '<span class="odot"></span>online' : 'utoljára ' + timeLabel(u.lastSeen)) : ''}</small>${C.isAdmin() && EMAILS.get(u.id) ? `<small style="user-select:all"><i class="ic ic-mail"></i> ${esc(EMAILS.get(u.id))}</small>` : ''}
-          <div>${C.tagPills(u, 6)}${badName(u.name) ? '<span class="tg red"><i class="ic ic-triangle-alert"></i> NEM MEGFELELŐ NÉV</span>' : ''}${u.banned ? '<span class="tg red"><i class="ic ic-ban"></i> KITILTVA</span>' : ''}${muted ? `<span class="tg red"><i class="ic ic-volume-x"></i> NÉMÍTVA ${esc(timeLabel(u.mutedUntil))}-IG</span>` : ''}</div></div>
+          <div>${C.tagPills(u, 6)}${badName(u.name) ? `<span class="tg red" title="${esc(badMsg(u.name))}"><i class="ic ic-triangle-alert"></i> NEM MEGFELELŐ NÉV</span>` : ''}${u.banned ? '<span class="tg red"><i class="ic ic-ban"></i> KITILTVA</span>' : ''}${muted ? `<span class="tg red"><i class="ic ic-volume-x"></i> NÉMÍTVA ${esc(timeLabel(u.mutedUntil))}-IG</span>` : ''}</div></div>
         <div class="ac">${ctl}
           ${C.can('manageTags') && (!own || C.isOwner()) ? `<button class="btn plain sm" data-tagu="${esc(u.id)}"><i class="ic ic-tag"></i> Tagek</button>` : ''}
           ${canMod ? `<button class="btn plain sm" data-mod="${esc(u.id)}"><i class="ic ic-shield"></i> Moderálás</button>` : ''}
@@ -241,7 +242,7 @@ export function modModal(id) {
     name = name.trim();
     if (name.length < 2) return toast('A név legalább 2 karakter legyen.', true);
     if (reservedName(name) && C.S.owner?.uid !== id) return toast(RESERVED_MSG, true);
-    if (badName(name)) return toast(BAD_MSG, true);
+    if (badName(name)) return toast(badMsg(name), true);
     try { await FB.updateDoc(ref, { name, nameLower: name.toLowerCase() }); audit('user.rename', u.name, '→ ' + name); toast('Név módosítva ✓'); el.close(); } catch (e) { toast(errText(e), true); }
   };
   const rn = el.querySelector('[data-rn]'); if (rn) rn.onclick = () => setName(el.querySelector('[name=nm]').value);
@@ -743,7 +744,7 @@ async function statsPage(v) {
     const st = { nyitott: ['Nyitott', '#6cc6ff'], folyamatban: ['Folyamatban', '#ffa94d'], kesz: ['Kész', '#5ee08a'], elutasitva: ['Elutasítva', '#ff7a6e'] };
     $('#stIdea').innerHTML = s.size ? hbars(Object.entries(st).map(([k, [l, c]]) => [l, s.docs.filter(d => d.data().status === k).length, c]), ' db') : '<div class="estate"><i class="ic ic-lightbulb"></i><b>Még nincs beküldött ötlet</b></div>';
   }).catch(() => { $('#stIdea').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
-  import('./browse.js?v=202611210129').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
+  import('./browse.js?v=202611210130').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
     .then(l => { $('#stArc').innerHTML = hbars(l, ' játékos'); });
 }
 const lbScores = g => FB.collection(db, 'leaderboards', g, 'scores');

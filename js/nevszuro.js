@@ -3,7 +3,7 @@
 // utána:  node tools/nevszuroteszt.mjs   (jó és rossz nevek tesztje), és tedd közzé a szabályokat.
 //
 // Működés:
-//  1. Csak betű (ékezetes is), szám, szóköz és . _ - ' engedett  → cirill/teljes szélességű/láthatatlan karakteres trükk kizárva.
+//  1. Csak latin betű (ékezetes is), szám, emoji, szóköz és . _ - ' engedett → cirill/teljes szélességű/láthatatlan karakteres trükk kizárva.
 //  2. Normalizálás: kisbetű, ékezet le, leet (4→a 3→e 1→i 0→o 5→s 7→t @→a $→s), q→k, ph→f, cz→c, w→v.
 //  3. ANYWHERE: egyértelműen trágár tövek – a név BÁRMELY részén (a szóközöket/írásjeleket kihagyva, betűismétlést is elkapva: „kuuurva”, „f.a.s.z”).
 //  4. WORD: kétértelmű rövid szavak – csak ÖNÁLLÓ szóként (+ többes szám), így „Fukuda”, „Sussex”, „Analóg” átmegy.
@@ -46,9 +46,17 @@ const uniq = l => [...new Set(l)];
 export const ANY_RE_SRC = '(' + uniq(ANYWHERE).map(wordPattern).join('|') + ')';
 export const WORD_RE_SRC = '(' + uniq(WORD).map(wordPattern).join('|') + ')(s|k|ok|ek|ak)?';
 export const OK_RE_SRC = '(' + uniq(OK).sort((a, b) => b.length - a.length).join('|') + ')';
-// a név megengedett karakterei (a szabályokban is ugyanez)
-export const CHARS_SRC = "^[A-Za-z0-9ÁÉÍÓÖŐÚÜŰáéíóöőúüűÄËÏäëïÀÈÌÒÙàèìòùÂÊÎÔÛâêîôûÇçÑñČčŠšŽžĆćŘřÝý .'_-]+$";
-const ANY_RE = new RegExp(ANY_RE_SRC), WORD_RE = new RegExp('^' + WORD_RE_SRC + '$'), OK_RE = new RegExp(OK_RE_SRC, 'g'), CHARS_RE = new RegExp(CHARS_SRC);
+// a név megengedett karakterei: latin betűk (ékezetesek is), számjegy, emoji, szóköz és . _ - '
+// (cirill, görög, teljes szélességű és láthatatlan „trükk-karakterek” nem). A szabályokban ugyanez RE2-szintaxissal.
+const CH = "A-Za-z0-9 .'_";
+// emoji-tartományok (a kategória-alapú \\p{So}-t a Firebase szabálymotorja régi Unicode-táblával ismeri, ezért konkrét tartományok)
+const EMO = [[0x1F000, 0x1FAFF], [0x2190, 0x21FF], [0x2300, 0x23FF], [0x2460, 0x27BF], [0x2900, 0x297F], [0x2B00, 0x2BFF],
+  [0x3030, 0x3030], [0x303D, 0x303D], [0x2122, 0x2122], [0x2139, 0x2139], [0x200D, 0x200D], [0xFE0F, 0xFE0F], [0x20E3, 0x20E3], [0xE0020, 0xE007F]];
+const hx = c => c.toString(16).toUpperCase().padStart(4, '0');
+const rng = (f, l) => l.map(([a, b]) => a === b ? f(a) : f(a) + '-' + f(b)).join('');
+export const CHARS_SRC = '^[' + CH + rng(c => '\\u{' + hx(c) + '}', [[0xC0, 0x24F], ...EMO]) + '-]+$';     // a kötőjel a végén (különben tartomány lenne)
+export const CHARS_RULES = '^[' + CH + rng(c => '\\x{' + hx(c) + '}', [[0xC0, 0x24F], ...EMO]) + '-]+$';
+const ANY_RE = new RegExp(ANY_RE_SRC), WORD_RE = new RegExp('^' + WORD_RE_SRC + '$'), OK_RE = new RegExp(OK_RE_SRC, 'g'), CHARS_RE = new RegExp(CHARS_SRC, 'u');
 
 // kisbetű + ékezet le + leet + hangtani trükkök; a szóközöket/írásjeleket SZÓKÖZRE cseréli (a szóhatárokhoz)
 export function normSpaced(n) {
@@ -80,4 +88,9 @@ export function badHit(n) {
   return '';
 }
 export const badName = n => !!badHit(n);
-export const BAD_MSG = "Ez a név nem megengedett: trágár vagy sértő szót tartalmaz, vagy olyan karaktert, ami nem lehet benne (csak betű, szám, szóköz és . _ - ' engedett).";
+// miért nem jó: 'karakter' | 'szo' | ''
+export const badReason = n => { const h = badHit(n); return !h ? '' : h === 'karakter' ? 'karakter' : 'szo'; };
+export const CHAR_MSG = "Ebben a névben nem engedett karakter van. Használható: betűk (ékezetesek is), számok, emoji, szóköz és . _ - '";
+export const WORD_MSG = 'Ez a név trágár vagy sértő szót tartalmaz. Válassz másikat!';
+export const badMsg = n => badReason(n) === 'karakter' ? CHAR_MSG : WORD_MSG;
+export const BAD_MSG = WORD_MSG;
