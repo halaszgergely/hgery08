@@ -18,7 +18,7 @@ export const BAD = [
   'anal', 'rape', 'rapist', 'sex', 'sexy', 'szex', 'nude', 'milf', 'hentai', 'kkk', 'kys', 'killyourself', 'blowjob',
   'jizz', 'dildo', 'kurwa', 'blyat', 'cyka', 'pizda', 'scheisse', 'arschloch', 'hurensohn', 'putain', 'puta', 'mierda',
   // karaktertrükkök
-  'kurvа', 'ｋｕｒｖａ', 'k​urva', 'fa‍sz', 'Hgery‮', 'admin<script>', 'név😀',
+  'kurvа', 'ｋｕｒｖａ', 'k​urva', 'Hgery‮', 'admin<script>', 'Иван', 'kurva 🐱', '🐱fasz🐱',
 ];
 export const GOOD = [
   // a mostani tagok
@@ -48,7 +48,7 @@ export const GOOD = [
   'Penistone', 'Arsenal', 'Analysis', 'Grapefruit', 'Therapist', 'Sextant', 'Classic', 'Cucumber', 'Document', 'Basement',
   'Shift', 'Shirt', 'Michael', 'Dick Smith', 'Titan', 'Fukuoka', 'Pussycat Dolls', 'Bassist', 'Sniper', 'Kitten', 'Hunter',
   // gamer stílus
-  'xXSniperXx', 'Pro_Gamer_2008', 'Locsolo-Kiraly', "O'Brien", 'Dr. Víz', 'Gamer99', 'Ádám_07', 'ZeroSpace', 'MLG-Pro',
+  '🐱', 'Cica 🐱', '🇭🇺 Magyar', '👨‍👩‍👧 Család', 'név😀', '🔥Zero🔥', '😀', '👍🏽 Béla', '★Zero★', 'xXSniperXx', 'Pro_Gamer_2008', 'Locsolo-Kiraly', "O'Brien", 'Dr. Víz', 'Gamer99', 'Ádám_07', 'ZeroSpace', 'MLG-Pro',
 ];
 
 const fail = [];
@@ -62,6 +62,7 @@ if (process.argv.includes('--rules')) {
   const { initializeTestEnvironment } = await import('@firebase/rules-unit-testing');
   const { doc, setDoc } = await import('firebase/firestore');
   const env = await initializeTestEnvironment({ projectId: 'demo-nev', firestore: { rules: readFileSync('firestore.rules', 'utf8') } });
+  await env.clearFirestore();
   let i = 0; const rf = [];
   const tryName = async n => { const id = 'u' + (i++); try { await setDoc(doc(env.authenticatedContext(id, { email_verified: true }).firestore(), 'users', id), { name: n, nameLower: n.toLowerCase(), role: 'user', banned: false }); return true; } catch { return false; } };
   // a szabály sosem lehet szigorúbb a kliensnél: amit a kliens enged, azt a szabály is engedje

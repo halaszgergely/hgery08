@@ -2,8 +2,9 @@
 // kivéve az egybetűs szavak összevonását – „f u c k” –, azt csak a böngésző nézi; a szabály így sosem szigorúbb a kliensnél).
 // Futtatás a repó gyökeréből:  node tools/nevszuro.mjs
 import { readFileSync, writeFileSync } from 'node:fs';
-import { ANY_RE_SRC, WORD_RE_SRC, OK_RE_SRC, CHARS_SRC } from '../js/nevszuro.js';
-if (CHARS_SRC.includes('"')) throw new Error('A karakterlista nem tartalmazhat idézőjelet');
+import { ANY_RE_SRC, WORD_RE_SRC, OK_RE_SRC, CHARS_RULES } from '../js/nevszuro.js';
+if (CHARS_RULES.includes('"')) throw new Error('A karakterlista nem tartalmazhat idézőjelet');
+const CHARS = CHARS_RULES.replace(/\\/g, '\\\\');   // a rules-szövegben a \ escape-elendő
 const f = 'firestore.rules', s = readFileSync(f, 'utf8');
 const fn = `    // NEVSZURO-START – generálva a js/nevszuro.js listáiból (node tools/nevszuro.mjs), kézzel ne írd át
     function nameNorm(n) {
@@ -15,7 +16,7 @@ const fn = `    // NEVSZURO-START – generálva a js/nevszuro.js listáiból (n
     }
     function badName(n) {
       let sp = ' ' + nameNorm(n).replace('${OK_RE_SRC}', '_') + ' ';
-      return !n.matches("${CHARS_SRC}")
+      return !n.matches("${CHARS}")
         || sp.replace(' ', '').matches('.*${ANY_RE_SRC}.*')
         || sp.matches('.* ${WORD_RE_SRC} .*');
     }
