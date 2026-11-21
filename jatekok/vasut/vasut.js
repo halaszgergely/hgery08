@@ -216,6 +216,7 @@
     const Ft = S.rev && power ? Math.min(Lc.f0 * 1000, Lc.kw * 1000 / Math.max(ad, 1.5)) * S.thr / 8 * (ad * 3.6 >= Lc.vmax ? 0 : 1) : 0;
     const Fr = M * 9.81 * .0018 + 4 * v * v, Fb = (S.brk / 6) * M * 9.81 * .11 + (keys[' '] ? M * 9.81 * .11 : 0);
     if (S.ttAnim) { S.ttAnim.t += dt / TS; S.v = 0; S.time += dt; if (S.ttAnim.t >= S.ttAnim.dur) ttDone(); return; }
+    ccStep(dt);
     const gr = grade(); S.gr = gr; let a = (S.rev * Ft) / M - 9.81 * gr, dec = (Fr + Fb) / M; let nv = v + a * dt; if (nv > 0) nv = Math.max(0, nv - dec * dt); else if (nv < 0) nv = Math.min(0, nv + dec * dt); S.v = S.park ? 0 : nv;
     if (Lc.el) { const kwh = Lc.kw * S.thr / 8 * dt / 3600; if (power) S.money -= kwh * KWH_P; } else { S.fuel = Math.max(0, S.fuel - Lc.kw * .27 / 3600 * (S.thr / 8 + .03) * dt); }
     S.stop = 0; const moved = move(S.v * dt); if (S.stop) { if (Math.abs(S.v) * 3.6 > 15) toast('Ütközőbak! A szerelvény megállt.', 1); S.v = 0; }
@@ -322,8 +323,9 @@
   let AC = '';
   function ui() { if (!S) return; const Lc = LOCOS[S.loco]; $('#money').textContent = '💰 ' + money(S.money); const hh = Math.floor(S.time / 3600) % 24, mm = Math.floor(S.time / 60) % 60; $('#clock').textContent = 'Nap ' + (Math.floor(S.time / 86400) + 1) + ' · ' + String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
     $('#spd').innerHTML = Math.round(Math.abs(S.v) * 3.6) + '<small>km/h</small>'; $('#lim').textContent = E[S.P[S.P.length - 1].e].vm || '–';
-    $('#thr').innerHTML = Array.from({ length: 8 }, (_, i) => `<i class="${i < S.thr ? 'on' : ''}"></i>`).join(''); $('#thrT').textContent = S.thr + '/8';
-    $('#brk').innerHTML = Array.from({ length: 6 }, (_, i) => `<i class="${i < S.brk || keys[' '] ? 'on' : ''}"></i>`).join('');
+    $('#thr').innerHTML = Array.from({ length: 8 }, (_, i) => `<i class="${i < Math.round(S.thr) ? 'on' : ''}"></i>`).join(''); $('#thrT').textContent = Math.round(S.thr) + '/8';
+    $('#brk').innerHTML = Array.from({ length: 6 }, (_, i) => `<i class="${i < Math.round(S.brk) || keys[' '] ? 'on' : ''}"></i>`).join('');
+    $('#bCC').classList.toggle('on', !!S.cc); $('#cCC').classList.toggle('on', !!S.cc); $('#bCC').textContent = S.cc ? '🎛 ' + S.cc + ' km/h' : '🎛 Tempomat';
     $('#bPark').classList.toggle('on', !!S.park); $('#cPk').classList.toggle('on', !!S.park);
     document.querySelectorAll('#rev .b').forEach(b => b.classList.toggle('on', +b.dataset.r === S.rev));
     if (Lc.el) { const on = E[S.P[S.P.length - 1].e].el; $('#fuT').textContent = on ? '⚡ Felsővezeték: van' : '⚡ Nincs felsővezeték – nincs vonóerő'; $('#fuT').className = on ? '' : 'warn'; $('#fuB').style.width = on ? '100%' : '0'; }
@@ -366,18 +368,30 @@
     AC = ''; ui(); save(); });
   $('#jobs').addEventListener('click', e => { const t = e.target.closest('[data-n]'); if (!t) return; S.nav = t.dataset.n; plan(); const j = S.jobs.find(q => q.id === S.nav), st = ST[j.state === 'taken' ? j.from : j.to]; toast('Navigáció: ' + st.n); ui(); });
   $('#rev').addEventListener('click', e => { const t = e.target.closest('[data-r]'); if (t) setRev(+t.dataset.r); });
-  function park() { if (!S.park && Math.abs(S.v) * 3.6 > 3) return toast('A rögzítőfék csak megállva húzható be.', 1); S.park = !S.park; if (S.park) { S.thr = 0; S.v = 0; } beep(S.park ? 220 : 440, .1); ui(); }
+  // tempomat: a célsebességet (és a pálya sebességkorlátját) tartja gázzal és fékkel
+  function cc(on) { if (on === undefined) on = !S.cc; if (on) { if (S.park) return toast('Old ki a rögzítőféket (P).', 1); if (!S.rev) return toast('Állítsd be a menetirányt (R).', 1); S.cc = Math.max(10, Math.round(Math.abs(S.v) * 3.6 / 5) * 5 || 40); S.ccI = 0; } else { S.cc = 0; S.thr = Math.round(S.thr); S.brk = Math.round(S.brk); } beep(on ? 760 : 380, .07); ui(); }
+  function ccStep(dt) { if (!S.cc) return; if (S.park || !S.rev) { S.cc = 0; return; } const Lc = LOCOS[S.loco], lead = S.v < 0 ? S.P[0] : S.P[S.P.length - 1], tgt = Math.min(S.cc / 3.6, (E[lead.e].vm || 60) / 3.6, Lc.vmax / 3.6, aheadLim()), err = tgt - Math.abs(S.v);
+    S.ccI = Math.max(-30, Math.min(80, (S.ccI || 0) + err * dt)); if (err < -.6 && S.ccI > 0) S.ccI = 0; if (err > .6 && S.ccI < 0) S.ccI = 0; const u = 1.6 * err + .05 * S.ccI; if (u > 0) { S.thr = Math.min(8, u); S.brk = 0; } else { S.thr = 0; S.brk = Math.min(6, -u * 1.4); if (S.brk < .3) S.brk = 0; } }
+  // előretekintés: a menetirányban következő alacsonyabb sebességkorlátok fékgörbéje (m/s)
+  function aheadLim() { const fw = S.v >= 0, P = S.P; let sg = fw ? P[P.length - 1] : P[0], dist = fw ? E[sg.e].L - S.fu : S.ru, best = 99; const look = S.v * S.v / 1.0 + 300;
+    for (let k = 0; k < 20 && dist < look; k++) { const nd = segEnd(sg, fw), c = choose(nd, sg.e, arriveDir(sg, fw)); if (!c) { best = Math.min(best, Math.sqrt(2 * .5 * Math.max(0, dist - 20))); break; }
+      sg = { e: c.e, d: fw ? (c.fromA ? 1 : -1) : (c.fromA ? -1 : 1) }; best = Math.min(best, Math.sqrt(((E[c.e].vm || 60) / 3.6) ** 2 + 2 * .5 * dist)); dist += E[c.e].L; }
+    return best; }
+  $('#bCC').onclick = () => cc(); $('#cCC').onclick = () => cc();
+  function park() { if (!S.park && Math.abs(S.v) * 3.6 > 3) return toast('A rögzítőfék csak megállva húzható be.', 1); S.park = !S.park; S.cc = 0; if (S.park) { S.thr = 0; S.v = 0; } beep(S.park ? 220 : 440, .1); ui(); }
   $('#bPark').onclick = park; $('#cPk').onclick = park;
-  function setRev(r) { if (Math.abs(S.v) > .5 && r !== 0 && r !== S.rev) return toast('Irányváltás csak álló helyzetben.', 1); S.rev = r; beep(500, .05); plan(); ui(); }
+  function setRev(r) { if (Math.abs(S.v) > .5 && r !== 0 && r !== S.rev) return toast('Irányváltás csak álló helyzetben.', 1); S.rev = r; if (!r) S.cc = 0; beep(500, .05); plan(); ui(); }
   $('#bSw').onclick = flip; $('#bBoard').onclick = showBoard; $('#bDepo').onclick = showDepo; $('#bFollow').onclick = () => { cam.follow = 1; PIN = null; };
   $('#bMap').onclick = () => { if (cam.s > .003) { cam.prev = cam.s; cam.s = Math.min(cv.width, cv.height) / (devicePixelRatio || 1) / 560000; cam.follow = 0; } else { cam.s = cam.prev || .25; cam.follow = 1; } };
   $('#bMenu').onclick = () => { save(); $('#menu').hidden = false; $('#mPlay').textContent = '▶ Folytatás'; };
   const hold = (el, f) => { let iv = null; el.addEventListener('pointerdown', e => { e.preventDefault(); f(); iv = setInterval(f, 180); }); for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, () => { clearInterval(iv); iv = null; }); };
-  hold($('#cUp'), () => { if (S.brk) S.brk--; else S.thr = Math.min(8, S.thr + 1); ui(); }); hold($('#cDn'), () => { if (S.thr) S.thr--; else S.brk = Math.min(6, S.brk + 1); ui(); });
-  $('#cBr').addEventListener('pointerdown', () => { keys[' '] = 1; }); for (const ev of ['pointerup', 'pointerleave']) $('#cBr').addEventListener(ev, () => { keys[' '] = 0; }); $('#cSw').onclick = flip;
+  hold($('#cUp'), () => { if (S.cc) S.cc = Math.min(LOCOS[S.loco].vmax, S.cc + 5); else if (S.brk) S.brk = Math.max(0, Math.round(S.brk) - 1); else S.thr = Math.min(8, Math.round(S.thr) + 1); ui(); }); hold($('#cDn'), () => { if (S.cc) S.cc = Math.max(5, S.cc - 5); else if (S.thr) S.thr = Math.max(0, Math.round(S.thr) - 1); else S.brk = Math.min(6, Math.round(S.brk) + 1); ui(); });
+  $('#cBr').addEventListener('pointerdown', () => { keys[' '] = 1; S.cc = 0; }); for (const ev of ['pointerup', 'pointerleave']) $('#cBr').addEventListener(ev, () => { keys[' '] = 0; }); $('#cSw').onclick = flip;
 
   addEventListener('keydown', e => { if (!S || !$('#menu').hidden || e.target.tagName === 'INPUT') return; if (e.key === '/') { e.preventDefault(); $('#q').focus(); return; } const k = e.key.toLowerCase(); if (e.key === ' ') e.preventDefault(); if (keys[k]) return; keys[k] = 1;
-    if (k === 'w') { if (S.park) toast('Old ki a rögzítőféket (P).', 1); S.thr = Math.min(8, S.thr + 1); } if (k === 's') { S.thr = Math.max(0, S.thr - 1); } if (k === 'b') S.brk = Math.min(6, S.brk + 1); if (k === 'n') S.brk = Math.max(0, S.brk - 1);
+    if (k === 'c') cc(); else if (S.cc && (k === 'w' || k === 's')) { S.cc = Math.max(5, Math.min(LOCOS[S.loco].vmax, S.cc + (k === 'w' ? 5 : -5))); }
+    else { if (k === 'w') { if (S.park) toast('Old ki a rögzítőféket (P).', 1); S.thr = Math.min(8, Math.round(S.thr) + 1); } if (k === 's') { S.thr = Math.max(0, Math.round(S.thr) - 1); } }
+    if (k === 'b' || k === ' ') S.cc = 0; if (k === 'b') S.brk = Math.min(6, Math.round(S.brk) + 1); if (k === 'n') S.brk = Math.max(0, S.brk - 1);
     if (k === 'p') park(); if (k === 'r') setRev(S.rev === 1 ? 0 : S.rev === 0 ? (S.v > .5 ? 1 : -1) : 0); if (k === 'v') flip(); if (k === 'm') $('#bMap').onclick(); if (k === 'escape') { if (!$('#pnl').hidden) closeP(); else $('#bMenu').onclick(); } ui(); });
   addEventListener('keyup', e => { keys[e.key.toLowerCase()] = 0; });
   // kamera: görgő, húzás, kattintás váltóra
