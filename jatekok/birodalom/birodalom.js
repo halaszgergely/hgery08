@@ -401,18 +401,18 @@ const Birodalom = (() => {
   function ser() { const { bgMsg, lr, gxT, rt, away, saveT, syncT, hudT, info, hover, tip, lp, anim, linc, lincT, cloudT, ...o } = S; if (o.gx) o.gx = { ...o.gx, pick: null }; return JSON.stringify(o); }
   /* felhőmentés (bejelentkezve): a főoldal tárolja a Firestore-ban. Mindig a legnagyobb összbevételű (life) mentés győz:
      betöltéskor a nagyobbik marad meg, feltöltés csak akkor megy, ha a helyi legalább akkora, mint a felhőben lévő. */
-  let CL = { asked: 0, life: -1, at: 0 }, GG = null;
+  let CL = { asked: 0, life: -1, at: Date.now() }, GG = null;
   const inFrame = () => { try { return window.top !== window; } catch (_) { return false; } };
   function cloudPush(force, manual) { const say = t => { if (manual && S) S.bgMsg = { t, l: 3.5 }; };
     if (!S || !inFrame() || CL.life < 0) return say('☁️ Felhőmentés csak bejelentkezve érhető el'); if (S.life < CL.life) return say('☁️ A felhőben nagyobb mentés van (' + fmt(CL.life) + ' Ft) – az marad meg');
-    const now = Date.now(); if (!force && now - CL.at < 60e3) return; if (now - CL.at < 11e3) return say('☁️ Pár másodperc múlva próbáld újra'); CL.at = now; S.t = now; save();
+    const now = Date.now(); if (!manual && (S.life === CL.life || now - CL.at < (force ? 5 : 15) * 60e3)) return; // automatikusan ritkán: 15 percenként, kilépéskor csak ha 5 perce nem volt if (now - CL.at < 11e3) return say('☁️ Pár másodperc múlva próbáld újra'); CL.at = now; S.t = now; save();
     const st = ser(); if (st.length > 900000) return say('☁️ A mentés túl nagy'); CL.life = S.life; CL.man = manual ? 1 : 0; if (manual) say('☁️ Mentés folyamatban…'); parent.postMessage({ hgws: 'cssave', game: 'birodalom', life: S.life, st, ack: 1 }, location.origin); }
   const cloudBtn = () => inFrame() && CL.life >= 0 && L ? { x: L.fx + L.fw - 42 * L.d, y: L.fy + 6 * L.d, w: 36 * L.d, h: 30 * L.d } : null;
   if (typeof addEventListener === 'function') addEventListener('message', e => { if (e.origin !== location.origin || e.source !== parent || !e.data || e.data.hgws !== 'cs' || e.data.game !== 'birodalom') return;
     const d = e.data; if (d.ack) { if (CL.man && S) S.bgMsg = { t: d.ok ? '☁️ Felhőbe mentve' : '☁️ Nem sikerült menteni' + (d.err ? ' (' + d.err + ')' : ''), l: 3.5 }; CL.man = 0; if (!d.ok) CL.at = 0; return; }
     if (d.none) { CL.life = -1; return; } CL.life = +d.life || 0;
     if (d.st && CL.life > (S ? S.life : 0)) { try { JSON.parse(d.st); localStorage.setItem(KEY, d.st); } catch (_) { return; } if (GG && GG.game && GG.game.id === 'birodalom') { Birodalom.init(GG); S.bgMsg = { t: '☁️ Felhőmentés betöltve – ' + fmt(CL.life) + ' Ft összbevétel', l: 4 }; } }
-    else if (S && S.life > CL.life) cloudPush(true); });
+    else if (S && S.life > CL.life && !CL.first) { CL.first = 1; CL.at = 0; cloudPush(true); } });
 
   function net() {
     const [cw, rh] = size(), N = COLS * ROWS, on = new Uint8Array(N), dist = new Int16Array(N).fill(-1), q = [SRC];
