@@ -7,7 +7,7 @@ const AranyLocsolofej = { id: 'aranylocsolofej', name: 'AZ ARANY LOCSOLÓFEJ', e
 const VizagyuIo = { id: 'vizagyuio', name: 'VÍZÁGYÚ.IO', ext: 'jatekok/vizagyuio/index.html', tag: 'ONLINE',
   desc: 'Valós idejű locsolóaréna 2–8 játékosnak: hívd meg a barátaidat, vagy gyakorolj botok ellen. Négy mód, négy pálya.' };
 const ZeroChip = { id: 'zerochip', name: 'ZERO CHIP', ext: 'jatekok/zerochip/index.html', tag: 'ÚJ',
-  desc: 'Építs áramköröket a tranzisztortól a processzor számlálójáig. 29 küldetés: szilícium, logikai kapuk, összeadók, memória.' };
+  desc: 'Építs áramköröket a tranzisztortól a processzor számlálójáig. 61 küldetés: szilícium, logikai kapuk, összeadók, memória, majd haladó chiptervezés.' };
 /* zárt béta: csak adminok és „Béta-tesztelő” taggel rendelkezők látják és indíthatják (a jogosultságot a főoldal küldi) */
 const ZeroQuest = { id: 'zeroquest', name: 'ZERO QUEST', ext: 'jatekok/zeroquest/index.html', tag: 'ZÁRT BÉTA', lock: 1,
   desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében: küldetések, szintlépés, felszerelés és egy ébredő őr a romok alatt. Zárt béta.' };
