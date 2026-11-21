@@ -1,0 +1,62 @@
+<!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="robots" content="noindex,nofollow"><title>Mozdonyvezető – HGWS Arcade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../../img/favicon-32.png">
+<style>
+:root{--pn:#0b1119;--pn2:#121b27;--ln:rgba(140,180,230,.16);--ink:#ebeff6;--mut:#93a1b5;--gold:#e8b656;--gold2:#ffe29a;--ok:#5ee08a;--bad:#ff5a4d;--glass:rgba(7,11,17,.74)}
+*{box-sizing:border-box;margin:0}html,body{height:100%;background:#0d1410;color:var(--ink);font:500 14px/1.45 Inter,system-ui,sans-serif;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;touch-action:none}
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}[hidden]{display:none!important}
+.gl{background:var(--glass);border:1px solid rgba(140,180,230,.15);border-radius:14px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.b{border:1px solid var(--ln);background:var(--pn2);color:var(--ink);border-radius:11px;padding:8px 13px;font:700 13px Inter;cursor:pointer;display:inline-flex;align-items:center;gap:6px;pointer-events:auto;white-space:nowrap}
+.b:hover{border-color:rgba(232,182,86,.6)}.b.g{background:linear-gradient(180deg,#f0c56a,#d79a32);color:#1a1004;border:0}.b.sm{padding:5px 9px;font-size:12px;border-radius:9px}.b:disabled{opacity:.4;cursor:default}
+.b.on{border-color:var(--gold);color:var(--gold2)}
+#top{position:fixed;left:10px;right:10px;top:10px;display:flex;gap:8px;align-items:flex-start;pointer-events:none;z-index:3}
+#money{padding:8px 14px;font:800 17px Inter;color:var(--gold2)}#clock{padding:8px 12px;font:700 13px Inter;color:var(--mut)}
+#top .sp{flex:1}
+#loco{position:fixed;left:10px;bottom:10px;padding:12px 14px;width:min(300px,calc(100vw - 20px));z-index:3;pointer-events:auto}
+#spd{font:900 38px/1 Inter;letter-spacing:-.02em}#spd small{font:700 13px Inter;color:var(--mut);margin-left:4px}
+#lim{display:inline-block;margin-left:10px;width:34px;height:34px;border-radius:50%;border:4px solid #d23;background:#fff;color:#111;font:900 13px/26px Inter;text-align:center;vertical-align:8px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.mut{color:var(--mut)}.warn{color:#ff7a6e;font-weight:700}
+.lab{font:800 9.5px Inter;letter-spacing:.16em;color:var(--mut);text-transform:uppercase}
+.notch{display:flex;gap:3px;margin:5px 0 8px}.notch i{flex:1;height:10px;border-radius:3px;background:rgba(255,255,255,.1)}.notch i.on{background:var(--ok)}.notch.br i.on{background:var(--bad)}
+.bar{height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden;margin:4px 0 2px}.bar i{display:block;height:100%;background:var(--gold)}
+#rev{display:flex;gap:4px}#rev .b{padding:5px 10px}
+#sw{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);padding:9px 12px;z-index:3;pointer-events:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 340px)}
+#acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+#jobs{position:fixed;right:10px;top:64px;width:min(300px,calc(100vw - 20px));padding:10px 12px;z-index:3;pointer-events:auto;max-height:45vh;overflow:auto}
+.job{border:1px solid var(--ln);border-radius:10px;padding:7px 9px;margin-top:6px;cursor:pointer;font-size:12.5px}.job.nav{border-color:var(--gold);background:rgba(232,182,86,.08)}.job b{font-weight:800}
+#ctl{position:fixed;right:10px;bottom:10px;z-index:3;display:grid;grid-template-columns:repeat(2,64px);gap:8px;pointer-events:auto}
+#ctl .b{height:58px;justify-content:center;font-size:20px;border-radius:16px}
+#pnl{position:fixed;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;background:rgba(2,4,8,.55);padding:14px}
+.card{width:min(720px,100%);max-height:100%;overflow:auto;background:linear-gradient(180deg,rgba(18,27,39,.98),rgba(11,17,25,.98));border:1px solid var(--ln);border-radius:18px;padding:18px 20px;box-shadow:0 24px 70px rgba(0,0,0,.65)}
+h1{font:900 28px/1.1 Cinzel,Georgia,serif;letter-spacing:.05em;color:var(--gold)}h1 small{display:block;font:700 10px Inter;letter-spacing:.24em;color:var(--mut);margin-top:6px}
+h2{font:800 11px Inter;letter-spacing:.18em;color:var(--mut);margin:14px 0 6px;text-transform:uppercase}
+.it{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--ln);border-radius:12px;padding:9px 12px;margin:6px 0;background:var(--pn2)}
+.it .grow{flex:1}.it small{display:block;color:var(--mut);font-size:12px}
+#toast{position:fixed;left:50%;top:64px;transform:translateX(-50%);padding:8px 14px;z-index:7;font:700 13px Inter;pointer-events:none;transition:opacity .3s}
+#menu{position:fixed;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 30%,rgba(20,40,30,.6),rgba(2,4,8,.92));padding:14px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;margin-top:8px}.keys b{color:var(--gold2)}
+@media (max-width:700px){#jobs{top:auto;bottom:212px;max-height:25vh}#sw{left:10px;right:10px;transform:none;bottom:186px;max-width:none}#loco{width:calc(100vw - 168px)}#spd{font-size:30px}}
+@media (hover:hover) and (pointer:fine){#ctl{display:none}}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="top"><div id="money" class="gl">–</div><div id="clock" class="gl">–</div><div class="sp"></div>
+  <button class="b" id="bFollow" hidden>🎯 Követés</button><button class="b" id="bMap">🗺️ Térkép</button><button class="b" id="bBoard">📋 Munkák</button><button class="b" id="bDepo">🏭 Depó</button><button class="b" id="bMenu">☰</button></div>
+<div id="jobs" class="gl" hidden></div>
+<div id="loco" class="gl">
+  <div class="row"><div id="spd">0<small>km/h</small></div><div id="lim">–</div><div class="grow" style="flex:1"></div><div id="rev"><button class="b sm" data-r="-1">H</button><button class="b sm" data-r="0">N</button><button class="b sm" data-r="1">E</button></div></div>
+  <div class="lab" style="margin-top:6px">Teljesítmény <span id="thrT"></span></div><div class="notch" id="thr"></div>
+  <div class="lab">Fék</div><div class="notch br" id="brk"></div>
+  <div class="lab"><span id="fuT">Üzemanyag</span></div><div class="bar"><i id="fuB"></i></div>
+  <div class="mut" id="locoN" style="font-size:12px;margin-top:4px"></div>
+</div>
+<div id="sw" class="gl"><span id="swT" class="mut">–</span><button class="b sm" id="bSw">↔ Váltó (V)</button><div id="acts"></div></div>
+<div id="ctl"><button class="b" id="cUp">▲</button><button class="b" id="cBr">⛔</button><button class="b" id="cDn">▼</button><button class="b" id="cSw">↔</button></div>
+<div id="toast" class="gl" hidden></div>
+<div id="pnl" hidden><div class="card" id="pc"></div></div>
+<div id="menu"><div class="card" style="width:min(520px,100%)"><h1>Mozdonyvezető<small>TEHERFUVAROZÁS MAGYARORSZÁG VALÓDI VASÚTHÁLÓZATÁN</small></h1>
+  <p class="mut" id="mLoad" style="margin-top:12px">Vasúthálózat betöltése…</p>
+  <div class="row" style="margin-top:14px"><button class="b g" id="mPlay" disabled>▶ Játék</button><button class="b" id="mNew" hidden>Új játék</button></div>
+  <h2>Irányítás</h2><div class="keys"><b>W / S</b><span>teljesítmény fel / le</span><b>Szóköz, B / N</b><span>fék (tartva) · fékfokozat fel / le</span><b>R</b><span>irány: előre – üres – hátra</span><b>V</b><span>a következő váltó állítása</span><b>M</b><span>térkép</span><b>Egér</b><span>görgő: nagyítás · húzás: mozgatás · kattintás a váltóra: állítás</span></div>
+  <p class="mut" style="margin-top:12px;font-size:12px">Térkép és vasúthálózat: © OpenStreetMap-közreműködők (ODbL)</p></div></div>
+<script src="vasut.js?v=202611212043"></script>
+</body></html>
