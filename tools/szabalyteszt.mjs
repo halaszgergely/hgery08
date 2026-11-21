@@ -8,6 +8,7 @@ import { doc, setDoc, updateDoc, deleteDoc, collection, writeBatch, serverTimest
 
 const OWNER = 'bzKz3gAS55hLmf3pru7Ljw0NETN2';
 const env = await initializeTestEnvironment({ projectId: 'demo-hgws', firestore: { rules: readFileSync('firestore.rules', 'utf8') } });
+await env.clearFirestore();
 await env.withSecurityRulesDisabled(async c => {
   const db = c.firestore(), u = (id, x = {}) => setDoc(doc(db, 'users', id), { name: id, role: 'user', banned: false, ...x });
   await u('anna'); await u('mod', { role: 'moderator' }); await u(OWNER, { role: 'owner' });

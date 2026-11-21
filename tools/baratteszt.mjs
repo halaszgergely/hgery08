@@ -6,6 +6,7 @@ import { doc, setDoc, updateDoc, deleteDoc, getDoc, getDocs, query, where, colle
 import { badName } from '../js/nevszuro.js';
 
 const env = await initializeTestEnvironment({ projectId: 'demo-hgws', firestore: { rules: readFileSync('firestore.rules', 'utf8') } });
+await env.clearFirestore();   // tiszta lappal (egy előző futás adatai ne zavarjanak)
 const people = ['anna', 'bela', 'csaba', 'dora', 'mod', 'tiltott', ...Array.from({ length: 10 }, (_, i) => 'f' + i)];
 await env.withSecurityRulesDisabled(async c => {
   const db = c.firestore();
