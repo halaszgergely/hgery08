@@ -1,5 +1,5 @@
 // Az Átemelőtelep – kezelőfelületek (DOM-panelek): kapcsolószekrény, multiméter, sorkapocs, terminál, aggregát, átkapcsoló, modem, dokumentumok, leltár.
-import { X1, LOOSE, CODE, ITEMN, OVER, LSL_H, LSH_H, cabPow, v24, plcRun, lightPow, supply, ltOK, lshOK, lslOK, fbOK, progTest } from './jatek.js?v=202611211851';
+import { X1, LOOSE, CODE, ITEMN, OVER, LSL_H, LSH_H, cabPow, v24, plcRun, lightPow, supply, ltOK, lshOK, lslOK, fbOK, progTest } from './jatek.js?v=202611211905';
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let api = null, cur = null, sub = {}, timer = 0, lastH = '', pdown = false;
 export function initUI(a) { api = a; $('#pn').addEventListener('click', click); $('#pn').addEventListener('change', change); $('#pn').addEventListener('pointerdown', e => { pdown = true; hold(e); }); addEventListener('pointerup', () => { setTimeout(() => pdown = false, 0); release(); }); }
