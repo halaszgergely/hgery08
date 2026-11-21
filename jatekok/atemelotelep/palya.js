@@ -1,5 +1,5 @@
 // Az Átemelőtelep – a telep pályája kódból: ütközők, látvány, interakciós pontok, fényforrások, zónák.
-import { Geo } from './motor.js?v=202611210955';
+import { Geo } from './motor.js?v=202611211432';
 export const PR = .3, PH = 1.75, EYE = 1.62;
 const WELL = { x0: 4, x1: 12, z0: -12, z1: -4, floor: -5, plat: -2.2, platZ: -9.6 };   // szivattyúakna (nedves akna)
 export { WELL };

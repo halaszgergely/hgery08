@@ -18,6 +18,13 @@ const ZeroQuest = { id: 'zeroquest', name: 'ZERO QUEST', ext: 'jatekok/zeroquest
 const Drift = window.HGDrift ? window.HGDrift({ G, Sfx, rr, store, hud }) : null;
 const Zombi = window.HGZombi ? window.HGZombi({ G, Sfx, rr, store, hud }) : null;
 const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Ugro, Torony, Birodalom, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, Atemelotelep, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
+const NOSPON = ['locsolo', 'vizagyu', 'csepp'];
+GAMES.forEach(g => { if (NOSPON.includes(g.id)) delete g.sponsor; else g.sponsor = 'A Zerosites támogatásával'; });
+/* népszerűség: a főoldal küldi a játékonkénti indításszámot (plays), helyben is megjegyezzük a gyors sorrendhez */
+let PLAYS = (() => { try { return JSON.parse(localStorage.getItem('hgws_plays') || '{}') || {}; } catch (_) { return {}; } })();
+const byPop = l => l.map((g, i) => [g, i]).sort((a, b) => (PLAYS[b[0].id] || 0) - (PLAYS[a[0].id] || 0) || a[1] - b[1]).map(x => x[0]);
+function popOrder() { const wrap = $('#games'); if (!wrap.children.length) return; const els = [...wrap.children]; byPop(GAMES).forEach((g, i) => { const el = els.find(x => x.dataset.id === g.id); if (el) { wrap.appendChild(el); el.querySelector('.tag').textContent = String(i + 1).padStart(2, '0'); } }); }
+const launch = gm => { if (window.top !== window) parent.postMessage({ hgws: 'play', game: gm.id }, location.origin); openGame(gm); };
 const EXT = $('#ext'), EXF = $('#extf');
 // a külön oldalon futó játékok (pl. Az Átemelőtelep) eredménye ide érkezik, innen megy tovább a ranglistára
 addEventListener('message', e => { if (e.origin !== location.origin || e.source !== EXF.contentWindow || !e.data || e.data.hgws !== 'score') return; const g = GAMES.find(x => x.id === e.data.game && x.lbx); if (!g || !(e.data.score > 0)) return;
@@ -102,22 +109,23 @@ function renderCards() {
   const wrap = $('#games');
   if (!wrap.children.length) {
     GAMES.forEach((gm, i) => {
-      const el = document.createElement('article'); el.className = 'card reveal'; el.tabIndex = 0; el.setAttribute('role', 'button');
+      const el = document.createElement('article'); el.className = 'card reveal'; el.dataset.id = gm.id; el.tabIndex = 0; el.setAttribute('role', 'button');
       el.innerHTML = `<span class="tag">${String(i + 1).padStart(2, '0')}</span><div class="art"><canvas width="320" height="140"></canvas></div><h3>${gm.name}</h3>${gm.sponsor ? `<span class="spon">${gm.sponsor}</span>` : ''}<p>${gm.desc.split('.')[0]}.</p><div class="foot"><span class="best" data-id="${gm.id}"${gm.ext ? ' data-ext="1"' : ''}></span><span class="play">JÁTÉK ▶</span></div>`;
-      el.addEventListener('click', () => openGame(gm)); el.addEventListener('keydown', e => { if (e.key === 'Enter') openGame(gm); });
+      el.addEventListener('click', () => launch(gm)); el.addEventListener('keydown', e => { if (e.key === 'Enter') launch(gm); });
       if (gm.lock) { el.hidden = true; el.dataset.lock = '1'; } wrap.appendChild(el); io.observe(el);
     });
     const arts = [...wrap.querySelectorAll('canvas')];
     let vis = false; new IntersectionObserver(e => vis = e[0].isIntersecting).observe(wrap);
     (function anim(now) { requestAnimationFrame(anim); if (!vis || document.hidden || gEl.classList.contains('open')) return;
       arts.forEach((c, i) => ARTS[GAMES[i].id](c, c.getContext('2d'), now / 1000)); })(0);
+    popOrder();
   }
   wrap.querySelectorAll('.best').forEach(b => { if (b.dataset.ext) { const eg = GAMES.find(x => x.id === b.dataset.id); b.textContent = (eg && eg.tag) || 'DEMO'; return; } const v = store.get('best_' + b.dataset.id), gm = GAMES.find(x => x.id === b.dataset.id), w = store.get('wins_' + b.dataset.id); b.textContent = 'REKORD: ' + bigNum(v) + (gm.lb ? ' ' + gm.lb : '') + (w ? ' · 🏆×' + w : ''); });
 }
 renderCards();
 $('#yr').textContent = new Date().getFullYear();
 startHero();
-function deep() { const m = location.hash.match(/^#play=(\w+)(?:\.(\w+))?/); const gm = m && GAMES.find(x => x.id === m[1]); if (gm) { gm.room = m[2] || ''; openGame(gm); history.replaceState(null, '', location.pathname + location.search); } }
+function deep() { const m = location.hash.match(/^#play=(\w+)(?:\.(\w+))?/); const gm = m && GAMES.find(x => x.id === m[1]); if (gm) { gm.room = m[2] || ''; launch(gm); history.replaceState(null, '', location.pathname + location.search); } }
 deep(); addEventListener('hashchange', deep);
 /* online ranglista: az adatokat a HGWS főoldal küldi (ott van a bejelentkezés) */
 let LB = null, lbt = 'week';
@@ -129,7 +137,7 @@ function lbDraw() {
   $('#lbn').innerHTML = LB.guest
     ? `Vendégként <b>${esc(LB.nick)}</b> néven szerepelsz a ranglistán. <button class="lbnick" data-nick>✏️ Becenév módosítása</button>`
     : base;
-  $('#lbg').innerHTML = GAMES.filter(g => !g.ext || g.lbx).map(g => { const l = (LB.boards[g.id] || {})[lbt] || [];
+  $('#lbg').innerHTML = byPop(GAMES).filter(g => !g.ext || g.lbx).map(g => { const l = (LB.boards[g.id] || {})[lbt] || [];
     return `<div class="lbc${g.unit ? ' wide' : ''}"><h4>${g.icon || ''} ${g.name}</h4>${l.length ? l.map((r, i) => `<div class="lbr${r.me ? ' me' : ''}${LB.admin && r.uid ? ' adm' : ''}"><i>${['🥇', '🥈', '🥉'][i] || i + 1}</i><span${r.uid ? ` class="lbu" data-prof="${esc(r.uid)}" data-pn="${r.guest ? esc(r.name) : ''}"` : ''}>${esc(r.name)}${r.guest ? '<em class="lbg2">VENDÉG</em>' : ''}</span><b>${r.wins ? `<em class="lbw2" title="Arany Locsolófej">🏆×${r.wins}</em>` : ''}${g.fmt ? g.fmt(r.score) : bigNum(r.score)}${g.lb ? ' ' + g.lb : ''}</b>${LB.admin && r.uid ? `<button class="lbdel" data-del="${g.id}|${esc(r.uid)}" title="Eredmény törlése">🗑</button>` : ''}</div>`).join('') : '<p class="lbe">Még senki – légy te az első!</p>'}</div>`; }).join('');
 }
 $('#lbw').addEventListener('click', e => { if (e.target.closest('[data-nick]')) { parent.postMessage({ hgws: 'nickreq' }, location.origin); return; }
@@ -137,7 +145,8 @@ $('#lbw').addEventListener('click', e => { if (e.target.closest('[data-nick]')) 
   const del = e.target.closest('[data-del]');
   if (del) { if (!del.classList.contains('sure')) { document.querySelectorAll('.lbdel.sure').forEach(x => { x.classList.remove('sure'); x.textContent = '🗑'; }); del.classList.add('sure'); del.textContent = 'Biztos?'; clearTimeout(del._t); del._t = setTimeout(() => { del.classList.remove('sure'); del.textContent = '🗑'; }, 3000); return; }
     const [game, uid] = del.dataset.del.split('|'); del.disabled = true; del.textContent = '…'; parent.postMessage({ hgws: 'lbdel', game, uid }, location.origin); return; } const b = e.target.closest('[data-lbt]'); if (!b) return; lbt = b.dataset.lbt; document.querySelectorAll('[data-lbt]').forEach(x => x.classList.toggle('on', x === b)); lbDraw(); });
-addEventListener('message', e => { if (e.origin !== location.origin || e.data?.hgws !== 'lb') return; LB = e.data; lbDraw();
+addEventListener('message', e => { if (e.origin !== location.origin || e.data?.hgws !== 'lb') return; LB = e.data;
+  if (LB.plays) { PLAYS = LB.plays; try { localStorage.setItem('hgws_plays', JSON.stringify(PLAYS)); } catch (_) {} popOrder(); } lbDraw();
   window.HGZQ_SEEN = true; window.HGZQ_OK = LB.beta === true; document.querySelectorAll('#games [data-lock]').forEach(el => { el.hidden = !window.HGZQ_OK; }); if (zqWait) { zqWait = false; if (window.HGZQ_OK) openExt(ZeroQuest); } });
 if (window.top !== window) parent.postMessage({ hgws: 'lbreq' }, location.origin);
 // a helyi rekordok felszinkronizálása a ranglistára: betöltéskor (a játékok a kör/játék végén maguk küldik az új eredményt)
