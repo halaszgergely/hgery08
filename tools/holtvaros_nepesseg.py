@@ -2,7 +2,7 @@
 """Holtváros – valós népesség szétosztása az épületekre.
 
 A <megye>.json települései (OSM population, ezer fő) mellé kiszámolja, hogy a település
-lakossága hány „súlyozott szintterület” egységre oszlik el (alapterület × max(1, magasság/3)).
+lakossága hány „súlyozott szintterület” egységre oszlik el (alapterület × max(1, magasság/3), a csarnokok 8%-kal).
 Minden épület ahhoz a településhez tartozik, amelyiknél a (távolság − hatósugár) a legkisebb
 (ugyanaz a képlet, mint a játékban). Kimenet a .json-ba:
   towns[i][4] = lakos / súlyozott m² (sűrűségi szorzó; 0 = nincs adat, a játék becsül)
@@ -14,6 +14,7 @@ import numpy as np
 
 DIR = os.path.join(os.path.dirname(__file__), '..', 'jatekok', 'holtvaros', 'terkep')
 CELL = 500
+IND = .08   # nagy alapterületű, alacsony épület (csarnok, gyár, áruház): alig laknak benne
 
 def buildings(haz, TXN, TYN, T):
     xs, ys, ws = [], [], []
@@ -26,14 +27,14 @@ def buildings(haz, TXN, TYN, T):
         if nr:
             xy = a[:, :4].copy().view('<u2').reshape(-1, 2).astype(np.float64) / 32
             w = a[:, 4].astype(np.float64); d = a[:, 5].astype(np.float64); h = a[:, 7].astype(np.float64)
-            xs.append(bx + xy[:, 0]); ys.append(by + xy[:, 1]); ws.append(w * d * np.maximum(1, h / 3))
+            ar = w * d; xs.append(bx + xy[:, 0]); ys.append(by + xy[:, 1]); ws.append(ar * np.maximum(1, h / 3) * np.where((ar > 2500) & (h <= 15), IND, 1))
         o, end = off + nr * 8, off + nr * 8 + pb
         px, py, pw = [], [], []
         while o < end:
             x, y, n, h = struct.unpack_from('<HHBB', haz, o); o += 6
             p = np.frombuffer(haz, dtype='<i2', count=n * 2, offset=o).reshape(-1, 2).astype(np.float64) / 4; o += 4 * n
             q = np.roll(p, -1, axis=0); ar = abs((p[:, 0] * q[:, 1] - q[:, 0] * p[:, 1]).sum()) / 2
-            px.append(bx + x / 32); py.append(by + y / 32); pw.append(ar * max(1, h / 3))
+            px.append(bx + x / 32); py.append(by + y / 32); pw.append(ar * max(1, h / 3) * (IND if ar > 2500 and h <= 15 else 1))
         if px: xs.append(np.array(px)); ys.append(np.array(py)); ws.append(np.array(pw))
     return np.concatenate(xs), np.concatenate(ys), np.concatenate(ws)
 

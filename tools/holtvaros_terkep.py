@@ -124,6 +124,8 @@ def work(a):
                     if len(r) >= 4 and r[0] == r[-1]: br += r; bl.append(len(r)); bh.append(max(0, min(255, int(round(hv)))))
                     continue
                 refs = None; hw = t.get(b'highway')
+                # szervizutak: gyár- és telephelyek belső útjai, sikátorok (a parkolósávok, kocsibejárók nem)
+                if hw == b'service' and t.get(b'service', b'') in (b'', b'alley', b'yard', b'industrial'): hw = b'unclassified'
                 if hw in ROAD and t.get(b'area') != b'yes':
                     refs = np.array(zzl(pk(rb)), np.int64); out.append(('r', ROAD[hw] | (8 if t.get(b'bridge', b'no') != b'no' else 0) | (16 if t.get(b'tunnel', b'no') != b'no' else 0), refs)); continue
                 if t.get(b'railway') == b'rail' and b'service' not in t and t.get(b'tunnel', b'no') == b'no': out.append(('t', np.array(zzl(pk(rb)), np.int64))); continue
