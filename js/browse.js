@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611210955';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611210955';
-import * as Player from './player.js?v=202611210955';
-import * as Party from './party.js?v=202611210955';
-import * as VP from './vplayer.js?v=202611210955';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611210955';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611211432';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611211432';
+import * as Player from './player.js?v=202611211432';
+import * as Party from './party.js?v=202611211432';
+import * as VP from './vplayer.js?v=202611211432';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611211432';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -186,7 +186,7 @@ export function home() {
     ${tickerHtml()}
   </div>${footHtml()}`;
   C.renderOwnerBar();
-  wireRows(page); heroWire(f); Player.refreshMarks(); applyTint($('#hero'), img(f));
+  wireRows(page); heroWire(f); Player.refreshMarks(); applyTint($('#hero'), img(f)); loadPlays();
 }
 function heroHtml(v) {
   const future = v.soon && v.premiere && new Date(v.premiere + 'T00:00:00') > new Date();
@@ -252,9 +252,9 @@ export const GAMES = [
   { id: 'vizagyu', name: 'Vízágyú', icon: '💦', desc: 'Kaktuszok és tűzgolyók zúdulnak a kertre. Célozz a vízágyúval!', c: '#ff7a6e' },
   { id: 'csepp', name: 'Csepp Futam', icon: '💧', desc: 'Repülj át a csövek között egy bátor vízcseppel – egy ütközés és vége!', c: '#e8b656' },
   { id: 'ugro', name: 'Cseppugró', icon: '🫧', unit: 'm', desc: 'Pattogj levélről levélre egyre magasabbra – a száraz levél letörik, a locsolófej fellő!', c: '#5ee08a' },
-  { id: 'viztorony', name: 'Víztorony', icon: '🗼', unit: 'm', desc: 'Mássz fel a víztorony tetejére az Arany Locsolófejért – egy rossz ugrás, és zuhansz!', c: '#b48cff', sponsor: 'A Zerosites támogatásával' },
+  { id: 'viztorony', name: 'Víztorony', icon: '🗼', unit: 'm', desc: 'Mássz fel a víztorony tetejére az Arany Locsolófejért – egy rossz ugrás, és zuhansz!', c: '#b48cff' },
   { id: 'drift', name: 'Drift Király', icon: '🏎️', desc: 'Felülnézetes drift-verseny 10 pályán, szellemautókkal és kétjátékos móddal.', c: '#ff5a4d' },
-  { id: 'holtvaros', name: 'Holtváros', icon: '🧟', unit: 'pont', desc: 'Védd meg a várost a zombijárványtól: zóna, kapuk, őrség, légicsapás. A Zombies Aren\'t Real ihlette.', c: '#7dff4a', sponsor: 'A Zerosites támogatásával' },
+  { id: 'holtvaros', name: 'Holtváros', icon: '🧟', unit: 'pont', desc: 'Védd meg a várost a zombijárványtól: zóna, kapuk, őrség, légicsapás. A Zombies Aren\'t Real ihlette.', c: '#7dff4a' },
   { id: 'atemelotelep', name: 'Az Átemelőtelep', icon: '🏭', desc: 'Éjszakai ügyelet egy szabotált szennyvízátemelőn – mielőtt túlcsordul a medence. Rekord: a leggyorsabb teljes idő.', c: '#e8b656', fmt: v => { const t = Math.max(0, 1e6 - v); return Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0'); } },
   { id: 'birodalom', name: 'Öntöző Birodalom', icon: '🌱', unit: 'Ft', desc: 'Építs csőhálózatot, ültess kertet és ültetvényt – a kerted akkor is termel, amikor nem vagy itt.', c: '#6fcf6a' }
 ];
@@ -263,10 +263,28 @@ const EXTRA = [{ id: 'aranylocsolofej', name: 'Az Arany Locsolófej', icon: '�
 const betaOk = () => { try { return !!C && !C.S.guest && (C.isAdmin() || (C.S.me?.tags || []).some(id => /b[eé]ta/i.test(C.S.tags.find(t => t.id === id)?.name || ''))); } catch (_) { return false; } };
 const ZQ = { id: 'zeroquest', name: 'Zero Quest', icon: '⚔️', desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében – zárt béta.', c: '#e8b656', demo: 1, beta: 1 };
 const extras = () => betaOk() ? [...EXTRA, ZQ] : EXTRA;
+/* „A Zerosites támogatásával” – minden játék, kivéve a három klasszikust */
+const NOSPON = ['locsolo', 'vizagyu', 'csepp'];
+[...GAMES, ...EXTRA, ZQ].forEach(g => { if (!NOSPON.includes(g.id)) g.sponsor = 'A Zerosites támogatásával'; });
+/* népszerűség: játékonkénti indításszám (plays/{játék}.n), munkamenetenként játékonként egyszer nő */
+let PLAYS = (() => { try { return JSON.parse(localStorage.getItem('hgws_plays') || '{}') || {}; } catch (_) { return {}; } })(), playsAt = 0;
+const byPop = l => l.map((g, i) => [g, i]).sort((a, b) => (PLAYS[b[0].id] || 0) - (PLAYS[a[0].id] || 0) || a[1] - b[1]).map(x => x[0]);
+async function loadPlays() {
+  if (Date.now() - playsAt < 60e3) return PLAYS; playsAt = Date.now();
+  try { const s = await FB.getDocs(FB.collection(db, 'plays')); const o = {}; s.docs.forEach(d => { o[d.id] = +d.data().n || 0; }); PLAYS = o; localStorage.setItem('hgws_plays', JSON.stringify(o)); } catch (_) {}
+  const g = $('.arcrow .agrid'); if (g) byPop([...GAMES, ...extras()]).forEach((x, i) => { const a = g.querySelector(`[href="#/arcade/${x.id}"]`); if (a) { g.appendChild(a); a.querySelector('.an').textContent = String(i + 1).padStart(2, '0'); } });
+  return PLAYS;
+}
+function countPlay(id) {
+  if (!/^[a-z0-9]{2,24}$/.test(id || '') || !C.uid()) return;
+  try { const k = 'hgws_played_' + id; if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1'); } catch (_) {}
+  PLAYS[id] = (PLAYS[id] || 0) + 1;
+  FB.setDoc(FB.doc(db, 'plays', id), { n: FB.increment(1) }, { merge: true }).catch(() => {});
+}
 const best = id => { try { return +localStorage.getItem('hgws_best_' + id) || 0; } catch (_) { return 0; } };
 function arcadeRow() {
   return `<section class="row arcrow"><div class="rowh"><h2><i class="ic ic-gamepad-2"></i> HGWS Arcade</h2><a href="#/arcade">Mind ›</a></div>
-    <div class="agrid">${[...GAMES, ...extras()].map((g, i) => `<a class="acard" href="#/arcade/${g.id}" style="--c:${g.c}"><span class="an">${String(i + 1).padStart(2, '0')}</span><span class="ai">${g.icon}</span>
+    <div class="agrid">${byPop([...GAMES, ...extras()]).map((g, i) => `<a class="acard" href="#/arcade/${g.id}" style="--c:${g.c}"><span class="an">${String(i + 1).padStart(2, '0')}</span><span class="ai">${g.icon}</span>
       <b>${esc(g.name)}</b>${g.sponsor ? `<span class="aspon">${esc(g.sponsor)}</span>` : ''}<small>${esc(g.desc)}</small><span class="af"><em>${g.tag ? g.tag : g.beta ? 'ZÁRT BÉTA' : g.demo ? 'DEMO' : 'REKORD: ' + bigNum(best(g.id)) + (g.unit ? ' ' + g.unit : '')}</em><i>Játék <i class="ic ic-play"></i></i></span></a>`).join('')}</div></section>`;
 }
 /* ha a tagek vagy a saját fiók megváltozik, a zárt béta jogosultságot újraküldjük az Arcade-nak */
@@ -296,13 +314,13 @@ async function topOf(lb, n = 10) {
     return s.docs.map(d => ({ uid: d.id, score: lbDec(d.data().best), wins: d.data().wins || 0, nick: d.data().nick })).sort((a, b) => b.score - a.score || b.wins - a.wins).slice(0, n); } catch (_) { return []; }
 }
 async function sendBoards(win) {
-  const wk = weekKey(), boards = {};
+  const wk = weekKey(), boards = {}, plays = await loadPlays();
   await Promise.all(GAMES.map(async g => {
     const [all, week] = await Promise.all([topOf(g.id), topOf(g.id + '_' + wk)]);
     const adm = C.isAdmin(), fmt = l => l.map(r => ({ name: lbName(r.uid, r.nick), guest: !!r.nick, score: r.score, wins: r.wins, me: r.uid === C.uid(), uid: r.uid }));
     boards[g.id] = { all: fmt(all), week: fmt(week) };
   }));
-  win?.postMessage({ hgws: 'lb', boards, week: wk.replace('-W', '. év ') + '. hét', guest: guest(), nick: guest() ? getNick() : '', admin: C.isAdmin(), beta: betaOk() }, location.origin);
+  win?.postMessage({ hgws: 'lb', boards, plays, week: wk.replace('-W', '. év ') + '. hét', guest: guest(), nick: guest() ? getNick() : '', admin: C.isAdmin(), beta: betaOk() }, location.origin);
 }
 /* Drift Király: pályánkénti legjobb kör (szellem) és legjobb verseny-idő */
 const okTrack = t => typeof t === 'string' && /^[a-z0-9_]{1,24}$/.test(t);
@@ -425,6 +443,7 @@ addEventListener('message', async e => {
   const fr = $('.arcframe'); if (!fr || e.source !== fr.contentWindow) return;
   if (e.data.hgws === 'score') { await saveScore(e.data.game, e.data.score, !!e.data.win); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbreq') sendBoards(fr.contentWindow);
+  if (e.data.hgws === 'play') countPlay(e.data.game);
   if (e.data.hgws === 'sync' && !guest() && C.uid()) { const first = !synced; synced = true; let ch = 0; for (const [g, v] of Object.entries(e.data.bests || {})) if (v > (syncBest[g] || 0)) { syncBest[g] = v; ch = 1; await saveScore(g, v, false, first); } if (ch) sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'nickreq') { await renameNick(); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbprof') lbProfile(e.data.uid, e.data.nick);
