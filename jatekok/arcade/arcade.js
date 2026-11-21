@@ -20,7 +20,7 @@ const ZeroQuest = { id: 'zeroquest', name: 'ZERO QUEST', ext: 'jatekok/zeroquest
   desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében: küldetések, szintlépés, felszerelés és egy ébredő őr a romok alatt. Zárt béta.' };
 const Drift = window.HGDrift ? window.HGDrift({ G, Sfx, rr, store, hud }) : null;
 const Zombi = window.HGZombi ? window.HGZombi({ G, Sfx, rr, store, hud }) : null;
-const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Ugro, Torony, Birodalom, BoOnline, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, Atemelotelep, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
+const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Ugro, Torony, Birodalom, BoOnline, Aszaly, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, Atemelotelep, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
 const NOSPON = ['locsolo', 'vizagyu', 'csepp'];
 GAMES.forEach(g => { if (NOSPON.includes(g.id)) delete g.sponsor; else g.sponsor = 'A Zerosites támogatásával'; });
 /* népszerűség: a főoldal küldi a játékonkénti indításszámot (plays), helyben is megjegyezzük a gyors sorrendhez */
@@ -45,6 +45,7 @@ const ARTS = {
       const k = (t * .6) % 1; x.fillStyle = '#9fdcff'; x.beginPath(); x.arc(N[a][0] + (N[b][0] - N[a][0]) * k, N[a][1] + (N[b][1] - N[a][1]) * k, 3, 0, 6.283); x.fill(); }
     for (const [px, py, col, r] of N) { x.fillStyle = col + '44'; x.strokeStyle = col; x.lineWidth = 2.5; x.beginPath(); x.arc(px, py, r * (1 + .06 * Math.sin(t * 2 + px)), 0, 6.283); x.fill(); x.stroke(); }
     x.fillStyle = '#fff3c4'; x.font = '800 15px system-ui'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('🏛', N[0][0], N[0][1] + 1); },
+  aszaly: (c, x, t) => Aszaly.art(c, x, t),
   drift: (c, x, t) => Drift && Drift.art(c, x, t),
   holtvaros: (c, x, t) => Zombi && Zombi.art(c, x, t),
   birodalom: (c, x, t) => { const W = c.width, H = c.height, s = 22, ox = (W - s * 11) / 2, oy = (H - s * 5) / 2; x.fillStyle = '#0f2a1a'; x.fillRect(0, 0, W, H);
