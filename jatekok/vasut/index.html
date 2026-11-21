@@ -8,7 +8,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}[hidden]{di
 .gl{background:var(--glass);border:1px solid rgba(140,180,230,.15);border-radius:14px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .b{border:1px solid var(--ln);background:var(--pn2);color:var(--ink);border-radius:11px;padding:8px 13px;font:700 13px Inter;cursor:pointer;display:inline-flex;align-items:center;gap:6px;pointer-events:auto;white-space:nowrap}
 .b:hover{border-color:rgba(232,182,86,.6)}.b.g{background:linear-gradient(180deg,#f0c56a,#d79a32);color:#1a1004;border:0}.b.sm{padding:5px 9px;font-size:12px;border-radius:9px}.b:disabled{opacity:.4;cursor:default}
-.b.on{border-color:var(--gold);color:var(--gold2)}
+.b.on{border-color:var(--gold);color:var(--gold2)}#bPark.on,#cPk.on{border-color:#ff6a5a;color:#fff;background:#8a2a22}
 #top{position:fixed;left:10px;right:10px;top:10px;display:flex;gap:8px;align-items:flex-start;pointer-events:none;z-index:3}
 #money{padding:8px 14px;font:800 17px Inter;color:var(--gold2)}#clock{padding:8px 12px;font:700 13px Inter;color:var(--mut)}
 #top .sp{flex:1}
@@ -45,19 +45,19 @@ h2{font:800 11px Inter;letter-spacing:.18em;color:var(--mut);margin:14px 0 6px;t
 <div id="loco" class="gl">
   <div class="row"><div id="spd">0<small>km/h</small></div><div id="lim">–</div><div class="grow" style="flex:1"></div><div id="rev"><button class="b sm" data-r="-1">H</button><button class="b sm" data-r="0">N</button><button class="b sm" data-r="1">E</button></div></div>
   <div class="lab" style="margin-top:6px">Teljesítmény <span id="thrT"></span></div><div class="notch" id="thr"></div>
-  <div class="lab">Fék</div><div class="notch br" id="brk"></div>
+  <div class="row"><div class="lab" style="flex:1">Fék</div><button class="b sm" id="bPark" title="Rögzítőfék (P)">🅿 Rögzítőfék</button></div><div class="notch br" id="brk"></div>
   <div class="lab"><span id="fuT">Üzemanyag</span></div><div class="bar"><i id="fuB"></i></div>
   <div class="mut" id="locoN" style="font-size:12px;margin-top:4px"></div>
 </div>
 <div id="sw" class="gl"><span id="swT" class="mut">–</span><button class="b sm" id="bSw">↔ Váltó (V)</button><div id="acts"></div></div>
-<div id="ctl"><button class="b" id="cUp">▲</button><button class="b" id="cBr">⛔</button><button class="b" id="cDn">▼</button><button class="b" id="cSw">↔</button></div>
+<div id="ctl"><button class="b" id="cUp">▲</button><button class="b" id="cBr">⛔</button><button class="b" id="cDn">▼</button><button class="b" id="cSw">↔</button><button class="b" id="cPk">🅿</button></div>
 <div id="toast" class="gl" hidden></div>
 <div id="pnl" hidden><div class="card" id="pc"></div></div>
 <div id="menu"><div class="card" style="width:min(520px,100%)"><h1>Mozdonyvezető<small>TEHERFUVAROZÁS MAGYARORSZÁG VALÓDI VASÚTHÁLÓZATÁN</small></h1>
   <p class="mut" id="mLoad" style="margin-top:12px">Vasúthálózat betöltése…</p>
   <div class="row" style="margin-top:14px"><button class="b g" id="mPlay" disabled>▶ Játék</button><button class="b" id="mNew" hidden>Új játék</button></div>
-  <h2>Irányítás</h2><div class="keys"><b>W / S</b><span>teljesítmény fel / le</span><b>Szóköz, B / N</b><span>fék (tartva) · fékfokozat fel / le</span><b>R</b><span>irány: előre – üres – hátra</span><b>V</b><span>a következő váltó állítása</span><b>M</b><span>térkép</span><b>Egér</b><span>görgő: nagyítás · húzás: mozgatás · kattintás a váltóra: állítás</span></div>
+  <h2>Irányítás</h2><div class="keys"><b>W / S</b><span>teljesítmény fel / le</span><b>Szóköz, B / N</b><span>fék (tartva) · fékfokozat fel / le</span><b>P</b><span>rögzítőfék be / ki</span><b>R</b><span>irány: előre – üres – hátra</span><b>V</b><span>a következő váltó állítása</span><b>M</b><span>térkép</span><b>Egér</b><span>görgő: nagyítás · húzás: mozgatás · kattintás a váltóra: állítás</span></div>
   <p class="mut" style="margin-top:12px;font-size:12px">Térkép és vasúthálózat: © OpenStreetMap-közreműködők (ODbL)</p></div></div>
-<script src="taj.js?v=202611212058"></script>
-<script src="vasut.js?v=202611212058"></script>
+<script src="taj.js?v=202611212123"></script>
+<script src="vasut.js?v=202611212123"></script>
 </body></html>
