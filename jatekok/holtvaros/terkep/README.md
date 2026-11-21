@@ -15,4 +15,6 @@ A játék térképei Magyarország OpenStreetMap-kivonatából készülnek (© O
 ```
 python3 tools/terkep_osszefuz.py        # a 4 részből összefűzi a .osm.pbf-et (nem kerül a repóba)
 python3 tools/holtvaros_terkep.py       # kb. 6 perc; csak numpy és PIL kell hozzá
+python3 tools/holtvaros_nepesseg.py     # valós népesség az épületekre + népsűrűség-rács (a .json-ba)
+python3 tools/holtvaros_poi.py          # kórházak, rendőrség, katonai létesítmények (a .json „poi” mezője)
 ```
