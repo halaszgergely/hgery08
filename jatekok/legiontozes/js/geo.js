@@ -4,7 +4,7 @@
    - Részletes domborzat: AWS Terrain Tiles (Terrarium PNG, kulcs nélkül), a gép körül dinamikusan, memóriás LRU-cache-sel.
    - Ha egy csempe nem tölthető be, az alap domborzat + determinisztikus zaj a tartalék.
    - A repülőterek környéke kisimítva (fix magasság), hogy a pálya sík legyen. */
-import { KX, KY, LON0, LAT0, REPTEREK, W_MAX, H_MAX } from './config.js?v=202611212316';
+import { KX, KY, LON0, LAT0, REPTEREK, W_MAX, H_MAX } from './config.js?v=202611212346';
 
 const TZ = 10, TILE_URL = (z, x, y) => `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
 let Z = null, ZN = 0, ZM = 0, ZC = 1000, CLS = null, CW = 0, CH = 0, CR = 250, towns = [];

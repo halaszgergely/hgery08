@@ -1,7 +1,7 @@
 /* Vízpermet: részecskék (egyetlen Points-hívás), a földet érve „nedves folt” a talajon és találat a küldetésnek.
    Géptípusonként: fúvókasor (szárny alatti cső), rámpa (egy tömbben), vízzsák (a zsák alól), felhőöntözés (nagy magasságból szétterül). */
 import * as THREE from 'three';
-import { ground, isWater } from './geo.js?v=202611212316';
+import { ground, isWater } from './geo.js?v=202611212346';
 
 export function createSpray(scene, max = 1200) {
   const pos = new Float32Array(max * 3), vel = new Float32Array(max * 3), life = new Float32Array(max), vol = new Float32Array(max), rad = new Float32Array(max), size = new Float32Array(max);

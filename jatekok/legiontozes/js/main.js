@@ -1,18 +1,18 @@
 /* HGWS Légi Öntözés – főprogram: betöltés, renderelés, játékhurok, kamerák, töltés, küldetések, feloldások. */
 import * as THREE from 'three';
-import { GEPEK, GEP, REPTER, REPTEREK, KULDETESEK, FORGO, ZERO_HELY, GAME } from './config.js?v=202611212316';
-import * as GEO from './geo.js?v=202611212316';
-import { createTerrain } from './terep.js?v=202611212316';
-import { createWorld } from './vilag.js?v=202611212316';
-import { buildModel, animate } from './modellek.js?v=202611212316';
-import { createBody, placeOn, step } from './fizika.js?v=202611212316';
-import { createSpray } from './permet.js?v=202611212316';
-import { createMission } from './kuldetes.js?v=202611212316';
-import { createAudio } from './hang.js?v=202611212316';
-import { createControls } from './iranyitas.js?v=202611212316';
-import { createHud, setMapImage, drawMap } from './hud.js?v=202611212316';
-import { createUI } from './ui.js?v=202611212316';
-import * as RL from './ranglista.js?v=202611212316';
+import { GEPEK, GEP, REPTER, REPTEREK, KULDETESEK, FORGO, ZERO_HELY, GAME } from './config.js?v=202611212346';
+import * as GEO from './geo.js?v=202611212346';
+import { createTerrain } from './terep.js?v=202611212346';
+import { createWorld } from './vilag.js?v=202611212346';
+import { buildModel, animate } from './modellek.js?v=202611212346';
+import { createBody, placeOn, step } from './fizika.js?v=202611212346';
+import { createSpray } from './permet.js?v=202611212346';
+import { createMission } from './kuldetes.js?v=202611212346';
+import { createAudio } from './hang.js?v=202611212346';
+import { createControls } from './iranyitas.js?v=202611212346';
+import { createHud, setMapImage, drawMap } from './hud.js?v=202611212346';
+import { createUI } from './ui.js?v=202611212346';
+import * as RL from './ranglista.js?v=202611212346';
 
 const $ = s => document.querySelector(s);
 const LS = 'hgws_legi_v1', TOUCH = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window;
