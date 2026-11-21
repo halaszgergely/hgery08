@@ -19,7 +19,7 @@ from holtvaros_terkep import fields, pk, pkn, zz, zzl, blobs, block, dp, OUT as 
 OUTD = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'jatekok', 'vasut')
 LON0, LAT1 = 16.0, 48.65
 KX, KY = 111320 * math.cos(math.radians(47.2)), 111190
-TAGK = {b'railway', b'service', b'electrified', b'maxspeed', b'name', b'usage', b'place', b'population', b'waterway', b'public_transport', b'train'}
+TAGK = {b'railway', b'service', b'electrified', b'maxspeed', b'name', b'usage', b'place', b'population', b'waterway', b'public_transport', b'train', b'building'}
 
 def work(a):
     mode, off, size = a; st, groups, gran, lato, lono = block(off, size); out = []
@@ -37,10 +37,13 @@ def work(a):
                 ks = pk(kb)
                 if not ki.intersection(ks): continue
                 t = {st[k]: st[v] for k, v in zip(ks, pk(vb)) if k in ki}
-                if t.get(b'railway') == b'rail' and b'service' not in t:
+                svc = t.get(b'service')
+                if t.get(b'railway') == b'rail' and svc in (None, b'siding', b'yard', b'crossover'):
                     try: vm = int(t.get(b'maxspeed', b'0').split()[0])
                     except ValueError: vm = 0
-                    out.append(('r', 1 if t.get(b'electrified', b'no') not in (b'no', b'') else 0, vm, zzl(pk(rb))))
+                    out.append(('r', 1 if t.get(b'electrified', b'no') not in (b'no', b'') else 0, vm, zzl(pk(rb)), 0 if svc is None else 1))
+                elif t.get(b'railway') == b'platform' or (t.get(b'public_transport') == b'platform' and t.get(b'train') == b'yes'): out.append(('p', zzl(pk(rb))))
+                elif t.get(b'building') == b'train_station': out.append(('b', zzl(pk(rb))))
                 elif t.get(b'waterway') == b'river': out.append(('w', t.get(b'name', b'').decode(), zzl(pk(rb))))
             elif mode == 'N' and gk == 2:
                 ib = lb = ob = kv = b''
@@ -71,12 +74,12 @@ def P(lon, lat): return (lon - LON0) * KX, (LAT1 - lat) * KY
 
 if __name__ == '__main__':
     import pickle
-    cache = '/tmp/vasut-osm.pkl'
+    cache = '/tmp/vasut-osm2.pkl'
     if os.path.exists(cache): W, N = pickle.load(open(cache, 'rb'))
     else:
         bl = blobs(); print(len(bl), 'blokk', flush=True)
         with Pool(2) as p: W = [r for o in p.imap_unordered(work, sorted([('W',) + b for b in bl]), 8) for r in o]
-        need = np.unique(np.array([r for w in W if w[0] == 'r' for r in w[3]] + [r for w in W if w[0] == 'w' for r in w[2]], np.int64))
+        need = np.unique(np.array([r for w in W if w[0] == 'r' for r in w[3]] + [r for w in W if w[0] in 'wpb' for r in (w[2] if w[0] == 'w' else w[1])], np.int64))
         with Pool(2, initializer=init, initargs=(need,)) as p: N = [r for o in p.imap_unordered(work, sorted([('N',) + b for b in bl]), 8) for r in o]
         pickle.dump((W, N), open(cache, 'wb'))
     rails = [w for w in W if w[0] == 'r']; rivers = [w for w in W if w[0] == 'w']
@@ -98,7 +101,7 @@ if __name__ == '__main__':
             if not len(j): return None
             nid[q] = len(nodes); nodes.append((float(xs[j[0]]), float(ys[j[0]])))
         return nid[q]
-    for _, el, vm, refs in rails:
+    for _, el, vm, refs, svc in rails:
         p0 = 0
         for k in range(1, len(refs)):
             if cnt.get(refs[k], 0) > 1 or k == len(refs) - 1:
@@ -108,7 +111,7 @@ if __name__ == '__main__':
                     a, b = node(seg[0]), node(seg[-1])
                     if a is not None and b is not None and a != b:
                         pts = [(px[i], py[i]) for i in keep]; L = sum(math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]) for i in range(len(pts) - 1))
-                        if L > 1: edges.append([a, b, L, el, vm, pts])
+                        if L > 1: edges.append([a, b, L, el, vm if vm or not svc else 30, pts, svc])
                 p0 = k
     print('csomópont', len(nodes), 'él', len(edges), flush=True)
     # kettes fokszámú csomópontok összevonása (azonos villamosítás / sebesség mellett), kis komponensek elhagyása
@@ -119,11 +122,11 @@ if __name__ == '__main__':
         ks = [k for k in ks if k not in dead]
         if len(ks) != 2 or ks[0] == ks[1]: continue
         e1, e2 = edges[ks[0]], edges[ks[1]]
-        if e1[3] != e2[3] or e1[4] != e2[4]: continue
+        if e1[3] != e2[3] or e1[4] != e2[4] or e1[6] != e2[6]: continue
         p1 = e1[5] if e1[1] == v else e1[5][::-1]; a = e1[0] if e1[1] == v else e1[1]
         p2 = e2[5] if e2[0] == v else e2[5][::-1]; b = e2[1] if e2[0] == v else e2[0]
         if a == b: continue
-        ne = [a, b, e1[2] + e2[2], e1[3], e1[4], p1 + p2[1:]]
+        ne = [a, b, e1[2] + e2[2], e1[3], e1[4], p1 + p2[1:], e1[6]]
         dead.add(ks[0]); dead.add(ks[1]); edges.append(ne); nk = len(edges) - 1
         for x in (a, b): adj[x] = [nk if k in (ks[0], ks[1]) else k for k in adj[x]]
         adj[v] = []
@@ -162,7 +165,7 @@ if __name__ == '__main__':
             a_, b_ = f2(cp[i]), f2(cp[j])
             if a_ == b_: continue
             par[a_] = b_; added += 1
-            el = 0; edges.append([i, j, max(d, 1), el, 0, [nodes[i], nodes[j]]]); deg[i] += 1; deg[j] += 1
+            el = 0; edges.append([i, j, max(d, 1), el, 0, [nodes[i], nodes[j]], 0]); deg[i] += 1; deg[j] += 1
         print('összekötés', rnd, added, flush=True)
         if not added: break
     # vonalvégek: ha a vonal folytatásában 150 m-en belül egy másik él fut (az OSM-ben közös pont nélkül), oda bekötjük (az élet ott kettévágjuk)
@@ -179,7 +182,9 @@ if __name__ == '__main__':
     splits = {}; links = []; links_direct = []
     for v in range(len(nodes)):
         if deg[v] != 1: continue
-        k0 = own[v][0]; e0 = edges[k0]; pts = e0[5] if e0[0] == v else e0[5][::-1]
+        k0 = own[v][0]; e0 = edges[k0]
+        if e0[6]: continue
+        pts = e0[5] if e0[0] == v else e0[5][::-1]
         x, y = pts[0]; j = 1
         while j < len(pts) - 1 and math.hypot(pts[j][0] - x, pts[j][1] - y) < 40: j += 1
         dx, dy = x - pts[j][0], y - pts[j][1]; l = math.hypot(dx, dy) or 1; dx, dy = dx / l, dy / l
@@ -204,13 +209,13 @@ if __name__ == '__main__':
             while ci < i: ci += 1; cur.append(pts[ci])
             nodes.append((px, py)); m = len(nodes) - 1; cur.append((px, py))
             L = sum(math.hypot(cur[q + 1][0] - cur[q][0], cur[q + 1][1] - cur[q][1]) for q in range(len(cur) - 1))
-            if L > .5: ne.append([a, m, L, e[3], e[4], cur])
+            if L > .5: ne.append([a, m, L, e[3], e[4], cur, e[6]])
             else: m = a
-            vx, vy = nodes[v]; ne.append([v, m, max(1, math.hypot(px - vx, py - vy)), e[3], e[4], [nodes[v], (px, py)]])
+            vx, vy = nodes[v]; ne.append([v, m, max(1, math.hypot(px - vx, py - vy)), e[3], e[4], [nodes[v], (px, py)], 0])
             a = m; cur = [(px, py)]
         cur += pts[ci + 1:]; L = sum(math.hypot(cur[q + 1][0] - cur[q][0], cur[q + 1][1] - cur[q][1]) for q in range(len(cur) - 1))
-        if L > .5 and a != e[1]: ne.append([a, e[1], L, e[3], e[4], cur])
-    edges = [e for k, e in enumerate(edges) if k not in rm] + ne + [[v, w, max(1, math.hypot(nodes[w][0] - nodes[v][0], nodes[w][1] - nodes[v][1])), 0, 0, [nodes[v], nodes[w]]] for v, w in links_direct if v != w]
+        if L > .5 and a != e[1]: ne.append([a, e[1], L, e[3], e[4], cur, e[6]])
+    edges = [e for k, e in enumerate(edges) if k not in rm] + ne + [[v, w, max(1, math.hypot(nodes[w][0] - nodes[v][0], nodes[w][1] - nodes[v][1])), 0, 0, [nodes[v], nodes[w]], 0] for v, w in links_direct if v != w]
     print('vonalvég-bekötés', len(links), flush=True)
     # komponensek
     par = list(range(len(nodes)))
@@ -242,7 +247,7 @@ if __name__ == '__main__':
         for gx in range(int(x // 500) - 1, int(x // 500) + 2):
             for gy in range(int(y // 500) - 1, int(y // 500) + 2):
                 for (px, py, k, s) in G.get((gx, gy), []):
-                    d = math.hypot(px - x, py - y)
+                    d = math.hypot(px - x, py - y) + (80 if edges[k][6] else 0)
                     if d < 300 and (best is None or d < best[0]): best = (d, k, s)
         if not best: continue
         name = re.sub(r'\s+(vasútállomás|megállóhely|pályaudvar\b(?=.*)|állomás)$', lambda m: ' pályaudvar' if 'pályaudvar' in m.group(0) else '', name).strip()
@@ -279,8 +284,17 @@ if __name__ == '__main__':
         big = name in ('Duna', 'Tisza', 'Dráva', 'Rába', 'Maros', 'Szamos', 'Körös', 'Sajó', 'Hármas-Körös')
         if L < (200 if big else 3000): continue
         k = dp(px, py, 120); riv.append([1 if big else 0] + [round(v) for i in k for v in (px[i], py[i])])
+    plat, sbld = [], []
+    for w in W:
+        if w[0] not in 'pb': continue
+        j = ix(w[1])
+        if len(j) < 2: continue
+        px = xs[j].tolist(); py = ys[j].tolist(); k = dp(px, py, 1.5); closed = w[1][0] == w[1][-1] and len(j) > 3
+        if w[0] == 'p': plat.append([1 if closed else 0] + [round(v) for i in k for v in (px[i], py[i])])
+        elif closed: sbld.append([round(v) for i in k for v in (px[i], py[i])])
+    print('peron', len(plat), 'állomásépület', len(sbld), flush=True)
     W_, H_ = idx['W'] * 100, idx['H'] * 100
     json.dump({'K': 1, 'W': W_, 'H': H_, 'n': [[round(x), round(y)] for x, y in nodes],
-               'e': [[e[0], e[1], round(e[2]), e[3], e[4], [round(v) for p in e[5] for v in p]] for e in edges],
+               'e': [[e[0], e[1], round(e[2]), e[3], e[4], [round(v) for p in e[5] for v in p], e[6]] for e in edges], 'pl': plat, 'sb': sbld,
                's': sts, 'o': outl, 'w': riv}, open(os.path.join(OUTD, 'halo.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     print('kész', os.path.getsize(os.path.join(OUTD, 'halo.json')) // 1024, 'kB', flush=True)
