@@ -1,10 +1,11 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611220039';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611220039';
-import * as Player from './player.js?v=202611220039';
-import * as Party from './party.js?v=202611220039';
-import * as VP from './vplayer.js?v=202611220039';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611220039';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611220026';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611220026';
+import * as Player from './player.js?v=202611220026';
+import * as Party from './party.js?v=202611220026';
+import * as VP from './vplayer.js?v=202611220026';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611220026';
+import * as ArcL from './arcade-lista.js?v=202611220026';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -297,17 +298,20 @@ function countPlay(id) {
   FB.setDoc(FB.doc(db, 'plays', id), { n: FB.increment(1) }, { merge: true }).catch(() => {});
 }
 const best = id => { try { return +localStorage.getItem('hgws_best_' + id) || 0; } catch (_) { return 0; } };
-function arcadeRow() {
-  return `<section class="row arcrow"><div class="rowh"><h2><i class="ic ic-gamepad-2"></i> HGWS Arcade</h2><a href="#/arcade">Mind ›</a></div>
-    <div class="agrid">${byPop([...GAMES, ...extras()]).map((g, i) => `<a class="acard" href="${g.href || '#/arcade/' + g.id}" style="--c:${g.c}"><span class="an">${String(i + 1).padStart(2, '0')}</span><span class="ai">${g.icon}</span>
-      <b>${esc(g.name)}</b>${g.sponsor ? `<span class="aspon">${esc(g.sponsor)}</span>` : ''}<small>${esc(g.desc)}</small><span class="af"><em>${g.tag ? g.tag : g.beta ? 'ZÁRT BÉTA' : g.demo ? 'DEMO' : 'REKORD: ' + (g.fmt ? g.fmt(best(g.id)) : bigNum(best(g.id)) + (g.unit ? ' ' + g.unit : ''))}</em><i>Játék <i class="ic ic-play"></i></i></span></a>`).join('')}</div></section>`;
-}
+/* az Arcade listaoldal (js/arcade-lista.js) csak ezeken át olvas: saját rekord, formázás, játékszám, top 10 */
+const arcCtx = { best, num: bigNum, beta: () => betaOk(), fmt: (id, v) => { const g = GAMES.find(x => x.id === id); return g && g.fmt ? g.fmt(v) : null; }, playsNow: () => PLAYS, plays: () => loadPlays(),
+  profile: (uid, nick) => lbProfile(uid, nick),
+  boards: async week => { const wk = weekKey(); return Promise.all(GAMES.map(async g => ({ id: g.id, name: g.name, icon: g.icon, rows: (await topOf(week ? g.id + '_' + wk : g.id, 10)).map(r => ({ uid: r.uid, nick: r.nick || '', name: lbName(r.uid, r.nick), wins: r.wins, me: r.uid === C.uid(), score: g.fmt ? g.fmt(r.score) : bigNum(r.score) + (g.unit ? ' ' + g.unit : '') })) }))); },
+  top: async id => { const g = GAMES.find(x => x.id === id); return (await topOf(id, 10)).map(r => ({ name: lbName(r.uid, r.nick), me: r.uid === C.uid(), score: g && g.fmt ? g.fmt(r.score) : bigNum(r.score) + (g && g.unit ? ' ' + g.unit : '') })); } };
+function arcadeRow() { return ArcL.homeRow(arcCtx); }
 /* ha a tagek vagy a saját fiók megváltozik, a zárt béta jogosultságot újraküldjük az Arcade-nak */
 export function tagsChanged() { const f = $('.arcframe'); if (f) sendBoards(f.contentWindow); }
 export function arcade(id) {
   cleanup();
   document.title = 'Arcade · HGWS';
   const [gid, rid] = String(id || '').split('.'), g = [...GAMES, ...extras()].find(x => x.id === gid);
+  if (!g) { ArcL.render($('#page'), arcCtx); awardChampions(); return; } // játék nélkül: az új listaoldal
+  ArcL.played(g.id);
   $('#page').innerHTML = `<iframe class="arcframe" src="arcade.html${new URL(import.meta.url).search}${g ? '#play=' + g.id + (rid && /^\w+$/.test(rid) ? '.' + rid : '') : ''}" title="HGWS Arcade" allow="autoplay; fullscreen"></iframe>`;
   const f = $('.arcframe');
   f.addEventListener('load', () => { try { f.contentWindow.focus(); } catch (_) {} });
@@ -464,7 +468,7 @@ addEventListener('message', async e => {
   if (e.data.hgws === 'sync' && !guest() && C.uid()) { const first = !synced; synced = true; let ch = 0; for (const [g, v] of Object.entries(e.data.bests || {})) if (v > (syncBest[g] || 0)) { syncBest[g] = v; ch = 1; await saveScore(g, v, false, first); } if (ch) sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'nickreq') { await renameNick(); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbprof') lbProfile(e.data.uid, e.data.nick);
-  if (e.data.hgws === 'nav' && e.data.to === '#/birodalom') location.hash = e.data.to;
+  if (e.data.hgws === 'nav' && (e.data.to === '#/birodalom' || e.data.to === '#/arcade')) location.hash = e.data.to;
   if (e.data.hgws === 'lbdel') { await delScore(e.data.game, e.data.uid); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'ghostreq') fr.contentWindow.postMessage({ hgws: 'ghosts', data: await ghostList(e.data.tracks), guest: guest() }, location.origin);
   if (e.data.hgws === 'ghostsave') await ghostSave(e.data);
