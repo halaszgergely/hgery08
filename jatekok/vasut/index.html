@@ -11,7 +11,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}[hidden]{di
 .b.on{border-color:var(--gold);color:var(--gold2)}#bPark.on,#cPk.on{border-color:#ff6a5a;color:#fff;background:#8a2a22}
 #top{position:fixed;left:10px;right:10px;top:10px;display:flex;gap:8px;align-items:flex-start;pointer-events:none;z-index:3}
 #money{padding:8px 14px;font:800 17px Inter;color:var(--gold2)}#clock{padding:8px 12px;font:700 13px Inter;color:var(--mut)}
-#top .sp{flex:1}
+#top .sp{flex:1}#srch{pointer-events:auto;position:relative;padding:0;width:min(320px,34vw)}#q{width:100%;box-sizing:border-box;background:transparent;border:0;outline:0;color:#eee;font:600 14px Inter,sans-serif;padding:10px 12px}#qr{position:absolute;left:0;right:0;top:calc(100% + 6px);background:rgba(16,18,22,.96);border:1px solid rgba(255,255,255,.12);border-radius:12px;max-height:60vh;overflow:auto;padding:4px}#qr div{padding:7px 10px;border-radius:8px;cursor:pointer;display:flex;gap:8px;align-items:baseline;font:500 13.5px Inter,sans-serif;color:#e6e6e6}#qr div.on,#qr div:hover{background:rgba(232,182,86,.16)}#qr small{color:#999;margin-left:auto;font-size:11.5px;white-space:nowrap}@media(max-width:700px){#srch{width:42vw}}
 #loco{position:fixed;left:10px;bottom:10px;padding:12px 14px;width:min(300px,calc(100vw - 20px));z-index:3;pointer-events:auto}
 #spd{font:900 38px/1 Inter;letter-spacing:-.02em}#spd small{font:700 13px Inter;color:var(--mut);margin-left:4px}
 #lim{display:inline-block;margin-left:10px;width:34px;height:34px;border-radius:50%;border:4px solid #d23;background:#fff;color:#111;font:900 13px/26px Inter;text-align:center;vertical-align:8px}
@@ -39,7 +39,7 @@ h2{font:800 11px Inter;letter-spacing:.18em;color:var(--mut);margin:14px 0 6px;t
 @media (hover:hover) and (pointer:fine){#ctl{display:none}}
 </style></head><body>
 <canvas id="c"></canvas>
-<div id="top"><div id="money" class="gl">–</div><div id="clock" class="gl">–</div><div class="sp"></div>
+<div id="top"><div id="money" class="gl">–</div><div id="clock" class="gl">–</div><div id="srch" class="gl"><input id="q" type="search" placeholder="🔍 Település, állomás, üzem" autocomplete="off" spellcheck="false"><div id="qr" hidden></div></div><div class="sp"></div>
   <button class="b" id="bFollow" hidden>🎯 Követés</button><button class="b" id="bMap">🗺️ Térkép</button><button class="b" id="bBoard">📋 Munkák</button><button class="b" id="bDepo">🏭 Depó</button><button class="b" id="bMenu">☰</button></div>
 <div id="jobs" class="gl" hidden></div>
 <div id="loco" class="gl">
@@ -58,6 +58,6 @@ h2{font:800 11px Inter;letter-spacing:.18em;color:var(--mut);margin:14px 0 6px;t
   <div class="row" style="margin-top:14px"><button class="b g" id="mPlay" disabled>▶ Játék</button><button class="b" id="mNew" hidden>Új játék</button></div>
   <h2>Irányítás</h2><div class="keys"><b>W / S</b><span>teljesítmény fel / le</span><b>Szóköz, B / N</b><span>fék (tartva) · fékfokozat fel / le</span><b>P</b><span>rögzítőfék be / ki</span><b>R</b><span>irány: előre – üres – hátra</span><b>V</b><span>a következő váltó állítása</span><b>M</b><span>térkép</span><b>Egér</b><span>görgő: nagyítás · húzás: mozgatás · kattintás a váltóra: állítás</span></div>
   <p class="mut" style="margin-top:12px;font-size:12px">Térkép és vasúthálózat: © OpenStreetMap-közreműködők (ODbL)</p></div></div>
-<script src="taj.js?v=202611212145"></script>
-<script src="vasut.js?v=202611212145"></script>
+<script src="taj.js?v=202611212200"></script>
+<script src="vasut.js?v=202611212200"></script>
 </body></html>

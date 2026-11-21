@@ -4,7 +4,7 @@
 Kimenet (jatekok/vasut/):
   taj_osztaly.png  0 mező / 1 erdő / 2 beépített / 3 víz / 4 külföld (×50), ugyanazon a rácson
   taj.jpg   domborzat-árnyékolás + erdők + beépített területek országos rasztere (RES m/képpont, a halo.json vetületében)
-  taj.json  { R: RES, nx, ny,
+  taj.json  { tw: [[név, x, y, népesség ezer fő (-1: városrész)]], R: RES, nx, ny,
               z: { c: 1000, nx, ny, b: base64 uint16 tengerszint feletti magasság (m) 1 km-es rácson } – a fizikához (emelkedő),
               r: [[típus, x0,y0,x1,y1,…], …] országos főúthálózat (a Holtváros-megyetérképekből),
               m: { megye: [ax, sx, ay, x0, y0, x1, y1] }  a megyei helyi koordináták → országos: X = ax + x·sx, Y = ay + y }
@@ -116,7 +116,7 @@ if __name__ == '__main__':
     col = np.where(t < .35, low + (mid - low) * (t / .35), mid + (high - mid) * ((t - .35) / .65))
     col = col * (.5 + .7 * hs[..., None])
     # erdők és beépített területek a megyei rétegekből
-    forest = Image.new('L', (nx, ny), 0); fd = ImageDraw.Draw(forest); water = Image.new('L', (nx, ny), 0); wd = ImageDraw.Draw(water); built = np.zeros((ny, nx), bool); roads = []
+    forest = Image.new('L', (nx, ny), 0); fd = ImageDraw.Draw(forest); water = Image.new('L', (nx, ny), 0); wd = ImageDraw.Draw(water); built = np.zeros((ny, nx), bool); roads = []; towns = []
     for cid, (ax, sx, ay, *_r) in mp.items():
         md = json.load(open(os.path.join(HOUT, cid + '.json'), encoding='utf-8'))
         for k, rs in md['green']:
@@ -132,6 +132,8 @@ if __name__ == '__main__':
         for dy in (0, .5):
             for dx in (0, .5):
                 X = ((ax + (xx + dx) * m['c'] * sx) / RES).astype(int); Y = ((ay + (yy + dy) * m['c']) / RES).astype(int); ok = (X >= 0) & (Y >= 0) & (X < nx) & (Y < ny); built[Y[ok], X[ok]] = True
+        for q in md['towns']: towns.append([q[0], round(ax + q[1] * sx), round(ay + q[2]), q[3]])
+        for q in md['labels']: towns.append([q[2], round(ax + q[0] * sx), round(ay + q[1]), -1])
         for tp, r in md['roads']:
             x = [ax + r[i] * sx for i in range(0, len(r) - 1, 2)]; y = [ay + r[i + 1] for i in range(0, len(r) - 1, 2)]
             if tp < 2: continue
@@ -165,6 +167,12 @@ if __name__ == '__main__':
     Image.fromarray(np.clip(col, 0, 255).astype(np.uint8)).save(os.path.join(OUTD, 'taj.jpg'), quality=82, optimize=True, progressive=True)
     print('raszter', nx, ny, os.path.getsize(os.path.join(OUTD, 'taj.jpg')) // 1024, 'kB', 'utak', len(roads), round(time.time() - t0), flush=True)
     zb = base64.b64encode(np.round(Z).astype('<u2').tobytes()).decode()
-    json.dump({'R': RES, 'nx': nx, 'ny': ny, 'z': {'c': C, 'nx': zx, 'ny': zy, 'b': zb}, 'r': roads, 'm': mp},
+    tw, seen = [], {}
+    for q in sorted(towns, key=lambda q: -q[3]):
+        k = q[0].lower()
+        if not k or any(abs(q[1] - a) < 3000 and abs(q[2] - b) < 3000 for a, b in seen.get(k, [])): continue
+        seen.setdefault(k, []).append((q[1], q[2])); tw.append(q)
+    print('település/városrész', len(tw), flush=True)
+    json.dump({'tw': tw, 'R': RES, 'nx': nx, 'ny': ny, 'z': {'c': C, 'nx': zx, 'ny': zy, 'b': zb}, 'r': roads, 'm': mp},
               open(os.path.join(OUTD, 'taj.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     print('kész', os.path.getsize(os.path.join(OUTD, 'taj.json')) // 1024, 'kB', round(time.time() - t0), flush=True)
