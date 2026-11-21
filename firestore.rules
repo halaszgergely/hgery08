@@ -510,11 +510,12 @@ service cloud.firestore {
       allow read: if signedIn() && request.auth.uid == uid;
       allow delete: if signedIn() && request.auth.uid == uid;
       allow create, update: if active() && request.auth.uid == uid && game in ['birodalom']
-        && request.resource.data.keys().hasOnly(['life', 'st', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['life', 'lg', 'st', 'updatedAt'])
         && request.resource.data.life is number && request.resource.data.life >= 0 && request.resource.data.life <= 1e300
+        && request.resource.data.get('lg', 0) is number
         && request.resource.data.st is string && request.resource.data.st.size() <= 900000
         && request.resource.data.updatedAt == request.time
-        && (resource == null || ((request.resource.data.life >= resource.data.life || resource.data.life > 1e300) && resource.data.updatedAt < request.time - duration.value(10, 's')));
+        && (resource == null || ((request.resource.data.get('lg', 0) >= resource.data.get('lg', 0) || resource.data.life > 1e300) && resource.data.updatedAt < request.time - duration.value(10, 's')));
     }
 
     match /gamesaves/{uid} {

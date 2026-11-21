@@ -1,8 +1,8 @@
 // HGWS – tag profiloldala (#/profil/<uid>): rang, tagek, bemutatkozás, Arcade-rekordok, értékelései
-import { FB, db, $, esc, bigNum, lbDec, avatar, toDate, timeLabel, isOnline, roleOf, OWNER_UID, notify } from './core.js?v=202611211816';
-import { I, bgOf } from './fx.js?v=202611211816';
-import * as Admin from './admin.js?v=202611211816';
-import { GAMES } from './browse.js?v=202611211816';
+import { FB, db, $, esc, bigNum, lbDec, avatar, toDate, timeLabel, isOnline, roleOf, OWNER_UID, notify } from './core.js?v=202611211848';
+import { I, bgOf } from './fx.js?v=202611211848';
+import * as Admin from './admin.js?v=202611211848';
+import { GAMES } from './browse.js?v=202611211848';
 
 let C = null, gen = 0;
 export function init(ctx) { C = ctx; }
@@ -122,7 +122,7 @@ export async function render(id) {
   // Arcade-rekordok
   Promise.all(GAMES.map(g => FB.getDoc(FB.doc(db, 'leaderboards', g.id, 'scores', id)).then(s => [g, lbDec(s.data()?.best || 0), s.data()?.wins || 0]).catch(() => [g, 0, 0]))).then(l => {
     if (my !== gen) return;
-    $('#pArc').innerHTML = l.map(([g, b, w]) => `<a class="pag" href="#/arcade/${g.id}" style="--c:${g.c}"><span>${g.icon}</span><div><b>${esc(g.name)}</b><small>${b ? bigNum(b) + ' ' + (g.unit || 'pont') + (w ? ' · 🏆×' + w : '') : 'Még nem játszott'}</small></div></a>`).join('');
+    $('#pArc').innerHTML = l.map(([g, b, w]) => `<a class="pag" href="#/arcade/${g.id}" style="--c:${g.c}"><span>${g.icon}</span><div><b>${esc(g.name)}</b><small>${b ? (g.fmt ? g.fmt(b) : bigNum(b) + ' ' + (g.unit || 'pont')) + (w ? ' · 🏆×' + w : '') : 'Még nem játszott'}</small></div></a>`).join('');
   });
   // értékelései (a ratings gyűjteménycsoportból – a dokumentum azonosítója a tag uid-ja)
   FB.getDocs(FB.collectionGroup(db, 'ratings')).then(s => {

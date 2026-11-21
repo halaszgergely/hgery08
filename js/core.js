@@ -1,6 +1,6 @@
 // HGWS – közös Firebase-indítás és segédfüggvények
-import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611211816';
-import * as FB from './firebase.js?v=202611211816';
+import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611211848';
+import * as FB from './firebase.js?v=202611211848';
 
 export { FB, notConfigured };
 
@@ -110,8 +110,13 @@ export function toast(msg, err) {
 /* Ranglista-pontszám tömörítve: a hatalmas számok (Öntöző Birodalom) nem férnek el egész számként, ezért 8·10^15 fölött
    a nagyságrendjüket (logaritmusukat) tároljuk. A tárolt érték így mindig biztonságos egész, a sorrend pedig megmarad. */
 const LB_T = 8e15, LB_K = 1e12, LB_MAX = 8.3e15;
-export const lbEnc = v => { v = Math.floor(v || 0); if (!(v > 0)) return 0; if (!isFinite(v)) v = 1e300; return v < LB_T ? v : Math.min(LB_MAX, LB_T + Math.round(Math.log10(v / LB_T) * LB_K)); };
-export const lbDec = s => { s = +s || 0; return s < LB_T || s > LB_MAX ? s : LB_T * 10 ** ((s - LB_T) / LB_K); };
+/* 8,3·10^15 fölött egy második, ritkább sáv jön (10^-9 nagyságrend / egység): így ~10^700000-ig is sorba rendezhető
+   (a nagy számos játék a pontszám mellé a log10-et is elküldi). Ilyenkor lbDec szöveget ad ("1.23e450"). */
+const LB_LG = Math.log10(LB_T), LB_SEG = LB_LG + (LB_MAX - LB_T) / LB_K, LB_K2 = 1e9, LB_TOP = 9e15;
+export const lbEnc = (v, lg) => { v = Math.floor(v || 0); if (typeof lg === 'number' && isFinite(lg) && lg > 15) { if (lg >= LB_SEG) return Math.min(LB_TOP, LB_MAX + Math.round((lg - LB_SEG) * LB_K2)); return Math.min(LB_MAX, LB_T + Math.round((lg - LB_LG) * LB_K)); }
+  if (!(v > 0)) return 0; if (!isFinite(v)) v = 1e300; return v < LB_T ? v : Math.min(LB_MAX, LB_T + Math.round(Math.log10(v / LB_T) * LB_K)); };
+export const lbDec = s => { s = +s || 0; if (s < LB_T) return s; const lg = s > LB_MAX ? LB_SEG + (s - LB_MAX) / LB_K2 : LB_LG + (s - LB_T) / LB_K;
+  if (lg < 300) return 10 ** lg; let e = Math.floor(lg), m = 10 ** (lg - e); if (m >= 9.99995) { m = 1; e++; } return m.toFixed(4) + 'e' + e; };
 export const bigNum = n => { n = Math.floor(n || 0); if (!isFinite(n)) return '∞'; if (n < 1e6) return n.toLocaleString('hu-HU');
   const k = Math.floor(Math.log10(n) / 3) - 1, m = n / 10 ** (3 * (k + 1)), num = m.toLocaleString('hu-HU', { maximumFractionDigits: m < 10 ? 2 : m < 100 ? 1 : 0 });
   const U = ['', 'U', 'D', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No'], T = ['', 'Dc', 'Vg', 'Tg', 'Qag', 'Qig', 'Sxg', 'Spg', 'Ocg', 'Nog'], F = ['', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No'];
@@ -142,7 +147,7 @@ export const errText = e => ({
 }[e?.code] || (e?.message || String(e)));
 
 /* Foglalt nevek – ugyanaz a szabály, mint a firestore.rules-ban (ott is ellenőrizve van) */
-import { badName } from './nevszuro.js?v=202611211816';
+import { badName } from './nevszuro.js?v=202611211848';
 export function reservedName(n) {
   const s = String(n || '').toLowerCase(), A = '[aáà4@]', E = '[eéè3]', sep = '[^a-z0-9áéíóöőúüű]*';
   const full = r => new RegExp('^(?:' + r + ')$').test(s);
@@ -152,7 +157,7 @@ export function reservedName(n) {
     || full('(.*[^a-z]|)h[^a-z]+[g69]' + sep + E + sep + 'r' + sep + '[g69]' + sep + E + sep + 'l' + sep + '[yií1].*')
     || full('.*h' + sep + A + sep + 'l' + sep + A + sep + 's' + sep + 'z[^a-z]+[g69]([^a-z].*|)');
 }
-export { badName, BAD_MSG, badMsg, badReason } from './nevszuro.js?v=202611211816';
+export { badName, BAD_MSG, badMsg, badReason } from './nevszuro.js?v=202611211848';
 export const RESERVED_MSG = 'Ez a név foglalt (a HGWS tulajdonosáé). Válassz másikat!';
 
 /* Bejelentkezett felhasználó profiljának létrehozása (ha még nincs) */
