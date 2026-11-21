@@ -118,5 +118,5 @@ window.Taj = (() => {
       for (let up = 1; up <= 3; up++) { const pk = k - up, pw = TPX / 2 ** pk, ptx = Math.floor(tx * wsz / pw), pty = Math.floor(ty * wsz / pw), pt = tile(pk, ptx, pty, d, false); if (!pt) continue;
         const f = TPX / 2 ** up, sx = (tx * wsz - ptx * pw) / pw * TPX, sy = (ty * wsz - pty * pw) / pw * TPX; g.drawImage(pt.c, sx, sy, f, f, Math.floor(dx), Math.floor(dy), Math.ceil(sz) + 1, Math.ceil(sz) + 1); break; } }
     g.globalAlpha = 1; return true; }
-  return { load, draw, zAt, clsAt, get ready() { return ready; } };
+  return { load, draw, zAt, clsAt, towns: () => (T && T.tw) || [], get ready() { return ready; } };
 })();

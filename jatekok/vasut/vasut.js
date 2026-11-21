@@ -17,11 +17,23 @@
     aru: { n: 'Darabáru', w: 'Hbbins fedett kocsi', m: 45, r: 135, col: '#7d5a3f', t: 'box', wt: 'hbbins' },
     gabona: { n: 'Gabona', w: 'Uagps silókocsi', m: 72, r: 95, col: '#6c6a64', t: 'hopper', wt: 'uagps' },
     kontener: { n: 'Konténer', w: 'Sgns pőrekocsi', m: 55, r: 120, col: '#2e7d6b', t: 'cont', wt: 'sgns' },
-    uzemanyag: { n: 'Gázolaj', w: 'Zacns tartálykocsi', m: 70, r: 175, col: '#b8b8b8', haz: 1, t: 'tank', wt: 'zacns' } };
-  const WAGONS = { eas: { n: 'Eas nyitott kocsi', c: 6e5 }, roos: { n: 'Roos rakoncás kocsi', c: 5e5 }, hbbins: { n: 'Hbbins fedett kocsi', c: 7e5 }, uagps: { n: 'Uagps silókocsi', c: 8e5 }, sgns: { n: 'Sgns konténerszállító', c: 6.5e5 }, zacns: { n: 'Zacns tartálykocsi', c: 9e5, haz: 1 } };
-  const DEPOT_C = 2e6, RENT_DEP = 2e4, RENT_H = 1200, NETV = 3;
+    uzemanyag: { n: 'Gázolaj', w: 'Zacns tartálykocsi', m: 70, r: 175, col: '#b8b8b8', haz: 1, t: 'tank', wt: 'zacns' },
+    vaserc: { n: 'Vasérc', w: 'Eas nyitott kocsi', m: 85, r: 90, col: '#7a3f2a', t: 'open', body: '#6b3f2a', wt: 'eas', x: 1 },
+    ocskavas: { n: 'Ócskavas', w: 'Eas nyitott kocsi', m: 60, r: 70, col: '#5f5752', t: 'open', body: '#6b3f2a', wt: 'eas', x: 1 },
+    acel: { n: 'Acéltekercs', w: 'Shimmns tekercsszállító', m: 70, r: 160, col: '#9aa3ad', t: 'coil', wt: 'shimmns', x: 1 },
+    cement: { n: 'Cement', w: 'Uagps silókocsi', m: 75, r: 100, col: '#b9b6ad', t: 'hopper', wt: 'uagps', x: 1 },
+    nyersolaj: { n: 'Nyersolaj', w: 'Zacns tartálykocsi', m: 70, r: 170, col: '#2a2a2a', haz: 1, t: 'tank', wt: 'zacns', x: 1 },
+    vegyszer: { n: 'Vegyszer', w: 'Zacns tartálykocsi', m: 65, r: 190, col: '#d8d27a', haz: 1, t: 'tank', wt: 'zacns', x: 1 },
+    auto: { n: 'Új autók', w: 'Laaers autószállító', m: 25, r: 210, col: '#3a5fa8', t: 'cars', wt: 'laaers', x: 1 } };
+  // ipari rakodók: mit fogadnak (be) és mit adnak fel (ki)
+  const IND = { acel: { n: 'Acélmű', i: '🔥', be: ['szen', 'vaserc', 'ocskavas'], ki: ['acel'] }, cement: { n: 'Cementgyár', i: '🏗️', be: ['szen', 'kavics'], ki: ['cement'] }, finomito: { n: 'Olajfinomító', i: '🛢️', be: ['nyersolaj'], ki: ['uzemanyag'] },
+    vegyi: { n: 'Vegyi üzem', i: '⚗️', be: ['nyersolaj', 'uzemanyag'], ki: ['vegyszer'] }, eromu: { n: 'Erőmű', i: '⚡', be: ['szen', 'fa'], ki: [] }, banya: { n: 'Bánya', i: '⛏️', be: [], ki: ['kavics'] }, auto: { n: 'Autógyár', i: '🚗', be: ['acel', 'aru'], ki: ['auto'] },
+    fa: { n: 'Fafeldolgozó', i: '🪵', be: ['fa'], ki: ['aru'] }, malom: { n: 'Élelmiszeripar', i: '🌾', be: ['gabona'], ki: ['aru', 'gabona'] }, hulladek: { n: 'Hulladéktelep', i: '♻️', be: [], ki: ['ocskavas'] },
+    logisz: { n: 'Logisztikai központ', i: '📦', be: ['kontener', 'aru'], ki: ['kontener', 'aru'] }, tegla: { n: 'Téglagyár', i: '🧱', be: ['szen'], ki: ['aru'] }, gyar: { n: 'Üzem', i: '🏭', be: ['aru'], ki: ['aru'] } };
+  const WAGONS = { eas: { n: 'Eas nyitott kocsi', c: 6e5 }, roos: { n: 'Roos rakoncás kocsi', c: 5e5 }, hbbins: { n: 'Hbbins fedett kocsi', c: 7e5 }, uagps: { n: 'Uagps silókocsi', c: 8e5 }, sgns: { n: 'Sgns konténerszállító', c: 6.5e5 }, shimmns: { n: 'Shimmns tekercsszállító', c: 8.5e5 }, laaers: { n: 'Laaers autószállító', c: 9.5e5 }, zacns: { n: 'Zacns tartálykocsi', c: 9e5, haz: 1 } };
+  const DEPOT_C = 2e6, RENT_DEP = 2e4, RENT_H = 1200, NETV = 4;
   const LEN_LIC = [6, 10, 16, 24, 34], LEN_C = [0, 1.2e6, 4e6, 12e6, 30e6], HAZ_C = 2.5e6, EL_C = 3e6, FUEL_P = 120, KWH_P = 60, CAR_L = 15;
-  let SLP = null, TT = [], TTN = new Set(), H = null, NX, NY, E = [], ADJ = [], ST = [], PL = [], SB = [], S = null, cam = { x: 0, y: 0, s: .05, follow: 1 }, keys = {}, lastT = 0, toastT = 0;
+  let SLP = null, IPS = [], TT = [], TTN = new Set(), H = null, NX, NY, E = [], ADJ = [], ST = [], PL = [], SB = [], S = null, cam = { x: 0, y: 0, s: .05, follow: 1 }, keys = {}, lastT = 0, toastT = 0;
   const fmt = n => Math.round(n).toLocaleString('hu-HU'), money = n => (Math.abs(n) >= 1e6 ? (n / 1e6).toLocaleString('hu-HU', { maximumFractionDigits: 2 }) + ' M' : fmt(n)) + ' Ft';
   const toast = (t, bad) => { const el = $('#toast'); el.textContent = t; el.style.color = bad ? '#ff8a7a' : ''; el.hidden = false; el.style.opacity = 1; toastT = 3; };
 
@@ -33,9 +45,12 @@
       const e = { i, a: q[0], b: q[1], L: Math.max(1, cum[n - 1]), el: q[3], vm: q[4] || (q[6] ? 30 : 60), svc: q[6] || 0, p, cum, bb: [x0, y0, x1, y1] }; ADJ[e.a].push({ e: i, end: 0 }); ADJ[e.b].push({ e: i, end: 1 }); return e; });
     const bbOf = f => { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (let i = 0; i < f.length; i += 2) { x0 = Math.min(x0, f[i]); x1 = Math.max(x1, f[i]); y0 = Math.min(y0, f[i + 1]); y1 = Math.max(y1, f[i + 1]); } return [x0, y0, x1, y1]; };
     PL = (h.pl || []).map(q => ({ c: q[0], p: q.slice(1), bb: bbOf(q.slice(1)) })); SB = (h.sb || []).map(p => ({ p, bb: bbOf(p) }));
+    IPS = h.ip || [];
     TT = (h.tt || []).map(([x, y, r, c, pairs, stubs], k) => { const arms = pairs.flat(); for (const ei of arms) { const e = E[ei], o = e.a === c ? e.b : e.a; e.tt = k; e.virt = stubs.includes(ei); e.ta = Math.atan2(NY[o] - y, NX[o] - x); TTN.add(o); } TTN.add(c);
       const pm = pairs.map(p => ((E[p[0]].ta % Math.PI) + Math.PI) % Math.PI), ord = pairs.map((_, i) => i).sort((a, b) => pm[a] - pm[b]); return { x, y, r, c, pairs, arms, pm, ord }; });
     ST = h.s.map(q => { const e = E[q[2]], s = Math.min(e.L, q[3] * e.L / (h.e[q[2]][2] || e.L)), [x, y] = at(e, s); return { n: q[0], big: !q[1], e: q[2], s, x, y }; });
+    for (const q of IPS) { const e = E[q[2]]; if (!e) continue; const sp = Math.min(e.L, q[3] * e.L / (h.e[q[2]][2] || e.L)), [x, y] = at(e, sp); let nn = '', bd = 1e9; for (const st of ST) { if (st.ind) continue; const dd = Math.hypot(st.x - x, st.y - y); if (dd < bd) { bd = dd; nn = st.n; } }
+      ST.push({ n: q[0] || IND[q[1]].n + ' · ' + nn, ind: q[1], e: q[2], s: sp, x, y, poly: q[4] }); }
   }
   // pont az élen (s méter az „a” végtől)
   function at(e, s) { const p = e.p, c = e.cum, n = c.length; s = Math.max(0, Math.min(e.L, s)); let lo = 0, hi = n - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (c[m] <= s) lo = m; else hi = m; }
@@ -124,15 +139,18 @@
     for (let i = 0; i < S.P.length; i++) { const sg = S.P[i]; if (sg.e !== st.e) continue; const u = uOf(sg), lo = i === 0 ? S.ru : 0, hi = i === S.P.length - 1 ? S.fu : E[sg.e].L;
       if (u >= lo - 5 && u <= hi + 5) { S.route = { edges: [st.e], st, back: false, km: 0 }; S.rlock = null; return; } }
     // elkötelezett irányváltás: amíg az eleje a kihúzó élen van és nem érte el a pontot, azt mutatjuk
-    const K = S.rlock; if (K && K.st === st.n && f.e === K.w >> 1 && (f.d > 0) === !(K.w & 1)) { const X = K.u - S.fu;
-      if (X > 3) { S.route = { edges: [f.e], st, back: false, km: (K.tot - K.revd + X) / 1000, rev: { x: K.x, y: K.y, dist: X } }; return; } }
-    S.rlock = null;
+    const K = S.rlock, fsid = f.e * 2 + (f.d > 0 ? 0 : 1), pi = K ? K.pull.indexOf(fsid) : -1; let forceB = false;
+    if (K && K.st === st.n && pi >= 0) { let X = K.u - S.fu; for (let q = 0; q < pi; q++) X -= E[K.pull[q] >> 1].L;
+      if (X > 3 && !K.done) { S.route = { edges: [f.e], st, back: false, km: (K.tot - K.revd + X) / 1000, rev: { x: K.x, y: K.y, dist: X } }; return; }
+      forceB = true; K.done = 1; } // elérte (vagy kicsit túlfutott) az irányváltási pontot: innen hátrafelé
     let A = routeTo([[fs, E[f.e].L - S.fu]], st), B = routeTo([[rs, S.ru]], st);
     if (f.e === st.e && uOf(f) > S.fu && (!A || uOf(f) - S.fu < A.d)) A = { path: [fs], d: uOf(f) - S.fu, rev: null };
     if (r.e === st.e && uOf(r) < S.ru && (!B || S.ru - uOf(r) < B.d)) B = { path: [rs], d: S.ru - uOf(r), rev: null };
+    if (forceB && B) A = null; else if (!forceB) S.rlock = null;
     const pb = S.rev ? S.rev < 0 : !!(S.lastBack), o = !A ? B : !B ? A : pb ? (B.d <= A.d * 1.1 ? B : A) : (A.d <= B.d * 1.1 ? A : B); if (!o) return; S.lastBack = o === B;
     const back = o === B && o !== A; let rp = null;
-    if (o.rev) { const w = o.rev.w, e = E[w >> 1], T = trainLen() + 40, p = at(e, w & 1 ? e.L - T : T); rp = { x: p[0], y: p[1], dist: o.rev.d }; if (o === A) S.rlock = { st: st.n, w, u: T, tot: o.d, revd: o.rev.d, x: p[0], y: p[1] }; if (S.auto && !(S.time < S.manualT)) { const pl = o.rev.pull || []; for (let k = 0; k + 1 < pl.length; k++) S.sw[segEnd({ e: pl[k] >> 1, d: pl[k] & 1 ? -1 : 1 }, true)] = pl[k + 1] >> 1; } }
+    if (o.rev) { const w = o.rev.w, T = trainLen() + 40, pull = o.rev.pull || [w]; let rem = T, p = null; for (const q of pull) { const e = E[q >> 1]; if (rem <= e.L) { p = at(e, q & 1 ? e.L - rem : rem); break; } rem -= e.L; } if (!p) { const q = pull[pull.length - 1], e = E[q >> 1]; p = at(e, q & 1 ? 0 : e.L); }
+      rp = { x: p[0], y: p[1], dist: o.rev.d }; if (o === A) S.rlock = { st: st.n, w, pull, u: T, tot: o.d, revd: o.rev.d, x: p[0], y: p[1] }; if (S.auto && !(S.time < S.manualT)) { const pl = o.rev.pull || []; for (let k = 0; k + 1 < pl.length; k++) S.sw[segEnd({ e: pl[k] >> 1, d: pl[k] & 1 ? -1 : 1 }, true)] = pl[k + 1] >> 1; } }
     S.route = { edges: o.path.map(v => v >> 1), st, back, km: o.d / 1000, rev: rp };
     if (S.auto && !(S.time < S.manualT)) for (let k = 0; k + 1 < o.path.length; k++) { const v = o.path[k], sg = { e: v >> 1, d: v & 1 ? -1 : 1 }; if ((o.path[k + 1] ^ 1) === v) break; S.sw[segEnd(sg, true)] = o.path[k + 1] >> 1; } }
   // a következő valódi váltó a menetirányban (ahol több kijárat van)
@@ -146,10 +164,13 @@
   /* ---------- munkák ---------- */
   let JID = 1;
   function board(si) { const b = S.boards[si], now = S.time; if (b && now - b.t < 3 * 3600) return b.jobs; // 3 játékóránként új tábla
-    const R = dijkstra(stSeeds(ST[si]), 160000), cand = ST.map((st, i) => [i, stDist(R.D, st)]).filter(([i, d]) => i !== si && ST[i].big && d > 8000 && d < 160000);
-    let h = (si * 2654435761 + Math.floor(now / 10800) * 97) >>> 0; const rnd = () => { h = (h * 1664525 + 1013904223) >>> 0; return h / 4294967296; };
-    const jobs = []; for (let k = 0; k < 14 && jobs.length < 6 && cand.length; k++) { const [to] = cand[Math.floor(rnd() * cand.length)], cks = Object.keys(CARGO), cg = cks[Math.floor(rnd() * cks.length)], C = CARGO[cg];
-      const cap0 = rnd() < .25 ? LEN_LIC[Math.min(LEN_LIC.length - 1, S.lic.len + 1)] : licMax(), n = Math.max(2, Math.round(2 + rnd() * (cap0 - 2))), a = ST[si], tl = LOCOS.m62.len + n * CAR_L, ra = routeTo([[a.e * 2, E[a.e].L - a.s]], ST[to], tl), rb = routeTo([[a.e * 2 + 1, a.s]], ST[to], tl), d = Math.min(ra ? ra.d : Infinity, rb ? rb.d : Infinity); if (!isFinite(d) || d > 220000) continue; const km = d / 1000, pay = Math.round(n * km * C.r * 4 * (1 + .3 * rnd()) / 100) * 100;
+    const me = ST[si], R = dijkstra(stSeeds(me), 160000), near = ST.map((st, i) => [i, stDist(R.D, st)]).filter(([i, d]) => i !== si && (ST[i].big || ST[i].ind) && d > 8000 && d < 160000), bigs = near.filter(q => ST[q[0]].big);
+    let h = (si * 2654435761 + Math.floor(now / 10800) * 97) >>> 0; const rnd = () => { h = (h * 1664525 + 1013904223) >>> 0; return h / 4294967296; }, pick = a => a[Math.floor(rnd() * a.length)], base = Object.keys(CARGO).filter(k => !CARGO[k].x);
+    const jobs = []; for (let k = 0; k < 18 && jobs.length < 6 && near.length; k++) { let to, cg;
+      if (me.ind) { const out = IND[me.ind].ki; if (!out.length) break; cg = pick(out); const cons = near.filter(q => ST[q[0]].ind && IND[ST[q[0]].ind].be.includes(cg)); to = (cons.length && rnd() < .65 ? pick(cons) : pick(bigs.length ? bigs : near))[0]; }
+      else { const cons = near.filter(q => ST[q[0]].ind && IND[ST[q[0]].ind].be.length); if (cons.length && rnd() < .5) { to = pick(cons)[0]; cg = pick(IND[ST[to].ind].be); } else { if (!bigs.length) continue; to = pick(bigs)[0]; cg = pick(base); } }
+      if (jobs.some(j => j.to === to)) continue; const C = CARGO[cg];
+      const cap0 = rnd() < .25 ? LEN_LIC[Math.min(LEN_LIC.length - 1, S.lic.len + 1)] : licMax(), n = Math.max(2, Math.round(2 + rnd() * (cap0 - 2))), a = me, tl = LOCOS.m62.len + n * CAR_L, ra = routeTo([[a.e * 2, E[a.e].L - a.s]], ST[to], tl), rb = routeTo([[a.e * 2 + 1, a.s]], ST[to], tl), d = Math.min(ra ? ra.d : Infinity, rb ? rb.d : Infinity); if (!isFinite(d) || d > 220000) continue; const km = d / 1000, pay = Math.round(n * km * C.r * 4 * (1 + .3 * rnd()) / 100) * 100;
       jobs.push({ id: JID++ + '_' + si + '_' + k + '_' + Math.floor(now), from: si, to, cg, n, km, pay, lim: Math.round(d / 13 + 1800), state: 'board' }); }
     S.boards[si] = { t: now, jobs }; return jobs; }
   const carsNow = () => S.cars.length, licMax = () => LEN_LIC[S.lic.len];
@@ -246,9 +267,16 @@
     if (S.route && S.route.rev) { const q = S.route.rev; g.fillStyle = '#ffb347'; g.strokeStyle = '#000'; g.lineWidth = 2 * d; g.beginPath(); g.arc(X(q.x), Y(q.y), 7 * d, 0, 6.283); g.fill(); g.stroke(); g.fillStyle = '#000'; g.font = `800 ${9 * d}px Inter`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('⇄', X(q.x), Y(q.y)); }
     // állomások
     g.textAlign = 'center'; g.textBaseline = 'bottom';
-    for (let i = 0; i < ST.length; i++) { const st = ST[i]; if (st.x < x0 - 500 || st.x > x1 + 500 || st.y < y0 - 500 || st.y > y1 + 500) continue; if (!st.big && s < .04 * d) continue; const tj = S.jobs.some(j => (j.state === 'taken' && j.from === i) || (j.state === 'loaded' && j.to === i));
+    for (let i = 0; i < ST.length; i++) { const st = ST[i]; if (st.ind) continue; if (st.x < x0 - 500 || st.x > x1 + 500 || st.y < y0 - 500 || st.y > y1 + 500) continue; if (!st.big && s < .04 * d) continue; const tj = S.jobs.some(j => (j.state === 'taken' && j.from === i) || (j.state === 'loaded' && j.to === i));
       g.fillStyle = tj ? '#ffe29a' : st.big ? '#e8b656' : '#c8c8c8'; g.beginPath(); g.arc(X(st.x), Y(st.y), (st.big ? (s < .01 * d ? 2.6 : 4.5) : 3) * d + (tj ? 2 * d : 0), 0, 6.283); g.fill(); g.strokeStyle = '#000'; g.lineWidth = d; g.stroke();
       if (tj || (st.big && s > .02 * d) || s > .1 * d) { g.font = `${st.big || tj ? 700 : 500} ${(st.big ? 12 : 10.5) * d}px Inter, sans-serif`; g.lineWidth = 3 * d; g.strokeStyle = 'rgba(0,0,0,.8)'; g.strokeText(st.n, X(st.x), Y(st.y) - 6 * d); g.fillStyle = tj ? '#ffe29a' : '#e6e6e6'; g.fillText(st.n, X(st.x), Y(st.y) - 6 * d); } }
+    // ipari rakodók
+    if (s > .004 * d) for (let i = 0; i < ST.length; i++) { const st = ST[i]; if (!st.ind || st.x < x0 - 3000 || st.x > x1 + 3000 || st.y < y0 - 3000 || st.y > y1 + 3000) continue; const I = IND[st.ind], tj = S.jobs.some(j => (j.state === 'taken' && j.from === i) || (j.state === 'loaded' && j.to === i));
+      if (s > .04 * d && st.poly && st.poly.length > 4) { const p = st.poly; g.beginPath(); g.moveTo(X(p[0]), Y(p[1])); for (let k = 2; k < p.length; k += 2) g.lineTo(X(p[k]), Y(p[k + 1])); g.closePath(); g.fillStyle = 'rgba(232,182,86,.06)'; g.fill(); g.setLineDash([6 * d, 5 * d]); g.strokeStyle = tj ? 'rgba(255,226,154,.8)' : 'rgba(232,182,86,.45)'; g.lineWidth = 1.5 * d; g.stroke(); g.setLineDash([]); }
+      if (!tj && s < .025 * d && st.ind === 'gyar') continue; const z = (tj ? 11 : 9) * d, px = X(st.x), py = Y(st.y);
+      g.fillStyle = tj ? '#ffe29a' : 'rgba(24,22,20,.85)'; g.strokeStyle = tj ? '#000' : '#e8b656'; g.lineWidth = 1.2 * d; g.beginPath(); g.roundRect(px - z, py - z, 2 * z, 2 * z, 4 * d); g.fill(); g.stroke();
+      g.font = `${z * 1.1}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(I.i, px, py + .5 * d);
+      if (tj || s > .05 * d || (st.ind !== 'gyar' && s > .015 * d)) { g.font = `700 ${11 * d}px Inter, sans-serif`; g.textBaseline = 'top'; g.lineWidth = 3 * d; g.strokeStyle = 'rgba(0,0,0,.8)'; g.strokeText(st.n, px, py + z + 2 * d); g.fillStyle = tj ? '#ffe29a' : '#f0d9a8'; g.fillText(st.n, px, py + z + 2 * d); } }
     // következő váltó
     const n = nextSwitch(); if (n && n.dist < 4000) { const px = X(NX[n.nd]), py = Y(NY[n.nd]); for (const q of n.o) { const w = outDir(E[q.e], q.fromA ? 0 : 1), sel = q.e === n.cur, L = 26 * d; g.strokeStyle = sel ? '#5ee08a' : 'rgba(255,255,255,.35)'; g.lineWidth = (sel ? 4 : 2) * d; g.beginPath(); g.moveTo(px, py); g.lineTo(px + w[0] * L, py + w[1] * L); g.stroke(); }
       g.fillStyle = '#ffe29a'; g.beginPath(); g.arc(px, py, 5 * d, 0, 6.283); g.fill(); }
@@ -274,11 +302,15 @@
         else if (t === 'box') { g.fillStyle = C.col; g.fillRect(-hl, -hw, lw, wd); g.fillStyle = 'rgba(0,0,0,.2)'; for (let k = 1; k < 10; k++) g.fillRect(-hl + k * lw / 10, -hw, .12 * u, wd); g.fillStyle = 'rgba(255,255,255,.15)'; g.fillRect(-hl, -.12 * u, lw, .24 * u); }
         else if (t === 'hopper') { g.fillStyle = '#8f8c84'; g.fillRect(-hl, -hw, lw, wd); g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(-hl, -.1 * u, lw, .2 * u); g.fillStyle = C.col; for (let k = 0; k < 4; k++) { g.beginPath(); g.arc(-hl + (k + .5) * lw / 4, 0, .55 * u, 0, 6.283); g.fill(); } }
         else if (t === 'cont') { g.fillStyle = '#3a3a3a'; g.fillRect(-hl, -hw, lw, wd); const cc = ['#2e7d6b', '#b5462f', '#2f5fa0', '#c9a24a']; for (let k = 0; k < 2; k++) { const cx2 = -hl + .3 * u + k * (lw - .6 * u) / 2; g.fillStyle = cc[(k + Math.round(x)) % 4]; g.fillRect(cx2, -hw + .2 * u, (lw - .6 * u) / 2 - .2 * u, wd - .4 * u); g.fillStyle = 'rgba(0,0,0,.18)'; for (let r = 1; r < 8; r++) g.fillRect(cx2 + r * (lw - .6 * u) / 16, -hw + .2 * u, .08 * u, wd - .4 * u); } }
+        else if (t === 'coil') { g.fillStyle = '#3a3a3a'; g.fillRect(-hl, -hw, lw, wd); for (let k = 0; k < 3; k++) { const cx2 = -hl + (k + .5) * lw / 3; g.fillStyle = '#c3cad2'; g.beginPath(); g.ellipse(cx2, 0, lw / 7.5, hw * .85, 0, 0, 6.283); g.fill(); g.strokeStyle = '#6f7780'; g.lineWidth = .12 * u; for (let r = 1; r < 4; r++) { g.beginPath(); g.ellipse(cx2, 0, lw / 7.5 * r / 4, hw * .85 * r / 4, 0, 0, 6.283); g.stroke(); } } g.fillStyle = 'rgba(180,90,40,.6)'; g.fillRect(-hl, -hw, lw, .25 * u); g.fillRect(-hl, hw - .25 * u, lw, .25 * u); }
+        else if (t === 'cars') { g.fillStyle = '#2f3a48'; g.fillRect(-hl, -hw, lw, wd); const cc = ['#b5462f', '#e8e8e8', '#2f5fa0', '#1d1d1d', '#9a9a9a']; for (let k = 0; k < 3; k++) { const cx2 = -hl + .4 * u + k * (lw - .8 * u) / 3, w2 = (lw - .8 * u) / 3 - .4 * u; g.fillStyle = cc[(k + Math.round(x * 7)) % 5]; g.beginPath(); g.roundRect(cx2, -hw + .45 * u, w2, wd - .9 * u, .5 * u); g.fill(); g.fillStyle = 'rgba(120,170,220,.55)'; g.fillRect(cx2 + w2 * .3, -hw + .6 * u, w2 * .35, wd - 1.2 * u); } g.strokeStyle = '#8899aa'; g.lineWidth = .12 * u; g.strokeRect(-hl + .1 * u, -hw + .1 * u, lw - .2 * u, wd - .2 * u); }
         else if (t === 'tank') { const gr = g.createLinearGradient(0, -hw, 0, hw); gr.addColorStop(0, '#e6e6e6'); gr.addColorStop(.45, '#b8b8b8'); gr.addColorStop(1, '#6e6e6e'); g.fillStyle = '#3a3a3a'; g.fillRect(-hl, -hw, lw, wd); g.fillStyle = gr; g.beginPath(); g.roundRect(-hl + .3 * u, -hw + .15 * u, lw - .6 * u, wd - .3 * u, wd / 2); g.fill(); g.fillStyle = '#c33'; g.fillRect(-hl + .8 * u, -.15 * u, lw - 1.6 * u, .3 * u); g.fillStyle = '#555'; g.beginPath(); g.arc(0, 0, .45 * u, 0, 6.283); g.fill(); } }
       else { g.fillStyle = C.col; g.fillRect(-hl + 1, -hw + 1, lw - 2, wd - 2); }
       g.restore(); };
     let x = 0; for (let k = S.cars.length - 1; k >= 0; k--) { drawVeh(x + .6, CAR_L - 1.2, S.cars[k].cg); x += CAR_L; } drawVeh(x, Lc.len, Lc, 1);
     if (s < .02 * d) { const p = front(); g.strokeStyle = '#ffe29a'; g.lineWidth = 2 * d; g.beginPath(); g.arc(X(p[0]), Y(p[1]), 9 * d, 0, 6.283); g.stroke(); }
+    if (PIN) { const px = X(PIN.x), py = Y(PIN.y); g.fillStyle = '#ff5a4a'; g.strokeStyle = '#000'; g.lineWidth = 1.5 * d; g.beginPath(); g.arc(px, py - 14 * d, 7 * d, Math.PI * .85, Math.PI * .15); g.lineTo(px, py); g.closePath(); g.fill(); g.stroke(); g.fillStyle = '#fff'; g.beginPath(); g.arc(px, py - 14 * d, 2.6 * d, 0, 6.283); g.fill();
+      g.font = `800 ${13 * d}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'bottom'; g.lineWidth = 3.5 * d; g.strokeStyle = 'rgba(0,0,0,.85)'; g.strokeText(PIN.n, px, py - 24 * d); g.fillStyle = '#fff'; g.fillText(PIN.n, px, py - 24 * d); }
     // lépték
     const mpp = 1 / s * d, nice = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000].find(v => v / mpp > 60 * d) || 100000; g.fillStyle = 'rgba(255,255,255,.7)'; g.fillRect(W - 20 * d - nice / mpp * d, Hh - 16 * d, nice / mpp * d, 2 * d); g.font = `600 ${10 * d}px Inter`; g.textAlign = 'right'; g.fillText(nice >= 1000 ? nice / 1000 + ' km' : nice + ' m', W - 20 * d, Hh - 20 * d); }
 
@@ -299,13 +331,13 @@
       for (const j of S.jobs) { if (j.state === 'taken' && j.from === si) { const wt = CARGO[j.cg].wt; if (isDepot(si) && (S.wag[wt] || 0) >= j.n) h += `<button class="b sm g" data-c="${j.id}" data-own="1">🔗 Saját kocsik: ${j.n} × ${CARGO[j.cg].n}</button>`; h += `<button class="b sm${isDepot(si) && (S.wag[wt] || 0) >= j.n ? '' : ' g'}" data-c="${j.id}">🔗 Bérelt kocsik: ${j.n} × ${CARGO[j.cg].n} · kaució ${money(j.n * RENT_DEP)}</button>`; } if (j.state === 'loaded' && j.to === si) h += `<button class="b sm g" data-u="${j.id}">📦 Lekapcsolás: ${j.n} × ${CARGO[j.cg].n}</button>`; }
       if (ST[si].big && !Lc.el && S.fuel < Lc.fuel - 1) h += `<button class="b sm" data-f>⛽ Tankolás (${money((Lc.fuel - S.fuel) * FUEL_P)})</button>`; }
     if (h !== AC) { AC = h; $('#acts').innerHTML = h; }
-    $('#bBoard').disabled = !(si >= 0 && ST[si].big); $('#bDepo').disabled = !(si >= 0 && ST[si].big); $('#bFollow').hidden = !!cam.follow;
+    $('#bBoard').disabled = !(si >= 0 && (ST[si].big || ST[si].ind)); $('#bDepo').disabled = !(si >= 0 && ST[si].big); $('#bFollow').hidden = !!cam.follow;
     const jl = S.jobs.map(j => { const left = j.lim - (S.time - j.t0), tgt = ST[j.state === 'taken' ? j.from : j.to]; return `<div class="job${S.nav === j.id ? ' nav' : ''}" data-n="${j.id}"><b>${j.n} × ${CARGO[j.cg].n}</b> · ${money(j.pay)}<br><span class="mut">${j.state === 'taken' ? '🔗 Felvétel: ' : '📦 Cél: '}${tgt.n}</span><br><span class="${left < 0 ? 'warn' : 'mut'}">${left < 0 ? 'Késésben' : 'Határidő: ' + Math.floor(left / 3600) + ' ó ' + Math.floor(left % 3600 / 60) + ' p'}</span></div>`; }).join('');
     $('#jobs').hidden = !S.jobs.length; if ($('#jobs').dataset.h !== jl) { $('#jobs').dataset.h = jl; $('#jobs').innerHTML = '<div class="lab">Munkák · kattints a navigációhoz</div>' + jl; } }
   function panel(html) { $('#pc').innerHTML = html; $('#pnl').hidden = false; }
   const closeP = () => { $('#pnl').hidden = true; };
-  function showBoard() { const si = nearSt(); if (si < 0 || !ST[si].big) return; const jobs = board(si);
-    panel(`<div class="row"><h1 style="font-size:22px">📋 ${ST[si].n}</h1><div style="flex:1"></div><button class="b" data-x>✕</button></div><p class="mut">Teherfuvar-megbízások ebből az állomásból. A kocsik itt várnak: állj meg az állomáson és kapcsold fel őket.</p>` +
+  function showBoard() { const si = nearSt(); if (si < 0 || !(ST[si].big || ST[si].ind)) return; const jobs = board(si);
+    panel(`<div class="row"><h1 style="font-size:22px">📋 ${ST[si].n}</h1><div style="flex:1"></div><button class="b" data-x>✕</button></div>${ST[si].ind ? `<p class="mut">${IND[ST[si].ind].i} ${IND[ST[si].ind].n}${IND[ST[si].ind].be.length ? ' · fogad: ' + IND[ST[si].ind].be.map(c => CARGO[c].n).join(', ') : ''}${IND[ST[si].ind].ki.length ? ' · felad: ' + IND[ST[si].ind].ki.map(c => CARGO[c].n).join(', ') : ''}</p>` : ''}` +
       (jobs.length ? jobs.map(j => { const C = CARGO[j.cg], lock = C.haz && !S.lic.haz, long = j.n > licMax(); return `<div class="it"><div class="grow"><b>${j.n} × ${C.n}</b> → ${ST[j.to].n}<small>${C.w} · ${j.km.toFixed(0)} km · ${Math.round(j.n * (C.m + 22))} t · határidő ${Math.floor(j.lim / 3600)} ó ${Math.floor(j.lim % 3600 / 60)} p${C.haz ? ' · ☣ veszélyes áru' : ''}</small></div><b style="color:var(--gold2)">${money(j.pay)}</b><button class="b sm g" data-t="${j.id}" ${lock || long ? 'disabled' : ''}>${lock ? 'Engedély kell' : long ? 'Max ' + licMax() + ' kocsi' : 'Elvállalom'}</button></div>`; }).join('') : '<p class="mut">Most nincs szabad munka – nézz vissza később.</p>')); }
   function showDepo() { const si = nearSt(); if (si < 0 || !ST[si].big) return; const L = LEN_LIC[S.lic.len + 1], head = `<div class="row"><h1 style="font-size:22px">🏭 Depó · ${ST[si].n}</h1><div style="flex:1"></div><button class="b" data-x>✕</button></div>`;
     if (!isDepot(si)) return panel(head + `<p class="mut">Ezen az állomáson nincs saját depód. Depóban érheted el a központi járműtárolót: mozdonyt válthatsz, saját kocsikat vehetsz fel, járművet és engedélyt vásárolhatsz.</p><p class="mut">Saját depóid: ${S.depots.join(', ')}</p><div class="it"><div class="grow"><b>Depó építése itt</b><small>${ST[si].n}</small></div><button class="b sm g" data-depot="${si}" ${S.money < DEPOT_C ? 'disabled' : ''}>${money(DEPOT_C)}</button></div>`);
@@ -333,14 +365,14 @@
   function park() { if (!S.park && Math.abs(S.v) * 3.6 > 3) return toast('A rögzítőfék csak megállva húzható be.', 1); S.park = !S.park; if (S.park) { S.thr = 0; S.v = 0; } beep(S.park ? 220 : 440, .1); ui(); }
   $('#bPark').onclick = park; $('#cPk').onclick = park;
   function setRev(r) { if (Math.abs(S.v) > .5 && r !== 0 && r !== S.rev) return toast('Irányváltás csak álló helyzetben.', 1); S.rev = r; beep(500, .05); plan(); ui(); }
-  $('#bSw').onclick = flip; $('#bBoard').onclick = showBoard; $('#bDepo').onclick = showDepo; $('#bFollow').onclick = () => { cam.follow = 1; };
+  $('#bSw').onclick = flip; $('#bBoard').onclick = showBoard; $('#bDepo').onclick = showDepo; $('#bFollow').onclick = () => { cam.follow = 1; PIN = null; };
   $('#bMap').onclick = () => { if (cam.s > .003) { cam.prev = cam.s; cam.s = Math.min(cv.width, cv.height) / (devicePixelRatio || 1) / 560000; cam.follow = 0; } else { cam.s = cam.prev || .25; cam.follow = 1; } };
   $('#bMenu').onclick = () => { save(); $('#menu').hidden = false; $('#mPlay').textContent = '▶ Folytatás'; };
   const hold = (el, f) => { let iv = null; el.addEventListener('pointerdown', e => { e.preventDefault(); f(); iv = setInterval(f, 180); }); for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, () => { clearInterval(iv); iv = null; }); };
   hold($('#cUp'), () => { if (S.brk) S.brk--; else S.thr = Math.min(8, S.thr + 1); ui(); }); hold($('#cDn'), () => { if (S.thr) S.thr--; else S.brk = Math.min(6, S.brk + 1); ui(); });
   $('#cBr').addEventListener('pointerdown', () => { keys[' '] = 1; }); for (const ev of ['pointerup', 'pointerleave']) $('#cBr').addEventListener(ev, () => { keys[' '] = 0; }); $('#cSw').onclick = flip;
 
-  addEventListener('keydown', e => { if (!S || !$('#menu').hidden) return; const k = e.key.toLowerCase(); if (e.key === ' ') e.preventDefault(); if (keys[k]) return; keys[k] = 1;
+  addEventListener('keydown', e => { if (!S || !$('#menu').hidden || e.target.tagName === 'INPUT') return; if (e.key === '/') { e.preventDefault(); $('#q').focus(); return; } const k = e.key.toLowerCase(); if (e.key === ' ') e.preventDefault(); if (keys[k]) return; keys[k] = 1;
     if (k === 'w') { if (S.park) toast('Old ki a rögzítőféket (P).', 1); S.thr = Math.min(8, S.thr + 1); } if (k === 's') { S.thr = Math.max(0, S.thr - 1); } if (k === 'b') S.brk = Math.min(6, S.brk + 1); if (k === 'n') S.brk = Math.max(0, S.brk - 1);
     if (k === 'p') park(); if (k === 'r') setRev(S.rev === 1 ? 0 : S.rev === 0 ? (S.v > .5 ? 1 : -1) : 0); if (k === 'v') flip(); if (k === 'm') $('#bMap').onclick(); if (k === 'escape') { if (!$('#pnl').hidden) closeP(); else $('#bMenu').onclick(); } ui(); });
   addEventListener('keyup', e => { keys[e.key.toLowerCase()] = 0; });
@@ -354,6 +386,24 @@
   cv.addEventListener('pointerup', e => { PT.delete(e.pointerId); if (drag && drag.m < 6 && S) { const r = cv.getBoundingClientRect(), wx = cam.x + (e.clientX - r.left - r.width / 2) / cam.s, wy = cam.y + (e.clientY - r.top - r.height / 2) / cam.s, n = nextSwitch();
       if (n && Math.hypot(NX[n.nd] - wx, NY[n.nd] - wy) < 40 / cam.s) flip(); } if (!PT.size) drag = null; });
 
+  /* ---------- kereső: települések, városrészek, állomások, ipari rakodók ---------- */
+  const fold = t => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  let QI = null, QS = [], QA = 0, PIN = null;
+  function qIndex() { if (QI && QI.full) return QI; QI = []; const tw = window.Taj && Taj.towns ? Taj.towns() : []; QI.full = tw.length > 0;
+    for (const q of tw) QI.push({ n: q[0], k: fold(q[0]), x: q[1], y: q[2], t: q[3] < 0 ? 'városrész' : 'település', w: q[3] < 0 ? 1 : 3 + Math.log10(1 + q[3]), z: q[3] < 0 ? .06 : q[3] > 100 ? .006 : q[3] > 10 ? .015 : .03 });
+    for (const st of ST) QI.push({ n: st.n, k: fold(st.n), x: st.x, y: st.y, t: st.ind ? IND[st.ind].i + ' ' + IND[st.ind].n : st.big ? '🚉 állomás' : 'megálló', w: st.big ? 2.5 : st.ind && st.n.includes(' · ') ? -2 : 1.5, z: .12 });
+    return QI; }
+  function qRun() { const v = fold($('#q').value.trim()), box = $('#qr'); if (!v) { box.hidden = true; QS = []; return; }
+    QS = qIndex().map(q => { const i = q.k.indexOf(v); return i < 0 ? null : [q, (i === 0 ? 10 : q.k[i - 1] === ' ' || q.k[i - 1] === '-' ? 6 : 0) + q.w - q.k.length / 40]; }).filter(Boolean).sort((a, b) => b[1] - a[1]).map(q => q[0]).filter((q, i, a) => a.findIndex(o => o.n === q.n && o.t === q.t) === i).slice(0, 12); QA = 0;
+    box.innerHTML = QS.length ? QS.map((q, i) => `<div data-i="${i}" class="${i ? '' : 'on'}">${q.n.replace(/[<>&]/g, '')}<small>${q.t}</small></div>`).join('') : '<div style="cursor:default;color:#999">Nincs találat</div>'; box.hidden = false; }
+  function qGo(i) { const q = QS[i]; if (!q) return; cam.follow = 0; cam.x = q.x; cam.y = q.y; cam.s = q.z; PIN = { x: q.x, y: q.y, n: q.n, t: 6 }; $('#qr').hidden = true; $('#q').blur(); }
+  $('#q').addEventListener('input', qRun); $('#q').addEventListener('focus', () => { if ($('#q').value) qRun(); });
+  $('#q').addEventListener('keydown', e => { e.stopPropagation(); const box = $('#qr'); if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (!QS.length) return; QA = (QA + (e.key === 'ArrowDown' ? 1 : -1) + QS.length) % QS.length; box.querySelectorAll('[data-i]').forEach((el, i) => el.classList.toggle('on', i === QA)); }
+    else if (e.key === 'Enter') qGo(QA); else if (e.key === 'Escape') { box.hidden = true; $('#q').blur(); } });
+  $('#q').addEventListener('keyup', e => e.stopPropagation());
+  $('#qr').addEventListener('pointerdown', e => { const t = e.target.closest('[data-i]'); if (t) { e.preventDefault(); qGo(+t.dataset.i); } });
+  $('#q').addEventListener('blur', () => setTimeout(() => { $('#qr').hidden = true; }, 150));
+
   /* ---------- hang ---------- */
   let AX = null; function beep(f, d) { try { AX = AX || new AudioContext(); const o = AX.createOscillator(), gn = AX.createGain(); o.frequency.value = f; o.type = 'square'; gn.gain.value = .04; gn.gain.exponentialRampToValueAtTime(.0001, AX.currentTime + d); o.connect(gn).connect(AX.destination); o.start(); o.stop(AX.currentTime + d); } catch (_) {} }
 
@@ -365,8 +415,8 @@
     draw(); if ((uiT -= dt) <= 0) { uiT = .15; ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); } if ((scT -= dt) <= 0) { scT = 60; score(); }
     if (toastT > 0 && (toastT -= dt) <= 0) $('#toast').hidden = true; }
   requestAnimationFrame(loop);
-  if (window.Taj) Taj.load('202611212100').catch(() => {});
-  fetch('halo.json?v=202611212150').then(r => r.json()).then(h => { build(h); const ok = load(); if (!ok) fresh(); S.nearIdx = []; nearT = 0;
+  if (window.Taj) Taj.load('202611212210').catch(() => {});
+  fetch('halo.json?v=202611212210').then(r => r.json()).then(h => { build(h); const ok = load(); if (!ok) fresh(); S.nearIdx = []; nearT = 0;
     $('#mLoad').textContent = (H.e.reduce((a, e) => a + e[2], 0) / 1000).toFixed(0) + ' km vasútvonal · ' + ST.length + ' állomás és megálló'; $('#mPlay').disabled = false; $('#mPlay').textContent = ok ? '▶ Folytatás' : '▶ Játék'; $('#mNew').hidden = !ok; })
     .catch(() => { $('#mLoad').textContent = 'Nem sikerült betölteni a vasúthálózatot.'; });
   $('#mPlay').onclick = () => { $('#menu').hidden = true; beep(660, .08); if (S && S.migr) { delete S.migr; toast('A vasúthálózat bővült (állomási vágányok): a vonatod Kelenföldre került, a futó munkák lezárultak, a kauciókat visszakaptad.'); } };

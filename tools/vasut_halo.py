@@ -271,7 +271,67 @@ if __name__ == '__main__':
             TT.append([round(cx, 1), round(cy, 1), round(r, 1), c, conn, stubs])
         print('fordítókorong', len(TT), 'eldobott belső él', len(drop), flush=True)
     else: TT = []
-    # állomások: a legközelebbi élpontra vetítve (300 m-en belül)    # állomások: a legközelebbi élpontra vetítve (300 m-en belül)
+    # ipari rakodók: a telephelyen belül (vagy 60 m-en belül) futó mellék- és iparvágány
+    IP = []
+    if os.path.exists('/tmp/vasut-ipar.pkl'):
+        import unicodedata, collections
+        def fold(t): return ''.join(c for c in unicodedata.normalize('NFD', t.lower()) if not unicodedata.combining(c))
+        def kind(nm, t):
+            n = fold(nm) + ' ' + fold(' '.join(t.get(k, '') for k in ('industrial', 'product', 'operator', 'plant:source', 'resource', 'works', 'man_made')))
+            has = lambda *w: any(x in n for x in w)
+            if has('steel', 'acel', 'dunaferr', 'vasmu', 'koho', 'metallurg'): return 'acel'
+            if has('cement', 'mesz', 'concrete', 'beton'): return 'cement'
+            if has('refiner', 'finomito', 'kozolaj'): return 'finomito'
+            if has('chemical', 'vegyi', 'chem', 'nitrogen', 'mutragya', 'tvk', 'gyogyszer', 'pharma'): return 'vegyi'
+            if t.get('power') == 'plant' or has('eromu', 'power', 'biomass', 'coal'): return 'eromu'
+            if t.get('landuse') == 'quarry' or has('quarry', 'banya', 'mine', 'kofejto', 'kavics', 'homok'): return 'banya'
+            if has('audi', 'mercedes', 'suzuki', 'bmw', 'opel', 'autogyar', 'jarmu', 'automotive'): return 'auto'
+            if has('sawmill', 'furesz', 'fatelep', 'faipar', 'fafeldolg', 'paper', 'papir', 'lumber', 'wood'): return 'fa'
+            if has('grinding_mill', 'malom', 'gabona', 'silo', 'agro', 'agricult', 'takarmany', 'food', 'cukor', 'sugar', 'konzerv', 'slaughter', 'vagohid'): return 'malom'
+            if has('scrap', 'recycl', 'hulladek', 'ocskavas'): return 'hulladek'
+            if has('logist', 'warehouse', 'depot', 'port', 'terminal', 'kikoto', 'kontener', 'raktar', 'transport'): return 'logisz'
+            if has('brick', 'tegla', 'cserep'): return 'tegla'
+            if has('oil', 'natural_gas', 'gas', 'olaj', 'substation', 'communication', 'water', 'wastewater', 'heating'): return None
+            return 'gyar'
+        TP = {}
+        for k, e in enumerate(edges):
+            if not e[6]: continue
+            pts = e[5]; acc = 0
+            for i in range(len(pts) - 1):
+                (x0, y0), (x1, y1) = pts[i], pts[i + 1]; L = math.hypot(x1 - x0, y1 - y0)
+                for t in np.linspace(0, 1, max(2, int(L / 20) + 1)):
+                    x, y = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t; TP.setdefault((int(x // 200), int(y // 200)), []).append((x, y, k, acc + L * t))
+                acc += L
+        def pip(px, py, x, y):
+            c = False; j = len(px) - 1
+            for i in range(len(px)):
+                if (py[i] > y) != (py[j] > y) and x < (px[j] - px[i]) * (y - py[i]) / ((py[j] - py[i]) or 1e-9) + px[i]: c = not c
+                j = i
+            return c
+        cand = []
+        for nm, t, lo, la in pickle.load(open('/tmp/vasut-ipar.pkl', 'rb')):
+            ty = kind(nm, t)
+            if not ty: continue
+            px, py = P(np.array(lo), np.array(la)); px = px.tolist(); py = py.tolist()
+            x0, x1, y0, y1 = min(px), max(px), min(py), max(py)
+            if x1 - x0 > 8000 or y1 - y0 > 8000: continue
+            cx, cy = sum(px) / len(px), sum(py) / len(py); area = (x1 - x0) * (y1 - y0); best = None
+            for gx in range(int((x0 - 60) // 200), int((x1 + 60) // 200) + 1):
+                for gy in range(int((y0 - 60) // 200), int((y1 + 60) // 200) + 1):
+                    for (x, y, k, sp) in TP.get((gx, gy), []):
+                        if x < x0 - 60 or x > x1 + 60 or y < y0 - 60 or y > y1 + 60: continue
+                        inside = pip(px, py, x, y)
+                        if not inside and min((x - qx) ** 2 + (y - qy) ** 2 for qx, qy in zip(px[::3], py[::3])) > 3600: continue
+                        d = math.hypot(x - cx, y - cy) + (0 if inside else 150)
+                        if best is None or d < best[0]: best = (d, k, sp, x, y)
+            if best: cand.append((0 if nm else 1, -area, nm, ty, best, px, py))
+        cand.sort(key=lambda q: (q[0], q[1])); taken = []
+        for _, _, nm, ty, (d, k, sp, x, y), px, py in cand:
+            if any(math.hypot(x - q[0], y - q[1]) < 350 for q in taken): continue
+            taken.append((x, y)); kk = dp(px, py, 15)
+            IP.append([nm[:40], ty, k, round(sp), [round(v) for i in kk for v in (px[i], py[i])][:400]])
+        print('ipari rakodó', len(IP), dict(collections.Counter(q[1] for q in IP)), flush=True)
+    # állomások: a legközelebbi élpontra vetítve (300 m-en belül)
     G = {}
     for k, e in enumerate(edges):
         acc = 0; pts = e[5]
@@ -335,6 +395,6 @@ if __name__ == '__main__':
     print('peron', len(plat), 'állomásépület', len(sbld), flush=True)
     W_, H_ = idx['W'] * 100, idx['H'] * 100
     json.dump({'K': 1, 'W': W_, 'H': H_, 'n': [[round(x), round(y)] for x, y in nodes],
-               'e': [[e[0], e[1], round(e[2]), e[3], e[4], [round(v) for p in e[5] for v in p], e[6]] for e in edges], 'pl': plat, 'sb': sbld, 'tt': TT,
+               'e': [[e[0], e[1], round(e[2]), e[3], e[4], [round(v) for p in e[5] for v in p], e[6]] for e in edges], 'pl': plat, 'sb': sbld, 'tt': TT, 'ip': IP,
                's': sts, 'o': outl, 'w': riv}, open(os.path.join(OUTD, 'halo.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     print('kész', os.path.getsize(os.path.join(OUTD, 'halo.json')) // 1024, 'kB', flush=True)
