@@ -1,10 +1,10 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611210219';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611210219';
-import * as Player from './player.js?v=202611210219';
-import * as Party from './party.js?v=202611210219';
-import * as VP from './vplayer.js?v=202611210219';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611210219';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611210320';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611210320';
+import * as Player from './player.js?v=202611210320';
+import * as Party from './party.js?v=202611210320';
+import * as VP from './vplayer.js?v=202611210320';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611210320';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -255,6 +255,7 @@ export const GAMES = [
   { id: 'viztorony', name: 'Víztorony', icon: '🗼', unit: 'm', desc: 'Mássz fel a víztorony tetejére az Arany Locsolófejért – egy rossz ugrás, és zuhansz!', c: '#b48cff', sponsor: 'A Zerosites támogatásával' },
   { id: 'drift', name: 'Drift Király', icon: '🏎️', desc: 'Felülnézetes drift-verseny 10 pályán, szellemautókkal és kétjátékos móddal.', c: '#ff5a4d' },
   { id: 'holtvaros', name: 'Holtváros', icon: '🧟', unit: 'pont', desc: 'Védd meg a várost a zombijárványtól: zóna, kapuk, őrség, légicsapás. A Zombies Aren\'t Real ihlette.', c: '#7dff4a', sponsor: 'A Zerosites támogatásával' },
+  { id: 'atemelotelep', name: 'Az Átemelőtelep', icon: '🏭', desc: 'Éjszakai ügyelet egy szabotált szennyvízátemelőn – mielőtt túlcsordul a medence. Rekord: a leggyorsabb teljes idő.', c: '#e8b656', fmt: v => { const t = Math.max(0, 1e6 - v); return Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0'); } },
   { id: 'birodalom', name: 'Öntöző Birodalom', icon: '🌱', unit: 'Ft', desc: 'Építs csőhálózatot, ültess kertet és ültetvényt – a kerted akkor is termel, amikor nem vagy itt.', c: '#6fcf6a' }
 ];
 const EXTRA = [{ id: 'aranylocsolofej', name: 'Az Arany Locsolófej', icon: '🏆', desc: 'Filmes kalandjáték: szerezd vissza az Arany Locsolófejet Szikkadt Szilárdtól!', c: '#e8b656', demo: 1, tag: 'ÚJ' }, { id: 'locsolohaboru', name: 'Locsolóháború', icon: '💦', desc: 'Első személyű vízipisztoly-aréna 2–8 játékosnak – barátokkal vagy botok ellen.', c: '#4aa8ff', demo: 1, tag: 'ONLINE' }, { id: 'vizagyuio', name: 'Vízágyú.io', icon: '🔫', desc: 'Valós idejű locsolóaréna 2–8 játékosnak – barátokkal vagy botok ellen.', c: '#6cc6ff', demo: 1, tag: 'ONLINE' }, { id: 'zerochip', name: 'Zero Chip', icon: '🔌', desc: 'Építs áramköröket a tranzisztortól a processzorig – 61 küldetés.', c: '#3ecf8e', demo: 1 }, { id: 'zerospace', name: 'Zero Space Demo', icon: '🚀', desc: 'Építs űrhajót modulról modulra és vezesd csatába – korai demó, egyjátékos sandbox.', c: '#b2382a', demo: 1 }];
@@ -414,7 +415,7 @@ export async function lbProfile(uid, nick) {
     foot: `${u ? `<a class="btn plain" href="#/profil/${esc(uid)}" data-x><i class="ic ic-user"></i> Teljes profil</a>` : ''}<button class="btn goldb" data-x>Bezárás</button>` });
   const get = async lb => { try { return (await FB.getDoc(FB.doc(db, 'leaderboards', lb, 'scores', uid))).data() || null; } catch (_) { return null; } };
   const rows = await Promise.all(GAMES.map(async g => { const [a, w] = await Promise.all([get(g.id), get(g.id + '_' + wk)]); return { g, a, w }; })), has = rows.filter(r => r.a || r.w);
-  const box = el.querySelector('[data-rec]'); if (!box) return; const num = (d, g) => d ? bigNum(lbDec(d.best)) + (g.unit ? ' ' + g.unit : '') : '–';
+  const box = el.querySelector('[data-rec]'); if (!box) return; const num = (d, g) => d ? (g.fmt ? g.fmt(lbDec(d.best)) : bigNum(lbDec(d.best)) + (g.unit ? ' ' + g.unit : '')) : '–';
   box.innerHTML = has.length ? `<div style="display:grid;grid-template-columns:1fr auto auto;gap:.45rem 1.1rem;align-items:center"><small style="opacity:.6">JÁTÉK</small><small style="opacity:.6;text-align:right">MINDEN IDŐK</small><small style="opacity:.6;text-align:right">E HÉT</small>
     ${has.map(r => `<span>${r.g.icon} ${esc(r.g.name)}${r.a?.wins ? ` <span class="utag" style="--tc:#e8b656">🏆×${r.a.wins}</span>` : ''}</span><b style="text-align:right">${num(r.a, r.g)}</b><span style="text-align:right;opacity:.85">${num(r.w, r.g)}</span>`).join('')}</div>` : '<div class="empty">Még nincs rekordja.</div>';
 }

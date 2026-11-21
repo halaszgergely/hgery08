@@ -497,6 +497,22 @@ service cloud.firestore {
         && mpStep('m_kert', 1) && mpStep('m_gyar', 1) && mpStep('m_atemelo', 1) && mpStep('m_aszaly', 1)
         && request.resource.data.updatedAt == request.time && resource.data.updatedAt < request.time - duration.value(60, 's');
     }
+    // ---- játékmentések (egyelőre Az Átemelőtelep): mindenki csak a sajátját írja, ritkán, kis méretben ----
+    match /gamesaves/{uid} {
+      allow read: if signedIn();   // a kitüntetésekhez a profilon (állapot, idő – nincs benne érzékeny adat)
+      allow delete: if signedIn() && request.auth.uid == uid;
+      allow create, update: if active() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['atemelo', 'updatedAt'])
+        && request.resource.data.atemelo is map
+        && request.resource.data.atemelo.keys().hasOnly(['ch', 't', 'done', 'best', 'nospill', 'nogas', 'st'])
+        && request.resource.data.atemelo.ch is int && request.resource.data.atemelo.ch >= 1 && request.resource.data.atemelo.ch <= 7
+        && request.resource.data.atemelo.t is int && request.resource.data.atemelo.t >= 0
+        && request.resource.data.atemelo.done is list && request.resource.data.atemelo.done.size() <= 6
+        && request.resource.data.atemelo.best is int && request.resource.data.atemelo.nospill in [0, 1] && request.resource.data.atemelo.nogas in [0, 1]
+        && request.resource.data.atemelo.st is string && request.resource.data.atemelo.st.size() <= 12000
+        && request.resource.data.updatedAt == request.time
+        && (resource == null || resource.data.updatedAt < request.time - duration.value(10, 's'));
+    }
     match /friends/{fid} {
       allow read: if signedIn() && request.auth.uid in resource.data.users;
       allow create: if active()

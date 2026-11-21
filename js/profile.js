@@ -1,8 +1,8 @@
 // HGWS – tag profiloldala (#/profil/<uid>): rang, tagek, bemutatkozás, Arcade-rekordok, értékelései
-import { FB, db, $, esc, bigNum, lbDec, avatar, toDate, timeLabel, isOnline, roleOf, OWNER_UID, notify } from './core.js?v=202611210219';
-import { I, bgOf } from './fx.js?v=202611210219';
-import * as Admin from './admin.js?v=202611210219';
-import { GAMES } from './browse.js?v=202611210219';
+import { FB, db, $, esc, bigNum, lbDec, avatar, toDate, timeLabel, isOnline, roleOf, OWNER_UID, notify } from './core.js?v=202611210320';
+import { I, bgOf } from './fx.js?v=202611210320';
+import * as Admin from './admin.js?v=202611210320';
+import { GAMES } from './browse.js?v=202611210320';
 
 let C = null, gen = 0;
 export function init(ctx) { C = ctx; }
@@ -21,24 +21,30 @@ export const BADGES = [
   { id: 'bemutatkozott', ic: 'file-pen', n: 'Bemutatkozott', d: 'Kitöltötte a bemutatkozását', c: '#e8b656', ok: x => x.bio },
   { id: 'torzstag', ic: 'medal', n: 'Törzstag', d: 'Legalább 30 napja HGWS-tag', c: '#ff7a6e', ok: x => x.days >= 30 },
   { id: 'mpgyoztes', ic: 'droplets', n: 'Első győzelem', d: 'Megnyert egy Vízágyú.io meccset', c: '#6cc6ff', ok: x => x.mp.wins >= 1 },
-  { id: 'mpszaz', ic: 'crosshair', n: 'Százas áztató', d: '100 kiütés a Vízágyú.io-ban', c: '#ff7a6e', ok: x => x.mp.kos >= 100 },
-  { id: 'mpszilard', ic: 'sun', n: 'Szilárd legyőzője', d: 'Kooperatív módban eláztatta Szikkadt Szilárdot', c: '#ffa94d', ok: x => x.mp.boss >= 1 },
+  { id: 'mpszaz', ic: 'medal', n: 'Százas áztató', d: '100 kiütés a Vízágyú.io-ban', c: '#ff7a6e', ok: x => x.mp.kos >= 100 },
+  { id: 'mpszilard', ic: 'shield', n: 'Szilárd legyőzője', d: 'Kooperatív módban eláztatta Szikkadt Szilárdot', c: '#ffa94d', ok: x => x.mp.boss >= 1 },
   { id: 'lhgyoztes', ic: 'trophy', n: 'Locsolóbajnok', d: 'Megnyert egy Locsolóháború-meccset', c: '#4aa8ff', ok: x => x.fps.wins >= 1 },
-  { id: 'lhszaz', ic: 'target', n: 'Mesteráztató', d: '100 kiütés a Locsolóháborúban', c: '#ff5a4d', ok: x => x.fps.kos >= 100 },
+  { id: 'lhszaz', ic: 'award', n: 'Mesteráztató', d: '100 kiütés a Locsolóháborúban', c: '#ff5a4d', ok: x => x.fps.kos >= 100 },
   { id: 'lhszilard', ic: 'flame', n: 'Aszályvégző', d: 'A Locsolóháborúban legyőzte Szikkadt Szilárdot', c: '#e8b656', ok: x => x.fps.boss >= 1 },
+  { id: 'atelso', ic: 'power', n: 'Első műszak', d: 'Az Átemelőtelep 1. fejezete: helyreállította a tápellátást', c: '#e8b656', ok: x => (x.at.done || []).includes(1) },
+  { id: 'atugyelet', ic: 'clock', n: 'Éjszakai ügyeletes', d: 'Végigvitte Az Átemelőtelep mind az öt fejezetét', c: '#6cc6ff', ok: x => x.at.best > 0 },
+  { id: 'atcsepp', ic: 'droplet', n: 'Egy csepp se folyt ki', d: 'Az Átemelőtelep túlcsordulás nélkül', c: '#5ee08a', ok: x => !!x.at.nospill },
+  { id: 'atgaz', ic: 'gauge', n: 'Gázmester', d: 'Az Átemelőtelep gázriasztás nélkül', c: '#c79bff', ok: x => !!x.at.nogas },
+  { id: 'at30', ic: 'hourglass', n: 'Fél óra alatt', d: 'Az Átemelőtelep 30 perc alatt', c: '#ff7a6e', ok: x => x.at.best > 0 && x.at.best <= 1800 },
   { id: 'csapat', ic: 'shield-check', n: 'A csapat tagja', d: 'Moderátor vagy magasabb rang', c: '#6cc6ff', ok: x => x.staff }
 ];
 async function facts(id) {
   const u = C.S.users.get(id) || {}, self = id === C.uid();
-  const [rates, games, ideas, hosts, mp, fps] = await Promise.all([
+  const [rates, games, ideas, hosts, mp, fps, at] = await Promise.all([
     FB.getDocs(FB.collectionGroup(db, 'ratings')).then(s => s.docs.filter(d => d.id === id).length).catch(() => 0),
     Promise.all(GAMES.map(g => FB.getDoc(FB.doc(db, 'leaderboards', g.id, 'scores', id)).then(s => lbDec(s.data()?.best || 0)).catch(() => 0))),
     FB.getDocs(self ? FB.query(FB.collection(db, 'ideas'), FB.where('uid', '==', id)) : FB.query(FB.collection(db, 'ideas'), FB.where('uid', '==', id), FB.where('public', '==', true))).then(s => s.size).catch(() => 0),
     FB.getDocs(FB.query(FB.collection(db, 'parties'), FB.where('host', '==', id))).then(s => s.size).catch(() => 0),
     FB.getDoc(FB.doc(db, 'mpstats', id)).then(s => ({ wins: 0, kos: 0, boss: 0, games: 0, ...(s.exists() ? s.data() : {}) })).catch(() => ({ wins: 0, kos: 0, boss: 0, games: 0 })),
-    FB.getDoc(FB.doc(db, 'fpsstats', id)).then(s => ({ wins: 0, kos: 0, boss: 0, caps: 0, games: 0, ...(s.exists() ? s.data() : {}) })).catch(() => ({ wins: 0, kos: 0, boss: 0, caps: 0, games: 0 }))
+    FB.getDoc(FB.doc(db, 'fpsstats', id)).then(s => ({ wins: 0, kos: 0, boss: 0, caps: 0, games: 0, ...(s.exists() ? s.data() : {}) })).catch(() => ({ wins: 0, kos: 0, boss: 0, caps: 0, games: 0 })),
+    FB.getDoc(FB.doc(db, 'gamesaves', id)).then(s => (s.exists() && s.data().atemelo) || {}).catch(() => ({}))
   ]);
-  return { mp, fps, rates, scores: games, games: games.filter(Boolean).length, ideas, hosts, bio: !!(u.bio || '').trim(),
+  return { mp, fps, at, rates, scores: games, games: games.filter(Boolean).length, ideas, hosts, bio: !!(u.bio || '').trim(),
     days: (Date.now() - (toDate(u.createdAt)?.getTime() || Date.now())) / DAY,
     champ: C.userTags(u).some(t => t.name === 'Arcade-bajnok'), staff: C.rankOfUser(u) >= 40 };
 }

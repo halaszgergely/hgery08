@@ -4,6 +4,8 @@ const ZeroSpace = { id: 'zerospace', name: 'ZERO SPACE DEMO', ext: 'jatekok/zero
   desc: 'Tervezd meg a saját űrhajódat modulról modulra, és vezesd csatába a végtelen űrben. Korai demó – az egyjátékos sandbox már elérhető.' };
 const AranyLocsolofej = { id: 'aranylocsolofej', name: 'AZ ARANY LOCSOLÓFEJ', ext: 'jatekok/aranylocsolofej/index.html', tag: 'ÚJ',
   desc: 'Szikkadt Szilárd ellopta az Arany Locsolófejet! Hívd össze a csapatot, foglald el a víztornyot, és szerezd vissza a filmes kalandjátékban.' };
+const Atemelotelep = { id: 'atemelotelep', name: 'AZ ÁTEMELŐTELEP', ext: 'jatekok/atemelotelep/index.html', tag: 'ÚJ', lbx: 1, icon: '🏭', fmt: v => { const t = Math.max(0, 1e6 - v); return Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0'); },
+  desc: 'Éjszakai ügyelet egy szabotált szennyvízátemelőn: kapcsolószekrény, akna, PLC-program, aggregát – mielőtt túlcsordul a medence.' };
 const LocsoloHaboru = { id: 'locsolohaboru', name: 'LOCSOLÓHÁBORÚ', ext: 'jatekok/locsolohaboru/index.html', tag: 'ONLINE',
   desc: 'Első személyű vízipisztoly-aréna 2–8 játékosnak: öt fegyver, négy pálya, négy mód – barátokkal vagy botok ellen.' };
 const VizagyuIo = { id: 'vizagyuio', name: 'VÍZÁGYÚ.IO', ext: 'jatekok/vizagyuio/index.html', tag: 'ONLINE',
@@ -15,8 +17,11 @@ const ZeroQuest = { id: 'zeroquest', name: 'ZERO QUEST', ext: 'jatekok/zeroquest
   desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében: küldetések, szintlépés, felszerelés és egy ébredő őr a romok alatt. Zárt béta.' };
 const Drift = window.HGDrift ? window.HGDrift({ G, Sfx, rr, store, hud }) : null;
 const Zombi = window.HGZombi ? window.HGZombi({ G, Sfx, rr, store, hud }) : null;
-const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Ugro, Torony, Birodalom, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
+const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Ugro, Torony, Birodalom, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, Atemelotelep, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
 const EXT = $('#ext'), EXF = $('#extf');
+// a külön oldalon futó játékok (pl. Az Átemelőtelep) eredménye ide érkezik, innen megy tovább a ranglistára
+addEventListener('message', e => { if (e.origin !== location.origin || e.source !== EXF.contentWindow || !e.data || e.data.hgws !== 'score') return; const g = GAMES.find(x => x.id === e.data.game && x.lbx); if (!g || !(e.data.score > 0)) return;
+  if (e.data.score > store.get('best_' + g.id)) store.set('best_' + g.id, e.data.score); if (window.top !== window) parent.postMessage({ hgws: 'score', game: g.id, score: e.data.score }, location.origin); });
 let zqWait = false;
 function openExt(gm) { if (gm.lock && !window.HGZQ_OK) { zqWait = !window.HGZQ_SEEN; return; } EXF.src = gm.ext + '?v=' + Date.now().toString(36).slice(0, 5) + (gm.room ? '&room=' + encodeURIComponent(gm.room) : ''); gm.room = ''; EXT.hidden = false; document.body.classList.add('locked'); setTimeout(() => { try { EXF.focus(); } catch (_) {} }, 300); }
 function closeExt() { EXT.hidden = true; EXF.src = 'about:blank'; document.body.classList.remove('locked'); }
@@ -45,6 +50,10 @@ const ARTS = {
     const G = x.createLinearGradient(cx - 18, 0, cx + 18, 0); G.addColorStop(0, '#a8702a'); G.addColorStop(.4, '#fff3c4'); G.addColorStop(1, '#a8702a'); x.fillStyle = G; x.fillRect(cx - 5, cy - 22, 10, 22); x.fillRect(cx - 13, cy - 2, 26, 6); x.beginPath(); x.moveTo(cx - 8, cy - 22); x.lineTo(cx + 8, cy - 22); x.lineTo(cx + 15, cy - 36); x.lineTo(cx - 15, cy - 36); x.fill(); x.beginPath(); x.ellipse(cx, cy - 38, 18, 7, 0, 0, 6.283); x.fill();
     x.fillStyle = '#7a2f3a'; x.fillRect(cx - 34, cy + 4, 68, 30); x.fillStyle = '#e8b656'; x.fillRect(cx - 38, cy, 76, 5); x.strokeStyle = 'rgba(200,235,255,.8)'; x.lineWidth = 2; x.beginPath(); x.moveTo(cx - 30, cy); x.lineTo(cx - 30, cy - 46); x.arc(cx, cy - 46, 30, Math.PI, 0); x.lineTo(cx + 30, cy); x.stroke();
     for (let k = 0; k < 6; k++) { const o = (t * .5 + k / 6) % 1, px = cx - 110 + k * 44 + Math.sin(k * 3) * 10, py = 20 + o * 100; x.fillStyle = `rgba(108,198,255,${.9 - o * .6})`; x.beginPath(); x.moveTo(px, py - 7); x.bezierCurveTo(px + 6, py, px + 5, py + 6, px, py + 6); x.bezierCurveTo(px - 5, py + 6, px - 6, py, px, py - 7); x.fill(); } },
+  atemelotelep: (c, x, t) => { const W = c.width, H = c.height; x.fillStyle = '#05070b'; x.fillRect(0, 0, W, H); x.fillStyle = 'rgba(150,170,200,.25)'; for (let i = 0; i < 60; i++) { const rx = (i * 53.7) % W, ry = ((i * 31.3) + t * 140) % H; x.fillRect(rx, ry, 1, 7); }
+    x.fillStyle = '#1a1d22'; x.fillRect(W * .12, H * .42, W * .36, H * .4); x.fillStyle = '#2a2d33'; x.fillRect(W * .6, H * .62, W * .3, H * .2); x.fillStyle = Math.sin(t * 3) > 0 ? '#ff3a2a' : '#4a1010'; x.beginPath(); x.arc(W * .3, H * .4, 5, 0, 6.283); x.fill();
+    const a = Math.sin(t * .8) * .35 - .2, gx = W * .55, gy = H * .95, gr = x.createRadialGradient(gx + Math.cos(a - 1.57) * H * .6, gy + Math.sin(a - 1.57) * H * .6, 2, gx + Math.cos(a - 1.57) * H * .6, gy + Math.sin(a - 1.57) * H * .6, H * .35); gr.addColorStop(0, 'rgba(255,240,200,.55)'); gr.addColorStop(1, 'rgba(255,240,200,0)'); x.fillStyle = gr; x.fillRect(0, 0, W, H);
+    x.fillStyle = '#7fff9a'; x.font = '700 10px monospace'; x.fillText('LT1 ' + (2.9 + Math.sin(t) * .3).toFixed(2) + ' m', W * .63, H * .74); },
   locsolohaboru: (c, x, t) => { const W = c.width, H = c.height, g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#8fc6ea'); g.addColorStop(.55, '#cfe6f2'); g.addColorStop(.56, '#5fa04e'); g.addColorStop(1, '#3f7a35'); x.fillStyle = g; x.fillRect(0, 0, W, H);
     x.fillStyle = '#2c7d36'; x.fillRect(W * .08, H * .38, W * .22, H * .2); x.fillStyle = '#c9a66b'; x.fillRect(W * .68, H * .3, W * .2, H * .27); x.fillStyle = '#8a4b2e'; x.fillRect(W * .66, H * .27, W * .24, H * .05);
     const ex = W * .46 + Math.sin(t * 1.3) * W * .12; x.fillStyle = '#2a2f38'; x.fillRect(ex - 6, H * .44, 12, 18); x.fillStyle = '#ff7a6e'; x.fillRect(ex - 8, H * .34, 16, 14); x.fillStyle = '#f0c9a0'; x.fillRect(ex - 5, H * .27, 10, 9);
@@ -120,8 +129,8 @@ function lbDraw() {
   $('#lbn').innerHTML = LB.guest
     ? `Vendégként <b>${esc(LB.nick)}</b> néven szerepelsz a ranglistán. <button class="lbnick" data-nick>✏️ Becenév módosítása</button>`
     : base;
-  $('#lbg').innerHTML = GAMES.filter(g => !g.ext).map(g => { const l = (LB.boards[g.id] || {})[lbt] || [];
-    return `<div class="lbc${g.unit ? ' wide' : ''}"><h4>${g.icon || ''} ${g.name}</h4>${l.length ? l.map((r, i) => `<div class="lbr${r.me ? ' me' : ''}${LB.admin && r.uid ? ' adm' : ''}"><i>${['🥇', '🥈', '🥉'][i] || i + 1}</i><span${r.uid ? ` class="lbu" data-prof="${esc(r.uid)}" data-pn="${r.guest ? esc(r.name) : ''}"` : ''}>${esc(r.name)}${r.guest ? '<em class="lbg2">VENDÉG</em>' : ''}</span><b>${r.wins ? `<em class="lbw2" title="Arany Locsolófej">🏆×${r.wins}</em>` : ''}${bigNum(r.score)}${g.lb ? ' ' + g.lb : ''}</b>${LB.admin && r.uid ? `<button class="lbdel" data-del="${g.id}|${esc(r.uid)}" title="Eredmény törlése">🗑</button>` : ''}</div>`).join('') : '<p class="lbe">Még senki – légy te az első!</p>'}</div>`; }).join('');
+  $('#lbg').innerHTML = GAMES.filter(g => !g.ext || g.lbx).map(g => { const l = (LB.boards[g.id] || {})[lbt] || [];
+    return `<div class="lbc${g.unit ? ' wide' : ''}"><h4>${g.icon || ''} ${g.name}</h4>${l.length ? l.map((r, i) => `<div class="lbr${r.me ? ' me' : ''}${LB.admin && r.uid ? ' adm' : ''}"><i>${['🥇', '🥈', '🥉'][i] || i + 1}</i><span${r.uid ? ` class="lbu" data-prof="${esc(r.uid)}" data-pn="${r.guest ? esc(r.name) : ''}"` : ''}>${esc(r.name)}${r.guest ? '<em class="lbg2">VENDÉG</em>' : ''}</span><b>${r.wins ? `<em class="lbw2" title="Arany Locsolófej">🏆×${r.wins}</em>` : ''}${g.fmt ? g.fmt(r.score) : bigNum(r.score)}${g.lb ? ' ' + g.lb : ''}</b>${LB.admin && r.uid ? `<button class="lbdel" data-del="${g.id}|${esc(r.uid)}" title="Eredmény törlése">🗑</button>` : ''}</div>`).join('') : '<p class="lbe">Még senki – légy te az első!</p>'}</div>`; }).join('');
 }
 $('#lbw').addEventListener('click', e => { if (e.target.closest('[data-nick]')) { parent.postMessage({ hgws: 'nickreq' }, location.origin); return; }
   const pr = e.target.closest('[data-prof]'); if (pr) { parent.postMessage({ hgws: 'lbprof', uid: pr.dataset.prof, nick: pr.dataset.pn || '' }, location.origin); return; }
