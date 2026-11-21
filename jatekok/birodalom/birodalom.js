@@ -471,9 +471,12 @@ const Birodalom = (() => {
   const PLI = {}; Object.keys(PL).forEach((k, j) => { PLI[k] = j; });
   const nekOf = k => .004 * (1 + PLI[k]) * (PL[k].nkx || 1) * (PL[k].sz ? PL[k].sz * PL[k].sz : 1) * (1 + .25 * S.up.nektar);
   const nfmt = n => n < 100 ? n.toLocaleString('hu-HU', { maximumFractionDigits: n < 10 ? 2 : 1 }) : fmt(n);
+  /* tételes növekedés: egy ciklus legalább MINC másodperc; ha a növény ennél gyorsabban nőne, ritkábban érik be,
+     de annyi termést ad, ahányszor közben beérett volna (a növekedési bónuszok ezt a szorzót növelik) */
+  const MINC = 10, BM = new Float32Array(COLS * ROWS).fill(1);
   function harvest(G, i, how) {
-    const gold = Math.random() < goldP(), v = Math.round(val(i) * (how === 'cb' ? cbBonus() : 1) * (gold ? goldX() : 1)); earn(v); S.nek += nekOf(S.k[i]); { const P0 = PL[S.k[i]]; if (P0.met) S.met[P0.met] += P0.ma * metMul(); } S.g[i] = 0; RP[i] = 0;
-    const [x, y] = tileXY(i); if (fl.length < 40) fl.push({ x: x + L.ts / 2, y: y + L.ts * .2, t: (gold ? '✨ +' : '+') + fmt(v), l: 1, gold });
+    const bm = BM[i] > 1 ? BM[i] : 1, gold = Math.random() < goldP(), v = Math.round(val(i) * bm * (how === 'cb' ? cbBonus() : 1) * (gold ? goldX() : 1)); earn(v); S.nek += nekOf(S.k[i]) * bm; { const P0 = PL[S.k[i]]; if (P0.met) S.met[P0.met] += P0.ma * metMul() * bm; } S.g[i] = 0; RP[i] = 0;
+    const [x, y] = tileXY(i); if (fl.length < 40) fl.push({ x: x + L.ts / 2, y: y + L.ts * .2, t: (gold ? '✨ +' : '+') + fmt(v) + (bm >= 1.5 ? '  ×' + fmt(Math.round(bm)) : ''), l: 1, gold });
     if (gold) G.splash(x + L.ts / 2, y + L.ts / 2, '255,230,120', 18, 4);
     if (!how) { Sfx.coin(); G.splash(x + L.ts / 2, y + L.ts / 2, '255,215,120', 10, 3); }
     else if (Math.random() < .2) Sfx.blip(how === 'cb' ? 900 : 1200, .04, 'sine', .02);
@@ -1277,7 +1280,7 @@ const Birodalom = (() => {
       // növekedés
       const kert = S.up.kertesz > 0;
       for (let i = 0; i < S.k.length; i++) { const p = PL[S.k[i]]; if (!p) continue; const w = wetNow(i);
-        if (S.g[i] < 1 && w) S.g[i] += dt * rate(i, w);
+        if (S.g[i] < 1 && w) { const r = rate(i, w); BM[i] = Math.max(1, r * MINC); S.g[i] += dt * Math.min(r, 1 / MINC); }
         if (S.g[i] >= 1) { RP[i] += dt; const n = Math.floor(S.g[i]);
           if (n > 1 && auto()) { earn((n - 1) * val(i)); S.g[i] = 1 + (S.g[i] - n); }
           else if (n > 1) S.g[i] = 1;
@@ -1416,7 +1419,7 @@ const Birodalom = (() => {
       if (!galView() && S.tip && S.tip.i >= 0 && !S.hover && !(S.away && S.away.l > 0)) { const i = anc(S.tip.i), k = S.k[i];
         if (k) { const P = PL[k], M = MOD[k], lines = [];
           if (P) { const gr = Math.min(1, S.g[i]), w = wetNow(i); lines.push(P.n + (P.sz ? ' (' + P.sz + '×' + P.sz + ')' : ''));
-            lines.push(gr >= 1 ? 'Érett · kattints az aratáshoz' : Math.floor(gr * 100) + '% · ' + (w ? 'locsolva' : 'nincs víz')); lines.push('Termés: ' + fmt(val(i)) + ' Ft'); }
+            lines.push(gr >= 1 ? 'Érett · kattints az aratáshoz' : Math.floor(gr * 100) + '% · ' + (w ? 'locsolva' : 'nincs víz')); lines.push('Termés: ' + fmt(val(i) * Math.max(1, BM[i])) + ' Ft' + (BM[i] >= 1.5 ? ' (×' + fmt(Math.round(BM[i])) + ' tétel)' : '')); }
           else if (k === 'src') lines.push('Főcsap', 'Innen indul a víz.');
           else if (M) { lines.push(M.n + (M.sz ? ' (' + M.sz + '×' + M.sz + ')' : ''));
             if (k === 'szelep') lines.push(S.vc[i] ? 'Zárva · kattints a nyitáshoz' : 'Nyitva · kattints a záráshoz');
