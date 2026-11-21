@@ -483,7 +483,7 @@
   addEventListener('keydown', e => { if (!S || !$('#menu').hidden || e.target.tagName === 'INPUT') return; if (e.key === '/') { e.preventDefault(); $('#q').focus(); return; } const k = e.key.toLowerCase(); if (e.key === ' ') e.preventDefault(); if (keys[k]) return; keys[k] = 1;
     if (k === 'c') cc(); else if (k === 'x') ccAuto(); else if (k === 'w' || k === 's') { cam.follow = 1; if (k === 'w' && S.park) toast('Old ki a rögzítőféket (P).', 1); S.sp = Math.max(0, Math.min(10, Math.round(((S.ccA ? curSp() : S.sp || 0) + (k === 'w' ? .5 : -.5)) * 2) / 2)); S.ccA = 0; }
     if (k === 'b' || k === ' ') S.ccA = 0; if (k === 'b') S.brk = Math.min(6, Math.round(S.brk) + 1); if (k === 'n') { S.eb = 0; S.brk = Math.max(0, Math.round(S.brk) - 1); } if (k === 'h') horn(1);
-    if (k === 'p') park(); if (k === 'r') setRev(S.rev === 1 ? 0 : S.rev === 0 ? (S.v > .5 ? 1 : -1) : 0); if (k === 'v') flip(); if (k === 'm') $('#bMap').onclick(); if (k === 'escape') { if (!$('#pnl').hidden) closeP(); else $('#bMenu').onclick(); } ui(); });
+    if (k === 'p') park(); if (k === 'r') setRev(S.rev === 1 ? 0 : S.rev === 0 ? (S.v > .5 ? 1 : -1) : 0); if (k === 'v') flip(); if (k === '3') toggle3D(); if (k === 'f' && V3 && V3.on) V3.cab(); if (k === 'm') { toggle3D(false); $('#bMap').onclick(); }; if (k === 'escape') { if (!$('#pnl').hidden) closeP(); else $('#bMenu').onclick(); } ui(); });
   addEventListener('keyup', e => { keys[e.key.toLowerCase()] = 0; if (e.key.toLowerCase() === 'h') horn(0); });
   // kamera: görgő, húzás, kattintás váltóra
   cv.addEventListener('wheel', e => { e.preventDefault(); const f = Math.exp(-Math.max(-80, Math.min(80, e.deltaY)) * .0025); cam.s = Math.max(.0012, Math.min(8, cam.s * f)); }, { passive: false });
@@ -576,15 +576,24 @@
   let uiT = 0, saveT = 0, scT = 0;
   function loop(t) { requestAnimationFrame(loop); const dt = Math.min(.05, (t - lastT) / 1000 || 0); lastT = t; FDT = dt; if (!H || !S) return;
     if ($('#menu').hidden && $('#pnl').hidden) { const sub = 4; for (let k = 0; k < sub; k++) step(dt * TS / sub); agentsTick(dt * TS); }
-    draw(); if ((uiT -= dt) <= 0) { uiT = .15; ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); } if ((scT -= dt) <= 0) { scT = 60; score(); }
+    if (V3 && V3.on) V3.frame(dt); else draw(); if ((uiT -= dt) <= 0) { uiT = .15; ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); } if ((scT -= dt) <= 0) { scT = 60; score(); }
     if (toastT > 0 && (toastT -= dt) <= 0) $('#toast').hidden = true; }
   requestAnimationFrame(loop);
-  if (window.Taj) Taj.load('202611212346').catch(() => {});
+  if (window.Taj) Taj.load('202611220059').catch(() => {});
   fetch('halo.json?v=202611212210').then(r => r.json()).then(h => { build(h); const ok = load(); if (!ok) fresh(); S.nearIdx = []; nearT = 0;
     $('#mLoad').textContent = (H.e.reduce((a, e) => a + e[2], 0) / 1000).toFixed(0) + ' km vasútvonal · ' + ST.length + ' állomás és megálló'; $('#mPlay').disabled = false; $('#mPlay').textContent = ok ? '▶ Folytatás' : '▶ Játék'; $('#mNew').hidden = !ok; })
     .catch(() => { $('#mLoad').textContent = 'Nem sikerült betölteni a vasúthálózatot.'; });
   $('#mPlay').onclick = () => { $('#menu').hidden = true; beep(660, .08); if (S && S.migr) { delete S.migr; toast('A vasúthálózat bővült (állomási vágányok): a vonatod Kelenföldre került, a futó munkák lezárultak, a kauciókat visszakaptad.'); } };
   $('#mNew').onclick = () => { if ($('#mNew').dataset.sure) { localStorage.removeItem(KEY); fresh(); S.nearIdx = []; nearT = 0; $('#menu').hidden = true; delete $('#mNew').dataset.sure; $('#mNew').textContent = 'Új játék'; } else { $('#mNew').dataset.sure = 1; $('#mNew').textContent = 'Biztos? Minden elvész'; } };
   addEventListener('pagehide', save);
-  window.__vt = () => ({ NPC, agentsTick, botAgent, agPt, showBots, S, E, ST, TT, CARGO, aligned, onTT, fixRear, NX, NY, ADJ, dijkstra, exits, outDir, routeTo, succ, step, ui, move, plan, nextSwitch, flip, board, take, couple, uncouple, nearSt, front, along, cam });
+  /* ---------- 3D nézet (harom.js): külső követő kamera és vezetőállás ---------- */
+  let V3 = null, v3load = 0;
+  window.V3API = { get S() { return S; }, get E() { return E; }, get ST() { return ST; }, get PL() { return PL; }, get SB() { return SB; }, LOCOS, CARGO, CAR_L, IND, at, along, front, trainLen,
+    agents: () => [...NPC.map(a => ({ a, name: '' })), ...(S.bots || []).map(b => ({ a: botAgent(b), name: b.n }))].filter(q => q.a && q.a.segs).map(q => ({ id: q.a, name: q.name, cons: q.a.cons, tl: q.a.tl, pt: x => agPt(q.a, q.a.pos - q.a.tl + x) })) };
+  function toggle3D(on) { if (on === undefined) on = !(V3 && V3.on); if (!on) { if (V3) V3.stop(); $('#c3').hidden = true; $('#b3d').classList.remove('on'); return; }
+    if (!window.Taj || !Taj.ready) return toast('A táj még töltődik.', 1); cam.follow = 1; $('#b3d').classList.add('on');
+    if (V3) { $('#c3').hidden = false; V3.start(); return; } if (v3load) return; v3load = 1; toast('3D nézet betöltése…');
+    import('./harom.js?v=202611220059').then(m => { V3 = m; $('#c3').hidden = false; m.init($('#c3'), window.V3API); m.start(); }).catch(e => { console.error(e); v3load = 0; $('#b3d').classList.remove('on'); toast('A 3D nézet nem indult el.', 1); }); }
+  $('#b3d').onclick = () => toggle3D();
+  window.__vt = () => ({ toggle3D, get V3() { return V3; }, NPC, agentsTick, botAgent, agPt, showBots, S, E, ST, TT, CARGO, aligned, onTT, fixRear, NX, NY, ADJ, dijkstra, exits, outDir, routeTo, succ, step, ui, move, plan, nextSwitch, flip, board, take, couple, uncouple, nearSt, front, along, cam });
 })();

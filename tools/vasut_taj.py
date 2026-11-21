@@ -105,11 +105,15 @@ if __name__ == '__main__':
     # hiányzó cellák: a legközelebbi ismert cella értéke, aztán simítás
     known = N > 0; _, (iy2, ix2) = distance_transform_edt(~known, return_indices=True); Z = cell[iy2, ix2]
     Z = gaussian_filter(Z, 1.6); Z = np.clip(Z, 75, 1015)
+    # ha megvan a valódi domborzat (tools/vasut_dem.py), azt használjuk
+    D250 = np.load('/tmp/vasut-dem250.npy') if os.path.exists('/tmp/vasut-dem250.npy') else None
+    if D250 is not None: Z = gaussian_filter(D250, 2)[::4, ::4][:zy, :zx]; Z = np.pad(Z, ((0, zy - Z.shape[0]), (0, zx - Z.shape[1])), mode='edge'); print('valódi domborzat', flush=True)
     # --- nagyfelbontású raszter: domborzatárnyékolás + színezés
     Zh = nzoom(Z, C / RES, order=3)[:ny, :nx]; Zh = np.pad(Zh, ((0, max(0, ny - Zh.shape[0])), (0, max(0, nx - Zh.shape[1]))), mode='edge')
     Zh = gaussian_filter(Zh, 1.2)
+    if D250 is not None: Zh = np.pad(D250[:ny, :nx], ((0, max(0, ny - D250.shape[0])), (0, max(0, nx - D250.shape[1]))), mode='edge').astype(np.float64)
     gy, gx = np.gradient(Zh, RES); az, alt = math.radians(315), math.radians(40)
-    slope = np.arctan(np.hypot(gx, gy) * 7); aspect = np.arctan2(-gx, gy)
+    slope = np.arctan(np.hypot(gx, gy) * (2.2 if D250 is not None else 7)); aspect = np.arctan2(-gx, gy)
     hs = np.sin(alt) * np.cos(slope) + np.cos(alt) * np.sin(slope) * np.cos(az - aspect)
     t = np.clip((Zh - 80) / 700, 0, 1)[..., None]
     low, mid, high = np.array([62, 70, 46]), np.array([74, 74, 52]), np.array([104, 96, 80])

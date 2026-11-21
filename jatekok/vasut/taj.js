@@ -119,5 +119,18 @@ window.Taj = (() => {
       for (let up = 1; up <= 3; up++) { const pk = k - up, pw = TPX / 2 ** pk, ptx = Math.floor(tx * wsz / pw), pty = Math.floor(ty * wsz / pw), pt = tile(pk, ptx, pty, d, false); if (!pt) continue;
         const f = TPX / 2 ** up, sx = (tx * wsz - ptx * pw) / pw * TPX, sy = (ty * wsz - pty * pw) / pw * TPX; g.drawImage(pt.c, sx, sy, f, f, Math.floor(dx), Math.floor(dy), Math.ceil(sz) + 1, Math.ceil(sz) + 1); break; } }
     g.globalAlpha = 1; return true; }
-  return { load, draw, zAt, clsAt, towns: () => (T && T.tw) || [], get ready() { return ready; } };
+  /* ---------- a 3D nézet (harom.js) számára ---------- */
+  // egy csempe (2^k képpont/méter, 512 képpont) átlátszatlan képe: alap domborzatkép + a részletek; visszaad: { partial, gen }
+  function compose(x, k, tx, ty) { const s = 2 ** k, w = TPX / s; frameBudget = 1; const t = tile(k, tx, ty, 1, true); x.imageSmoothingEnabled = true; x.fillStyle = '#3a4a34'; x.fillRect(0, 0, TPX, TPX);
+    x.drawImage(IMG, tx * w / R, ty * w / R, w / R, w / R, 0, 0, TPX, TPX); if (t) x.drawImage(t.c, 0, 0); return { partial: !t || t.partial, gen: GEN }; }
+  // a megadott terület (világ-koordináta) épületcsempéi: [{ key, list() → [{ p: [x0, y0, …] világ-koordináta, h }] }]
+  function bldTiles(x0, y0, x1, y1) { const o = []; if (!ready) return o; for (const id in T.m) { const m = T.m[id]; if (m[5] < x0 || m[3] > x1 || m[6] < y0 || m[4] > y1) continue; const c = county(id, 2); if (c.st !== 1 || !c.haz || !c.TXN) continue;
+      const a = Math.max(0, Math.floor((x0 - c.ax) / c.sx / 2048)), b = Math.min(c.TXN - 1, Math.floor((x1 - c.ax) / c.sx / 2048)), d = Math.max(0, Math.floor((y0 - c.ay) / 2048)), e = Math.min(c.TYN - 1, Math.floor((y1 - c.ay) / 2048));
+      for (let tx = a; tx <= b; tx++) for (let ty = d; ty <= e; ty++) { const t = tx * c.TYN + ty; o.push({ key: id + ':' + t, cx: c.ax + (tx + .5) * 2048 * c.sx, cy: c.ay + (ty + .5) * 2048, list: () => bld(c, t) }); } } return o; }
+  function bld(c, t) { const HV = c.haz, io = 8 + 12 * t, off = HV.getUint32(io, true), nr = HV.getUint32(io + 4, true), pb = HV.getUint32(io + 8, true), o = []; if (!off) return o; const bx = Math.floor(t / c.TYN) * 2048, by = (t % c.TYN) * 2048, WX = x => c.ax + x * c.sx, WY = y => c.ay + y;
+    for (let i = 0, q = off; i < nr; i++, q += 8) { const x = bx + HV.getUint16(q, true) / 32, y = by + HV.getUint16(q + 2, true) / 32, hw = HV.getUint8(q + 4) / 2, hd = HV.getUint8(q + 5) / 2, a = HV.getUint8(q + 6) / 256 * Math.PI, cs = Math.cos(a), sn = Math.sin(a), p = [];
+      for (const [u, v] of [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]]) p.push(WX(x + cs * u - sn * v), WY(y + sn * u + cs * v)); o.push({ p, h: HV.getUint8(q + 7) }); }
+    for (let q = off + nr * 8, end = off + nr * 8 + pb; q < end;) { const x = bx + HV.getUint16(q, true) / 32, y = by + HV.getUint16(q + 2, true) / 32, n = HV.getUint8(q + 4), h = HV.getUint8(q + 5), p = []; q += 6; for (let i = 0; i < n; i++, q += 4) p.push(WX(x + HV.getInt16(q, true) / 4), WY(y + HV.getInt16(q + 2, true) / 4)); if (n >= 3) o.push({ p, h }); }
+    return o; }
+  return { load, draw, zAt, clsAt, compose, bldTiles, get gen() { return GEN; }, towns: () => (T && T.tw) || [], get ready() { return ready; } };
 })();
