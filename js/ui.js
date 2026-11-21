@@ -1,5 +1,5 @@
 // HGWS – felugró ablakok, emoji-választó, képtömörítés
-import { $, esc } from './core.js?v=202611210320';
+import { $, esc } from './core.js?v=202611210955';
 
 export const EMOJIS = ['👍', '❤️', '😂', '🔥', '💧', '😮', '😢', '😡', '🎉', '👏', '🙏', '💯', '😎', '🤔', '👀', '🤣',
   '😍', '🥲', '😅', '🙃', '🤝', '💪', '🚿', '🌱', '🌊', '🏆', '⭐', '✅', '❌', '🍿', '🎬', '🎮'];

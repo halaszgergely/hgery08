@@ -1,8 +1,8 @@
 // Az Átemelőtelep – fő program: mozgás, interakció, fejezetek, hangulat (fények, eső, hangok), HUD, mentés, beállítások, mobil.
-import { createRenderer, M4, hex } from './motor.js?v=202611210320';
-import { buildLevel, move, pick, overlap, WELL, EYE } from './palya.js?v=202611210320';
-import { freshState, step as simStep, clone, CHAPTERS, OVER, LSH_H, cabPow, plcRun, lightPow, supply, ITEMN } from './jatek.js?v=202611210320';
-import * as UI from './ui.js?v=202611210320';
+import { createRenderer, M4, hex } from './motor.js?v=202611210955';
+import { buildLevel, move, pick, overlap, WELL, EYE } from './palya.js?v=202611210955';
+import { freshState, step as simStep, clone, CHAPTERS, OVER, LSH_H, cabPow, plcRun, lightPow, supply, ITEMN } from './jatek.js?v=202611210955';
+import * as UI from './ui.js?v=202611210955';
 
 const $ = s => document.querySelector(s), TOUCH = matchMedia('(pointer: coarse)').matches, SAVE = 'hgws_atemelo_v1', GAME = 'atemelotelep';
 const cv = $('#c'), hc = $('#h'), h = hc.getContext('2d'), R = createRenderer(cv), L = buildLevel(); if (R) R.setWorld(L.g);
@@ -68,7 +68,7 @@ function read(k) { S.docs[k] = 1; openPanel('doc', k); }
 /* ---------- interakciók ---------- */
 let target = null;
 const visible = o => { const inW = S.well.in; if (['letra_fel', 'uszo', 'emelo_p1', 'emelo_p2'].includes(o.id)) return inW; if (inW) return false;
-  if (o.id === 'letra_le') return S.well.hatch; if (o.id === 'kanna') return !S.f.tookKanna; if (o.id === 'kartya') return S.ch === 6; return true; };
+  if (o.id === 'letra_le') return S.well.hatch; if (o.id === 'kanna') return !S.f.tookKanna; if (o.id === 'kartya') return S.ch === 6; if (o.id === 'tolozar') return S.ch !== 6; return true; };
 const cardIt = { id: 'kartya', a: [51.2, 0, -22.8], b: [52.8, .6, -21.2], label: 'Névjegy a tolózár fedelén' };
 if (!L.it.includes(cardIt)) L.it.push(cardIt);
 function holdSpec(id) { const W = S.well;
@@ -283,5 +283,5 @@ function hud(now, dt, W, H, D) { if (!playing || !S) return; h.setTransform(D, 0
 
 /* ---------- indulás ---------- */
 requestAnimationFrame(frame); menu();
-(async () => { try { core = await import('../../js/core.js?v=202611210320'); if (!core || core.notConfigured || !core.auth) return; core.FB.onAuthStateChanged(core.auth, u => { user = u && !u.isAnonymous ? u : null; if (user) cloudLoad(); }); } catch (e) { console.warn(e); } })();
+(async () => { try { core = await import('../../js/core.js?v=202611210955'); if (!core || core.notConfigured || !core.auth) return; core.FB.onAuthStateChanged(core.auth, u => { user = u && !u.isAnonymous ? u : null; if (user) cloudLoad(); }); } catch (e) { console.warn(e); } })();
 window.__at = () => ({ S, P, L, UI, act, check, setCh, CP, target, holdA, start, SET });
