@@ -1,9 +1,9 @@
 /* Játékmódok: öntözés (kiszáradt mezők), tűzoltás (terjedő tűz), precíziós kihívás (apró célok), gyorsasági verseny (vízikarikák).
    Minden mód ugyanazt az interfészt adja: update(dt, b), hit(x, z, liter), target() → [x, y, z] | null, status(), finish(landing) → eredmény. */
 import * as THREE from 'three';
-import { P, REPTER, SZIN } from './config.js?v=202611221747';
-import { ground, cls, hash2, isWater } from './geo.js?v=202611221747';
-import { LOGV_PARS, LOGV, LOGF_PARS, LOGF } from './kozos.js?v=202611221747';
+import { P, REPTER, SZIN } from './config.js?v=202611221754';
+import { ground, cls, hash2, isWater } from './geo.js?v=202611221754';
+import { LOGV_PARS, LOGV, LOGF_PARS, LOGF } from './kozos.js?v=202611221754';
 
 const CELL = 8;   // a mezők nedvességrácsa (m)
 function canvasTex(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter; return [c, c.getContext('2d', { willReadFrequently: true }), t]; }

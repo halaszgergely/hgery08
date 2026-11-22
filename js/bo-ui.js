@@ -1,9 +1,9 @@
 // HGWS – Öntöző Birodalom Online: felület (világtérkép, régiók, telkek, Vízvár, negyedek, ostrom).
-import { $, $$, esc, toast, errText, avatar } from './core.js?v=202611221747';
-import { modal, confirmBox } from './ui.js?v=202611221747';
-import * as D from './bo-data.js?v=202611221747';
-import * as B from './bo.js?v=202611221747';
-import * as Friends from './friends.js?v=202611221747';
+import { $, $$, esc, toast, errText, avatar } from './core.js?v=202611221754';
+import { modal, confirmBox } from './ui.js?v=202611221754';
+import * as D from './bo-data.js?v=202611221754';
+import * as B from './bo.js?v=202611221754';
+import * as Friends from './friends.js?v=202611221754';
 
 let C = null, off = null, tick = null, path = [], pend = false, plotM = null, data = {};
 export function init(ctx) { C = ctx; B.init(ctx); }
