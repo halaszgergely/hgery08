@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>HGWS Vízfuvar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js"}}</script>
+<style>
+:root{--y:#f2c230;--g:#2f9e4f;--b:#2aa7d9;--bg:#0c1116;--pn:rgba(12,17,22,.82);--ln:rgba(255,255,255,.12);--mut:#9aa6b2;--t:#eef2f5}
+[hidden]{display:none!important}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;overflow:hidden;background:#000;color:var(--t);font:500 14px/1.35 Inter,system-ui,sans-serif;user-select:none;-webkit-user-select:none;touch-action:none}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+button{font:inherit;color:inherit;cursor:pointer}
+.btn{background:rgba(255,255,255,.07);border:1px solid var(--ln);border-radius:10px;padding:9px 14px;font-weight:700}.btn:hover{background:rgba(255,255,255,.13)}.btn.pri{background:var(--y);color:#15181c;border-color:var(--y)}.btn.sm{padding:6px 10px;font-size:12.5px}.btn:disabled{opacity:.45;cursor:default}
+.pn{background:var(--pn);border:1px solid var(--ln);border-radius:12px;backdrop-filter:blur(6px)}
+.mut{color:var(--mut)}.y{color:var(--y)}.g{color:#7ef0a4}
+/* betöltés */
+#load{position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(circle at 50% 40%,#1c2a33,#06090c);z-index:50}#load .in{width:min(420px,86vw);text-align:center}
+.logo{font:900 22px Inter;letter-spacing:.06em}.logo b{color:var(--b)}.bar{height:8px;background:rgba(255,255,255,.08);border-radius:5px;overflow:hidden;margin:16px 0 8px}.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--g),var(--y));transition:width .3s}
+/* menük */
+.scr{position:fixed;inset:0;z-index:20;display:flex;align-items:stretch;pointer-events:none}.scr>*{pointer-events:auto}
+#menu .col{width:min(360px,100vw);padding:max(22px,env(safe-area-inset-top)) 22px 22px max(22px,env(safe-area-inset-left));background:linear-gradient(90deg,rgba(6,10,14,.94),rgba(6,10,14,.6) 80%,transparent);display:flex;flex-direction:column;gap:8px;overflow:auto}
+#menu h1{font:900 34px/1 Inter;margin:6px 0 2px;letter-spacing:-.01em}#menu h1 span{color:var(--b)}#menu .sub{color:var(--mut);margin-bottom:12px}
+#menu .mb{display:flex;align-items:center;gap:10px;text-align:left;padding:11px 14px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid var(--ln);font-weight:800;font-size:15px}#menu .mb:hover{background:rgba(255,255,255,.12)}#menu .mb:disabled{opacity:.4;cursor:default}#menu .mb.pri{background:var(--y);color:#15181c;border-color:var(--y)}
+#menu .mb small{margin-left:auto;font-weight:600;color:var(--mut);font-size:12px}#menu .mb.pri small{color:#3d3416}
+.stat{display:flex;gap:14px;flex-wrap:wrap;margin:6px 0 10px;color:var(--mut);font-size:13px}.stat b{color:var(--t)}
+#sheet{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:rgba(0,0,0,.45)}#sheet>.box{width:min(860px,96vw);max-height:min(88vh,900px);overflow:auto;padding:18px 20px 20px}
+#sheet .hd{display:flex;align-items:center;gap:10px;margin-bottom:12px}#sheet .hd h2{margin:0;font:900 22px Inter;flex:1}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}.card{background:rgba(255,255,255,.05);border:1px solid var(--ln);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.card.on{border-color:var(--y);box-shadow:0 0 0 1px var(--y) inset}.card.lock{opacity:.6}.card h3{margin:0;font:800 16px Inter}.card .meta{color:var(--mut);font-size:12.5px}
+.bars{display:grid;grid-template-columns:auto 1fr;gap:3px 8px;font-size:12px;color:var(--mut);align-items:center}.bars i{display:block;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--g),var(--y))}
+.sw{display:flex;gap:6px;flex-wrap:wrap}.sw button{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.3)}.sw button.on{border-color:#fff;box-shadow:0 0 0 2px var(--y)}
+table.lb{width:100%;border-collapse:collapse}table.lb td{padding:6px 8px;border-bottom:1px solid var(--ln)}table.lb tr.me{color:var(--y);font-weight:800}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.tabs .btn.on{background:var(--y);color:#15181c}
+.row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--ln)}.row label{flex:1}select,input[type=range]{accent-color:var(--y)}select{background:#1b232b;color:var(--t);border:1px solid var(--ln);border-radius:8px;padding:6px}
+.key{min-width:92px;padding:5px 8px;border-radius:7px;background:#1b232b;border:1px solid var(--ln);font:700 12px Inter}.key.wait{border-color:var(--y);color:var(--y)}
+.devB{display:inline-block;font:900 11px Inter;letter-spacing:.18em;padding:4px 9px;border-radius:7px;background:#e0322a;color:#fff;border:0}
+.fsM{position:fixed;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:25}
+/* HUD */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+#hL{position:absolute;left:max(12px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));display:flex;flex-direction:column;gap:8px}
+#tele{padding:10px 13px;min-width:190px}#hSpd{font:900 40px/1 Inter;font-variant-numeric:tabular-nums}#tele .u{color:var(--mut);font-weight:700;font-size:12px;margin-left:4px}
+#hGear{float:right;font:900 26px/1.4 Inter;color:var(--y);margin-left:16px}
+.hb{display:grid;grid-template-columns:62px 1fr auto;gap:6px;align-items:center;font:700 11px Inter;color:var(--mut);margin-top:6px}.hb>div{height:7px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden}.hb i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--g),var(--y))}
+.hb .low i{background:#e0322a}#hRpm i{background:linear-gradient(90deg,#4aa8d8,#e0a030 75%,#e0322a)}
+#hR{position:absolute;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+#mini{width:170px;height:170px;border-radius:50%;border:2px solid rgba(255,255,255,.2);pointer-events:auto;cursor:pointer}#money{padding:7px 12px;font:900 17px Inter;color:var(--y)}#hCargo{padding:6px 12px;font:800 13px Inter}
+#hJob{position:absolute;left:50%;top:max(12px,env(safe-area-inset-top));transform:translateX(-50%);padding:8px 16px;text-align:center;max-width:min(520px,60vw)}#hJobT{font:800 15px Inter}#hJobS{color:var(--mut);font-size:12.5px}
+#arrow{position:absolute;left:50%;top:calc(max(12px,env(safe-area-inset-top)) + 66px);width:0;height:0;transform-origin:0 0}#arrow i{position:absolute;left:-14px;top:-22px;width:28px;height:34px;background:var(--b);clip-path:polygon(50% 0,100% 100%,50% 75%,0 100%);filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}#arrow b{position:absolute;left:-40px;top:16px;width:80px;text-align:center;font:800 12px Inter;text-shadow:0 1px 3px #000}
+#msg{position:absolute;left:50%;top:32%;transform:translate(-50%,-50%) scale(.96);padding:12px 20px;border-radius:12px;background:var(--pn);border:1px solid var(--ln);font:800 17px Inter;text-align:center;opacity:0;transition:opacity .25s,transform .25s;max-width:min(560px,88vw)}#msg.on{opacity:1;transform:translate(-50%,-50%) scale(1)}#msg.ok{border-color:var(--g)}#msg.bad{border-color:#e0322a}#msg.big{font-size:22px}
+#act{position:absolute;left:50%;bottom:calc(max(18px,env(safe-area-inset-bottom)) + 34px);transform:translateX(-50%);padding:8px 16px;font:800 14px Inter;border-color:var(--y);pointer-events:auto;cursor:pointer}
+#sub{position:absolute;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);max-width:min(760px,90vw);padding:5px 12px;border-radius:8px;background:rgba(0,0,0,.55);font:600 13px Inter;color:#e8edf2;opacity:0;transition:opacity .3s;text-align:center}#sub.on{opacity:1}
+#dash{position:absolute;left:0;right:0;bottom:0;height:30vh;width:100%;pointer-events:none}
+#hudDev{pointer-events:auto;cursor:pointer;align-self:flex-start}
+.fsB{pointer-events:auto;width:38px;height:38px;border-radius:10px;background:var(--pn);border:1px solid var(--ln);font-size:18px}
+#hudFs{position:absolute;right:calc(max(12px,env(safe-area-inset-right)) + 48px);bottom:max(12px,env(safe-area-inset-bottom))}
+/* érintés */
+#tc{position:fixed;inset:0;z-index:12;pointer-events:none}#tc button{pointer-events:auto;position:absolute;border-radius:16px;border:1px solid rgba(255,255,255,.2);background:rgba(10,15,20,.45);font:900 16px Inter;color:#fff}#tc button.on{background:rgba(242,194,48,.5)}
+#tL{left:max(14px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom));width:84px;height:84px}#tR{left:calc(max(14px,env(safe-area-inset-left)) + 96px);bottom:max(18px,env(safe-area-inset-bottom));width:84px;height:84px}
+#tG{right:max(14px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));width:80px;height:130px}#tB{right:calc(max(14px,env(safe-area-inset-right)) + 92px);bottom:max(18px,env(safe-area-inset-bottom));width:80px;height:80px}
+#tP{right:calc(max(14px,env(safe-area-inset-right)) + 92px);bottom:calc(max(18px,env(safe-area-inset-bottom)) + 92px);width:80px;height:46px;font-size:12px!important}
+#tTop{position:absolute;left:50%;transform:translateX(-50%);bottom:max(10px,env(safe-area-inset-bottom));display:flex;gap:8px;pointer-events:none}#tTop button{position:static;width:46px;height:42px;pointer-events:auto}
+#tc.on~#hud #act{bottom:calc(max(18px,env(safe-area-inset-bottom)) + 60px)}
+/* térkép */
+#mapS{position:fixed;inset:0;z-index:28;background:#0a0f14;display:flex;flex-direction:column}#mapS .hd{display:flex;align-items:center;gap:10px;padding:max(10px,env(safe-area-inset-top)) 14px 10px}#mapS .hd b{flex:1;font:900 18px Inter}#mapC{flex:1;width:100%;min-height:0;touch-action:none;cursor:grab}
+#pause .box{margin:auto;width:min(380px,92vw);padding:18px;display:flex;flex-direction:column;gap:8px}
+@media (max-width:760px){#hSpd{font-size:30px}#tele{min-width:150px;padding:7px 10px}#mini{width:120px;height:120px}#hJob{max-width:52vw;padding:6px 10px}#hJobT{font-size:13px}#dash{height:26vh}}
+@media (max-height:500px){#mini{width:104px;height:104px}#tele{min-width:140px}#hSpd{font-size:26px}#hJob{top:auto;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 56px)}}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="load"><div class="in"><div class="logo"><b>💧</b> HGWS</div><h2 style="margin:12px 0 0;font:900 28px Inter">Vízfuvar</h2><div class="bar"><i id="loadB"></i></div><div class="mut" id="loadT">Betöltés…</div></div></div>
+
+<div id="hud" hidden>
+  <div id="hL"><div id="tele" class="pn"><span id="hGear">N</span><span id="hSpd">0</span><span class="u">km/h</span>
+    <div class="hb"><span>FORD.</span><div id="hRpm"><i></i></div><span></span></div><div class="hb"><span>ÜZEMA.</span><div id="hFuel"><i></i></div><span id="hFuelT"></span></div></div>
+    <button class="devB" id="hudDev" hidden>DEV</button></div>
+  <div id="hR"><canvas id="mini" width="300" height="300"></canvas><div id="money" class="pn"></div><div id="hCargo" class="pn"></div></div>
+  <div id="hJob" class="pn" hidden><div id="hJobT"></div><div id="hJobS"></div></div>
+  <div id="arrow" hidden><i></i><b></b></div><div id="msg"></div><div id="act" class="pn" hidden></div><canvas id="dash" hidden></canvas><div id="sub"></div>
+  <button class="fsB" id="hudFs" hidden>⛶</button>
+</div>
+<div id="tc" hidden>
+  <button id="tL" data-t="bal">◀</button><button id="tR" data-t="jobb">▶</button><button id="tG" data-t="gaz">GÁZ</button><button id="tB" data-t="fek">FÉK</button><button id="tP" data-t="pedal" hidden>PEDÁL</button>
+  <div id="tTop"><button data-ev="szunet">II</button><button data-ev="kamera">📷</button><button data-ev="terkep">🗺</button><button data-ev="radio">📻</button><button data-ev="akcio">F</button><button data-ev="duda">📯</button><button class="fsB" hidden>⛶</button></div>
+</div>
+
+<div id="menu" class="scr" hidden><div class="col">
+  <div class="logo" id="logo"><b>💧</b> HGWS <span class="devB" hidden>DEV</span></div><h1>Víz<span>fuvar</span></h1><div class="sub">Halász Gergely Watering Solutions – Miskolci telephely</div>
+  <div class="stat" id="mStat"></div>
+  <button class="mb pri" data-go="folytat">Folytatás <small id="mCont"></small></button>
+  <button class="mb" data-go="uj">Új játék</button>
+  <button class="mb" data-go="ceg">Cég <small>járművek, garázs</small></button>
+  <button class="mb" data-go="piac">Fuvarpiac</button>
+  <button class="mb" data-go="terkep">Térkép</button>
+  <button class="mb" data-go="rang">Ranglista</button>
+  <button class="mb" data-go="beall">Beállítások</button>
+  <button class="mb" data-go="iranyit">Irányítás</button>
+  <button class="mb" data-go="keszitok">Készítők</button>
+  <button class="mb" data-go="vissza">Vissza az Arcade-ba</button>
+</div><button class="fsB fsM" hidden>⛶</button></div>
+<div id="sheet" hidden><div class="box pn"><div class="hd"><button class="btn sm" id="shBack">← Vissza</button><h2 id="shT"></h2><span id="shX"></span></div><div id="shB"></div></div></div>
+<div id="pause" class="scr" hidden style="background:rgba(0,0,0,.4)"><div class="box pn"><h2 style="margin:0 0 6px;font:900 22px Inter">Szünet</h2>
+  <button class="btn pri" data-p="tovabb">Folytatás</button><button class="btn" data-p="piac">Fuvarpiac</button><button class="btn" data-p="terkep">Térkép</button><button class="btn" data-p="beall">Beállítások</button><button class="btn" data-p="telep">Vissza a telephelyre (gyorsutazás)</button><button class="btn" data-p="menu">Főmenü</button><button class="btn fsB" style="width:auto;height:auto" hidden>⛶ Teljes képernyő</button></div></div>
+<div id="mapS" hidden><div class="hd"><b>Magyarország</b><button class="btn sm" id="mapMe">Járműhöz</button><button class="btn sm" id="mapX">Bezárás (M)</button></div><canvas id="mapC"></canvas></div>
+<script type="module" src="js/main.js?v=202611222004"></script>
+</body></html>

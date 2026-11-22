@@ -1,0 +1,18 @@
+{
+  "_leiras": "Járművenkénti asset-manifest. Ha egy 'modell' mező glTF/GLB fájlt ad meg, a játék azt tölti be a kódból épített ideiglenes modell helyett. Egység: méter, orr −Z, fel +Y, a modell origója a talajon, a jármű közepén. 'kerekek': a kerék-csomópontok neve (bal első, jobb első, bal hátsó, jobb hátsó), 'kerekR': a kerék sugara (m), 'kamera': a fülke szempontja és a külső kamera távolsága/magassága.",
+  "jarmuvek": {
+    "babetto": { "modell": null, "ideiglenes": true, "kerekek": ["kerek_elso", "kerek_hatso"], "kerekR": 0.27, "kamera": { "fulke": [0, 1.62, -0.02], "kulso": { "tav": 4.2, "mag": 1.7 } } },
+    "rigo":    { "modell": null, "ideiglenes": true, "kerekek": ["kerek_elso", "kerek_hatso"], "kerekR": 0.27, "kamera": { "fulke": [0, 1.62, -0.02], "kulso": { "tav": 4.3, "mag": 1.7 } } },
+    "trabo":   { "modell": null, "ideiglenes": true, "kerekek": ["kerek_bal_elso", "kerek_jobb_elso", "kerek_bal_hatso", "kerek_jobb_hatso"], "kerekR": 0.28, "kamera": { "fulke": [-0.34, 1.2, 0.05], "kulso": { "tav": 7.2, "mag": 2.6 } } }
+  },
+  "hianyzik": [
+    { "mi": "Babettó (Jawa Babetta 207 jellegű moped)", "stilus": "valósághű, low-poly–közepes, PBR", "kereso": "moped 1970s low poly cc0, jawa babetta gltf, step-through moped glb" },
+    { "mi": "Rigó-13 (Riga-13 jellegű moped) oldalkosárral", "stilus": "valósághű, PBR", "kereso": "riga moped gltf, soviet moped cc0, vintage moped low poly" },
+    { "mi": "Trabó 601 (Trabant 601 jellegű kisautó), belső térrel és műszerfallal", "stilus": "valósághű, PBR, nyitható belső tér nélkül is jó", "kereso": "trabant 601 gltf cc-by, east german car low poly, small 1960s sedan cc0" },
+    { "mi": "Motoros figura bukósisakkal (ülő póz)", "stilus": "valósághű, rigged", "kereso": "motorcycle rider sitting cc0, quaternius character helmet" },
+    { "mi": "20 literes vizesballon", "stilus": "valósághű, áttetsző PBR", "kereso": "water cooler bottle 5 gallon gltf cc0" },
+    { "mi": "Telephely épületei: iroda, csarnok, víztorony, szivattyúház, raklap", "stilus": "valósághű", "kereso": "kenney city kit industrial cc0, polyhaven pallet, water tower gltf cc0" },
+    { "mi": "Benzinkút (tető, kutak, shop)", "stilus": "valósághű", "kereso": "gas station low poly cc0, fuel pump gltf" },
+    { "mi": "Égbolt HDRI", "stilus": "nappali, felhős", "kereso": "polyhaven hdri kloofendal, polyhaven sky cc0" }
+  ]
+}
