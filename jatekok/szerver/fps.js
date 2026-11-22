@@ -4,7 +4,7 @@
    helye a felület saját rajzkoordinátáiban van; innen számoljuk térbe. A rackek rácsra (GR) illesztve, 90°-onként
    forgatva állnak, a szabad eszközök bárhol. Képkockánként kiszámoljuk, mire mutat a célkereszt (aim); a műveleteket
    a szerver.js doClick() végzi. Lépték: K méter / rajzegység (1U = 20 egység = 4,4 cm). */
-import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611221701';
+import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611221702';
 
 const REACH = 3, EYE = 1.62, MAXP = 2500, RD = .9; // RD, RWID: a rack alapterülete
 let A = null, K = .0022, cv = null, R = null, scene = null, cam = null, room = null, cabG = null, held = null, ghost = null, pts = null;
@@ -198,7 +198,7 @@ function pick() { const dir = V(0, 0, 0); cam.getWorldDirection(dir); const o = 
   if (!pl) return a;
   // lerakás
   const kd = pl.rk ? 'rack' : A.DEV[pl.t].k, yawOf = r => r * Math.PI / 2;
-  if (kd === 'rack') { if (F) { const rt = Math.round((((face + rot / 6) % 4 + 4) % 4) * 6) / 6, x = Math.round(F.x * 50) / 50, z = Math.round(F.z * 50) / 50, small = A.RACK[pl.rk].u <= 18, dp = small ? .55 : .85, hh = (A.RACK[pl.rk].u * A.U + 14) * K, lf = small ? 380 * K : 0, s = Math.sin(yawOf(rt)), c = Math.cos(yawOf(rt)); a.pl = { x, z, rot: rt, turn: 1, ok: rackOk(x, z, rt, pl.mv, fw(pl.rk)), box: [V(x - s * dp / 2, lf + hh / 2, z - c * dp / 2), yawOf(rt), [fw(pl.rk), hh, dp]] }; } return a; }
+  if (kd === 'rack') { if (F) { const rt = Math.round((((face + rot / 6) % 4 + 4) % 4) * 6) / 6, x = Math.round(Math.round(F.x / .15) * 15) / 100, z = Math.round(Math.round(F.z / .15) * 15) / 100, small = A.RACK[pl.rk].u <= 18, dp = small ? .55 : .85, hh = (A.RACK[pl.rk].u * A.U + 14) * K, lf = small ? 380 * K : 0, s = Math.sin(yawOf(rt)), c = Math.cos(yawOf(rt)); a.pl = { x, z, rot: rt, turn: 1, ok: rackOk(x, z, rt, pl.mv, fw(pl.rk)), box: [V(x - s * dp / 2, lf + hh / 2, z - c * dp / 2), yawOf(rt), [fw(pl.rk), hh, dp]] }; } return a; }
   if (kd === 'tray') { if (dir.y > .05) { const t = (A.TRAYH - o.y) / dir.y; if (t < 5) { const [L0, W0] = traySize(pl.t), sq = L0 === W0, x = snapG(o.x + dir.x * t), z = snapG(o.z + dir.z * t), rt = sq ? ((rot % 4) + 4) % 4 : ((Math.abs(dir.x) > Math.abs(dir.z) ? 0 : 1) + rot) % 2 & 1, m = Math.max(L0, W0) / 2 - .1; a.pl = { x, z, rot: rt, turn: 1, ok: x > m && x < W - m && z > m && z < D - m && !A.S.trays.some(q => q.x === x && q.z === z && (sq || q.t === 'trayc' || q.t === 'trayx' || q.rot === rt)), box: [V(x, A.TRAYH, z), yawOf(rt), [L0, .06, W0]] }; } } return a; }
   if (kd === 'vcm') { if (a.rk != null) { const r = A.S.racks[a.rk], f = SF.get('R' + a.rk); a.pl = { vcm: a.rk, ok: !r.vcm && A.RACK[r.t].u <= 24, box: [s3(f, f.w / 2, f.h / 2, .05), f.yaw, [f.w * K + .14, f.h * K, .1]] }; } return a; }
   if (kd === 'arm') { if (a.rk != null) { const r = A.S.racks[a.rk], f = SF.get('R' + a.rk), s = Math.sin(f.yaw), c = Math.cos(f.yaw); a.pl = { arm: a.rk, ok: !r.arm, box: [V(r.x + s * .28, f.wy + f.h * K + .27, r.z + c * .28), f.yaw, [.05, .05, .72]] }; } return a; }
