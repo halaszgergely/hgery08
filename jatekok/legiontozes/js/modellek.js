@@ -1,7 +1,7 @@
 /* A gépek kódból épített low-poly modelljei (HGWS sárga–zöld–vízkék). Orr: −Z, fel: +Y, jobb: +X, méterben.
    Minden modell { g, prop[], rotor[], gear, flap[], burner, ramp, eye, spray[], hook, len } – a fizika és a kamera ezeket használja. */
 import * as THREE from 'three';
-import { SZIN } from './config.js?v=202611220107';
+import { SZIN } from './config.js?v=202611220119';
 
 const MC = new Map();
 // fényes festék (PBR), a környezeti térkép az égboltból jön (scene.environment)
@@ -15,28 +15,58 @@ function logoMat() { if (LOGO) return LOGO; const c = document.createElement('ca
   x.fillStyle = '#15181c'; x.font = '900 46px Inter, Arial, sans-serif'; x.textBaseline = 'middle'; x.fillText('HGWS', 78, 40);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; LOGO = new THREE.MeshStandardMaterial({ map: t, roughness: .3, metalness: .05, polygonOffset: true, polygonOffsetFactor: -2 }); return LOGO; }
 
-function add(par, geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); m.castShadow = true; par.add(m); return m; }
+// vékony lemez-dobozokból profilos felület: függőleges vezérsík (keskeny, magas) és vízszintes lap (lapos, széles) – a festett anyagoknál
+function shape(geo, mat) { const P = geo.parameters; if (!geo.isBufferGeometry || geo.type !== 'BoxGeometry' || !P || mat === UVEG() || mat.transparent) return geo;
+  const { width: w, height: h, depth: d } = P;
+  if (w <= .2 && h >= .45 && d >= .45 && h > w * 3) return finGeo(h, d, d * .62, d * .3, Math.max(w, .08)).translate(0, -h / 2, -d * .07);
+  if (h <= .12 && w >= 1.8 && d >= .35) return wingGeo(w, d, d * .8, 0, Math.max(h, .07));
+  if (Math.min(w, h, d) >= .5) return rounded(w, h, d, Math.min(w, h, d) * .2);
+  return geo; }
+// lekerekített élű doboz (törzsek, kabinok, tartályok)
+const RB = new Map(); function rounded(w, h, d, r) { const k = [w, h, d, r].join(); if (RB.has(k)) return RB.get(k); const g = new THREE.BoxGeometry(w, h, d, 4, 4, 4), p = g.attributes.position, v = new THREE.Vector3(), c = new THREE.Vector3(), hw = w / 2 - r, hh = h / 2 - r, hd = d / 2 - r;
+  for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); const sx = Math.sign(v.x), sy = Math.sign(v.y), sz = Math.sign(v.z);
+    // a csúcsokat a belső doboz széle felé sűrítjük, majd a sarkokat gömbre vetítjük
+    v.set(sx * (Math.abs(v.x) <= w / 4 + 1e-6 ? Math.abs(v.x) / (w / 4) * hw * .5 : hw * .5 + (Math.abs(v.x) - w / 4) / (w / 4) * (hw * .5 + r)), sy * (Math.abs(v.y) <= h / 4 + 1e-6 ? Math.abs(v.y) / (h / 4) * hh * .5 : hh * .5 + (Math.abs(v.y) - h / 4) / (h / 4) * (hh * .5 + r)), sz * (Math.abs(v.z) <= d / 4 + 1e-6 ? Math.abs(v.z) / (d / 4) * hd * .5 : hd * .5 + (Math.abs(v.z) - d / 4) / (d / 4) * (hd * .5 + r)));
+    c.set(Math.max(-hw, Math.min(hw, v.x)), Math.max(-hh, Math.min(hh, v.y)), Math.max(-hd, Math.min(hd, v.z))); const o = v.clone().sub(c); if (o.lengthSq() > 1e-12) v.copy(c).addScaledVector(o.normalize(), r); p.setXYZ(i, v.x, v.y, v.z); }
+  g.computeVertexNormals(); RB.set(k, g); return g; }
+function add(par, geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) { const m = new THREE.Mesh(shape(geo, mat), mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); m.castShadow = true; par.add(m); return m; }
 // henger a Z tengely mentén: rf az orr felőli (−Z), rb a hátsó sugár
 const cylZ = (rf, rb, len, seg = 18) => new THREE.CylinderGeometry(rf, rb, len, seg).rotateX(-Math.PI / 2);
 const box = (w, h, l) => new THREE.BoxGeometry(w, h, l);
+// szárnyprofil (NACA 00xx enyhe íveléssel): u 0 = belépőél (elöl, −z) … 1 = kilépőél
+const AF = (() => { const n = 13, up = [], lo = []; for (let i = 0; i <= n; i++) { const u = (1 - Math.cos(i / n * Math.PI)) / 2, t = (.2969 * Math.sqrt(u) - .126 * u - .3516 * u * u + .2843 * u ** 3 - .1036 * u ** 4) / .1003, c = .18 * Math.sin(Math.PI * u) * (1 - u * .3);
+  up.push([u, c + t]); lo.push([u, c - t]); } return up.reverse().concat(lo.slice(1, -1)); })();   // zárt kontúr: kilépőél → felső → belépőél → alsó
+// felület állomásokból: st = [[pos, chord, zOff, yOff, thick], …]; vert = függőleges (vezérsík)
+function surfGeo(st, vert) { const P = [], I = [], n = AF.length;
+  for (const [a, c, zo, yo, th] of st) for (const [u, v] of AF) { const z = -c / 2 + u * c + zo, w = (vert ? v - .18 * Math.sin(Math.PI * u) * (1 - u * .3) : v) * th / 2;   // a vezérsík szimmetrikus
+    if (vert) P.push(w, a + yo, z); else P.push(a, w + yo, z); }
+  for (let s = 0; s < st.length - 1; s++) for (let i = 0; i < n; i++) { const a = s * n + i, b = s * n + (i + 1) % n, c = a + n, d = b + n; if (vert) I.push(a, b, c, b, d, c); else I.push(a, c, b, b, c, d); }
+  const cap = (s, flip) => { const base = s * n; for (let i = 1; i < n - 1; i++) flip ? I.push(base, base + i + 1, base + i) : I.push(base, base + i, base + i + 1); };
+  cap(0, !vert); cap(st.length - 1, !!vert);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setIndex(I); g.computeVertexNormals(); return g; }
 // szárny: fesztáv, tőhúr, véghúr, nyilazás (m a végen), vastagság, V-állás (m a végen)
-function wingGeo(span, cr, ct, sweep = 0, th = .25, dih = 0) { const g = new THREE.BoxGeometry(span, th, cr, 6, 1, 1), p = g.attributes.position;
-  for (let i = 0; i < p.count; i++) { const x = p.getX(i), k = Math.abs(x) / (span / 2), z = p.getZ(i); p.setZ(i, z * (1 - k + k * ct / cr) + sweep * k); p.setY(i, p.getY(i) * (1 - k * .5) + dih * k); }
-  g.computeVertexNormals(); return g; }
+function wingGeo(span, cr, ct, sweep = 0, th = .25, dih = 0) { const st = [], N = 6;
+  for (let i = -N; i <= N; i++) { const k = Math.abs(i) / N, c = cr * (1 - k) + ct * k; st.push([i / N * span / 2, c, sweep * k, dih * k, th * (1 - k * .45)]); }
+  const g = surfGeo(st, false); return g; }
 // függőleges vezérsík: magasság, tőhúr, véghúr, nyilazás, vastagság – az alja y = 0-n
-function finGeo(h, cr, ct, sweep = 0, th = .2) { const g = new THREE.BoxGeometry(th, h, cr, 1, 4, 1).translate(0, h / 2, 0), p = g.attributes.position;
-  for (let i = 0; i < p.count; i++) { const k = p.getY(i) / h, z = p.getZ(i); p.setZ(i, z * (1 - k + k * ct / cr) + sweep * k); } g.computeVertexNormals(); return g; }
+function finGeo(h, cr, ct, sweep = 0, th = .2) { const st = []; for (let i = 0; i <= 4; i++) { const k = i / 4; st.push([k * h, cr * (1 - k) + ct * k, sweep * k, 0, th * (1 - k * .4)]); } return surfGeo(st, true); }
 function decal(par, x, y, z, ry, w = 2.4) { w *= 1.25; const m = new THREE.Mesh(new THREE.PlaneGeometry(w, w * .375), logoMat()); m.position.set(x, y, z); m.rotation.y = ry; par.add(m); return m; }
 function prop(par, x, y, z, r = 1.1, n = 3, col = SZIN.fekete) { const g = new THREE.Group(); g.position.set(x, y, z); par.add(g);
-  add(g, cylZ(.18, .25, .5, 16), M(SZIN.piros), 0, 0, -.1);
-  for (let i = 0; i < n; i++) { const b = add(g, box(.16, r, .05), M(col), 0, 0, 0, 0, 0, i / n * Math.PI * 2); b.geometry = b.geometry.clone().translate(0, r / 2, 0); }
+  add(g, new THREE.ConeGeometry(.26, .55, 20).rotateX(-Math.PI / 2), M(SZIN.piros), 0, 0, -.3); add(g, cylZ(.26, .26, .2, 20), M(SZIN.piros), 0, 0, 0);
+  const bg = bladeGeo(r); for (let i = 0; i < n; i++) add(g, bg, M(col), 0, 0, 0, 0, 0, i / n * Math.PI * 2);
   const disc = add(g, new THREE.CircleGeometry(r, 20), M(0xcccccc, { transparent: true, opacity: .18, depthWrite: false, side: THREE.DoubleSide }), 0, 0, .05); disc.userData.disc = 1; disc.visible = false; disc.castShadow = false;
   return g; }
 function rotor(par, x, y, z, r, n = 4, col = SZIN.sotet) { const g = new THREE.Group(); g.position.set(x, y, z); par.add(g); add(g, cylZ(.25, .25, .5, 16).rotateX(Math.PI / 2), M(SZIN.fem));
   for (let i = 0; i < n; i++) { const b = add(g, box(r, .07, .45), M(col), 0, 0, 0, 0, i / n * Math.PI * 2); b.geometry = b.geometry.clone().translate(r / 2, 0, 0); }
   const disc = add(g, new THREE.CircleGeometry(r, 28).rotateX(-Math.PI / 2), M(0xbbbbbb, { transparent: true, opacity: .16, depthWrite: false, side: THREE.DoubleSide }), 0, .02, 0); disc.userData.disc = 1; disc.visible = false; disc.castShadow = false;
   return g; }
-function wheel(par, x, y, z, r = .35) { return add(par, new THREE.CylinderGeometry(r, r, r * .55, 10).rotateZ(Math.PI / 2), M(SZIN.fekete), x, y, z); }
+// légcsavarlapát: csúcs felé keskenyedő, csavart, lekerekített végű
+const BLADE = new Map(); function bladeGeo(r) { if (BLADE.has(r)) return BLADE.get(r); const g = new THREE.BoxGeometry(.24, r, .05, 1, 8, 1).translate(0, r / 2, 0), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) { const k = p.getY(i) / r, w = (k < .15 ? .55 + k * 3 : 1 - (k - .15) * .55) * (k > .9 ? Math.sqrt(Math.max(.05, (1 - k) / .1)) : 1), x = p.getX(i) * w, z = p.getZ(i) * (1.6 - k), a = .7 * (1 - k) + .15;
+    p.setX(i, x * Math.cos(a) - z * Math.sin(a)); p.setZ(i, x * Math.sin(a) + z * Math.cos(a)); } g.computeVertexNormals(); BLADE.set(r, g); return g; }
+// kerék: gumi, felni, agy
+function wheel(par, x, y, z, r = .35) { const w = new THREE.Group(); w.position.set(x, y, z); par.add(w);
+  add(w, new THREE.TorusGeometry(r * .68, r * .32, 8, 22).rotateY(Math.PI / 2), M(SZIN.fekete)); add(w, new THREE.CylinderGeometry(r * .52, r * .52, r * .42, 18).rotateZ(Math.PI / 2), M(SZIN.fem)); add(w, new THREE.CylinderGeometry(r * .16, r * .16, r * .6, 10).rotateZ(Math.PI / 2), M(SZIN.sotet)); return w; }
 function tailGear(par, gz, gh, mz, span = 1.4) { const g = new THREE.Group(); par.add(g);
   add(g, box(.12, gh, .12), M(SZIN.fem), -span, -gh / 2, mz); add(g, box(.12, gh, .12), M(SZIN.fem), span, -gh / 2, mz); wheel(g, -span, -gh, mz, .38); wheel(g, span, -gh, mz, .38);
   wheel(g, 0, -.5, gz, .16); return g; }
@@ -190,8 +220,19 @@ const B = {
     o.gear = triGear(g, -4.6, .6, 1.25, 1.6, .45); o.g = g; return o; },
 };
 
-export function buildModel(id) { const o = B[id](); o.g.traverse(m => { if (m.isMesh && !m.material.transparent) m.receiveShadow = false; }); o.g.userData.model = o; return o; }
-export function animate(o, st, dt) {
+/* navigációs fények: piros bal, zöld jobb szárnyvég, fehér farokfény + villogó stroboszkóp; a helyük a modell szélső pontjaiból (a forgó részek nélkül) */
+const LIT = c => new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB(c[0], c[1], c[2]), toneMapped: false, fog: true });
+const NAVM = { r: LIT([6, .25, .2]), g: LIT([.2, 5, .6]), w: LIT([5, 5, 4.6]) }, NAVG = new THREE.SphereGeometry(.13, 10, 8);
+function navLights(o) { if (o.noNav) return; const skip = new Set([...o.prop, ...o.rotor, o.tail, o.gear, o.burner].filter(Boolean)), V = new THREE.Vector3(); let mn = null, mx = null, bk = null; o.g.updateMatrixWorld(true);
+  const walk = (n, sk) => { sk = sk || skip.has(n); if (n.isMesh && !sk && !n.material.transparent && n.material !== UVEG()) { const p = n.geometry.attributes.position, st = Math.max(1, p.count / 400 | 0);
+      for (let i = 0; i < p.count; i += st) { V.fromBufferAttribute(p, i).applyMatrix4(n.matrixWorld); if (!mn || V.x < mn.x) mn = V.clone(); if (!mx || V.x > mx.x) mx = V.clone(); if (!bk || V.z > bk.z) bk = V.clone(); } }
+    for (const c of n.children) walk(c, sk); };
+  walk(o.g, false); if (!mn) return; o.strobe = [];
+  const put = (v, m, dx = 0, dz = 0) => { const l = new THREE.Mesh(NAVG, m); l.position.set(v.x + dx, v.y, v.z + dz); l.castShadow = false; o.g.add(l); return l; };
+  if (mx.x - mn.x > 2.5) { put(mn, NAVM.r, -.08); put(mx, NAVM.g, .08); o.strobe.push(put(mn, NAVM.w, -.08, .25), put(mx, NAVM.w, .08, .25)); }
+  put(bk, NAVM.w, 0, .1); }
+export function buildModel(id) { const o = B[id](); navLights(o); o.g.traverse(m => { if (m.isMesh && !m.material.transparent) m.receiveShadow = false; }); o.g.userData.model = o; return o; }
+export function animate(o, st, dt) { o.t = (o.t || 0) + dt; if (o.strobe) { const on = o.t % 1.3 < .06; for (const l of o.strobe) l.visible = on; }
   for (const p of o.prop) { p.rotation.z += dt * (st.rpm || 0) * 40 * (p.rotation.y ? -1 : 1); for (const c of p.children) if (c.userData.disc) c.visible = (st.rpm || 0) > .35; }
   for (const r of o.rotor) { r.rotation.y += dt * (st.rotor || 0) * 26 * (r.userData.rev ? -1 : 1); for (const c of r.children) if (c.userData.disc) c.visible = (st.rotor || 0) > .5; }
   if (o.tail) o.tail.rotation.x += dt * (st.rotor || 0) * 70;

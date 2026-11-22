@@ -1,25 +1,27 @@
 /* HGWS Légi Öntözés – főprogram: betöltés, renderelés, játékhurok, kamerák, töltés, küldetések, feloldások. */
 import * as THREE from 'three';
-import { GEPEK, GEP, REPTER, REPTEREK, KULDETESEK, FORGO, ZERO_HELY, GAME } from './config.js?v=202611220107';
-import * as GEO from './geo.js?v=202611220107';
-import { createTerrain } from './terep.js?v=202611220107';
-import { createWorld } from './vilag.js?v=202611220107';
-import { buildModel, animate } from './modellek.js?v=202611220107';
-import { createBody, placeOn, step } from './fizika.js?v=202611220107';
-import { createSpray } from './permet.js?v=202611220107';
-import { createMission } from './kuldetes.js?v=202611220107';
-import { createAudio } from './hang.js?v=202611220107';
-import { createControls } from './iranyitas.js?v=202611220107';
-import { createHud, setMapImage, drawMap } from './hud.js?v=202611220107';
-import { createUI } from './ui.js?v=202611220107';
-import * as RL from './ranglista.js?v=202611220107';
-import { createPost } from './utofeldolgozas.js?v=202611220107';
+import { GEPEK, GEP, REPTER, REPTEREK, KULDETESEK, FORGO, ZERO_HELY, GAME } from './config.js?v=202611220119';
+import * as GEO from './geo.js?v=202611220119';
+import { createTerrain } from './terep.js?v=202611220119';
+import { createWorld } from './vilag.js?v=202611220119';
+import { createOSM } from './osm.js?v=202611220119';
+import { buildModel, animate } from './modellek.js?v=202611220119';
+import { createBody, placeOn, step } from './fizika.js?v=202611220119';
+import { createSpray } from './permet.js?v=202611220119';
+import { createMission } from './kuldetes.js?v=202611220119';
+import { createAudio } from './hang.js?v=202611220119';
+import { createControls } from './iranyitas.js?v=202611220119';
+import { createHud, setMapImage, drawMap } from './hud.js?v=202611220119';
+import * as HUDM from './hud.js?v=202611220119';
+import { createUI } from './ui.js?v=202611220119';
+import * as RL from './ranglista.js?v=202611220119';
+import { createPost } from './utofeldolgozas.js?v=202611220119';
 
 const $ = s => document.querySelector(s);
 const LS = 'hgws_legi_v1', TOUCH = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window;
 const DEBUG = new URLSearchParams(location.search).has('debug');
 /* ---------- mentés és beállítások ---------- */
-const DEF_SET = { q: TOUCH ? 'alacsony' : 'kozepes', view: TOUCH ? 24 : 40, vol: .7, sens: 1, inv: 0, wind: 1, tod: 'nappal', cloud: 1, tiles: 1, gyro: 0, fps: 0 };
+const DEF_SET = { q: TOUCH ? 'alacsony' : 'kozepes', view: TOUCH ? 24 : 40, vol: .7, sens: 1, inv: 0, wind: 1, tod: 'nappal', cloud: 1, tiles: 1, gyro: 0, fps: 0, real: 0 };
 let save = { pont: 0, unl: [], best: {}, zero: 0, gep: 'permetezo', set: {} };
 try { const o = JSON.parse(localStorage.getItem(LS) || 'null'); if (o) save = { ...save, ...o }; } catch (_) {}
 const SET = { ...DEF_SET, ...(save.set || {}) }; save.set = SET;
@@ -30,7 +32,7 @@ function persist() { try { localStorage.setItem(LS, JSON.stringify(save)); } cat
 const realUnlocked = g => g.titkos ? !!save.zero : g.pont <= save.pont || save.unl.includes(g.id);
 const unlocked = g => (DEV.on && DEV.all) || realUnlocked(g);
 if (!unlocked(GEP[save.gep])) save.gep = 'permetezo';
-const QUAL = { alacsony: { prCap: 1, tree: 1800, dens: .45, shadow: false, sm: 1024, part: .5, maxView: 30 }, kozepes: { prCap: 1.5, tree: 3600, dens: 1, shadow: true, sm: 1024, part: 1, maxView: 80 }, magas: { prCap: 2, tree: 7000, dens: 1.4, shadow: true, sm: 2048, part: 1.4, maxView: 80 } };
+const QUAL = { alacsony: { prCap: 1, tree: 1800, dens: .45, shadow: false, sm: 1024, part: .5, maxView: 30, road: 3000, bld: 1800 }, kozepes: { prCap: 1.5, tree: 3600, dens: 1, shadow: true, sm: 1024, part: 1, maxView: 80, road: 4500, bld: 3000 }, magas: { prCap: 2, tree: 7000, dens: 1.4, shadow: true, sm: 2048, part: 1.4, maxView: 80, road: 6500, bld: 4500 } };
 
 /* ---------- renderer, jelenet ---------- */
 const canvas = $('#c'), renderer = new THREE.WebGLRenderer({ canvas, antialias: false, logarithmicDepthBuffer: true, powerPreference: 'high-performance' });
@@ -51,7 +53,7 @@ const FS_OK = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled)
 function toggleFs() { const d = document, el = d.documentElement; if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d); else (el.requestFullscreen || el.webkitRequestFullscreen).call(el, { navigationUI: 'hide' })?.catch?.(() => {}); }
 document.querySelectorAll('.fsB, .fsM').forEach(b => { b.hidden = !FS_OK; b.onclick = e => { e.stopPropagation(); toggleFs(); }; });
 addEventListener('keydown', e => { if (e.code === 'KeyK' && !e.repeat && FS_OK && !/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName || '')) toggleFs(); });
-let terrain, world, spray, ui, towns = [];
+let terrain, world, osm, spray, ui, towns = [];
 /* ---------- állapot ---------- */
 let state = 'load', mode = 'szabad', b = null, model = null, mission = null, missionDef = null, camMode = 'kulso', timeK = 1, acc = 0, lastTouch = 0, refillMsg = 0, ended = false, crashT = 0, debris = null;
 let startRepter = 'miskolc', previewId = null, previewModel = null, menuAng = 0, orbit = { yaw: 0, pitch: .25, dist: 0 }, mapOpen = false, scoreShow = 0, tileT = 0;
@@ -74,11 +76,11 @@ async function boot() {
   try { prog(10, 'Magyarország domborzata…'); await GEO.load('../vasut/');
     prog(40, 'Térkép…'); const img = new Image(); img.src = '../vasut/taj.jpg'; await img.decode().catch(() => {}); setMapImage(img);
     towns = GEO.townList(); prog(55, 'Táj és városok…');
-    terrain = createTerrain(scene, { viewR: SET.view * 1000 }); world = createWorld(scene, {}); spray = createSpray(scene, 1600, TOUCH ? 3000 : 7000);
-    GEO.onTile(bd => { world.rebuildTowns(bd); world.fixGround?.(bd); mission?.redrape?.(bd); });
+    terrain = createTerrain(scene, { viewR: SET.view * 1000 }); world = createWorld(scene, {}); osm = createOSM(scene, { waterMat: terrain.waterMat }); spray = createSpray(scene, 1600, TOUCH ? 3000 : 7000);
+    GEO.onTile(bd => { wpSeen = -1; world.rebuildTowns(bd); world.fixGround?.(bd); mission?.redrape?.(bd); });
     ui = createUI(app); applyAll(); devBadge(); prog(80, 'Bázis…');
     RL.init().then(async () => { const c = await RL.cloudLoad(); if (c && (c.pont || 0) >= save.pont) { save = { ...save, ...c, set: SET }; ui && state === 'menu' && ui.menu(); } });
-    toMenu(); for (let i = 0; i < 3; i++) { terrain.update(cam, .016); world.update(cam, .016, cam.far); }
+    toMenu(); for (let i = 0; i < 3; i++) { terrain.update(cam, .016); osm.update(cam, .016); world.update(cam, .016, cam.far); }
     prog(100, 'Kész'); setTimeout(() => $('#load').hidden = true, 200); ui.menu();
   } catch (e) { console.error(e); prog(100, 'A betöltés nem sikerült: ' + (e.message || e)); }
   requestAnimationFrame(frame);
@@ -87,7 +89,7 @@ async function boot() {
 /* ---------- beállítások alkalmazása ---------- */
 function applySettings(k) { const Q = QUAL[SET.q] || QUAL.kozepes;
   if (!k || k === 'q' || k === 'view') { pr = Math.min(devicePixelRatio || 1, Q.prCap); post.setQuality(SET.q); const view = Math.min(SET.view, Q.maxView) * 1000;
-    terrain.set({ viewR: view, treeR: Q.tree, treeDens: Q.dens }); scene.fog.near = view * .3; scene.fog.far = view * .97; cam.far = view * 1.15 + 6000; cam.updateProjectionMatrix();
+    terrain.set({ viewR: view, treeR: Q.tree, treeDens: Q.dens }); osm.set({ roadR: Q.road, bldR: Q.bld }); scene.fog.near = view * .3; scene.fog.far = view * .97; cam.far = view * 1.15 + 6000; cam.updateProjectionMatrix();
     renderer.shadowMap.enabled = Q.shadow; world.setShadows(Q.shadow, Q.sm); resize(true); }
   if (!k || k === 'vol') audio.setVol(SET.vol);
   if (!k || k === 'wind') world.setWind([0, 4, 9, 15][SET.wind] ?? 4);
@@ -113,11 +115,11 @@ function start(o) { audio.init(); audio.resume(); endFlight(); if (previewModel)
   let r = REPTER[missionDef ? missionDef.repter : o.repter || 'miskolc'];
   if (!canUse(gep, r)) { const alt = GEO.nearestAirport(r.x, r.z, x => canUse(gep, x)); if (alt) { hud.say(`${gep.nev}: ${alt.nev} a legközelebbi alkalmas reptér.`, '', 4000); r = alt; } }
   startRepter = r.id; model = buildModel(gep.id); const bb = new THREE.Box3().setFromObject(model.g); model.gearH = -bb.min.y; scene.add(model.g);
-  b = createBody(gep); b.gearH = model.gearH; b.model = model; spawnAt(r);
+  b = createBody(gep); b.real = !!SET.real; b.gearH = model.gearH; b.model = model; spawnAt(r);
   if (missionDef) { world.setWind(Math.max([0, 4, 9, 15][SET.wind] ?? 4, missionDef.szel ? 10 : 0)); mission = createMission(missionDef, scene, gep, rng(missionDef.id)); mission.used = 0; }
   else world.setWind([0, 4, 9, 15][SET.wind] ?? 4);
   ctl.events();   // a menüben leütött billentyűk ne hassanak a repülésre
-  if (b.bucket) addBucket(); ended = false; camMode = 'kulso'; state = 'fly'; acc = 0; ui.hideAll(); hud.show(true); $('#tc').hidden = !TOUCH; ctl.resetTouchThr();
+  if (b.bucket) addBucket(); ended = false; camMode = 'kulso'; lookReset(); look.zoom = 1; state = 'fly'; acc = 0; ui.hideAll(); hud.show(true); $('#tc').hidden = !TOUCH; ctl.resetTouchThr();
   audio.setType(gep.hang); spray.resetTotal(); scoreShow = 0;
   hud.say(missionDef ? missionDef.nev : 'Szabad repülés – ' + r.nev, 'big', 3500); if (missionDef) setTimeout(() => hud.say(missionDef.leir, '', 6000), 900);
   snapCam(); }
@@ -160,24 +162,35 @@ const CP = new THREE.Vector3(), LA = new THREE.Vector3(), F = new THREE.Vector3(
 function snapCam() { camUpdate(1, true); }
 function camUpdate(dt, snap) { const len = model?.len || 10, d = Math.max(11, len * 1.45) * (b.gep.kind === 'airship' ? 1.1 : 1);
   F.set(0, 0, -1).applyQuaternion(b.q); E.setFromQuaternion(b.q, 'YXZ');
-  if (camMode === 'kulso') { const hz = Math.hypot(F.x, F.z) || 1, fx = F.x / hz, fz = F.z / hz, fy = FORGO(b.kind) ? 0 : Math.max(-.6, Math.min(.6, F.y));
-    CP.set(b.pos.x - fx * d * (1 - Math.abs(fy) * .4), b.pos.y + d * .26 - fy * d * .6, b.pos.z - fz * d * (1 - Math.abs(fy) * .4));
+  if (camMode === 'kulso') { const hz = Math.hypot(F.x, F.z) || 1, fx = F.x / hz, fz = F.z / hz, fy = FORGO(b.kind) ? 0 : Math.max(-.6, Math.min(.6, F.y)), dz = d * look.zoom;
+    if (look.yaw || look.pitch) { const ya = Math.atan2(-fx, -fz) + look.yaw, pa = Math.max(-.35, Math.min(1.45, .24 + look.pitch)); CP.set(b.pos.x + Math.sin(ya) * Math.cos(pa) * dz, b.pos.y + Math.sin(pa) * dz, b.pos.z + Math.cos(ya) * Math.cos(pa) * dz); }
+    else CP.set(b.pos.x - fx * dz * (1 - Math.abs(fy) * .4), b.pos.y + dz * .26 - fy * dz * .6, b.pos.z - fz * dz * (1 - Math.abs(fy) * .4));
     const gh = GEO.ground(CP.x, CP.z) + 2; if (CP.y < gh) CP.y = gh;
-    const k = snap ? 1 : 1 - Math.exp(-dt * (FORGO(b.kind) ? 3.5 : 5)); cam.position.lerp(CP, k); LA.copy(b.pos).addScaledVector(F, d * .4); LA.y += d * .06; camLook.lerp(LA, snap ? 1 : 1 - Math.exp(-dt * 8)); cam.up.set(0, 1, 0); cam.lookAt(camLook); }
-  else if (camMode === 'pilota') { const e = model.eye; TMP.set(e[0], e[1], e[2]).applyQuaternion(b.q); cam.position.copy(b.pos).add(TMP); cam.quaternion.copy(b.q); }
+    const k = snap ? 1 : 1 - Math.exp(-dt * (FORGO(b.kind) ? 3.5 : 5)); cam.position.lerp(CP, look.drag ? 1 : k); LA.copy(b.pos).addScaledVector(F, d * .4 * Math.max(0, 1 - Math.abs(look.yaw) / 1.2)); LA.y += d * .06; camLook.lerp(LA, snap ? 1 : 1 - Math.exp(-dt * 8)); cam.up.set(0, 1, 0); cam.lookAt(camLook); }
+  else if (camMode === 'pilota') { const e = model.eye; TMP.set(e[0], e[1], e[2]).applyQuaternion(b.q); cam.position.copy(b.pos).add(TMP); cam.quaternion.copy(b.q); if (look.yaw || look.pitch) cam.quaternion.multiply(LQ.setFromEuler(LE.set(look.pitch, look.yaw, 0, 'YXZ'))); }
   else if (camMode === 'also') { cam.position.copy(b.pos); cam.position.y -= (model.gearH || 1.5) + .5; U.set(F.x, 0, F.z).normalize(); cam.up.copy(U); cam.lookAt(TMP.copy(cam.position).add(new THREE.Vector3(0, -1, 0))); }
   if (shake > 0) { cam.position.x += (Math.random() - .5) * shake; cam.position.y += (Math.random() - .5) * shake; shake = Math.max(0, shake - dt * 2); } }
 function orbitCam(dt, target, dist) { cam.position.set(target.x + Math.sin(orbit.yaw) * Math.cos(orbit.pitch) * dist, target.y + Math.sin(orbit.pitch) * dist, target.z + Math.cos(orbit.yaw) * Math.cos(orbit.pitch) * dist);
   const gh = GEO.ground(cam.position.x, cam.position.z) + 2; if (cam.position.y < gh) cam.position.y = gh; cam.up.set(0, 1, 0); cam.lookAt(target); }
 // egérrel / ujjal forgatható kamera szünetben és a menüben
-let drag = null; canvas.addEventListener('pointerdown', e => { if (state === 'pause' || state === 'menu') drag = [e.clientX, e.clientY]; });
+/* szabad körbenézés repülés közben: húzás a vásznon (kívül a gép körül kering, a pilótafülkében körbenéz), görgő: távolság; dupla kattintás / kameraváltás: alaphelyzet */
+const look = { yaw: 0, pitch: 0, zoom: 1, drag: null }, LQ = new THREE.Quaternion(), LE = new THREE.Euler();
+const lookReset = () => { look.yaw = look.pitch = 0; };
+canvas.addEventListener('dblclick', () => { if (state === 'fly') lookReset(); });
+let drag = null; canvas.addEventListener('pointerdown', e => { if (state === 'pause' || state === 'menu') drag = [e.clientX, e.clientY];
+  else if (state === 'fly' && !look.drag) { look.drag = [e.clientX, e.clientY, e.pointerId]; canvas.setPointerCapture?.(e.pointerId); } });
+addEventListener('pointermove', e => { const L = look.drag; if (!L || e.pointerId !== L[2]) return; const k = camMode === 'pilota' ? .004 : .006;
+  look.yaw -= (e.clientX - L[0]) * k; look.pitch += (e.clientY - L[1]) * k * (camMode === 'pilota' ? -1 : 1); look.yaw = Math.atan2(Math.sin(look.yaw), Math.cos(look.yaw));
+  look.pitch = Math.max(camMode === 'pilota' ? -1.2 : -.55, Math.min(camMode === 'pilota' ? 1.2 : 1.2, look.pitch)); L[0] = e.clientX; L[1] = e.clientY; });
+addEventListener('pointerup', e => { if (look.drag && e.pointerId === look.drag[2]) look.drag = null; }); addEventListener('pointercancel', e => { if (look.drag && e.pointerId === look.drag[2]) look.drag = null; });
+canvas.addEventListener('wheel', e => { if (state === 'fly' && camMode === 'kulso') look.zoom = Math.max(.5, Math.min(5, look.zoom * (1 + Math.sign(e.deltaY) * .1))); }, { passive: true });
 addEventListener('pointermove', e => { if (!drag) return; orbit.yaw -= (e.clientX - drag[0]) * .006; orbit.pitch = Math.max(-.1, Math.min(1.3, orbit.pitch + (e.clientY - drag[1]) * .004)); drag = [e.clientX, e.clientY]; menuAng = orbit.yaw; });
 addEventListener('pointerup', () => drag = null);
 canvas.addEventListener('wheel', e => { if (state === 'pause' || state === 'menu') orbit.dist = Math.max(8, Math.min(400, orbit.dist * (1 + Math.sign(e.deltaY) * .1))); }, { passive: true });
 
 /* ---------- a repülés egy képkockája ---------- */
 const I0 = { pitch: 0, roll: 0, yaw: 0, thr: 0, spray: false, burner: false, brake: false };
-function fly(rdt) { const gep = b.gep;
+function fly(rdt) { const gep = b.gep; wpStep();
   for (const e of ctl.events()) handle(e);
   if (state !== 'fly') return;
   const I = ctl.poll(b.kind), dt = rdt * timeK;
@@ -219,7 +232,7 @@ function fly(rdt) { const gep = b.gep;
   // HUD
   E.setFromQuaternion(b.q, 'YXZ'); const hdg = (-E.y * 57.3 + 360) % 360, place = nearestTown(b.pos.x, b.pos.z);
   const camE = new THREE.Euler().setFromQuaternion(cam.quaternion, 'YXZ');
-  hud.update({ b, pitch: E.x, roll: -E.z, hdg, wind: world.wind(b.pos, null).clone(), timeK, m: mission, score: mission?.liveScore, target: mission && !ended ? (mission.allDone ? nearestAirportPos() : mission.target(b)) : null, camDir: -camE.y, cam: camMode, aim: camMode === 'also' ? aimPoint() : null, marks: mission?.marks(), place, refill }, rdt);
+  hud.update({ b, pitch: E.x, roll: -E.z, hdg, wind: world.wind(b.pos, null).clone(), timeK, m: mission, score: mission?.liveScore, target: (mission && !ended ? (mission.allDone ? nearestAirportPos() : mission.target(b)) : null) || (HUDM.WP.length ? [HUDM.WP[0][0], 0, HUDM.WP[0][1]] : null), camDir: -camE.y, cam: camMode, aim: camMode === 'also' ? aimPoint() : null, marks: mission?.marks(), place, refill }, rdt);
   if ((tileT -= rdt) <= 0) { tileT = 1; GEO.requestAround(b.pos.x, b.pos.z, 26000); }
   // füst rontja a látást
   if (mission?.smokeAt) { const k = mission.smokeAt(b.pos), base = Math.min(SET.view, QUAL[SET.q].maxView) * 1000; scene.fog.far = base * .97 * (1 - k) + 900 * k; scene.fog.near = Math.min(scene.fog.far * .3, base * .3); }
@@ -232,7 +245,7 @@ function aimPoint() { // a permet várható becsapódása (egyszerű közelíté
   const t = Math.sqrt(Math.max(1, 2 * Math.max(1, b.agl) / 9.81)) * 1.25, x = b.pos.x + b.vel.x * t * .55, z = b.pos.z + b.vel.z * t * .55, y = GEO.ground(x, z);
   TMP.set(x, y, z).project(cam); if (TMP.z > 1) return null; return [(TMP.x + 1) / 2 * innerWidth, (1 - TMP.y) / 2 * innerHeight]; }
 function handle(e) { const gep = b?.gep;
-  if (e === 'cam') { camMode = camMode === 'kulso' ? 'pilota' : camMode === 'pilota' ? 'also' : 'kulso'; model.g.visible = camMode !== 'pilota' || !FORGO(b.kind) || true; audio.fx.click(); }
+  if (e === 'cam') { lookReset(); camMode = camMode === 'kulso' ? 'pilota' : camMode === 'pilota' ? 'also' : 'kulso'; model.g.visible = camMode !== 'pilota' || !FORGO(b.kind) || true; audio.fx.click(); }
   if (e === 'map') toggleMap();
   if (e === 'pause') { if (mapOpen) toggleMap(); else pause(); }
   if (e === 'gear' && !FORGO(b.kind) && b.kind !== 'airship' && !model.noGear) { if (b.onGround && b.gearT > .5) hud.say('A földön nem húzhatod be a futóművet', 'bad'); else { b.gearT = b.gearT > .5 ? 0 : 1; audio.fx.click(); } }
@@ -243,14 +256,26 @@ function handle(e) { const gep = b?.gep;
   if (e === 'help') { pause(); ui.help(() => ui.pause()); } }
 function pause() { if (state !== 'fly') return; state = 'pause'; audio.suspend(); E.setFromQuaternion(cam.quaternion, 'YXZ'); orbit.yaw = Math.atan2(cam.position.x - b.pos.x, cam.position.z - b.pos.z); orbit.pitch = .3; orbit.dist = Math.max(14, (model.len || 10) * 1.8); ui.pause(); $('#tc').hidden = true; }
 function resume() { if (!b) return; state = 'fly'; audio.resume(); $('#tc').hidden = !TOUCH; }
-function toggleMap() { mapOpen = !mapOpen; $('#mapS').hidden = !mapOpen; if (mapOpen) { if (state === 'fly') { state = 'map'; audio.suspend(); } $('#mapH').textContent = '';
-    E.setFromQuaternion(b.q, 'YXZ'); drawMap($('#mapC'), { b, hdg: (-E.y * 57.3 + 360) % 360, marks: mission?.marks() }, towns, (mode === 'szabad' || DEV.on) ? (r, wx, wz) => { if (DEV.on && (!r || !canUse(b.gep, r))) { toggleMap(); const y = GEO.ground(wx, wz) + 300; E.setFromQuaternion(b.q, 'YXZ'); placeOn(b, wx, y, wz, -E.y * 57.3, true, FORGO(b.kind) ? 0 : Math.max(40, (b.gep.vstall || 20) * 1.6)); if (b.bucket) b.bucket.p.set(wx, y - 10, wz); snapCam(); hud.say('DEV teleport', 'ok'); return; } if (!r) return; if (!canUse(b.gep, r)) { $('#mapH').textContent = 'Ez a gép itt nem tud leszállni: ' + r.nev; return; } toggleMap(); spawnAt(r); snapCam(); hud.say('Gyorsutazás: ' + r.nev, 'ok'); } : null); }
+function toggleMap() { mapOpen = !mapOpen; $('#mapS').hidden = !mapOpen; if (mapOpen) { if (state === 'fly') { state = 'map'; audio.suspend(); } $('#mapH').textContent = ''; $('#mapTp').hidden = !DEV.on; $('#mapTp').classList.toggle('on', !!mapTp); $('#mapClr').hidden = !HUDM.WP.length;
+    E.setFromQuaternion(b.q, 'YXZ'); const s = { b, hdg: (-E.y * 57.3 + 360) % 360, marks: mission?.marks() }, wv = HUDM.wpVer;
+    const tp = (wx, wz) => { toggleMap(); const y = GEO.ground(wx, wz) + 300; E.setFromQuaternion(b.q, 'YXZ'); placeOn(b, wx, y, wz, -E.y * 57.3, true, FORGO(b.kind) ? 0 : Math.max(40, (b.gep.vstall || 20) * 1.6)); if (b.bucket) b.bucket.p.set(wx, y - 10, wz); snapCam(); hud.say('DEV teleport', 'ok'); };
+    drawMap($('#mapC'), s, towns, mode === 'szabad' || DEV.on ? (r, wx, wz) => { if (DEV.on && mapTp) return tp(wx, wz); if (!canUse(b.gep, r)) { $('#mapH').textContent = 'Ez a gép itt nem tud leszállni: ' + r.nev; return; } toggleMap(); spawnAt(r); snapCam(); hud.say('Gyorsutazás: ' + r.nev, 'ok'); } : null,
+      (wx, wz) => { if (DEV.on && mapTp) { tp(wx, wz); return true; } return false; });
+    const chk = setInterval(() => { if (!mapOpen) return clearInterval(chk); $('#mapClr').hidden = !HUDM.WP.length; void wv; }, 250); }
   else if (state === 'map') { state = 'fly'; audio.resume(); } }
+let mapTp = 0; $('#mapTp').onclick = () => { mapTp = mapTp ? 0 : 1; $('#mapTp').classList.toggle('on', !!mapTp); };
+$('#mapClr').onclick = () => { HUDM.wpClear(); $('#mapC')._redraw?.(); $('#mapClr').hidden = true; };
 $('#mapX').onclick = () => toggleMap();
 
+/* útpontok a 3D-ben: függőleges fényoszlopok; a következőt elérve továbblép */
+const wpG = new THREE.Group(), wpGeo = new THREE.CylinderGeometry(9, 9, 1600, 12, 1, true).translate(0, 800, 0), wpMat = new THREE.MeshBasicMaterial({ color: 0xd36bff, transparent: true, opacity: .32, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+let wpSeen = -1;
+function wpStep() { if (wpSeen !== HUDM.wpVer) { wpSeen = HUDM.wpVer; if (!wpG.parent) scene.add(wpG); wpG.clear(); for (const [x, z] of HUDM.WP) { const m = new THREE.Mesh(wpGeo, wpMat); m.position.set(x, GEO.ground(x, z) - 5, z); wpG.add(m); } }
+  if (HUDM.WP.length && b) { const [x, z] = HUDM.WP[0]; if (Math.hypot(b.pos.x - x, b.pos.z - z) < 350) { HUDM.wpShift(); hud.say(HUDM.WP.length ? 'Útpont elérve – következő: ' + HUDM.WP.length + ' hátra' : 'Útvonal vége', 'ok'); audio.fx.ok?.(); } } }
+
 /* ---------- küldetés vége, pontok, feloldás ---------- */
-function finishMission(land) { if (ended) return; ended = true; const gep = b.gep, res = mission.finish(land); let newly = [];
-  if (!DEV.on) { const before = GEPEK.filter(unlocked).map(g => g.id); save.pont += Math.round(res.total / 10); if (res.total > (save.best[mission.def.id] || 0)) save.best[mission.def.id] = res.total;
+function finishMission(land) { if (ended) return; ended = true; const gep = b.gep, res = mission.finish(land); let newly = []; res.real = b.real; res.xp = Math.round(res.total / 10 * (b.real ? 1.5 : 1));
+  if (!DEV.on) { const before = GEPEK.filter(unlocked).map(g => g.id); save.pont += res.xp; if (res.total > (save.best[mission.def.id] || 0)) save.best[mission.def.id] = res.total;
     newly = GEPEK.filter(g => unlocked(g) && !before.includes(g.id)).map(g => g.nev); persist(); }
   state = 'end'; audio.fx.ok(); $('#tc').hidden = true; ui.end(res, mission, gep, newly); }
 
@@ -262,11 +287,11 @@ function frame(now) { requestAnimationFrame(frame); const rdt = Math.min(.1, (no
   else if (state === 'menu') { if (!drag) orbit.yaw += rdt * .08; if (previewModel) { const p = previewModel.g.position; orbitCam(rdt, TMP.set(p.x, p.y + previewModel.len * .08, p.z), orbit.dist); animate(previewModel, { rpm: .25, rotor: .3, gear: 1 }, rdt); } }
   else if (state === 'pause' || state === 'map' || state === 'end') { for (const e of ctl.events()) if (e === 'pause' && state === 'pause') { ui.hideAll(); resume(); } else if (e === 'map' && state === 'map') toggleMap(); if (state === 'pause') orbitCam(rdt, b.pos, orbit.dist); }
   else if (state === 'crash') { crashT += rdt; debrisStep(rdt); spray.update(rdt, world.wind(b.pos, null), () => {}, cam); orbitCam(rdt, b.pos, Math.max(30, (model.len || 10) * 3)); orbit.yaw += rdt * .3; if (crashT > 1.8 && crashT - rdt <= 1.8) { ui.crash(b.crashWhy, () => respawn(), () => ui.menu()); $('#tc').hidden = true; } }
-  terrain.update(cam, rdt); world.update(cam, rdt, cam.far, b && (state === 'fly' || state === 'pause' || state === 'map') ? b.pos : previewModel?.g.position); world.updateEnv(renderer);
+  terrain.update(cam, rdt); osm.update(cam, rdt); world.update(cam, rdt, cam.far, b && (state === 'fly' || state === 'pause' || state === 'map') ? b.pos : previewModel?.g.position); world.updateEnv(renderer);
   renderer.info.reset(); post.render(scene, cam); if (state === 'fly') post.frameTime(rdt); spray.setScale(lastH * pr * post.scale / (2 * Math.tan(cam.fov * Math.PI / 360)));
   // dinamikus felbontás és FPS
   fpsA += rdt; fpsN++; fpsT += rdt; if (fpsT > 1.5) { const ms = fpsA / fpsN * 1000;
-    if (!$('#fps').hidden) { const i = renderer.info, ts = terrain.stats(); $('#fps').textContent = `${(1000 / ms).toFixed(0)} FPS · ${ms.toFixed(1)} ms · ${i.render.calls} hívás · ${(i.render.triangles / 1000).toFixed(0)}k háromszög · ${ts.chunks} csonk · csempe ${GEO.tileStats.ok}/${GEO.tileStats.req} · ${Math.round(post.scale * 100)}% felb.`; window.__perf = { fps: 1000 / ms, ms, calls: i.render.calls, tris: i.render.triangles, chunks: ts.chunks, scale: post.scale }; }
+    if (!$('#fps').hidden) { const i = renderer.info, ts = terrain.stats(); $('#fps').textContent = `${(1000 / ms).toFixed(0)} FPS · ${ms.toFixed(1)} ms · ${i.render.calls} hívás · ${(i.render.triangles / 1000).toFixed(0)}k háromszög · ${ts.chunks} csonk · csempe ${GEO.tileStats.ok}/${GEO.tileStats.req} · ${Math.round(post.scale * 100)}% felb.`; window.__perf = { fps: 1000 / ms, ms, calls: i.render.calls, tris: i.render.triangles, chunks: ts.chunks, scale: post.scale, osm: osm.stats() }; }
     fpsA = fpsN = fpsT = 0; void slow; }
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'fly') pause(); });
@@ -278,5 +303,5 @@ function devBadge() { document.querySelectorAll('.devB').forEach(e => e.hidden =
 let devBuf = '', devTaps = []; addEventListener('keydown', e => { if (state !== 'menu' || e.key.length !== 1) return; devBuf = (devBuf + e.key.toLowerCase()).slice(-7); if (devBuf === 'hgwsdev') { devBuf = ''; if (!DEV.on) setDev(1); ui.dev(); } });
 document.querySelector('#menu .logo').addEventListener('pointerdown', () => { const t = performance.now(); devTaps = devTaps.filter(x => t - x < 2500); devTaps.push(t); if (devTaps.length >= 7) { devTaps = []; if (!DEV.on) setDev(1); ui.dev(); } });
 const app = { get save() { return save; }, SET, audio, touch: TOUCH, canUse, unlocked, persist, start, preview, applySettings, restart, respawn, resume, toMenu, get mode() { return mode; }, get DEV() { return DEV; }, setDev, persistDev };
-window.__legi = { get b() { return b; }, get state() { return state; }, get mission() { return mission; }, app, GEO, get world() { return world; }, cam, scene, renderer, start, setState: s => state = s, GAME };
+window.__legi = { get b() { return b; }, get state() { return state; }, get mission() { return mission; }, app, GEO, get world() { return world; }, get osm() { return osm; }, cam, scene, renderer, start, setState: s => state = s, GAME };
 boot();

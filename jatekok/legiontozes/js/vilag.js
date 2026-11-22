@@ -1,10 +1,10 @@
-/* A világ a terepen túl: égbolt és napszak, felhők, városok (low-poly épületcsoportok névfelirattal), Budapest (Duna, hidak,
+/* A világ a terepen túl: égbolt és napszak, felhők, városnevek, Budapest (Duna,
    Parlament), Miskolc (Diósgyőri vár), repülőterek (pálya, hangár, torony, helipadok, HGWS víztöltő, kikötőárboc), vízfeliratok,
    a titkos ZERO felirat, termikek és szél. */
 import * as THREE from 'three';
-import { P, REPTEREK, VIZEK, NEVEZETES, ZERO_HELY, SZIN } from './config.js?v=202611220107';
-import { ground, cls, hash2, townList, heightAt } from './geo.js?v=202611220107';
-import { SU, withWorld, LOGV_PARS, LOGV, LOGF_PARS, LOGF } from './kozos.js?v=202611220107';
+import { P, REPTEREK, VIZEK, NEVEZETES, ZERO_HELY, SZIN } from './config.js?v=202611220119';
+import { ground, cls, hash2, townList, heightAt } from './geo.js?v=202611220119';
+import { SU, withWorld, LOGV_PARS, LOGV, LOGF_PARS, LOGF } from './kozos.js?v=202611220119';
 
 const MC = new Map(); const M = (c, o = {}) => { const k = c + JSON.stringify(o); if (!MC.has(k)) MC.set(k, new THREE.MeshLambertMaterial({ color: c, flatShading: true, ...o })); return MC.get(k); };
 function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; }
@@ -75,33 +75,8 @@ export function createWorld(scene, opt) {
         cOff.set([x0 + u, y0 + h + s * .25, z0 + (hash2(gz, p + 9) - .5) * wid * .6, s], n * 4); n++; } }
     cGeo.instanceCount = n; cGeo.attributes.off.needsUpdate = true; cloudLast = [cx, cz]; }
 
-  /* ---- városok ---- */
-  const bGeo = new THREE.BoxGeometry(1, 1, 1).translate(0, .5, 0), rGeo = new THREE.ConeGeometry(.75, .6, 4).rotateY(Math.PI / 4).translate(0, .3, 0);
-  const bMat = new THREE.MeshLambertMaterial({ flatShading: true }), rMat = new THREE.MeshLambertMaterial({ flatShading: true });
-  // ablakok a falakon (világkoordinátából), éjszaka véletlenszerűen világítanak
-  bMat.onBeforeCompile = sh => { withWorld(sh); sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-    { vec3 fn = normalize(cross(dFdx(vWPos), dFdy(vWPos))); if (abs(fn.y) < .5) { float u = abs(fn.x) > abs(fn.z) ? vWPos.z : vWPos.x; vec2 cw = vec2(u / 3.6, vWPos.y / 3.3);
-      vec2 f = fract(cw); float win = step(.22, f.x) * step(f.x, .78) * step(.3, f.y) * step(f.y, .82);
-      float lit = step(.58, h21(floor(cw) + floor(vWPos.xz / 50.))) * uNight;
-      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.16,.22,.28), win * .85); totalEmissiveRadiance += win * lit * vec3(2.2, 1.6, .9); } }`); };
-  bMat.customProgramCacheKey = () => 'epulet';
-  const lampMat = new THREE.PointsMaterial({ color: 0xffc070, size: 9, sizeAttenuation: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: true });
-  const towns = [], tMat = new THREE.Matrix4(), tQ = new THREE.Quaternion(), tS = new THREE.Vector3(), tP = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0), tCol = new THREE.Color();
-  const WALL = [0xe9e2d2, 0xd8cfbd, 0xf1ecde, 0xcfc6b8, 0xe2d6bf, 0xbfc3c6], ROOF = [0xa4523a, 0x8f4433, 0xb3643f, 0x6d6a66, 0x7b3b2c];
-  for (const [n, x, z, pop] of townList()) if (pop >= 2.5) towns.push({ n, x, z, pop, r: 300 + Math.sqrt(pop) * 140, g: null, lab: null });
-  function buildTown(t) { const big = t.pop > 100, cnt = Math.min(1400, Math.round(40 + t.pop * (big ? 3 : 5))), bm = new THREE.InstancedMesh(bGeo, bMat, cnt), rm = new THREE.InstancedMesh(rGeo, rMat, cnt); let k = 0;
-    for (let i = 0; i < cnt * 3 && k < cnt; i++) { const a = hash2(i, t.x | 0) * 6.283, d = Math.pow(hash2(t.z | 0, i), .75) * t.r, x = t.x + Math.cos(a) * d, z = t.z + Math.sin(a) * d, c = cls(x, z);
-      if (c === 3 || c === 4 || nearRunway(x, z)) continue; const core = 1 - d / t.r, tall = big && core > .55 ? 14 + hash2(i, 3) * 26 : 5 + hash2(i, 5) * (big ? 10 : 5) + core * 5;
-      const w = 8 + hash2(i, 7) * (big && core > .4 ? 26 : 10), l = 8 + hash2(i, 8) * 14, h = ground(x, z);
-      tQ.setFromAxisAngle(Y, Math.round(hash2(i, 9) * 4) * Math.PI / 2 + a * .15); tS.set(w, tall, l); tP.set(x - t.x, h - 2, z - t.z); tMat.compose(tP, tQ, tS); bm.setMatrixAt(k, tMat);
-      tCol.setHex(WALL[Math.floor(hash2(i, 11) * WALL.length)]); bm.setColorAt(k, tCol);
-      const flat = big && core > .55; tS.set(w, flat ? .01 : Math.min(w, l) * .9, l); tP.y = h - 2 + tall; tMat.compose(tP, tQ, tS); rm.setMatrixAt(k, tMat); tCol.setHex(ROOF[Math.floor(hash2(i, 13) * ROOF.length)]); rm.setColorAt(k, tCol); k++; }
-    bm.count = rm.count = k; const g = new THREE.Group(); g.position.set(t.x, 0, t.z); g.add(bm, rm); bm.computeBoundingSphere(); rm.computeBoundingSphere();
-    // utcai lámpák (éjszaka)
-    const ln = Math.min(900, Math.round(k * .8)), lp = new Float32Array(ln * 3); let li = 0; for (let i = 0; i < ln * 2 && li < ln; i++) { const a = hash2(i, 77) * 6.283, d = Math.sqrt(hash2(91, i)) * t.r, x = t.x + Math.cos(a) * d, z = t.z + Math.sin(a) * d; if (cls(x, z) === 3) continue; lp.set([x - t.x, ground(x, z) + 7, z - t.z], li * 3); li++; }
-    const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(lp.subarray(0, li * 3), 3)); const lamps = new THREE.Points(lg, lampMat); lamps.visible = lampsOn; g.add(lamps); g.userData.lamps = lamps;
-    W.add(g); t.g = g; }
-  function nearRunway(x, z) { for (const r of REPTEREK) { const dx = x - r.x, dz = z - r.z; if (Math.abs(dx) < 2500 && Math.abs(dz) < 2500) { const a = dx * r.dx + dz * r.dz, b = -dx * r.dz + dz * r.dx; if (Math.abs(a) < r.len / 2 + 500 && Math.abs(b) < r.wid / 2 + 350) return true; } } return false; }
+  /* ---- városnevek (az épületeket és utcákat az OSM-réteg adja: osm.js) ---- */
+  const towns = []; for (const [n, x, z, pop] of townList()) if (pop >= 2.5) towns.push({ n, x, z, pop });
   const fixList = []; const fix = (o, x, z, off) => { o.userData.fy = [x, z, off]; fixList.push(o); };
   const labels = []; function addLabel(s, x, y, z, maxD, minD = 0) { s.position.set(x, y, z); s.userData = { maxD, minD }; W.add(s); labels.push(s); return s; }
   for (const t of towns) if (t.pop >= 18) addLabel(label(t.n), t.x, ground(t.x, t.z) + 160 + Math.sqrt(t.pop) * 8, t.z, t.pop > 90 ? 90000 : 38000);
@@ -115,12 +90,6 @@ export function createWorld(scene, opt) {
     add(new THREE.CylinderGeometry(20, 24, 26, 12), w, -10, 34, 0); add(new THREE.SphereGeometry(20, 12, 8, 0, 6.283, 0, Math.PI / 2), gr, -10, 47, 0); add(new THREE.ConeGeometry(4, 30, 8), gr, -10, 80, 0);
     for (const s of [-1, 1]) for (const k of [40, 95]) { add(new THREE.BoxGeometry(8, 40, 8), w, 10, 20, s * k); add(new THREE.ConeGeometry(5.5, 20, 4), r, 10, 50, s * k); }
     g.position.set(x, h - 1, z); g.rotation.y = .12; W.add(g); fix(g, x, z, -1); addLabel(label('Parlament', 'Budapest', '#ffe29a', .8), x, h + 130, z, 9000); }
-  function hidak() { const m = M(0x4c5660), t = M(0x8a8f96);
-    for (const [, , aLon, aLat, bLon, bLat] of NEVEZETES.hidak.map(b => [b[0], b[1], b[2], b[3], b[4], b[5]])) { const [ax, az] = P(aLon, aLat), [bx, bz] = P(bLon, bLat), mx = (ax + bx) / 2, mz = (az + bz) / 2, len = Math.hypot(bx - ax, bz - az) + 60, w = Math.min(ground(ax, az), ground(bx, bz)) + 14;
-      const g = new THREE.Group(); g.position.set(mx, 0, mz); g.rotation.y = -Math.atan2(bz - az, bx - ax);
-      const d = new THREE.Mesh(new THREE.BoxGeometry(len, 2, 22), m); d.position.y = w; g.add(d);
-      for (const s of [-.28, .28]) { const p = new THREE.Mesh(new THREE.BoxGeometry(8, 46, 26), t); p.position.set(s * len, w + 12, 0); g.add(p); const p2 = new THREE.Mesh(new THREE.BoxGeometry(10, 30, 14), t); p2.position.set(s * len, w - 18, 0); g.add(p2); }
-      W.add(g); } }
   function diosgyor() { const [lon, lat] = NEVEZETES.diosgyor, [x, z] = P(lon, lat), h = ground(x, z), g = new THREE.Group(), s = M(0xb9ac93), r = M(0x7f4a33);
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); g.add(o); };
     add(new THREE.BoxGeometry(60, 18, 60), s, 0, 9, 0); add(new THREE.BoxGeometry(44, 4, 44), M(0x6f7b55), 0, 18.5, 0);
@@ -185,7 +154,7 @@ export function createWorld(scene, opt) {
     return up * (1 - Math.max(0, (y - 1800) / 600)); }
 
   // építés
-  REPTEREK.forEach(airport); parlament(); hidak(); diosgyor(); const zeroMesh = zero();
+  REPTEREK.forEach(airport); parlament(); diosgyor(); const zeroMesh = zero();   // hidak, utak, épületek: OSM-réteg (osm.js)
   setTime(tod);
   return {
     W, sun, hemi, sky, stations, masts, pads, wind, thermal, labels, towns,
@@ -198,11 +167,10 @@ export function createWorld(scene, opt) {
       SU.uFogN.value = scene.fog.near; SU.uFogF.value = scene.fog.far;
       if (Math.hypot(cam.position.x - cloudLast[0], cam.position.z - cloudLast[1]) > 3000) placeClouds(cam.position.x, cam.position.z);
       const p = cam.position;
-      for (const t of towns) { const d = Math.hypot(p.x - t.x, p.z - t.z) - t.r; if (d < 24000 && !t.g) buildTown(t); else if (t.g) { t.g.visible = d < 34000; if (t.g.userData.lamps) t.g.userData.lamps.visible = lampsOn; if (d > 45000) { W.remove(t.g); t.g.children.forEach(m => { m.dispose?.(); if (m.isPoints) m.geometry.dispose(); }); t.g = null; } } }
       for (const s of labels) { const d = s.position.distanceTo(p); s.visible = d < s.userData.maxD && d > s.userData.minD; }
       zeroMesh.visible = Math.hypot(p.x - ZERO_HELY[0], p.z - ZERO_HELY[1]) < 60000; },
     fixGround(bd) { for (const o of fixList) { const [x, z, off] = o.userData.fy; if (x > bd[0] - 100 && x < bd[2] + 100 && z > bd[1] - 100 && z < bd[3] + 100) o.position.y = ground(x, z) + off; }
       if (ZERO_HELY[0] > bd[0] - 1500 && ZERO_HELY[0] < bd[2] + 1500 && ZERO_HELY[1] > bd[1] - 1500 && ZERO_HELY[1] < bd[3] + 1500) zeroMesh.userData.redrape(); },
-    rebuildTowns(b) { for (const t of towns) if (t.g && t.x + t.r > b[0] && t.x - t.r < b[2] && t.z + t.r > b[1] && t.z - t.r < b[3]) { W.remove(t.g); t.g = null; } },
+    rebuildTowns() {},
   };
 }

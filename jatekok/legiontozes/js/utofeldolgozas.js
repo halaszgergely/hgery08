@@ -15,14 +15,15 @@ export function createPost(renderer) {
   let main = new THREE.WebGLRenderTarget(1, 1, rtOpt);
   const half = () => new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false });
   const bA = half(), bB = half(), cA = half(), cB = half();
-  const bright = mat(`uniform sampler2D t; uniform float th; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb; float l = dot(c, vec3(.2126,.7152,.0722)); gl_FragColor = vec4(c * smoothstep(th, th * 2.2, l), 1.); }`, { t: { value: null }, th: { value: 1.1 } });
+  const bright = mat(`uniform sampler2D t; uniform float th; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb; c = any(isnan(c)) || any(isinf(c)) ? vec3(0.) : clamp(c, 0., 64.); float l = dot(c, vec3(.2126,.7152,.0722)); gl_FragColor = vec4(c * smoothstep(th, th * 2.2, l), 1.); }`, { t: { value: null }, th: { value: 1.1 } });
   const blur = mat(`uniform sampler2D t; uniform vec2 d; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb * .227;
       c += (texture2D(t, vUv + d * 1.384).rgb + texture2D(t, vUv - d * 1.384).rgb) * .316; c += (texture2D(t, vUv + d * 3.23).rgb + texture2D(t, vUv - d * 3.23).rgb) * .07; gl_FragColor = vec4(c, 1.); }`, { t: { value: null }, d: { value: new THREE.Vector2() } });
   const fin = mat(`uniform sampler2D t, b1, b2; uniform float bloom, vig, exposure, sat, warm; uniform vec2 res; varying vec2 vUv;
       vec3 aces(vec3 c){ const mat3 I = mat3(vec3(.59719, .07600, .02840), vec3(.35458, .90834, .13383), vec3(.04823, .01566, .83777)); const mat3 O = mat3(vec3(1.60475, -.10208, -.00327), vec3(-.53108, 1.10813, -.07276), vec3(-.07367, -.00605, 1.07602));
         c *= exposure / .6; c = I * c; vec3 a = c * (c + .0245786) - .000090537, b = c * (.983729 * c + .4329510) + .238081; return clamp(O * (a / b), 0., 1.); }
       vec3 srgb(vec3 c){ return mix(c * 12.92, pow(c, vec3(.41666)) * 1.055 - .055, step(.0031308, c)); }
-      void main(){ vec3 c = texture2D(t, vUv).rgb; c += (texture2D(b1, vUv).rgb * .6 + texture2D(b2, vUv).rgb * .8) * bloom;
+      void main(){ vec3 c = texture2D(t, vUv).rgb; c = any(isnan(c)) || any(isinf(c)) ? texture2D(t, vUv + vec2(.003, 0.)).rgb : c; c = any(isnan(c)) ? vec3(0.) : clamp(c, 0., 64.);   // NaN-képpontok (fekete villogó kockák a bloom után) kiszűrése
+      c += (texture2D(b1, vUv).rgb * .6 + texture2D(b2, vUv).rgb * .8) * bloom;
         c = aces(c); float l = dot(c, vec3(.2126,.7152,.0722)); c = mix(vec3(l), c, sat); c *= vec3(1. + warm * .04, 1., 1. - warm * .05);
         vec2 q = vUv - .5; c *= 1. - vig * dot(q, q) * 1.3; c = srgb(clamp(c, 0., 1.));
         float n = fract(sin(dot(vUv * res, vec2(12.9898, 78.233))) * 43758.5453); c += (n - .5) / 255.; gl_FragColor = vec4(c, 1.); }`,

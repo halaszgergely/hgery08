@@ -6,8 +6,8 @@
    - Csonkcsere atomian: a régi csonkok láthatók maradnak, amíg az újak mind fel nem épültek (időkorláttal), így nincs lyuk / villanás.
    - Közeli erdőcsonkokon kétféle (tűlevelű, lombos) instancolt fa, szélben hajladozva. */
 import * as THREE from 'three';
-import { ground, cls, hash2, onTile, clearGridCache, inAirport } from './geo.js?v=202611220107';
-import { SU, withWorld, LOGV_PARS, LOGV, LOGF_PARS, LOGF, HASH } from './kozos.js?v=202611220107';
+import { ground, cls, hash2, onTile, clearGridCache, inAirport } from './geo.js?v=202611220119';
+import { SU, withWorld, LOGV_PARS, LOGV, LOGF_PARS, LOGF, HASH } from './kozos.js?v=202611220119';
 
 const LEAF = 2000, ROOT = 32000, N = 16;
 
@@ -29,7 +29,7 @@ vec3 terrainColor(vec3 wpos, vec3 nrm, vec4 w, float ap, float dist){
   vec3 forest = mix(vec3(.14,.26,.12), vec3(.23,.35,.16), n2) * (.8 + n1 * .4) * (.88 + .24 * vn(p / 9.));
   float bm = smoothstep(.4, .6, w.y + (n2 - .5) * .3); vec2 bc = floor(p / 22.); vec3 built = mix(mix(vec3(.5,.48,.44), vec3(.58,.46,.38), vn(p / 60.)), vec3(.36,.45,.27), smoothstep(.55, .8, vn(p / 140. + 3.))) * (.9 + (h21(bc) - .5) * .12 * det);
   vec3 c = mix(field, forest, fm); c = mix(c, built, bm * (1. - fm * .5));
-  c = mix(c, vec3(.13,.17,.14), smoothstep(.3, .7, w.z));
+  c = mix(c, vec3(.2,.32,.36), smoothstep(.3, .7, w.z));
   c = mix(c, mix(vec3(.3,.46,.2), vec3(.36,.52,.23), n2), ap);
   float sl = 1. - nrm.y, rk = smoothstep(.32, .5, sl + (n2 - .5) * .15) * smoothstep(200., 320., wpos.y);
   c = mix(c, vec3(.42,.4,.37) * (.8 + n2 * .4), rk);
@@ -56,7 +56,7 @@ function makeWaterMat() {
         float fade = 1. - smoothstep(150., 2500., dist); g += (vec2(vn(p * .6 + uTime * .3), vn(p * .6 - uTime * .27 + 5.)) - .5) * .35 * (1. - smoothstep(60., 400., dist)); vec3 n = normalize(vec3(-g.x * fade, 1., -g.y * fade));
         vec3 v = normalize(cameraPosition - vWPos); float fres = .02 + .98 * pow(1. - max(dot(n, v), 0.), 5.);
         vec3 r = reflect(-v, n); vec3 sky = mix(uSkyHor, uSkyTop, clamp(r.y * 1.6, 0., 1.));
-        vec3 deep = mix(vec3(.02,.09,.12), vec3(.04,.16,.2), vn(p / 160.)) * (.25 + .75 * uDay);
+        vec3 deep = mix(vec3(.035,.13,.15), vec3(.06,.2,.22), vn(p / 160.)) * (.25 + .75 * uDay);
         vec3 c = mix(deep, sky, fres * .9);
         float sp = pow(max(dot(r, uSunDir), 0.), 420.) * 6. * (.3 + .7 * fade) + pow(max(dot(r, uSunDir), 0.), 40.) * .25; c += uSunCol * sp * uDay;
         float f = smoothstep(uFogN, uFogF, dist), sd = pow(max(dot(-v, uSunDir), 0.), 6.); c = mix(c, mix(uFogC, uSunFog, sd * .65), f);
@@ -94,7 +94,7 @@ export function createTerrain(scene, opt) {
     for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) { const k = j * (N + 1) + i, h = Hs[(j + 1) * M + i + 1];
       const hx = Hs[(j + 1) * M + i + 2] - Hs[(j + 1) * M + i], hz = Hs[(j + 2) * M + i + 1] - Hs[j * M + i + 1], l = Math.hypot(hx, 2 * step, hz);
       const wx = x0 + i * step, wz = z0 + j * step, c = cls(wx, wz); wat[k] = c === 3 ? 1 : 0;
-      pos[k * 3] = i * step; pos[k * 3 + 1] = c === 3 ? h - 2.5 : h; pos[k * 3 + 2] = j * step; nrm[k * 3] = -hx / l; nrm[k * 3 + 1] = 2 * step / l; nrm[k * 3 + 2] = -hz / l;
+      pos[k * 3] = i * step; pos[k * 3 + 1] = c === 3 && size >= 8000 ? h - 2.5 : h; pos[k * 3 + 2] = j * step; nrm[k * 3] = -hx / l; nrm[k * 3 + 1] = 2 * step / l; nrm[k * 3 + 2] = -hz / l;
       aw[k * 4] = c === 1 ? 1 : 0; aw[k * 4 + 1] = c === 2 ? 1 : 0; aw[k * 4 + 2] = c === 3 ? 1 : 0; aw[k * 4 + 3] = c === 4 ? 1 : 0; ap[k] = inAirport(wx, wz) ? 1 : 0; }
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const a = j * (N + 1) + i, b = a + 1, c = a + N + 1, d = c + 1; idx.push(a, c, b, b, c, d); }
     let k = NV; const sk = Math.max(25, size / 50), edgeV = [];
@@ -104,7 +104,8 @@ export function createTerrain(scene, opt) {
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos.subarray(0, k * 3), 3)); g.setAttribute('normal', new THREE.BufferAttribute(nrm.subarray(0, k * 3), 3));
     g.setAttribute('aW', new THREE.BufferAttribute(aw.subarray(0, k * 4), 4)); g.setAttribute('aAp', new THREE.BufferAttribute(ap.subarray(0, k), 1)); g.setIndex(idx); g.computeBoundingSphere();
     const m = new THREE.Mesh(g, mat); m.position.set(x0, 0, z0); m.matrixAutoUpdate = false; m.updateMatrix(); m.receiveShadow = true;
-    let water = null; { const wp = []; for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const a = j * (N + 1) + i, cs = [a, a + 1, a + N + 1, a + N + 2]; if (!cs.some(c => wat[c])) continue;
+    let water = null; if (size >= 8000) {  // közelben a pontos OSM-vízfelület (osm.js) látszik
+     const wp = []; for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const a = j * (N + 1) + i, cs = [a, a + 1, a + N + 1, a + N + 2]; if (!cs.some(c => wat[c])) continue;
         let lv = 1e9; for (const c of cs) if (wat[c]) lv = Math.min(lv, Hs[(Math.floor(c / (N + 1)) + 1) * M + (c % (N + 1)) + 1]); const x = i * step, z = j * step, y = lv + .02;
         wp.push(x, y, z, x, y, z + step, x + step, y, z, x + step, y, z, x, y, z + step, x + step, y, z + step); }
       if (wp.length) { const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(wp, 3)); wg.computeBoundingSphere(); water = new THREE.Mesh(wg, wMat); water.position.copy(m.position); water.matrixAutoUpdate = false; water.updateMatrix(); } }
@@ -148,6 +149,6 @@ export function createTerrain(scene, opt) {
     if (frame % 90 === 0 && cache.size > 260) { const arr = [...cache.entries()].filter(([k]) => !shown.has(k)).sort((a, b) => a[1].used - b[1].used); for (let i = 0; i < arr.length && cache.size > 220; i++) { dispose(arr[i][1]); cache.delete(arr[i][0]); } }
   }
   onTile(b => { clearGridCache(b); for (const e of cache.values()) { const u = e.mesh.userData; if (u.x0 < b[2] + 200 && u.x0 + u.size > b[0] - 200 && u.z0 < b[3] + 200 && u.z0 + u.size > b[1] - 200) e.dirty = true; } selT = 0; });
-  return { update, root, set(o) { if (o.viewR) viewR = o.viewR; if (o.treeR !== undefined) treeR = o.treeR; if (o.treeDens !== undefined && o.treeDens !== treeDens) { treeDens = o.treeDens; for (const e of cache.values()) dropTrees(e); } selT = 0; },
+  return { update, root, waterMat: wMat, set(o) { if (o.viewR) viewR = o.viewR; if (o.treeR !== undefined) treeR = o.treeR; if (o.treeDens !== undefined && o.treeDens !== treeDens) { treeDens = o.treeDens; for (const e of cache.values()) dropTrees(e); } selT = 0; },
     stats: () => ({ chunks: shown.size, cached: cache.size, queue: queue.length }), rebuildAll() { clearGridCache(); for (const e of cache.values()) e.dirty = true; selT = 0; } };
 }

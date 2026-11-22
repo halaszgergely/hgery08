@@ -4,9 +4,10 @@
    - Részletes domborzat: AWS Terrain Tiles (Terrarium PNG, kulcs nélkül), a gép körül dinamikusan, memóriás LRU-cache-sel.
    - Ha egy csempe nem tölthető be, az alap domborzat + determinisztikus zaj a tartalék.
    - A repülőterek környéke kisimítva (fix magasság), hogy a pálya sík legyen. */
-import { KX, KY, LON0, LAT0, REPTEREK, W_MAX, H_MAX } from './config.js?v=202611220107';
+import { KX, KY, LON0, LAT0, REPTEREK, W_MAX, H_MAX } from './config.js?v=202611220119';
 
-const TZ = 10, TILE_URL = (z, x, y) => `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
+// saját domborzati csempék (tools/legi_dem.py, Viewfinder Panoramas 3") Magyarországra; azon kívül az AWS Terrain Tiles
+const TZ = 10, LOCAL = [557, 577, 352, 365], TILE_URL = (z, x, y) => x >= LOCAL[0] && x <= LOCAL[1] && y >= LOCAL[2] && y <= LOCAL[3] ? `dem/${z}/${x}/${y}.png` : `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
 let Z = null, ZN = 0, ZM = 0, ZC = 1000, CLS = null, CW = 0, CH = 0, CR = 250, towns = [];
 export const G = 125;   // a közeli rács lépésköze (m) – a fizika ugyanezen a rácson számolja a talajt, mint amit a terep kirajzol
 
@@ -20,10 +21,11 @@ export async function load(base) {
   Z = new Uint16Array(u.buffer); ZN = t.z.nx; ZM = t.z.ny; ZC = t.z.c; CR = t.R;
   const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0);
   const d = x.getImageData(0, 0, c.width, c.height).data; CW = c.width; CH = c.height; CLS = new Uint8Array(CW * CH); for (let i = 0; i < CLS.length; i++) CLS[i] = Math.round(d[i * 4] / 50);
-  towns = t.tw; for (const r of REPTEREK) r.elev = Math.round(demBase(r.x, r.z)) + (r.tip === 'viz' ? 0 : 1);
+  towns = t.tw; MEGYE = t.m; for (const r of REPTEREK) r.elev = Math.round(demBase(r.x, r.z)) + (r.tip === 'viz' ? 0 : 1);
   return { towns };
 }
 export const ready = () => !!Z;
+let MEGYE = {}; export const megyek = () => MEGYE;
 export const townList = () => towns;
 
 function demBase(x, z) { if (!Z) return 100;
@@ -60,6 +62,8 @@ export function requestAround(x, z, r) { if (!tilesOn) return; const n = 1 << TZ
   for (const [, tx, ty] of want) { const t = tiles.get(tileKey(tx, ty)); if (t) t.used = performance.now(); }
   if (tiles.size > 72) { const arr = [...tiles.entries()].sort((a, b) => a[1].used - b[1].used); for (let i = 0; i < arr.length - 60; i++) if (arr[i][1].st !== 0) tiles.delete(arr[i][0]); } }
 export const tileCount = () => tiles.size;
+// betöltődött-e már (vagy véglegesen hiányzik-e) a pont alatti domborzati csempe – az utak, épületek csak utána épülnek
+export function tileReady(x, z) { if (!tilesOn) return true; const n = 1 << TZ, tx = Math.floor(lon2t(LON0 + x / KX, n)), ty = Math.floor(lat2t(LAT0 - z / KY, n)), t = tiles.get(tileKey(tx, ty)); return !!t && t.st !== 0; }
 function tileH(x, z) { const n = 1 << TZ, lon = LON0 + x / KX, lat = LAT0 - z / KY, fx = lon2t(lon, n), fy = lat2t(lat, n), tx = Math.floor(fx), ty = Math.floor(fy);
   const t = tiles.get(tileKey(tx, ty)); if (!t || t.st !== 1) return null;
   const px = Math.min(254.999, Math.max(0, (fx - tx) * 256 - .5)), py = Math.min(254.999, Math.max(0, (fy - ty) * 256 - .5)), ix = px | 0, iy = py | 0, ax = px - ix, ay = py - iy, h = t.h, i = iy * 256 + ix;

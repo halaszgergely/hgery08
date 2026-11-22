@@ -1,6 +1,6 @@
 /* HUD: sebesség, magasság, emelkedés, gáz/kollektív, víz, akku, mesterséges horizont + iránytű, minitérkép, szélirány,
-   átesés-figyelmeztetés, küldetés-időzítő és célnyíl. Nagy térkép (M) gyorsutazással. A DOM-írások gyorsítótárazva. */
-import { REPTEREK, VIZEK, P, FORGO, W_MAX, H_MAX } from './config.js?v=202611220107';
+   átesés-figyelmeztetés, küldetés-időzítő és célnyíl. Nagy térkép (M): nagyítás, mozgatás, útpontok, gyorsutazás. A DOM-írások gyorsítótárazva. */
+import { REPTEREK, VIZEK, P, FORGO, W_MAX, H_MAX } from './config.js?v=202611220119';
 
 const $ = s => document.querySelector(s);
 const cache = new Map(); const setH = (el, k, v) => { if (cache.get(k) !== v) { cache.set(k, v); el.innerHTML = v; } };
@@ -59,21 +59,52 @@ export function createHud() {
     const dot = (wx, wz, col, r = 5) => { const dx = (wx - b.pos.x) * sc, dz = (wz - b.pos.z) * sc; if (Math.abs(dx) > W || Math.abs(dz) > W) return; x.fillStyle = col; x.beginPath(); x.arc(dx, dz, r, 0, 6.3); x.fill(); };
     for (const r of REPTEREK) dot(r.x, r.z, r.tip === 'viz' ? '#2aa7d9' : '#f2c230', 6);
     if (s.marks) for (const [mx2, mz, k] of s.marks) dot(mx2, mz, k === 'ok' ? '#3fbf63' : k === 'tuz' ? '#ff6b2e' : '#ff5a4d', 7);
+    if (WP.length) { x.strokeStyle = '#d36bff'; x.lineWidth = 2; x.beginPath(); x.moveTo(0, 0); for (const [wx, wz] of WP) x.lineTo((wx - b.pos.x) * sc, (wz - b.pos.z) * sc); x.stroke(); for (const [wx, wz] of WP) dot(wx, wz, '#d36bff', 6); }
     x.restore(); x.fillStyle = '#fff'; x.beginPath(); x.moveTo(W / 2, W / 2 - 12); x.lineTo(W / 2 - 8, W / 2 + 9); x.lineTo(W / 2 + 8, W / 2 + 9); x.fill();
     x.fillStyle = 'rgba(9,14,20,.8)'; x.fillRect(0, W - 26, W, 26); x.fillStyle = '#cfe6ff'; x.font = '700 15px Inter'; x.textAlign = 'center'; x.fillText(s.place || '', W / 2, W - 8); }
   return { update, say, show(v) { $('#hud').hidden = !v; } };
 }
 
 /* nagy térkép: Magyarország, repterek, városok, vizek, küldetéscélok; kattintás egy reptérre = gyorsutazás */
-export function drawMap(cv, s, towns, onPick) { const W = cv.clientWidth, H = cv.clientHeight, dpr = Math.min(2, devicePixelRatio || 1); cv.width = W * dpr; cv.height = H * dpr; const x = cv.getContext('2d'); x.scale(dpr, dpr);
-  const k = Math.min(W / W_MAX, H / H_MAX) * .96, ox = (W - W_MAX * k) / 2, oy = (H - H_MAX * k) / 2, X = wx => ox + wx * k, Y = wz => oy + wz * k;
-  x.fillStyle = '#0a0f14'; x.fillRect(0, 0, W, H); if (MAP) x.drawImage(MAP, ox, oy, W_MAX * k, H_MAX * k);
-  x.font = '700 11px Inter'; x.textAlign = 'center';
-  for (const [n, tx, tz, pop] of towns) if (pop > 45) { x.fillStyle = '#fff'; x.beginPath(); x.arc(X(tx), Y(tz), 2.5, 0, 6.3); x.fill(); x.fillStyle = 'rgba(255,255,255,.85)'; x.fillText(n, X(tx), Y(tz) - 6); }
-  x.font = 'italic 700 12px Inter'; x.fillStyle = '#9fdcff'; for (const [n, lon, lat] of VIZEK) { const [wx, wz] = P(lon, lat); x.fillText(n, X(wx), Y(wz)); }
-  const hits = [];
-  for (const r of REPTEREK) { const px = X(r.x), py = Y(r.z); x.fillStyle = r.tip === 'viz' ? '#2aa7d9' : r.tip === 'heli' ? '#3fbf63' : '#f2c230'; x.beginPath(); x.arc(px, py, r.fo ? 8 : 6, 0, 6.3); x.fill(); x.strokeStyle = '#000'; x.lineWidth = 1.5; x.stroke();
-    x.fillStyle = '#ffe29a'; x.font = '800 11px Inter'; x.fillText(r.nev.split(' – ')[0].split(' (')[0], px, py + 18); hits.push([px, py, r]); }
-  if (s.marks) for (const [mx, mz, kk] of s.marks) { x.fillStyle = kk === 'ok' ? '#3fbf63' : kk === 'tuz' ? '#ff6b2e' : '#ff5a4d'; x.beginPath(); x.arc(X(mx), Y(mz), 5, 0, 6.3); x.fill(); }
-  if (s.b) { const px = X(s.b.pos.x), py = Y(s.b.pos.z); x.save(); x.translate(px, py); x.rotate(s.hdg / 57.3); x.fillStyle = '#fff'; x.strokeStyle = '#000'; x.beginPath(); x.moveTo(0, -12); x.lineTo(-8, 9); x.lineTo(8, 9); x.closePath(); x.fill(); x.stroke(); x.restore(); }
-  cv.onclick = e => { if (!onPick) return; const r = cv.getBoundingClientRect(), cx = e.clientX - r.left, cy = e.clientY - r.top; let best = null, bd = 22; for (const [px, py, ap] of hits) { const d = Math.hypot(px - cx, py - cy); if (d < bd) { bd = d; best = ap; } } onPick(best, (cx - ox) / k, (cy - oy) / k); }; }
+/* nagy térkép: görgővel / csippentéssel nagyítható, húzással mozgatható; koppintás: útpont (meglévőre: törlés), szabad repülésben reptérre: gyorsutazás */
+export const WP = []; export let wpVer = 0; export function wpClear() { WP.length = 0; wpVer++; } export function wpShift() { WP.shift(); wpVer++; }
+const MV = { z: 1, cx: W_MAX / 2, cz: H_MAX / 2, init: false };
+export function drawMap(cv, s, towns, onPick, onEmpty) { const W = cv.clientWidth, H = cv.clientHeight, dpr = Math.min(2, devicePixelRatio || 1); cv.width = W * dpr; cv.height = H * dpr; const x = cv.getContext('2d');
+  const fit = Math.min(W / W_MAX, H / H_MAX) * .96; if (!MV.init && s.b) { MV.init = true; MV.z = 3; MV.cx = s.b.pos.x; MV.cz = s.b.pos.z; }
+  const clampV = () => { MV.z = Math.max(1, Math.min(40, MV.z)); const k = fit * MV.z, hw = W / 2 / k, hh = H / 2 / k; MV.cx = Math.max(Math.min(hw, W_MAX / 2), Math.min(W_MAX - Math.min(hw, W_MAX / 2), MV.cx)); MV.cz = Math.max(Math.min(hh, H_MAX / 2), Math.min(H_MAX - Math.min(hh, H_MAX / 2), MV.cz)); };
+  let k, ox, oy; const X = wx => ox + wx * k, Y = wz => oy + wz * k, toW = (px, py) => [(px - ox) / k, (py - oy) / k];
+  let hits = [];
+  function draw() { clampV(); k = fit * MV.z; ox = W / 2 - MV.cx * k; oy = H / 2 - MV.cz * k; x.setTransform(dpr, 0, 0, dpr, 0, 0);
+    x.fillStyle = '#0a0f14'; x.fillRect(0, 0, W, H); if (MAP) { x.imageSmoothingEnabled = MV.z < 8; x.drawImage(MAP, ox, oy, W_MAX * k, H_MAX * k); }
+    x.textAlign = 'center'; const tmin = MV.z > 14 ? 0 : MV.z > 7 ? 4 : MV.z > 3.5 ? 12 : MV.z > 1.6 ? 25 : 45;
+    for (const [n, tx, tz, pop] of towns) if (pop > tmin) { const px = X(tx), py = Y(tz); if (px < -50 || py < -20 || px > W + 50 || py > H + 20) continue; x.font = `700 ${pop > 90 ? 12 : 11}px Inter`; x.fillStyle = '#fff'; x.beginPath(); x.arc(px, py, 2.5, 0, 6.3); x.fill(); x.fillStyle = 'rgba(255,255,255,.85)'; x.fillText(n, px, py - 6); }
+    x.font = 'italic 700 12px Inter'; x.fillStyle = '#9fdcff'; for (const [n, lon, lat] of VIZEK) { const [wx, wz] = P(lon, lat); x.fillText(n, X(wx), Y(wz)); }
+    hits = [];
+    for (const r of REPTEREK) { const px = X(r.x), py = Y(r.z); x.fillStyle = r.tip === 'viz' ? '#2aa7d9' : r.tip === 'heli' ? '#3fbf63' : '#f2c230'; x.beginPath(); x.arc(px, py, r.fo ? 8 : 6, 0, 6.3); x.fill(); x.strokeStyle = '#000'; x.lineWidth = 1.5; x.stroke();
+      x.fillStyle = '#ffe29a'; x.font = '800 11px Inter'; x.fillText(r.nev.split(' – ')[0].split(' (')[0], px, py + 18); hits.push([px, py, r]); }
+    if (s.marks) for (const [mx, mz, kk] of s.marks) { x.fillStyle = kk === 'ok' ? '#3fbf63' : kk === 'tuz' ? '#ff6b2e' : '#ff5a4d'; x.beginPath(); x.arc(X(mx), Y(mz), 5, 0, 6.3); x.fill(); }
+    // útvonal
+    if (WP.length) { x.strokeStyle = '#d36bff'; x.lineWidth = 2.5; x.setLineDash([8, 6]); x.beginPath(); if (s.b) x.moveTo(X(s.b.pos.x), Y(s.b.pos.z)); else x.moveTo(X(WP[0][0]), Y(WP[0][1])); for (const [wx, wz] of WP) x.lineTo(X(wx), Y(wz)); x.stroke(); x.setLineDash([]);
+      WP.forEach(([wx, wz], i) => { const px = X(wx), py = Y(wz); x.fillStyle = '#d36bff'; x.strokeStyle = '#000'; x.lineWidth = 1.5; x.beginPath(); x.arc(px, py, 9, 0, 6.3); x.fill(); x.stroke(); x.fillStyle = '#fff'; x.font = '900 11px Inter'; x.fillText(String(i + 1), px, py + 4); }); }
+    if (s.b) { const px = X(s.b.pos.x), py = Y(s.b.pos.z); x.save(); x.translate(px, py); x.rotate(s.hdg / 57.3); x.fillStyle = '#fff'; x.strokeStyle = '#000'; x.beginPath(); x.moveTo(0, -12); x.lineTo(-8, 9); x.lineTo(8, 9); x.closePath(); x.fill(); x.stroke(); x.restore(); }
+    // lépték
+    const p10 = Math.pow(10, Math.floor(Math.log10(100 / k))), sk = [1, 2, 5, 10].map(f => f * p10).find(v => v * k >= 60) || 10 * p10, L = sk * k;
+    x.fillStyle = 'rgba(9,14,20,.75)'; x.fillRect(10, H - 30, L + 20, 22); x.strokeStyle = '#fff'; x.lineWidth = 2; x.beginPath(); x.moveTo(20, H - 14); x.lineTo(20 + L, H - 14); x.stroke(); x.fillStyle = '#fff'; x.font = '700 10px Inter'; x.textAlign = 'left'; x.fillText(sk >= 1000 ? sk / 1000 + ' km' : sk + ' m', 22, H - 18); }
+  draw(); cv._redraw = draw;
+  // nagyítás, mozgatás, koppintás
+  const P2 = new Map(); let moved = 0, pinch = null;
+  const zoomAt = (px, py, f) => { const [wx, wz] = toW(px, py); MV.z *= f; clampV(); const k2 = fit * MV.z; MV.cx = wx - (px - W / 2) / k2; MV.cz = wz - (py - H / 2) / k2; draw(); };
+  cv.onwheel = e => { e.preventDefault(); const r = cv.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.pow(1.0015, -e.deltaY * (e.deltaMode ? 30 : 1))); };
+  cv.onpointerdown = e => { cv.setPointerCapture(e.pointerId); P2.set(e.pointerId, [e.clientX, e.clientY]); if (P2.size === 1) moved = 0; if (P2.size === 2) { const [a, b2] = [...P2.values()]; pinch = Math.hypot(a[0] - b2[0], a[1] - b2[1]); moved = 99; } };
+  cv.onpointermove = e => { const p = P2.get(e.pointerId); if (!p) return; const r = cv.getBoundingClientRect();
+    if (P2.size === 1) { const dx = e.clientX - p[0], dy = e.clientY - p[1]; moved += Math.abs(dx) + Math.abs(dy); if (moved > 6) { MV.cx -= dx / k; MV.cz -= dy / k; draw(); } }
+    P2.set(e.pointerId, [e.clientX, e.clientY]);
+    if (P2.size === 2 && pinch) { const [a, b2] = [...P2.values()], d = Math.hypot(a[0] - b2[0], a[1] - b2[1]); zoomAt((a[0] + b2[0]) / 2 - r.left, (a[1] + b2[1]) / 2 - r.top, d / pinch); pinch = d; } };
+  cv.onpointerup = cv.onpointercancel = e => { if (!P2.has(e.pointerId)) return; P2.delete(e.pointerId); if (P2.size < 2) pinch = null; if (e.type !== 'pointerup' || moved > 6 || P2.size) return;
+    const r = cv.getBoundingClientRect(), cx = e.clientX - r.left, cy = e.clientY - r.top, [wx, wz] = toW(cx, cy);
+    const wi = WP.findIndex(([px, pz]) => Math.hypot(X(px) - cx, Y(pz) - cy) < 12); if (wi >= 0) { WP.splice(wi, 1); wpVer++; draw(); return; }
+    let best = null, bd = 16; for (const [px, py, ap] of hits) { const d = Math.hypot(px - cx, py - cy); if (d < bd) { bd = d; best = ap; } }
+    if (best && onPick) { onPick(best, wx, wz); return; }
+    if (onEmpty && onEmpty(wx, wz)) return;
+    if (WP.length < 20) { WP.push([wx, wz]); wpVer++; draw(); } };
+  cv.onclick = null; }
