@@ -22,6 +22,7 @@
     r2: { n: 'Rackház 2U', k: 'srv', cat: 'alt', dp: 0.7, u: 2, c: 110000, bay: 12, psu: 2, d: '12 lemezhely · 2 táphely' },
     r4: { n: 'Rackház 4U', k: 'srv', cat: 'alt', dp: 0.72, u: 4, c: 160000, bay: 24, psu: 2, d: '24 lemezhely · 2 táphely' },
     d1u: { n: 'Sűrű ház 1U', k: 'srv', cat: 'suru', dp: 0.75, u: 1, c: 70000, bay: 2, psu: 2, d: '2 lemezhely · 2 táphely' },
+    c1n: { n: 'Számítóház 1U (lemez nélkül)', k: 'srv', cat: 'suru', dp: .7, u: 1, c: 45e3, bay: 0, psu: 2, d: 'lemezhely nélkül · 2 táphely · megosztott tárhely vagy fürt kell hozzá' }, c2n: { n: 'Számítóház 2U (lemez nélkül)', k: 'srv', cat: 'suru', dp: .75, u: 2, c: 8e4, bay: 0, psu: 2, d: 'lemezhely nélkül · 2 táphely' }, g4n: { n: 'GPU-ház 4U (lemez nélkül)', k: 'srv', cat: 'gpu', fan: 1, dp: .75, u: 4, c: 2e5, bay: 0, psu: 4, d: 'lemezhely nélkül · 4 táphely' },
     d2u: { n: 'Sűrű ház 2U', k: 'srv', cat: 'suru', dp: 0.75, u: 2, c: 120000, bay: 6, psu: 2, d: '6 lemezhely · 2 táphely' },
     d4u: { n: 'Nagy számítóház 4U', k: 'srv', cat: 'suru', dp: 0.78, u: 4, c: 260000, bay: 8, psu: 4, d: '8 lemezhely · 4 táphely' },
     s2: { n: 'Tárolóház 2U', k: 'srv', cat: 'tar', dp: 0.72, u: 2, c: 130000, bay: 16, psu: 2, d: '16 lemezhely · 2 táphely' },
@@ -104,7 +105,7 @@
   const CT = { // ügyféltípusok: az igények az m méretszorzóval nőnek
     web: { i: '🌐', n: 'Weboldal', rep: 0, f: m => [1.5 * m, 3 * m, .08 * m, 0, 40 * m], x: 1 }, nas: { i: '💾', n: 'Hálózati tárhely', rep: 0, f: m => [.4 * m, 1 * m, 3 * m, 0, 60 * m], x: 1 },
     game: { i: '🎮', n: 'Játékszerver', rep: 5, f: m => [3 * m, 6 * m, .1 * m, 0, 80 * m], x: 1.25 }, db: { i: '🗄️', n: 'Adatbázis', rep: 10, f: m => [2 * m, 12 * m, .5 * m, 0, 30 * m], x: 1.15 },
-    hg: { i: '💧', n: 'HGWS – kiemelt partner', rep: 999 }, zs: { i: '🏗️', n: 'Zerosites – kiemelt partner', rep: 999 }, bo: { i: '💣', n: 'Bombasz – kiemelt partner', rep: 999 },
+    hg: { i: '💧', n: 'HGWS – kiemelt partner', rep: 999 }, zs: { i: '🏗️', n: 'Zerosites – kiemelt partner', rep: 999 }, bo: { i: '💣', n: 'Bombasz – kiemelt partner', rep: 999 }, an: { i: '✴️', n: 'Antropic – MI-adatközpont', rep: 999 }, bt: { i: '🅱️', n: 'B-terv – weboldal-üzemeltetés', rep: 999 },
     ai: { i: '🧠', n: 'MI-tanítás', rep: 15, f: m => [1 * m, 4 * m, .2 * m, 10 * m, 50 * m], x: 1.2 }, rend: { i: '🎬', n: 'Renderfarm', rep: 25, f: m => [4 * m, 4 * m, .3 * m, 6 * m, 40 * m], x: 1.1 } };
   const NA = ['Tisza', 'Bükk', 'Pannon', 'Avas', 'Zemplén', 'Duna', 'Mátra', 'Hernád', 'Borsod', 'Alföld', 'Bakony', 'Rába', 'Kék', 'Zöld', 'Arany', 'Nova', 'Delta', 'Orion'], NB = ['Soft', 'Web', 'Média', 'Logisztika', 'Labs', 'Stúdió', 'Trade', 'Bt.', 'Kft.', 'Digital', 'Games', 'Pékség', 'Autóház', 'Könyvelő', 'Tech', 'Agro'];
   const GOALS = [['Vegyél egy racket a boltban', () => S.racks.some(r => r), 1e4], ['Építs meg és szerelj be egy szervert', () => devs().some(d => DEV[d.t].k === 'srv' && C.d[d.id] && C.d[d.id].boot), 2e4], ['Kösd a szervert áramra és internetre', () => C.online > 0, 2e4], ['Szerezd meg az első ügyfelet', () => S.cons.length > 0, 3e4],
@@ -157,7 +158,7 @@
 
   /* ---------- számítás: áram, hálózat, hő, bevétel ---------- */
   function calc() { buildPorts(); const st = SITE[S.site], link = new Map(); for (const c of S.cables) { link.set(pkey(...c.a), c.b); link.set(pkey(...c.b), c.a); }
-    const D = {}, all = devs(), byId = new Map(all.map(d => [d.id, d])); for (const d of all) { const k = DEV[d.t].k, o = D[d.id] = { k }; if (k === 'srv') { o.cap = cap(d); o.boot = !!d.mb && d.cpu.length > 0 && d.ram.length > 0 && d.hdd.some(x => !broken(x)) && d.psu.length > 0; o.psuOk = o.cap.psu >= o.cap.w; } }
+    const D = {}, all = devs(), byId = new Map(all.map(d => [d.id, d])); for (const d of all) { const k = DEV[d.t].k, o = D[d.id] = { k }; if (k === 'srv') { o.cap = cap(d); o.boot = !!d.mb && d.cpu.length > 0 && d.ram.length > 0 && (!DEV[d.t].bay || d.hdd.some(x => !broken(x))) && d.psu.length > 0; o.psuOk = o.cap.psu >= o.cap.w; } }
     for (let pass = 0; pass < 6; pass++) { let again = false; const lv = new Map(), live = (d, seen) => { if (lv.has(d.id)) return lv.get(d.id); if (seen.has(d.id)) return false; seen.add(d.id); const o = link.get(pkey(d.id, 'pi', 0)); let r = false; if (o) { if (o[0] === 0) r = !S.out && !S.trip[o[2]]; else { const s = byId.get(o[0]); r = !!s && !s.trip && (live(s, seen) || (DEV[s.t].k === 'ups' && s.bat > 0)); } } lv.set(d.id, r); return r; };
       const draw = (d, seen) => { const k = DEV[d.t].k; if (seen.has(d.id)) return 0; seen.add(d.id); if (k === 'srv') { const o = D[d.id]; return d.on && o.boot && o.psuOk ? o.cap.w : 0; } if (k === 'sw') return DEV[d.t].w; if (k === 'cool') return DEV[d.t].w; if (k === 'sto') return 40 + d.hdd.reduce((x, q) => x + pv(q).w, 0); if (d.trip) return 0; let w = 5; for (let i = 0; i < DEV[d.t].out; i++) { const o = link.get(pkey(d.id, 'po', i)), c = o && byId.get(o[0]); if (c) w += draw(c, seen); } D[d.id].load = w; return w; };
       for (const d of all) { D[d.id].live = live(d, new Set()); const k = DEV[d.t].k; if (k === 'pw' || k === 'ups') { const w = draw(d, new Set()); if (!d.trip && w > DEV[d.t].max) { d.trip = 1; again = true; toast(DEV[d.t].n + ': túlterhelés, lekapcsolt.', 1); } D[d.id].onbat = k === 'ups' && !D[d.id].live && d.bat > 0 && !d.trip; } }
@@ -193,8 +194,10 @@
   /* ---------- ügyfelek ---------- */
   const BIG = { hg: { n: 'HGWS', subs: ['Öntözőfelhő', 'Locsolóhálózat', 'Arcade-szerverek', 'Vízügyi MI'], x: 4, f: () => [rnd(128, 256), rnd(2048, 4096), rnd(200, 500), rnd(300, 900), rnd(5000, 10000)] },
     zs: { n: 'Zerosites', subs: ['Tárhelyfarm', 'Konténerfelhő', 'Memória-adatbázis', 'Virtuális gépek'], x: 3, f: () => [rnd(256, 384), rnd(4096, 8192), rnd(2, 10), 0, rnd(2000, 8000)] },
+    an: { n: 'Antropic', subs: ['Alapmodell-tanítás', 'Következtető fürt', 'Kutatói klaszter', 'Kiértékelő farm'], x: 5, f: () => [rnd(128, 384), rnd(2048, 8192), rnd(100, 400), rnd(2000, 6000), rnd(10000, 40000)] },
+    bt: { n: 'B-terv', tier: 2, subs: ['Webáruház', 'Céges portál', 'Ügyfélkapu', 'Hírportál'], x: 1.6, f: () => [rnd(8, 48), rnd(32, 192), rnd(2, 20), 0, rnd(300, 2500)] },
     bo: { n: 'Bombasz', subs: ['Videóarchívum', 'Mentési tár', 'Stream-könyvtár', 'Adattó'], x: 3, f: () => [rnd(16, 64), rnd(128, 512), rnd(600, 900), rnd(100, 500), rnd(5000, 10000)] } };
-  function bigOffer() { const ty = ['hg', 'zs', 'bo'][Math.random() * 3 | 0], T = BIG[ty], f = T.f(), c = { id: S.nid++, ty, big: 1, n: T.n + ' – ' + T.subs[Math.random() * 4 | 0], cores: Math.round(f[0] / 8) * 8, ram: Math.round(f[1] / 64) * 64, tb: Math.round(f[2]), gpu: Math.round(f[3] / 10) * 10, bw: Math.round(f[4] / 500) * 500, exp: S.day + rnd(8, 16), left: rnd(120, 300), pat: 1 };
+  function bigOffer(ty) { ty = ty || ['hg', 'zs', 'bo', 'an'][Math.random() * 4 | 0]; const T = BIG[ty], f = T.f(), c = { id: S.nid++, ty, big: 1, n: T.n + ' – ' + T.subs[Math.random() * 4 | 0], cores: Math.round(f[0] / 8) * 8, ram: Math.round(f[1] / 64) * 64, tb: Math.round(f[2]), gpu: Math.round(f[3] / 10) * 10, bw: Math.round(f[4] / 500) * 500, exp: S.day + rnd(8, 16), left: rnd(120, 300), pat: 1 };
     c.pay = Math.round((c.cores * 700 + c.ram * 120 + c.tb * 450 + c.bw * 5 + c.gpu * 420) * T.x / 1000) * 1000; return c; }
   // a meglévő gépek: a legnagyobb kapacitás erőforrásonként, és a legtöbb szabad hellyel bíró online szerver
   function infra() { const mx = { cores: 4, ram: 8, tb: 2, gpu: 0 }; let fr = null, fs = -1; for (const d of devs()) { const o = C.d[d.id]; if (!o || o.k !== 'srv' || !o.cap) continue; for (const k in mx) mx[k] = Math.max(mx[k], o.cap[k]); if (o.st !== 'ok') continue; const f = { cores: o.cap.cores - o.use.cores, ram: o.cap.ram - o.use.ram, tb: o.cap.tb - o.use.tb, gpu: o.cap.gpu - o.use.gpu, bw: Math.min(o.bw - o.use.bw, PLAN[S.plan].sp - C.bw) }, sc = f.cores * 700 + f.ram * 120 + f.tb * 450 + f.gpu * 420; if (f.cores >= 1 && f.ram >= 1 && f.tb >= .1 && f.bw >= 10 && sc > fs) { fs = sc; fr = f; } } return { mx, fr }; }
@@ -202,7 +205,7 @@
   const TN = 10, TIER = [{ n: 'Kezdő cégek', i: '🌱', rep: 0, m: [.4, 1.2] }, { n: 'Kisvállalatok', i: '🏪', rep: 30, m: [1.5, 5] }, { n: 'Középvállalatok', i: '🏢', rep: 120, m: [6, 18] }, { n: 'Nagyvállalatok', i: '🏙️', rep: 350, m: [20, 110] }, { n: 'Giga multik', i: '🌐', rep: 900, big: 1 }];
   const NORM = Object.keys(CT).filter(k => CT[k].f);
   // fr: szabad kapacitás, amire biztosan rá kell férnie (m ilyenkor adott); különben a kategória tartományából, félig a meglévő gépek méretéhez húzva
-  function mkOffer(tier, fr, ty, m) { const TR = TIER[tier]; let c; if (TR.big) c = bigOffer(); else { ty = ty || NORM[Math.random() * NORM.length | 0]; const T = CT[ty], u = T.f(1);
+  function mkOffer(tier, fr, ty, m) { const TR = TIER[tier]; let c; if (TR.big) c = bigOffer(); else if (!fr && tier === 2 && Math.random() < .15) { c = bigOffer('bt'); c.bw = Math.min(c.bw, Math.max(100, Math.floor(PLAN[SITE[S.site].plan].sp * .4 / 100) * 100)); } else { ty = ty || NORM[Math.random() * NORM.length | 0]; const T = CT[ty], u = T.f(1);
       if (!fr) { const mx = infra().mx, mc = Math.min(mx.cores / u[0], mx.ram / u[1], mx.tb / u[2], u[3] ? (mx.gpu || 1e9) / u[3] : 1e9); m = rnd(TR.m[0], TR.m[1]); if (Math.random() < .5) m = Math.max(TR.m[0], Math.min(TR.m[1], mc * rnd(.4, 1))); }
       const f = T.f(m), maxbw = fr ? fr.bw : PLAN[SITE[S.site].plan].sp * .4, fl = (v, mn, q) => fr ? Math.max(mn, Math.floor(v / q) * q) : Math.max(mn, Math.ceil(v / q) * q);
       c = { id: S.nid++, ty, n: NA[Math.random() * NA.length | 0] + ' ' + NB[Math.random() * NB.length | 0], cores: Math.min(384, fl(f[0], 1, 1)), ram: Math.min(8192, fl(f[1], 1, 1)), tb: Math.min(900, Math.round(fl(f[2], .1, .1) * 10) / 10), gpu: u[3] ? Math.min(2000, fl(f[3], 1, 1)) : 0, bw: Math.floor(Math.min(maxbw, Math.max(10, f[4])) / 10) * 10, exp: S.day + rnd(5, 10), left: rnd(25, 90), pat: 1 };
@@ -402,7 +405,7 @@
     rackTo: (ctx, i, k) => drawTo(ctx, k, 0, 0, rwOf(S.racks[i]) + 28, RACK[S.racks[i].t].u * U + 14, () => drawRack(i)), wallTo: (ctx, k, key) => { const W = wallDim(key); drawTo(ctx, k, 0, 0, W.w, W.h, () => drawWall(key)); }, wallKeys, dw, rwOf, fitsRack: (d, ri) => !!DEV[d.t].wide === !!RACK[S.racks[ri].t].wide, looseTo: (ctx, d, k) => drawTo(ctx, k, 0, 0, dw(d), DEV[d.t].u * U, () => drawLoose(d)) };
   function toggle3D(on) { if (on === undefined) on = !(F3 && F3.on); if (!on) { if (F3) F3.stop(); $('#c3').hidden = true; cv.hidden = false; return; }
     const go = () => { $('#c3').hidden = false; cv.hidden = true; F3.start(); }; if (F3) return go(); if (f3load) return; f3load = 1;
-    import('./fps.js?v=202611221638').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
+    import('./fps.js?v=202611221646').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
   $('#bPh').onclick = () => view ? closeP() : openP(lastApp, '');
 
   /* ---------- főciklus ---------- */
