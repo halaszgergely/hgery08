@@ -1,22 +1,22 @@
 /* HGWS Légi Öntözés – főprogram: betöltés, renderelés, játékhurok, kamerák, töltés, küldetések, feloldások. */
 import * as THREE from 'three';
-import { GEPEK, GEP, REPTER, REPTEREK, KULDETESEK, FORGO, ZERO_HELY, GAME } from './config.js?v=202611221828';
-import * as GEO from './geo.js?v=202611221828';
-import { createTerrain } from './terep.js?v=202611221828';
-import { createWorld } from './vilag.js?v=202611221828';
-import { createOSM } from './osm.js?v=202611221828';
-import { createRocket } from './titok.js?v=202611221828';
-import { buildModel, animate } from './modellek.js?v=202611221828';
-import { createBody, placeOn, step } from './fizika.js?v=202611221828';
-import { createSpray } from './permet.js?v=202611221828';
-import { createMission } from './kuldetes.js?v=202611221828';
-import { createAudio } from './hang.js?v=202611221828';
-import { createControls } from './iranyitas.js?v=202611221828';
-import { createHud, setMapImage, drawMap } from './hud.js?v=202611221828';
-import * as HUDM from './hud.js?v=202611221828';
-import { createUI } from './ui.js?v=202611221828';
-import * as RL from './ranglista.js?v=202611221828';
-import { createPost } from './utofeldolgozas.js?v=202611221828';
+import { GEPEK, GEP, REPTER, REPTEREK, KULDETESEK, FORGO, ZERO_HELY, GAME } from './config.js?v=202611221905';
+import * as GEO from './geo.js?v=202611221905';
+import { createTerrain } from './terep.js?v=202611221905';
+import { createWorld } from './vilag.js?v=202611221905';
+import { createOSM } from './osm.js?v=202611221905';
+import { createRocket } from './titok.js?v=202611221905';
+import { buildModel, animate } from './modellek.js?v=202611221905';
+import { createBody, placeOn, step } from './fizika.js?v=202611221905';
+import { createSpray } from './permet.js?v=202611221905';
+import { createMission } from './kuldetes.js?v=202611221905';
+import { createAudio } from './hang.js?v=202611221905';
+import { createControls } from './iranyitas.js?v=202611221905';
+import { createHud, setMapImage, drawMap } from './hud.js?v=202611221905';
+import * as HUDM from './hud.js?v=202611221905';
+import { createUI } from './ui.js?v=202611221905';
+import * as RL from './ranglista.js?v=202611221905';
+import { createPost } from './utofeldolgozas.js?v=202611221905';
 
 const $ = s => document.querySelector(s);
 const LS = 'hgws_legi_v1', TOUCH = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window;
@@ -300,6 +300,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && sta
 
 /* ---------- a felület API-ja ---------- */
 function setDev(on) { DEV.on = on ? 1 : 0; persistDev(); if (!DEV.on && !realUnlocked(GEP[save.gep])) { save.gep = 'permetezo'; persist(); if (state === 'menu') preview(save.gep); } devBadge(); applySettings('fps'); }
+$('#hudDev').addEventListener('click', e => { e.stopPropagation(); if (state === 'fly') pause(); if (state === 'pause') ui.dev(() => ui.pause()); });
 function devBadge() { document.querySelectorAll('.devB').forEach(e => e.hidden = !DEV.on); }
 // fejlesztői mód előhívása: „hgwsdev” begépelése a főmenüben, mobilon a HGWS logó 7 gyors érintése
 let devBuf = '', devTaps = []; addEventListener('keydown', e => { if (state !== 'menu' || e.key.length !== 1) return; devBuf = (devBuf + e.key.toLowerCase()).slice(-7); if (devBuf === 'hgwsdev') { devBuf = ''; if (!DEV.on) setDev(1); ui.dev(); } });
