@@ -7,7 +7,7 @@ const AranyLocsolofej = { id: 'aranylocsolofej', name: 'AZ ARANY LOCSOLÓFEJ', e
 const Atemelotelep = { id: 'atemelotelep', name: 'AZ ÁTEMELŐTELEP', ext: 'jatekok/atemelotelep/index.html', tag: 'ÚJ', lbx: 1, icon: '🏭', fmt: v => { const t = Math.max(0, 1e6 - v); return Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0'); },
   desc: 'Éjszakai ügyelet egy szabotált szennyvízátemelőn: kapcsolószekrény, akna, PLC-program, aggregát – mielőtt túlcsordul a medence.' };
 /* Öntöző Birodalom Online: a közösségi oldal #/birodalom nézete – a kártya a szülőoldalt navigálja oda */
-const BoOnline = { id: 'boonline', name: 'ÖNTÖZŐ BIRODALOM ONLINE', go: '#/birodalom', ext: 1, tag: 'ONLINE',
+const BoOnline = { id: 'boonline', name: 'ÖNTÖZŐ BIRODALOM ONLINE', go: '#/birodalom', ext: 1, tag: 'CLOSED BETA',
   desc: 'Közös világ 13 régióval: telkek, piac, vezetékek, szövetkezetek és heti ostrom Szikkadt Szilárd erődje ellen.' };
 const LocsoloHaboru = { id: 'locsolohaboru', name: 'LOCSOLÓHÁBORÚ', ext: 'jatekok/locsolohaboru/index.html', tag: 'ONLINE',
   desc: 'Első személyű vízipisztoly-aréna 2–8 játékosnak: öt fegyver, négy pálya, négy mód – barátokkal vagy botok ellen.' };

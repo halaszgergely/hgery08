@@ -582,3 +582,4 @@ body{background:var(--bg)}
   .frrow .who small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .frbox{flex-wrap:wrap;padding:.5rem .7rem}.frbox .btn{width:100%;justify-content:center}
 }
+.nbeta{font:800 .5rem/1 Inter,system-ui,sans-serif;letter-spacing:.08em;padding:.12rem .25rem;border-radius:4px;background:rgba(180,140,255,.22);color:#cdb4ff;margin-left:.2rem;vertical-align:super}
