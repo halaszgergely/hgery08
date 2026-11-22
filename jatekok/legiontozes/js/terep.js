@@ -6,8 +6,8 @@
    - Csonkcsere atomian: a régi csonkok láthatók maradnak, amíg az újak mind fel nem épültek (időkorláttal), így nincs lyuk / villanás.
    - Közeli erdőcsonkokon kétféle (tűlevelű, lombos) instancolt fa, szélben hajladozva. */
 import * as THREE from 'three';
-import { ground, cls, hash2, onTile, clearGridCache, inAirport } from './geo.js?v=202611220139';
-import { SU, withWorld, LOGV_PARS, LOGV, LOGF_PARS, LOGF, HASH } from './kozos.js?v=202611220139';
+import { ground, cls, hash2, onTile, clearGridCache, inAirport } from './geo.js?v=202611220201';
+import { SU, withWorld, LOGV_PARS, LOGV, LOGF_PARS, LOGF, HASH } from './kozos.js?v=202611220201';
 
 const LEAF = 2000, ROOT = 32000, N = 16;
 
@@ -119,7 +119,7 @@ export function createTerrain(scene, opt) {
     const ims = [new THREE.InstancedMesh(geoC, tMat, cnt), new THREE.InstancedMesh(geoD, tMat, cnt)], k = [0, 0];
     for (let f = 0; f < u.forest.length; f += 2) { const i = u.forest[f], j = u.forest[f + 1];
       for (let t = 0; t < per; t++) { const rx = hash2(i * 31 + t, j * 17 + u.x0), rz = hash2(j * 29 + t, i * 13 + u.z0), lx = (i + rx) * step, lz = (j + rz) * step, wx = u.x0 + lx, wz = u.z0 + lz;
-        const h = ground(wx, wz), sp = h > 420 ? (hash2(lx, t) < .7 ? 0 : 1) : (hash2(lx, t) < .3 ? 0 : 1), im = ims[sp]; if (k[sp] >= cnt) continue;
+        if (inAirport(wx, wz)) continue; const h = ground(wx, wz), sp = h > 420 ? (hash2(lx, t) < .7 ? 0 : 1) : (hash2(lx, t) < .3 ? 0 : 1), im = ims[sp]; if (k[sp] >= cnt) continue;
         const s = .65 + hash2(lx, lz) * .9; IQ.setFromAxisAngle(IY, rx * 6.28); IS.set(s, s * (.75 + rz * .6), s); IP.set(lx, h - .3, lz); IM.compose(IP, IQ, IS); im.setMatrixAt(k[sp], IM);
         IC.setHSL(.24 + (hash2(t, lz) - .5) * .08, .35 + hash2(lz, t) * .2, .75 + hash2(i, t) * .5); im.setColorAt(k[sp], IC); k[sp]++; } }
     e.trees = []; ims.forEach((im, n) => { im.count = k[n]; if (!k[n]) return; im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.computeBoundingSphere(); im.position.copy(e.mesh.position); im.matrixAutoUpdate = false; im.updateMatrix(); im.visible = e.mesh.visible; root.add(im); e.trees.push(im); }); }
