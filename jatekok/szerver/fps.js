@@ -4,7 +4,7 @@
    helye a felület saját rajzkoordinátáiban van; innen számoljuk térbe. A rackek rácsra (GR) illesztve, 90°-onként
    forgatva állnak, a szabad eszközök bárhol. Képkockánként kiszámoljuk, mire mutat a célkereszt (aim); a műveleteket
    a szerver.js doClick() végzi. Lépték: K méter / rajzegység (1U = 20 egység = 4,4 cm). */
-import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611221651';
+import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611221701';
 
 const REACH = 3, EYE = 1.62, MAXP = 2500, RD = .9; // RD, RWID: a rack alapterülete
 let A = null, K = .0022, cv = null, R = null, scene = null, cam = null, room = null, cabG = null, held = null, ghost = null, pts = null;
@@ -67,11 +67,7 @@ function build() { if (room) { scene.remove(room); room.traverse(o => { o.geomet
     if (r.vcm || big) { const wh = big ? frameM : std('#e8ecf0', { metalness: .2 }), og = std('#ff8a2a', { metalness: 0, roughness: .7 }); for (const sx of [-1, 1]) { const x = sx * (rw / 2 + (big ? .05 : .035)), sn = []; const bar = add(new THREE.BoxGeometry(big ? .08 : .05, hh, .02), wh, x, lf + hh / 2, big ? -.012 : .012, g); for (let y = .05; y < hh - .02; y += .089) { if (big) { add(new THREE.BoxGeometry(.06, .006, .028), std('#6d7783', { metalness: .6, roughness: .4 }), x, lf + y, .012, g); sn.push(V(x, lf + y + .018, .024)); } else { add(new THREE.BoxGeometry(.05, .008, .07), og, x, lf + y, .05, g); sn.push(V(x, lf + y + .02, .06)); } } const hb = add(new THREE.BoxGeometry(big ? .09 : .07, hh, big ? .05 : .1), wh, x, lf + hh / 2, big ? .02 : .05, g); hb.visible = false; g.updateMatrixWorld(true); hb.userData = { rk: i, snap: sn.map(v => v.applyMatrix4(g.matrixWorld)) }; PL.push(hb); bar.userData = { rk: i }; } }
     if (r.arm) { const top = lf + hh, wh = std('#e8ecf0', { metalness: .2 }), og = std('#ff8a2a', { metalness: 0, roughness: .7 }), sn = []; add(new THREE.BoxGeometry(.03, .28, .03), wh, 0, top + .14, -.06, g); const ar = add(new THREE.BoxGeometry(.03, .03, .72), wh, 0, top + .27, .28, g); for (const z of [.15, .3, .45, .6]) { add(new THREE.BoxGeometry(.05, .05, .022), og, 0, top + .3, z, g); sn.push(V(0, top + .31, z)); } g.updateMatrixWorld(true); ar.userData = { rk: i, snap: sn.map(v => v.applyMatrix4(g.matrixWorld)) }; PL.push(ar); } });
   // kábeltálcák a mennyezet alatt
-  for (const t of A.S.trays) { const g = new THREE.Group(); g.position.set(t.x, A.TRAYH, t.z); g.rotation.y = t.rot * Math.PI / 2; room.add(g); const wh = std('#e8ecf0', { metalness: .2 }), og = std('#ff8a2a', { metalness: 0, roughness: .7 }), [L0, W0] = traySize(t.t), hw = W0 / 2 - .03, hl = L0 / 2, sq = t.t === 'trayc' || t.t === 'trayx';
-    // sínek: egyenesnél a két hosszanti oldalon, kanyarnál a két külső oldalon, kereszteződésnél csak sarokoszlopok
-    if (!sq) for (const dz of [-hw, hw]) add(new THREE.BoxGeometry(L0, .025, .025), wh, 0, 0, dz, g); else if (t.t === 'trayc') { add(new THREE.BoxGeometry(L0, .025, .025), wh, 0, 0, -hw, g); add(new THREE.BoxGeometry(.025, .025, W0 - .06), wh, hl - .0125, 0, 0, g); } else for (const [a, b] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) add(new THREE.BoxGeometry(.05, .03, .05), wh, a * (hl - .025), 0, b * (hw + .005), g);
-    for (let x = -hl + .1; x <= hl - .09; x += .25) add(new THREE.BoxGeometry(.02, .02, hw * 2), wh, x, 0, 0, g); if (sq) for (let z = -hw + .1; z <= hw - .09; z += .25) add(new THREE.BoxGeometry(L0 - .04, .02, .02), wh, 0, -.001, z, g); for (let x = -hl + .1; x <= hl - .09; x += .25) add(new THREE.BoxGeometry(.012, .012, hw * 2 - .02), og, x, -.012, 0, g);
-    for (const [a, b] of sq ? [[-1, -1], [1, 1]] : [[-1, 0], [1, 0]]) add(new THREE.BoxGeometry(.015, H - A.TRAYH, .015), wh, a * (hl - .05), (H - A.TRAYH) / 2, b * (hw - .02), g);
+  for (const t of A.S.trays) { const g = trayModel(t.t, H); g.position.set(t.x, A.TRAYH, t.z); g.rotation.y = t.rot * Math.PI / 2; room.add(g); const [L0, W0] = traySize(t.t), hl = L0 / 2;
     const hb = add(new THREE.BoxGeometry(L0, .06, W0), metal, 0, 0, 0, g), nx = Math.round(L0 / .075), nz = Math.round((W0 - .1) / .05) + 1; hb.visible = false; g.updateMatrixWorld(true); hb.userData = { tray: t, snap: Array.from({ length: nx * nz }, (_, i) => V(-hl + .0375 + (i % nx) * .075, -.02, -(nz - 1) * .025 + Math.floor(i / nx) * .05).applyMatrix4(g.matrixWorld)) }; PL.push(hb); }
   // szabadon lerakott eszközök és asztalok
   for (const dv of A.S.loose) { const h = dH(dv), dp = dD(dv), g = new THREE.Group(); g.position.set(dv.wx, dv.wy, dv.wz); g.rotation.y = dv.yaw; room.add(g); if (dv.wy < .05) shadow(dv.wx - Math.sin(dv.yaw) * dp / 2, dv.wz - Math.cos(dv.yaw) * dp / 2, A.dw(dv) * K + .35, dp + .35, dv.yaw);
@@ -80,7 +76,7 @@ function build() { if (room) { scene.remove(room); room.traverse(o => { o.geomet
   room.updateMatrixWorld(true); gen = -1; }
 
 /* ---------- nyitott szerverház: kihúzva, felülről, az alkatrészek a foglalatokban ---------- */
-let hlBox = null, warnT = null, warnG = null;
+let tGhost = null, tgKey = '', hlBox = null, warnT = null, warnG = null;
 // egy eszköz doboza a térben: [középpont, elforgatás, [szél, mag, mély]]
 function devBox(d) { const ri = A.S.racks.findIndex(r => r.dev.includes(d)), h = dH(d); if (ri >= 0) { const f = SF.get('R' + ri), dp = Math.min(.8, A.DEV[d.t].dp || .5); if (!f) return null; return [s3(f, f.w / 2, 7 + d.u * A.U + A.DEV[d.t].u * A.U / 2, -dp / 2), f.yaw, [A.dw(d) * K, h, dp]]; } if (d.wx === undefined) return null; const dp = dD(d); return [V(d.wx - Math.sin(d.yaw) * dp / 2, d.wy + h / 2, d.wz - Math.cos(d.yaw) * dp / 2), d.yaw, [A.dw(d) * K, h, dp]]; }
 function marks() { const id = A.hl, all = id || (A.C.bad || []).length ? [...A.S.racks.flatMap(r => r.dev), ...A.S.loose] : [], d = id ? all.find(x => x.id === id) : null, b = d && devBox(d); hlBox.visible = !!b; if (b) { hlBox.position.copy(b[0]); hlBox.rotation.y = b[1]; hlBox.scale.set(b[2][0] + .02, b[2][1] + .02, b[2][2] + .02); }
@@ -153,7 +149,13 @@ function screens() { for (const sc of SCR) { const r = A.S.racks[sc.i]; if (!r) 
     const cs = A.S.cons.filter(c => ids.has(c.srv)), bad = (A.C.bad || []).filter(d => ids.has(d.id)).length, trouble = bad || off;
     x.setTransform(2, 0, 0, 2, 0, 0); x.fillStyle = '#05080c'; x.fillRect(0, 0, 256, 84); x.fillStyle = trouble ? '#ff5a4d' : '#5ee08a'; x.fillRect(0, 0, 256, 4); x.font = '700 17px monospace'; x.textBaseline = 'top'; x.fillStyle = '#7fd4ff'; x.fillText((w / 1000).toFixed(2).replace('.', ',') + ' kW  ' + r.dev.length + ' eszk.', 8, 10);
     x.font = '600 12px monospace'; x.fillStyle = '#cfd6df'; x.fillText(cs.length ? cs.length + ' ügyfél: ' + cs.slice(0, 2).map(c => c.n).join(', ').slice(0, 24) : 'nincs ügyfél', 8, 34); x.fillStyle = trouble ? '#ff5a4d' : '#5ee08a'; x.font = '700 13px monospace'; x.fillText(trouble ? '! ' + [bad && bad + ' hibás alkatrész', off && off + ' gép áll'].filter(Boolean).join(' · ') : 'MINDEN RENDBEN', 8, 58); sc.t.t.needsUpdate = true; } }
-const traySize = t => t === 'trayw' ? [1.2, .6] : t === 'trayc' || t === 'trayx' ? [.6, .6] : [1.2, .3]; // [hossz, szélesség]
+// a tálca modellje; one: ha meg van adva, minden része ebből az anyagból készül (előnézet)
+function trayModel(tt, H, one) { const g = new THREE.Group(), wh = one || std('#e8ecf0', { metalness: .2 }), og = one || std('#ff8a2a', { metalness: 0, roughness: .7 }), [L0, W0] = traySize(tt), hw = W0 / 2 - .03, hl = L0 / 2, sq = L0 === W0, add = (w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); g.add(o); };
+  const sym = (len, f) => { const n = Math.max(1, Math.round((len - .2) / .25)); for (let i = 0; i <= n; i++) f(-n * .125 + i * .25); }; // a létrafokok középre szimmetrikusan
+  if (!sq) for (const dz of [-hw, hw]) add(L0, .025, .025, wh, 0, 0, dz); else if (tt === 'trayc') { add(L0, .025, .025, wh, 0, 0, -hw); add(.025, .025, W0 - .06, wh, hl - .0125, 0, 0); for (const [a, b] of [[-1, 1]]) add(.05, .03, .05, wh, a * (hl - .025), 0, b * (hw + .005)); } else for (const [a, b] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) add(.05, .03, .05, wh, a * (hl - .025), 0, b * (hw + .005));
+  sym(L0, x => { add(.02, .02, hw * 2, wh, x, 0, 0); add(.012, .012, hw * 2 - .02, og, x, -.012, 0); }); if (sq) sym(W0, z => add(L0 - .04, .02, .02, wh, 0, -.001, z));
+  for (const [a, b] of sq ? [[-1, -1], [1, 1]] : [[-1, 0], [1, 0]]) add(.015, H - A.TRAYH, .015, wh, a * (hl - .05), (H - A.TRAYH) / 2, b * (hw - .02)); return g; }
+const traySize = t => t === 'trays' ? [.6, .3] : t === 'trayw' ? [1.2, .6] : t === 'trayc' || t === 'trayx' ? [.6, .6] : [1.2, .3]; // [hossz, szélesség]
 const paint = key => { const t = RT.get(key); if (!t) return; if (key[0] === 'W') A.wallTo(t.x, t.k, key); else if (key[0] === 'R') { const i = +key.slice(1); if (!A.S.racks[i]) return; A.rackTo(t.x, i, t.k); } else { const d = A.S.loose.find(d => 'L' + d.id === key); if (!d) return; A.looseTo(t.x, d, t.k); } t.t.needsUpdate = true; };
 
 /* ---------- kábelek, csatlakozók, adatforgalom ---------- */
@@ -191,6 +193,8 @@ function pick() { const dir = V(0, 0, 0); cam.getWorldDirection(dir); const o = 
   else if (sel) { // fal, mennyezet vagy padló: oda is mehet rögzítő
     let bt = REACH + 1; const tryP = (t, n) => { if (t > .05 && t < bt) { const q = o.clone().addScaledVector(dir, t); if (q.x > -.01 && q.x < W + .01 && q.z > -.01 && q.z < D + .01 && q.y > -.01 && q.y < H + .01) { bt = t; a.pt = q.addScaledVector(n, .012).toArray(); } } };
     if (dir.y < 0) tryP(o.y / -dir.y, V(0, 1, 0)); else tryP((H - o.y) / dir.y, V(0, -1, 0)); if (dir.z < 0) tryP(o.z / -dir.z, V(0, 0, 1)); else tryP((D - o.z) / dir.z, V(0, 0, -1)); if (dir.x < 0) tryP(o.x / -dir.x, V(1, 0, 0)); else tryP((W - o.x) / dir.x, V(-1, 0, 0)); }
+  if (!pl && !sel && !a.p) { let bd = .05; for (const c of A.S.cables) (c.w || []).forEach((q, i) => { const p = wp3(q).sub(o), t = p.dot(dir); if (t < .1 || t > REACH) return; const dd = p.addScaledVector(dir, -t).length(); if (dd < bd) { bd = dd; a.wp = { c, i }; } }); }
+  if (A.mv && !a.pt) { let bt = REACH + 1; const tryP = (t, n) => { if (t > .05 && t < bt) { const q = o.clone().addScaledVector(dir, t); if (q.x > -.01 && q.x < W + .01 && q.z > -.01 && q.z < D + .01 && q.y > -.01 && q.y < H + .01) { bt = t; a.pt = q.addScaledVector(n, .012).toArray(); } } }; if (dir.y < 0) tryP(o.y / -dir.y, V(0, 1, 0)); else tryP((H - o.y) / dir.y, V(0, -1, 0)); if (dir.z < 0) tryP(o.z / -dir.z, V(0, 0, 1)); else tryP((D - o.z) / dir.z, V(0, 0, -1)); if (dir.x < 0) tryP(o.x / -dir.x, V(1, 0, 0)); else tryP((W - o.x) / dir.x, V(-1, 0, 0)); }
   if (!pl) return a;
   // lerakás
   const kd = pl.rk ? 'rack' : A.DEV[pl.t].k, yawOf = r => r * Math.PI / 2;
@@ -216,7 +220,7 @@ export function init(canvas, api) { A = api; K = A.K; cv = canvas; R = new THREE
   { const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d'), gr = x.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, '#fff'); gr.addColorStop(.35, 'rgba(255,255,255,.7)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 32, 32);
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAXP * 3), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(MAXP * 3), 3)); g.setDrawRange(0, 0); pts = new THREE.Points(g, new THREE.PointsMaterial({ size: .035, map: new THREE.CanvasTexture(c), vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); pts.frustumCulled = false; scene.add(pts); }
   cv.addEventListener('click', e => { if (A.insp) { mouse.x = e.clientX / innerWidth * 2 - 1; mouse.y = -(e.clientY / innerHeight) * 2 + 1; if (DR && DR.hv) A.slotClick(DR.hv.k, DR.hv.i); return; } if (e.pointerType && e.pointerType !== 'mouse') return; if (document.pointerLockElement !== cv) { try { const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (_) {} return; } interact(); });
-  cv.addEventListener('contextmenu', e => { e.preventDefault(); A.cancel(); });
+  cv.addEventListener('contextmenu', e => { e.preventDefault(); if (!A.popWp()) A.cancel(); });
   cv.addEventListener('wheel', e => { e.preventDefault(); if (A.place) rot += Math.sign(e.deltaY); }, { passive: false });
   document.addEventListener('mousemove', e => { if (!on || document.pointerLockElement !== cv) return; P.yaw -= e.movementX * .0022; P.pitch = Math.max(-1.45, Math.min(1.45, P.pitch - e.movementY * .0022)); });
   // érintés: a bal oldalon húzva járás, a jobb oldalon nézelődés, koppintás: művelet
@@ -237,15 +241,20 @@ export function frame(dt) { if (!on) return; const S = A.S, [W, D] = room3(), s2
   now += dt; cam.position.set(P.x, P.crouch ? .85 : EYE, P.z); cam.rotation.set(P.pitch, P.yaw, 0); cam.updateMatrixWorld();
   if (inspect(dt)) { document.querySelector('#xh').hidden = true; if (A.gen !== gen) { gen = A.gen; for (const k of RT.keys()) paint(k); cables(); } ghost.visible = false; for (const o of held.children.slice()) { held.remove(o); o.geometry.dispose(); o.material.dispose(); } A.setAim({}); marks(); flow(A.S.spd ? dt : 0); R.render(scene, cam); return; } document.querySelector('#xh').hidden = false;
   // célzás
-  const sel = A.sel, pl = A.place; if (!pl) rot = 0; aim = pick(); A.setAim(aim); document.querySelector('#xh').classList.toggle('hot', !!(aim.p || aim.d || aim.sleep || aim.tray || aim.rk != null || (aim.pl && aim.pl.ok)));
+  const sel = A.sel, pl = A.place; if (!pl) rot = 0; aim = pick(); A.setAim(aim); document.querySelector('#xh').classList.toggle('hot', !!(aim.p || aim.d || aim.wp || aim.sleep || aim.tray || aim.rk != null || (aim.pl && aim.pl.ok)));
   if (A.gen !== gen) { gen = A.gen; for (const k of RT.keys()) paint(k); cables(); }
   else { const hv = aim.h ? 'R' + aim.h.ri : ''; if (sel || pl) { if (lastHover && lastHover !== hv) paint(lastHover); if (hv) paint(hv); } lastHover = sel || pl ? hv : '';
     if ((ledT -= dt) <= 0) { ledT = .3; let n = 0; for (const k of RT.keys()) { if (k[0] !== 'R') { if (k[0] !== 'W' || sel) paint(k); continue; } const r = S.racks[+k.slice(1)]; if (r && Math.hypot(r.x - P.x, r.z - P.z) < 5 && n++ < 6) paint(k); } } }
   // a lerakandó dolog körvonala
-  const gp = aim.pl; ghost.visible = !!(gp && gp.box); if (ghost.visible) { const [c, yaw, d] = gp.box; ghost.position.copy(c); ghost.rotation.y = yaw; ghost.scale.set(d[0], d[1], d[2]); ghost.material.color.set(gp.ok ? 0x5ee08a : 0xff5a4d); }
+  const gp = aim.pl, tp = gp && gp.box && pl && !pl.rk && A.DEV[pl.t].k === 'tray' ? pl.t : '';
+  if (tgKey !== tp + (gp && gp.ok)) { if (tGhost) { scene.remove(tGhost); tGhost.traverse(o => { o.geometry?.dispose(); }); tGhost = null; } tgKey = tp + (gp && gp.ok); if (tp) { tGhost = trayModel(tp, room3()[2], new THREE.MeshBasicMaterial({ color: gp.ok ? 0x5ee08a : 0xff5a4d, transparent: true, opacity: .6, depthWrite: false })); scene.add(tGhost); } }
+  if (tGhost && gp) { tGhost.position.copy(gp.box[0]); tGhost.rotation.y = gp.box[1]; }
+  ghost.visible = !!(gp && gp.box) && !tp; if (ghost.visible) { const [c, yaw, d] = gp.box; ghost.position.copy(c); ghost.rotation.y = yaw; ghost.scale.set(d[0], d[1], d[2]); ghost.material.color.set(gp.ok ? 0x5ee08a : 0xff5a4d); }
   // a kézben tartott kábel
   // a kézben tartott kábel előnézete: ugyanaz a vonalvezetés és belógás, mint ami bedugva lesz, vastagabb világító csővel
   for (const o of held.children.slice()) { held.remove(o); o.geometry.dispose(); o.material.dispose(); }
+  if (A.mv && aim.pt) { const c = A.mv.c, pa = A.PM.get(A.pkey(...c.a)), pb = A.PM.get(A.pkey(...c.b)); if (pa && pb) { const net = c.a[1] === 'n', out = net ? .04 : .05, w = c.w.map((q, i) => i === A.mv.i ? V(...aim.pt) : wp3(q)), v = path([port3(pa, .004), port3(pa, out), ...w, port3(pb, out), port3(pb, .004)], true), mat = () => new THREE.MeshBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: .9 });
+      held.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(v, false, 'centripetal'), Math.min(200, v.length * 2), net ? .006 : .008, 6), mat())); const m = new THREE.Mesh(new THREE.TorusGeometry(.02, .004, 6, 14), mat()); m.position.set(...aim.pt); if (aim.pt[1] < .05 || aim.pt[1] > A.TRAYH - .05) m.rotation.x = Math.PI / 2; held.add(m); } }
   if (sel && SF.get(sel.sf)) { const net = sel.k === 'n', out = net ? .04 : .05, okp = aim.p && A.ok2(sel, aim.p), dir = V(0, 0, 0); cam.getWorldDirection(dir); const end = okp ? [port3(aim.p, out), port3(aim.p, .004)] : [aim.pt ? V(...aim.pt) : cam.position.clone().addScaledVector(dir, .7).add(V(0, -.22, 0))];
     const v = path([port3(sel, .004), port3(sel, out), ...sel.w.map(wp3), ...end], sel.w.length > 0 || (!okp && !!aim.pt)), col = net ? (A.fib(sel.sp) && sel.id ? 0xffd43b : 0x4cc9f0) : 0xd0d4da, mat = () => new THREE.MeshBasicMaterial({ color: okp ? 0x5ee08a : col, transparent: true, opacity: .9 });
     held.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(v, false, 'centripetal'), Math.min(200, v.length * 2), net ? .006 : .008, 6), mat())); const tip = new THREE.Mesh(new THREE.SphereGeometry(okp ? .016 : .012, 10, 8), mat()); tip.position.copy(v[v.length - 1]); held.add(tip);
