@@ -1,7 +1,7 @@
 // HGWS – barátrendszer: barátkérelem név alapján, privát üzenet csak barátnak.
 // Adat: friends/{a_b} (a két uid ábécérendben) = { users:[a,b], from, to, status:'pending'|'accepted', createdAt, acceptedAt? }
-import { FB, db, $, esc, avatar, isOnline, timeLabel, toast, errText, notify, blip } from './core.js?v=202611222341';
-import { confirmBox, popover, closePop } from './ui.js?v=202611222341';
+import { FB, db, $, esc, avatar, isOnline, timeLabel, toast, errText, notify, blip } from './core.js?v=202611230000';
+import { confirmBox, popover, closePop } from './ui.js?v=202611230000';
 
 let C = null;
 export const F = new Map();            // másik uid → kapcsolat dokumentum
