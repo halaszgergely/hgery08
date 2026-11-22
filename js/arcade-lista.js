@@ -1,12 +1,12 @@
 /* HGWS Arcade – listaoldal: kiemeltek, szűrők, kategóriasorok, részletező panel.
    Az adatok a js/arcade-manifest.js-ből jönnek; a ranglistát és a játékszámokat csak olvassa (a ctx függvényein át). */
-import { JATEKOK, KATEGORIAK, UJ_NAPOK } from './arcade-manifest.js?v=202611220139';
+import { JATEKOK, KATEGORIAK, UJ_NAPOK } from './arcade-manifest.js?v=202611220244';
 
 const V = new URL(import.meta.url).search, RK = 'hgws_arc_recent';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fold = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const KN = Object.fromEntries(KATEGORIAK.map(k => [k.k, k]));
-const ST = { uj: 'ÚJ', online: 'ONLINE', beta: 'ZÁRT BÉTA', demo: 'DEMO' };
+const ST = { uj: 'ÚJ', online: 'ONLINE', beta: 'ZÁRT BÉTA', closedbeta: 'CLOSED BETA', demo: 'DEMO' };
 const SPON = 'Az Arcade a ZeroSites támogatásával készül';
 if (!document.querySelector('link[data-arcl]')) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'css/arcade-lista.css' + V; l.dataset.arcl = '1'; document.head.appendChild(l); }
 

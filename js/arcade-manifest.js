@@ -9,7 +9,7 @@
      cimkek     – keresőszavak (tömb)
      ikon, szin – a generált borító emojija és színe (akkor látszik, ha nincs kép)
      kepek      – borítóképek útvonalai (tömb); ha több van, a kártyán váltakoznak. Üresen a generált borító látszik.
-     statusz    – 'uj' | 'online' | 'beta' | 'demo' | '' (a kártya jelvénye)
+     statusz    – 'uj' | 'online' | 'beta' | 'closedbeta' | 'demo' | '' (a kártya jelvénye)
      hozzaadva  – ÉÉÉÉ-HH-NN (az „Újdonságok” sorhoz és az „Újak elöl” rendezéshez)
      kiemelt    – 2: a nagy kiemelt kártya, 1: kis kiemelt, 0: nem kiemelt
      egyseg     – a rekord mértékegysége (pont, m, Ft…)
@@ -28,7 +28,7 @@ export const JATEKOK = [
   { id: 'flightsim', cim: 'HGWS Légi Öntözés', rovid: '3D repülőszimulátor Magyarország felett: öntözés, tűzoltás, precíziós célok.', kat: 'szimulator', cimkek: ['repülő', '3d', 'öntözés', 'tűzoltás', 'magyarország', 'egyjátékos'], ikon: '✈️', szin: '#2aa7d9', kepek: ['img/arcade/flightsim-1.webp', 'img/arcade/flightsim-2.webp', 'img/arcade/flightsim-3.webp'], statusz: 'uj', hozzaadva: '2026-11-21', kiemelt: 1, egyseg: 'p', ranglista: true,
     hosszu: 'Ülj be az öntözőgép pilótafülkéjébe, és repülj küldetéseket Magyarország felett: táblák öntözése, tűzoltás, precíziós célok és vízikarikák. A rekord a legjobb küldetéspontszám.',
     iranyitas: ['Az irányítást a játék indításkor mutatja', 'Billentyűzettel és érintéssel is játszható'] },
-  { id: 'boonline', cim: 'Öntöző Birodalom Online', rovid: 'Közös világ 13 régióval: telkek, piac, vezetékek, szövetkezetek, heti ostrom.', kat: 'strategia', cimkek: ['online', 'közös világ', 'piac', 'szövetkezet', 'építős'], ikon: '🌍', szin: '#e8b656', kepek: ['img/arcade/boonline-1.webp', 'img/arcade/boonline-2.webp', 'img/arcade/boonline-3.webp'], statusz: 'online', hozzaadva: '2026-11-20', kiemelt: 1, egyseg: '', ranglista: false, link: '#/birodalom',
+  { id: 'boonline', cim: 'Öntöző Birodalom Online', rovid: 'Közös világ 13 régióval: telkek, piac, vezetékek, szövetkezetek, heti ostrom.', kat: 'strategia', cimkek: ['online', 'közös világ', 'piac', 'szövetkezet', 'építős'], ikon: '🌍', szin: '#e8b656', kepek: ['img/arcade/boonline-1.webp', 'img/arcade/boonline-2.webp', 'img/arcade/boonline-3.webp'], statusz: 'closedbeta', hozzaadva: '2026-11-20', kiemelt: 1, egyseg: '', ranglista: false, link: '#/birodalom',
     hosszu: 'Az Öntöző Birodalom közös, állandó világa: 13 régióban foglalhatsz telket, kereskedhetsz a piacon, vezetékeket építhetsz, szövetkezetbe léphetsz, és hetente ostrom dönt a régiók sorsáról.',
     iranyitas: ['Egér vagy érintés', 'Bejelentkezés kell hozzá'] },
   { id: 'holtvaros', cim: 'Holtváros', rovid: 'Védd meg a várost a zombijárványtól: zónák, kapuk, őrség, légicsapás.', kat: 'strategia', cimkek: ['zombi', 'járvány', 'védekezés', 'térkép', 'magyarország', 'egyjátékos'], ikon: '🧟', szin: '#7dff4a', kepek: ['img/arcade/holtvaros-1.webp', 'img/arcade/holtvaros-2.webp', 'img/arcade/holtvaros-3.webp'], statusz: '', hozzaadva: '2026-11-20', kiemelt: 1, egyseg: 'pont', ranglista: true,

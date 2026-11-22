@@ -20,7 +20,7 @@
 .al-chips{display:flex;gap:.3rem;flex-wrap:wrap;align-items:center}
 .al-chips .al-kat,.al-chips .al-st,.al-chips .al-tg{font-size:.62rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:.16rem .45rem;border-radius:999px;white-space:nowrap}
 .al-chips .al-kat{background:rgba(108,198,255,.14);color:var(--water)}.al-chips .al-tg{background:rgba(255,255,255,.07);color:#a9b4c2;font-weight:600}
-.al-chips .al-st{background:rgba(232,182,86,.16);color:#ffd98a}.al-chips .al-st-online{background:rgba(94,224,138,.16);color:#7ef0a4}.al-chips .al-st-beta{background:rgba(180,140,255,.18);color:#cdb4ff}.al-chips .al-st-demo{background:rgba(255,255,255,.1);color:#cfd5dc}
+.al-chips .al-st{background:rgba(232,182,86,.16);color:#ffd98a}.al-chips .al-st-online{background:rgba(94,224,138,.16);color:#7ef0a4}.al-chips .al-st-beta,.al-chips .al-st-closedbeta{background:rgba(180,140,255,.18);color:#cdb4ff}.al-chips .al-st-demo{background:rgba(255,255,255,.1);color:#cfd5dc}
 .al-pl{flex:none;font-weight:800;font-size:.8rem;color:#04121f;background:var(--water);border-radius:999px;padding:.32rem .75rem;text-decoration:none;white-space:nowrap}.al-pl:hover{filter:brightness(1.12)}.al-pl.al-big{font-size:1rem;padding:.6rem 1.4rem}
 /* kiemelt sáv */
 .arcl .ahero{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(0,1fr);gap:.9rem;padding:0 var(--pad);margin-bottom:1.4rem}.arcl .ahero[hidden]{display:none}

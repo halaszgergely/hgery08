@@ -1,9 +1,9 @@
 // HGWS – Öntöző Birodalom Online: felület (világtérkép, régiók, telkek, Vízvár, negyedek, ostrom).
-import { $, $$, esc, toast, errText, avatar } from './core.js?v=202611220139';
-import { modal, confirmBox } from './ui.js?v=202611220139';
-import * as D from './bo-data.js?v=202611220139';
-import * as B from './bo.js?v=202611220139';
-import * as Friends from './friends.js?v=202611220139';
+import { $, $$, esc, toast, errText, avatar } from './core.js?v=202611220244';
+import { modal, confirmBox } from './ui.js?v=202611220244';
+import * as D from './bo-data.js?v=202611220244';
+import * as B from './bo.js?v=202611220244';
+import * as Friends from './friends.js?v=202611220244';
 
 let C = null, off = null, tick = null, path = [], pend = false, plotM = null, data = {};
 export function init(ctx) { C = ctx; B.init(ctx); }
@@ -20,7 +20,7 @@ export async function render(id) {
   leave(); path = (id || '').split('/').filter(Boolean); data = {};
   document.title = 'Öntöző Birodalom · HGWS';
   const page = $('#page');
-  if (C.S.guest) { page.innerHTML = `<div class="pg bo"><div class="empty"><div class="big"><i class="ic ic-droplets"></i></div><b>Öntöző Birodalom Online</b><p>A közös világ regisztrált tagoknak érhető el.</p></div></div>`; return; }
+  if (C.S.guest) { page.innerHTML = `<div class="pg bo"><div class="empty"><div class="big"><i class="ic ic-droplets"></i></div><b>Öntöző Birodalom Online</b> <span class="bo-beta">CLOSED BETA</span><p>A közös világ regisztrált tagoknak érhető el.</p></div></div>`; return; }
   if (!B.st.ready) page.innerHTML = '<div class="pg bo"><div class="spin" style="margin:5rem auto"></div></div>';
   try { await B.open(); } catch (e) { console.warn('birodalom', e); if (here()) page.innerHTML = `<div class="pg bo"><div class="empty"><b>Nem sikerült betölteni a világot.</b><p>${esc(errText(e))}</p></div></div>`; return; }
   if (!here()) return;
@@ -34,7 +34,7 @@ export async function render(id) {
 function head(v) {
   const P = v, r = D.rates(B.st.P, B.cx(), Date.now()), L = P.lv + 1, keys = Object.keys(D.RES).filter(k => k !== 'viz' && ((P.inv[k] || 0) >= 1 || r.net[k]));
   const wait = B.st.t0 + D.lvlWait(L) - Date.now(), rid = path[0], Rg = D.REG[rid];
-  return `<header class="bo-top"><div><div class="eyebrow">// ${esc(B.st.sid)} szezon · még ${days(D.seasonEnd(B.st.sid))} nap</div><h1 class="gold">Öntöző Birodalom</h1></div>
+  return `<header class="bo-top"><div><div class="eyebrow">// ${esc(B.st.sid)} szezon · még ${days(D.seasonEnd(B.st.sid))} nap</div><h1 class="gold">Öntöző Birodalom <span class="bo-beta">CLOSED BETA</span></h1></div>
     <div class="bo-me"><span class="bo-chip gold2">${P.lv}. szint</span><span class="bo-chip">💰 <b data-ft>${D.fmt(P.ft)}</b> Ft</span><span class="bo-chip${r.thirst < 1 ? ' bad' : ''}">💧 <b data-r="viz">${D.fmt(P.inv.viz || 0)}</b> <small${(r.net.viz || 0) < 0 ? ' class="neg"' : ''}>${D.perH(r.net.viz || 0)}</small></span>
     ${L <= D.MAX_LV ? `<button class="btn sm goldb" data-a="lvl"${wait > 0 || P.ft < D.lvlCost(L) ? ' disabled' : ''}>${L}. szint · ${D.fmt(D.lvlCost(L))} Ft${wait > 0 ? ' · ' + Math.ceil(wait / 60e3) + ' p' : ''}</button>` : ''}</div></header>
   <nav class="bo-crumb"><a href="#/birodalom"${!rid ? ' class="on"' : ''}><i class="ic ic-globe"></i> Térkép</a><a href="#/birodalom/vizvar"${rid === 'vizvar' ? ' class="on"' : ''}>🏛️ Vízvár</a><a href="#/birodalom/erod"${rid === 'erod' ? ' class="on"' : ''}>🏰 Ostrom</a>${Rg && !['vizvar', 'erod'].includes(rid) ? `<a class="on">${Rg.e} ${esc(Rg.n)}</a>` : ''}
