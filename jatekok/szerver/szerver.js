@@ -3,40 +3,51 @@
    Állapot: S (localStorage), a számolt értékek (áram, hálózat, hő, bevétel): C – a calc() állítja elő. */
 (() => {
   'use strict';
-  const $ = s => document.querySelector(s), cv = $('#c'), g = cv.getContext('2d'), KEY = 'hgws_szerver_v1', GAME = 'szerver';
+  const $ = s => document.querySelector(s), cv = $('#c'), g2 = cv.getContext('2d'), KEY = 'hgws_szerver_v1', GAME = 'szerver';
   const DAY = 30, KWH = 70, U = 20, RW = 240, RX = 310, ROW = 8, RY = 1000; // DAY: egy játéknap másodpercben
+  let g = g2, TEX = 0, GEN = 0;
   const ft = v => Math.round(v).toLocaleString('hu-HU') + ' Ft', sp = v => v >= 1000 ? v / 1000 + 'G' : v + 'M', rnd = (a, b) => a + Math.random() * (b - a), esc = s => String(s).replace(/[<>&]/g, '');
   const num = v => v >= 100 ? Math.round(v).toLocaleString('hu-HU') : (Math.round(v * 10) / 10).toLocaleString('hu-HU');
 
   /* ---------- katalógus ---------- */
-  const RACK = { k6: { n: 'Fali rack 6U', u: 6, c: 25e3 }, k12: { n: 'Rack 12U', u: 12, c: 55e3 }, k24: { n: 'Rack 24U', u: 24, c: 12e4 }, k42: { n: 'Rack 42U', u: 42, c: 26e4 } };
+  const RACK = { k9: { n: 'Fali rack 9U', u: 9, c: 38e3 }, k18: { n: 'Rack 18U', u: 18, c: 85e3 }, k32: { n: 'Rack 32U', u: 32, c: 18e4 }, k47: { n: 'Rack 47U', u: 47, c: 34e4 }, k6: { n: 'Fali rack 6U', u: 6, c: 25e3 }, k12: { n: 'Rack 12U', u: 12, c: 55e3 }, k24: { n: 'Rack 24U', u: 24, c: 12e4 }, k42: { n: 'Rack 42U', u: 42, c: 26e4 } };
   const DEV = {
+    mp: { n: 'Mini PC polcon', k: 'srv', u: 1, c: 12e3, cpu: 1, ram: 1, bay: 1, pci: 0, net: [1000], d: '1 CPU · 1 RAM · 1 lemez' },
     h1: { n: 'Házi szerver', k: 'srv', u: 2, c: 28e3, cpu: 1, ram: 2, bay: 2, pci: 1, net: [1000], d: '1 CPU · 2 RAM · 2 lemez · 1 bővítőhely' },
     m3: { n: 'Bányászkeret', k: 'srv', u: 3, c: 45e3, cpu: 1, ram: 1, bay: 1, pci: 6, net: [1000], d: '1 CPU · 1 RAM · 1 lemez · 6 bővítőhely' },
     r1: { n: 'Rack szerver 1U', k: 'srv', u: 1, c: 12e4, cpu: 2, ram: 8, bay: 4, pci: 1, net: [1000, 1000], d: '2 CPU · 8 RAM · 4 lemez · 1 bővítőhely' },
     r2: { n: 'Rack szerver 2U', k: 'srv', u: 2, c: 26e4, cpu: 2, ram: 16, bay: 12, pci: 3, net: [1000, 1000], d: '2 CPU · 16 RAM · 12 lemez · 3 bővítőhely' },
+    m6: { n: 'Bányászkeret XL', k: 'srv', u: 4, c: 11e4, cpu: 1, ram: 2, bay: 1, pci: 12, net: [1000], d: '1 CPU · 2 RAM · 1 lemez · 12 bővítőhely' },
+    d2u: { n: 'Sűrű szerver 2U', k: 'srv', u: 2, c: 48e4, cpu: 4, ram: 32, bay: 6, pci: 2, net: [10000, 10000], d: '4 CPU · 32 RAM · 6 lemez · 2 bővítőhely' },
+    r4: { n: 'Rack szerver 4U', k: 'srv', u: 4, c: 42e4, cpu: 4, ram: 24, bay: 24, pci: 4, net: [1000, 1000, 10000, 10000], d: '4 CPU · 24 RAM · 24 lemez · 4 bővítőhely' },
     s4: { n: 'Tárolószerver 4U', k: 'srv', u: 4, c: 52e4, cpu: 1, ram: 8, bay: 36, pci: 2, net: [10000, 10000], d: '1 CPU · 8 RAM · 36 lemez · 2 bővítőhely' },
     g4: { n: 'GPU szerver 4U', k: 'srv', u: 4, c: 65e4, cpu: 2, ram: 16, bay: 8, pci: 8, net: [10000, 10000], d: '2 CPU · 16 RAM · 8 lemez · 8 bővítőhely' },
     sw5: { n: 'Switch 5 port', k: 'sw', u: 1, c: 9e3, w: 8, net: Array(5).fill(1000), d: '5 × 1G' },
+    sw8: { n: 'Switch 8 port', k: 'sw', u: 1, c: 16e3, w: 12, net: Array(8).fill(1000), d: '8 × 1G' },
     sw16: { n: 'Switch 16 port', k: 'sw', u: 1, c: 38e3, w: 20, net: Array(16).fill(1000), d: '16 × 1G' },
     sw24: { n: 'Switch 24+4', k: 'sw', u: 1, c: 14e4, w: 45, net: [...Array(24).fill(1000), ...Array(4).fill(10000)], d: '24 × 1G · 4 × 10G' },
+    sw48: { n: 'Switch 48+4', k: 'sw', u: 1, c: 29e4, w: 80, net: [...Array(48).fill(1000), ...Array(4).fill(10000)], d: '48 × 1G · 4 × 10G' },
     sw24x: { n: 'Switch 24×10G', k: 'sw', u: 1, c: 75e4, w: 150, net: [...Array(24).fill(10000), ...Array(4).fill(40000)], d: '24 × 10G · 4 × 40G' },
+    sw48x: { n: 'Switch 48×10G', k: 'sw', u: 1, c: 15e5, w: 260, net: [...Array(48).fill(10000), ...Array(6).fill(40000)], d: '48 × 10G · 6 × 40G' },
     sw32q: { n: 'Gerinc switch', k: 'sw', u: 1, c: 32e5, w: 400, net: [...Array(24).fill(40000), ...Array(8).fill(100000)], d: '24 × 40G · 8 × 100G' },
     st6: { n: 'Elosztó 6-os', k: 'pw', u: 1, c: 6e3, out: 6, max: 3680, d: '6 aljzat · 3,7 kW' },
+    st8: { n: 'Elosztó 8-as', k: 'pw', u: 1, c: 11e3, out: 8, max: 3680, d: '8 aljzat · 3,7 kW' },
     pdu: { n: 'PDU 12-es', k: 'pw', u: 1, c: 48e3, out: 12, max: 7400, d: '12 aljzat · 7,4 kW' },
     pdx: { n: 'PDU 3 fázis', k: 'pw', u: 2, c: 22e4, out: 24, max: 22000, d: '24 aljzat · 22 kW' },
     up1: { n: 'UPS 1,5 kW', k: 'ups', u: 2, c: 11e4, out: 4, max: 1500, wh: 500, d: '4 aljzat · 1,5 kW · 500 Wh' },
+    up15: { n: 'UPS 3 kW', k: 'ups', u: 2, c: 26e4, out: 6, max: 3000, wh: 1500, d: '6 aljzat · 3 kW · 1,5 kWh' },
     up2: { n: 'UPS 6 kW', k: 'ups', u: 4, c: 65e4, out: 8, max: 6000, wh: 4000, d: '8 aljzat · 6 kW · 4 kWh' },
     up3: { n: 'UPS 20 kW', k: 'ups', u: 6, c: 24e5, out: 16, max: 20000, wh: 20000, d: '16 aljzat · 20 kW · 20 kWh' } };
   const PART = {
-    c4: { n: 'CPU 4 mag', k: 'cpu', c: 3e4, w: 65, v: 4 }, c8: { n: 'CPU 8 mag', k: 'cpu', c: 85e3, w: 95, v: 8 }, c16: { n: 'CPU 16 mag', k: 'cpu', c: 24e4, w: 150, v: 16 }, c32: { n: 'CPU 32 mag', k: 'cpu', c: 7e5, w: 225, v: 32 }, c64: { n: 'CPU 64 mag', k: 'cpu', c: 19e5, w: 320, v: 64 },
-    r8: { n: 'RAM 8 GB', k: 'ram', c: 8e3, w: 3, v: 8 }, r16: { n: 'RAM 16 GB', k: 'ram', c: 18e3, w: 4, v: 16 }, r32: { n: 'RAM 32 GB', k: 'ram', c: 4e4, w: 5, v: 32 }, r64: { n: 'RAM 64 GB', k: 'ram', c: 95e3, w: 7, v: 64 }, r128: { n: 'RAM 128 GB', k: 'ram', c: 22e4, w: 10, v: 128 },
-    d2: { n: 'HDD 2 TB', k: 'hdd', c: 2e4, w: 7, v: 2 }, d8: { n: 'HDD 8 TB', k: 'hdd', c: 6e4, w: 8, v: 8 }, d20: { n: 'HDD 20 TB', k: 'hdd', c: 14e4, w: 9, v: 20 }, e4: { n: 'SSD 4 TB', k: 'hdd', c: 11e4, w: 3, v: 4, ssd: 1 },
-    g1: { n: 'GPU G-10', k: 'gpu', c: 9e4, w: 120, v: 10 }, g2: { n: 'GPU G-25', k: 'gpu', c: 22e4, w: 220, v: 25 }, g3: { n: 'GPU G-60', k: 'gpu', c: 55e4, w: 350, v: 60 }, g4: { n: 'GPU G-150', k: 'gpu', c: 16e5, w: 450, v: 150 },
-    n10: { n: 'Hálókártya 2×10G', k: 'nic', c: 45e3, w: 15, v: 10000 }, n40: { n: 'Hálókártya 2×40G', k: 'nic', c: 18e4, w: 25, v: 40000 },
-    p300: { n: 'Táp 300 W', k: 'psu', c: 15e3, v: 300 }, p650: { n: 'Táp 650 W', k: 'psu', c: 3e4, v: 650 }, p1200: { n: 'Táp 1200 W', k: 'psu', c: 7e4, v: 1200 }, p2400: { n: 'Táp 2400 W', k: 'psu', c: 16e4, v: 2400 }, p4000: { n: 'Táp 4000 W', k: 'psu', c: 3e5, v: 4000 } };
+    c2: { n: 'CPU 2 mag', k: 'cpu', c: 12e3, w: 35, v: 2 }, c4: { n: 'CPU 4 mag', k: 'cpu', c: 3e4, w: 65, v: 4 }, c6: { n: 'CPU 6 mag', k: 'cpu', c: 55e3, w: 80, v: 6 }, c8: { n: 'CPU 8 mag', k: 'cpu', c: 85e3, w: 95, v: 8 }, c12: { n: 'CPU 12 mag', k: 'cpu', c: 15e4, w: 125, v: 12 }, c16: { n: 'CPU 16 mag', k: 'cpu', c: 24e4, w: 150, v: 16 }, c24: { n: 'CPU 24 mag', k: 'cpu', c: 43e4, w: 185, v: 24 }, c32: { n: 'CPU 32 mag', k: 'cpu', c: 7e5, w: 225, v: 32 }, c48: { n: 'CPU 48 mag', k: 'cpu', c: 12e5, w: 270, v: 48 }, c64: { n: 'CPU 64 mag', k: 'cpu', c: 19e5, w: 320, v: 64 }, c96: { n: 'CPU 96 mag', k: 'cpu', c: 34e5, w: 400, v: 96 },
+    r4: { n: 'RAM 4 GB', k: 'ram', c: 4500, w: 2, v: 4 }, r8: { n: 'RAM 8 GB', k: 'ram', c: 8e3, w: 3, v: 8 }, r16: { n: 'RAM 16 GB', k: 'ram', c: 18e3, w: 4, v: 16 }, r32: { n: 'RAM 32 GB', k: 'ram', c: 4e4, w: 5, v: 32 }, r64: { n: 'RAM 64 GB', k: 'ram', c: 95e3, w: 7, v: 64 }, r128: { n: 'RAM 128 GB', k: 'ram', c: 22e4, w: 10, v: 128 }, r256: { n: 'RAM 256 GB', k: 'ram', c: 52e4, w: 14, v: 256 },
+    d1: { n: 'HDD 1 TB', k: 'hdd', c: 12e3, w: 6, v: 1 }, d2: { n: 'HDD 2 TB', k: 'hdd', c: 2e4, w: 7, v: 2 }, d4: { n: 'HDD 4 TB', k: 'hdd', c: 34e3, w: 7, v: 4 }, d8: { n: 'HDD 8 TB', k: 'hdd', c: 6e4, w: 8, v: 8 }, d12: { n: 'HDD 12 TB', k: 'hdd', c: 85e3, w: 8, v: 12 }, d16: { n: 'HDD 16 TB', k: 'hdd', c: 11e4, w: 9, v: 16 }, d20: { n: 'HDD 20 TB', k: 'hdd', c: 14e4, w: 9, v: 20 }, d26: { n: 'HDD 26 TB', k: 'hdd', c: 2e5, w: 10, v: 26 },
+    e1: { n: 'SSD 1 TB', k: 'hdd', c: 3e4, w: 3, v: 1, ssd: 1 }, e2: { n: 'SSD 2 TB', k: 'hdd', c: 55e3, w: 3, v: 2, ssd: 1 }, e4: { n: 'SSD 4 TB', k: 'hdd', c: 11e4, w: 3, v: 4, ssd: 1 }, e8: { n: 'SSD 8 TB', k: 'hdd', c: 24e4, w: 4, v: 8, ssd: 1 }, e16: { n: 'SSD 16 TB', k: 'hdd', c: 52e4, w: 5, v: 16, ssd: 1 },
+    g0: { n: 'GPU G-5', k: 'gpu', c: 48e3, w: 75, v: 5 }, g1: { n: 'GPU G-10', k: 'gpu', c: 9e4, w: 120, v: 10 }, g15: { n: 'GPU G-16', k: 'gpu', c: 14e4, w: 160, v: 16 }, g2: { n: 'GPU G-25', k: 'gpu', c: 22e4, w: 220, v: 25 }, g25: { n: 'GPU G-40', k: 'gpu', c: 36e4, w: 280, v: 40 }, g3: { n: 'GPU G-60', k: 'gpu', c: 55e4, w: 350, v: 60 }, g35: { n: 'GPU G-100', k: 'gpu', c: 1e6, w: 400, v: 100 }, g4: { n: 'GPU G-150', k: 'gpu', c: 16e5, w: 450, v: 150 }, g5: { n: 'GPU G-260', k: 'gpu', c: 3e6, w: 600, v: 260 },
+    n1: { n: 'Hálókártya 4×1G', k: 'nic', c: 14e3, w: 8, v: 1000, pn: 4 }, n10: { n: 'Hálókártya 2×10G', k: 'nic', c: 45e3, w: 15, v: 10000 }, n25: { n: 'Hálókártya 4×10G', k: 'nic', c: 8e4, w: 22, v: 10000, pn: 4 }, n40: { n: 'Hálókártya 2×40G', k: 'nic', c: 18e4, w: 25, v: 40000 }, n100: { n: 'Hálókártya 2×100G', k: 'nic', c: 55e4, w: 35, v: 100000 },
+    p300: { n: 'Táp 300 W', k: 'psu', c: 15e3, v: 300 }, p450: { n: 'Táp 450 W', k: 'psu', c: 21e3, v: 450 }, p650: { n: 'Táp 650 W', k: 'psu', c: 3e4, v: 650 }, p850: { n: 'Táp 850 W', k: 'psu', c: 45e3, v: 850 }, p1200: { n: 'Táp 1200 W', k: 'psu', c: 7e4, v: 1200 }, p1600: { n: 'Táp 1600 W', k: 'psu', c: 1e5, v: 1600 }, p2400: { n: 'Táp 2400 W', k: 'psu', c: 16e4, v: 2400 }, p3200: { n: 'Táp 3200 W', k: 'psu', c: 23e4, v: 3200 }, p4000: { n: 'Táp 4000 W', k: 'psu', c: 3e5, v: 4000 }, p8000: { n: 'Táp 8000 W', k: 'psu', c: 65e4, v: 8000 } };
   const PK = { cpu: 'CPU', ram: 'RAM', hdd: 'Lemez', pci: 'Bővítő', psu: 'Táp' }, PU = { cpu: ' mag', ram: ' GB', hdd: ' TB', gpu: ' pont', psu: ' W' };
-  const COOL = { fan: { n: 'Ipari ventilátor', c: 12e3, v: 800, w: 60, s: 0 }, ac: { n: 'Mobilklíma', c: 15e4, v: 3000, w: 1000, s: 0 }, split: { n: 'Split klíma', c: 6e5, v: 8000, w: 2200, s: 1 }, crac: { n: 'Precíziós klíma', c: 6e6, v: 45000, w: 11000, s: 2 } };
+  const COOL = { fan: { n: 'Ipari ventilátor', c: 12e3, v: 800, w: 60, s: 0 }, vent: { n: 'Fali elszívó', c: 45e3, v: 1600, w: 120, s: 0 }, ac: { n: 'Mobilklíma', c: 15e4, v: 3000, w: 1000, s: 0 }, split: { n: 'Split klíma', c: 6e5, v: 8000, w: 2200, s: 1 }, inrow: { n: 'Soron belüli hűtő', c: 25e5, v: 20000, w: 5000, s: 2 }, crac: { n: 'Precíziós klíma', c: 6e6, v: 45000, w: 11000, s: 2 } };
   const SITE = [
     { n: 'Garázs', racks: 2, out: 2, omax: 3680, isp: 4, plan: 1, pas: 1200, k: 50, rent: 0, c: 0, bg: ['#3a3d42', '#2b2e33', '#55504a'] },
     { n: 'Pinceiroda', racks: 6, out: 4, omax: 7400, isp: 4, plan: 2, pas: 2500, k: 120, rent: 8e3, c: 4e5, bg: ['#39424a', '#2a3138', '#4a4f55'] },
@@ -53,8 +64,8 @@
     ['Költözz ki a garázsból', () => S.site >= 1, 2e5], ['Érj el napi 250 000 Ft bevételt', () => C.inc >= 25e4, 5e5], ['Költözz szerverterembe', () => S.site >= 2, 1e6], ['Érj el napi 2 000 000 Ft bevételt', () => C.inc >= 2e6, 4e6], ['Nyisd meg az adatközpont-csarnokot', () => S.site >= 3, 1e7], ['Érj el napi 20 000 000 Ft bevételt', () => C.inc >= 2e7, 5e7]];
 
   /* ---------- állapot ---------- */
-  let S = null, C = { d: {}, inc: 0, cost: 0, online: 0, hash: 0, heat: 0, temp: 21, bw: 0, wall: [] }, PORTS = [], PM = new Map(), dirty = 1;
-  const cam = { x: 120, y: -190, s: Math.min(1.7, Math.max(.8, innerWidth / 760)) }; let sel = null, place = null, mouse = [0, 0], pan = null, view = null;
+  let S = null, C = { d: {}, inc: 0, cost: 0, online: 0, hash: 0, heat: 0, temp: 21, bw: 0, wall: [] }, PORTS = [], PM = new Map(), RP = {}, dirty = 1;
+  const cam = { x: 120, y: -480, s: Math.min(1.7, Math.max(.8, innerWidth / 760)) }; let sel = null, place = null, mouse = [0, 0], pan = null, view = null;
   function fresh() { S = { v: 1, money: 2e5, life: 0, day: 0, site: 0, plan: 0, racks: [null, null], spare: [], inv: {}, cables: [], nid: 1, offers: [], cons: [], rep: 0, coin: 180, cool: {}, trip: {}, out: 0, goal: 0, spd: 1, ot: 0 }; for (let i = 0; i < 3; i++) offer(); dirty = 1; }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (_) {} };
   function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.v === 1 && Array.isArray(s.racks)) { S = s; return true; } } catch (_) {} return false; }
@@ -68,17 +79,18 @@
   const mk = t => { const D = DEV[t], d = { id: S.nid++, t, u: 0 }; if (D.k === 'srv') Object.assign(d, { on: 1, cpu: [], ram: [], hdd: [], pci: [], psu: null, mine: 0 }); if (D.k === 'ups') d.bat = D.wh; return d; };
   const pv = k => PART[k.replace('!', '')], broken = k => k[0] === '!';
   function cap(d) { const s = (a, f) => a.reduce((x, k) => x + (broken(k) || (f && !f(pv(k))) ? 0 : pv(k).v), 0); return { cores: s(d.cpu), ram: s(d.ram), tb: s(d.hdd), gpu: s(d.pci, p => p.k === 'gpu'), w: 25 + [...d.cpu, ...d.ram, ...d.hdd, ...d.pci].reduce((x, k) => x + pv(k).w, 0), psu: d.psu ? PART[d.psu].v : 0 }; }
-  function netPorts(d) { const D = DEV[d.t]; if (!D.net) return []; const a = D.net.slice(); if (D.k === 'srv') for (const k of d.pci) if (pv(k).k === 'nic') a.push(pv(k).v, pv(k).v); return a; }
+  function netPorts(d) { const D = DEV[d.t]; if (!D.net) return []; const a = D.net.slice(); if (D.k === 'srv') for (const k of d.pci) if (pv(k).k === 'nic') for (let j = 0; j < (pv(k).pn || 2); j++) a.push(pv(k).v); return a; }
   // egy eszköz portjai a saját bal felső sarkához képest
   function portsOf(d) { const D = DEV[d.t], o = [], h = D.u * U;
     if (D.k === 'pw' || D.k === 'ups') { const per = D.out > 12 ? 12 : D.out; for (let i = 0; i < D.out; i++) o.push({ k: 'po', i, x: 16 + (i % per) * 15, y: D.out > 12 ? (i < 12 ? h / 2 - 7 : h / 2 + 7) : h / 2 }); o.push({ k: 'pi', i: 0, x: RW - 14, y: h / 2 }); return o; }
     const n = netPorts(d), two = n.length > 8, pit = n.length > 24 ? 7.4 : 9.5, cols = two ? Math.ceil(n.length / 2) : n.length, x0 = RW - 30 - (D.k === 'sw' ? 0 : 0) - cols * pit;
     n.forEach((s, i) => o.push({ k: 'n', i, sp: s, x: x0 + (two ? i >> 1 : i) * pit + pit / 2, y: two ? (i & 1 ? h / 2 + 4.5 : h / 2 - 4.5) : h / 2 })); o.push({ k: 'pi', i: 0, x: RW - 14, y: h / 2 }); return o; }
-  const rackXY = i => { const r = S.racks[i], n = r ? RACK[r.t].u : 6; return [(i % ROW) * RX, Math.floor(i / ROW) * RY - n * U - 14]; };
+  const LIFT = 380, lift = i => { const r = S.racks[i]; return r && RACK[r.t].u <= 18 ? LIFT : 0; }; // a kis rackek asztalon állnak
+  const rackXY = i => { const r = S.racks[i], n = r ? RACK[r.t].u : 6; return [(i % ROW) * RX, Math.floor(i / ROW) * RY - lift(i) - n * U - 14]; };
   const pkey = (id, k, i) => id + ':' + k + ':' + i;
-  function wallPorts() { const st = SITE[S.site], o = []; for (let i = 0; i < st.isp; i++) o.push({ id: 0, k: 'n', i, sp: PLAN[S.plan].sp, x: -215 + (i % 4) * 26, y: -330 - Math.floor(i / 4) * 26 }); for (let i = 0; i < st.out; i++) o.push({ id: 0, k: 'po', i, x: -215 + (i % 4) * 30, y: -70 - Math.floor(i / 4) * 34 }); return o; }
-  function buildPorts() { PORTS = wallPorts(); S.racks.forEach((r, ri) => { if (!r) return; const [rx, ry] = rackXY(ri); for (const d of r.dev) for (const p of portsOf(d)) PORTS.push({ ...p, id: d.id, dev: d, x: rx + 14 + p.x, y: ry + 7 + d.u * U + p.y }); });
-    PM = new Map(PORTS.map(p => [pkey(p.id, p.k, p.i), p])); const n0 = S.cables.length; S.cables = S.cables.filter(c => PM.has(pkey(...c.a)) && PM.has(pkey(...c.b))); if (S.cables.length !== n0) dirty = 1; }
+  function wallPorts() { const st = SITE[S.site], o = []; for (let i = 0; i < st.isp; i++) o.push({ id: 0, k: 'n', i, sp: PLAN[S.plan].sp, x: -215 + (i % 4) * 26, y: -680 - Math.floor(i / 4) * 26 }); for (let i = 0; i < st.out; i++) o.push({ id: 0, k: 'po', i, x: -215 + (i % 4) * 30, y: -420 - Math.floor(i / 4) * 34 }); return o; }
+  function buildPorts() { PORTS = wallPorts(); S.racks.forEach((r, ri) => { if (!r) return; const [rx, ry] = rackXY(ri); for (const d of r.dev) for (const p of portsOf(d)) PORTS.push({ ...p, id: d.id, dev: d, ri, x: rx + 14 + p.x, y: ry + 7 + d.u * U + p.y }); });
+    PM = new Map(PORTS.map(p => [pkey(p.id, p.k, p.i), p])); RP = {}; for (const p of PORTS) (RP[p.ri === undefined ? -1 : p.ri] = RP[p.ri === undefined ? -1 : p.ri] || []).push(p); const n0 = S.cables.length; S.cables = S.cables.filter(c => PM.has(pkey(...c.a)) && PM.has(pkey(...c.b))); if (S.cables.length !== n0) dirty = 1; }
   const other = (id, k, i) => { const key = pkey(id, k, i); for (const c of S.cables) { if (pkey(...c.a) === key) return c.b; if (pkey(...c.b) === key) return c.a; } return null; };
 
   /* ---------- számítás: áram, hálózat, hő, bevétel ---------- */
@@ -97,7 +109,7 @@
       if (d.on && o.boot && o.psuOk && o.live) heat += o.cap.w; if (o.st === 'ok') { online++; if (d.mine) { o.hash = o.cap.gpu - o.use.gpu; hash += o.hash; } } }
     let cw = 0, cd = 0; for (const k in S.cool) { cw += COOL[k].v * S.cool[k]; cd += COOL[k].w * S.cool[k]; } const temp = 21 + Math.max(0, heat - st.pas - cw) / st.k, thr = temp > 38 ? .6 : 1;
     for (const c of S.cons) { const o = D[c.srv]; c.ok = !!o && o.st === 'ok'; if (c.ok) { inc += c.pay * thr; used += c.bw; } } inc += hash * S.coin * thr;
-    Object.assign(C, { d: D, inc, online, hash, heat, temp, bw: used, thr, cost: (heat + cd) / 1000 * 24 * KWH + st.rent + PLAN[S.plan].c, cd }); dirty = 0; }
+    Object.assign(C, { d: D, inc, online, hash, heat, temp, bw: used, thr, cost: (heat + cd) / 1000 * 24 * KWH + st.rent + PLAN[S.plan].c, cd }); dirty = 0; GEN++; }
   const ST = { ok: ['Online', 'ok'], off: ['Kikapcsolva', ''], parts: ['Hiányos', 'w'], psu: ['Gyenge táp', 'bad'], nopow: ['Nincs áram', 'bad'], nonet: ['Nincs hálózat', 'bad'], deg: ['Túlterhelt', 'bad'] };
 
   /* ---------- ügyfelek ---------- */
@@ -131,32 +143,37 @@
       const np = netPorts(d).length, bx = x + 18, bw = RW - 62 - (np > 8 ? Math.ceil(np / 2) : np) * 9.5 - 18, gp = d.pci.filter(k => pv(k).k === 'gpu').length;
       if (d.t === 'm3' || d.t === 'g4') { const n = D.pci, fw = Math.min(h - 8, (bw - 4) / n - 3); for (let i = 0; i < n; i++) { const cx = bx + 4 + i * (fw + 3) + fw / 2, cy = y + h / 2, has = i < gp; g.fillStyle = has ? '#0d0f12' : 'rgba(0,0,0,.25)'; g.beginPath(); g.arc(cx, cy, fw / 2, 0, 7); g.fill(); if (has) { g.strokeStyle = o.st === 'ok' && d.mine ? '#5ee08a' : '#59616b'; g.lineWidth = 1.2; const a = o.st === 'ok' ? t * 9 + i : i; for (let k = 0; k < 3; k++) { g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a + k * 2.094) * fw * .42, cy + Math.sin(a + k * 2.094) * fw * .42); g.stroke(); } } } }
       else { const rows = Math.max(1, Math.round(D.u * (D.bay > 12 ? 2.25 : D.bay > 4 ? 1.5 : 1))), cols = Math.ceil(D.bay / rows), cw = Math.min(26, bw / cols), ch = (h - 5) / rows; for (let i = 0; i < D.bay; i++) { const cx = bx + (i % cols) * cw, cy = y + 2.5 + Math.floor(i / cols) * ch, k = d.hdd[i]; g.fillStyle = k ? (broken(k) ? '#5a1f1c' : '#1c2026') : 'rgba(0,0,0,.28)'; g.fillRect(cx + .6, cy + .6, cw - 1.2, ch - 1.2); if (k) { g.fillStyle = broken(k) ? '#ff5a4d' : o.st === 'ok' && Math.sin(t * 7 + i * 1.7 + d.id) > .2 ? '#5ee08a' : '#2f6f45'; g.fillRect(cx + 2, cy + ch - 3.2, 2.5, 1.5); } } }
-      if (cam.s > .75) { g.fillStyle = 'rgba(235,239,246,.6)'; g.font = '600 5.5px Inter'; g.textAlign = 'right'; g.fillText(D.n.toUpperCase(), x + RW - 24 - (np > 8 ? Math.ceil(np / 2) : np) * 9.5 - 12, y + 7.5); g.textAlign = 'left'; } }
+      if ((TEX || cam.s > .75)) { g.fillStyle = 'rgba(235,239,246,.6)'; g.font = '600 5.5px Inter'; g.textAlign = 'right'; g.fillText(D.n.toUpperCase(), x + RW - 24 - (np > 8 ? Math.ceil(np / 2) : np) * 9.5 - 12, y + 7.5); g.textAlign = 'left'; } }
     else if (D.k === 'ups') { g.fillStyle = '#0c1014'; g.fillRect(x + 150, y + h / 2 - 6, 60, 12); g.fillStyle = o.onbat ? '#f59f00' : '#5ee08a'; g.fillRect(x + 152, y + h / 2 - 4, 56 * (d.bat / D.wh), 8); if (d.trip) { g.fillStyle = '#ff5a4d'; g.fillRect(x + 216, y + h / 2 - 3, 6, 6); } }
     else if (D.k === 'pw') { g.fillStyle = d.trip ? '#5a1f1c' : o.live ? '#ff5a4d' : '#3a1a18'; g.fillRect(x + RW - 34, y + h / 2 - 4, 8, 8); }
-    else if (cam.s > .75) { g.fillStyle = 'rgba(235,239,246,.6)'; g.font = '600 5.5px Inter'; g.fillText(D.n.toUpperCase(), x + 9, y + h / 2 + 2); }
+    else if ((TEX || cam.s > .75)) { g.fillStyle = 'rgba(235,239,246,.6)'; g.font = '600 5.5px Inter'; g.fillText(D.n.toUpperCase(), x + 9, y + h / 2 + 2); }
     g.globalAlpha = 1; }
-  function drawPort(p) { const used = !!other(p.id, p.k, p.i), hot = sel && ok2(sel, p);
+  function drawPort(p) { const used = !!other(p.id, p.k, p.i), hot = sel && ok2(sel, p), me = sel && sel.id === p.id && sel.k === p.k && sel.i === p.i;
     if (p.k === 'n') { g.fillStyle = '#0a0c0f'; g.fillRect(p.x - 3.6, p.y - 3.2, 7.2, 6.4); g.fillStyle = p.sp >= 40000 ? '#b197fc' : p.sp >= 10000 ? '#f59f00' : '#c9ced6'; g.fillRect(p.x - 2.6, p.y - 2.2, 5.2, 1.2); if (used) { const o = p.id ? C.d[p.id] : { live: 1 }; g.fillStyle = o && (o.live || o.st === 'ok') && Math.sin(performance.now() / 90 + p.x) > -.3 ? '#5ee08a' : '#1d3b28'; g.fillRect(p.x + 1.2, p.y + 1.2, 1.8, 1.4); } }
     else { g.fillStyle = p.k === 'pi' ? '#0a0c0f' : '#e9e4d8'; g.beginPath(); g.arc(p.x, p.y, p.id ? 4.6 : 9, 0, 7); g.fill(); g.fillStyle = p.k === 'pi' ? '#c9a227' : '#222'; const r = p.id ? 1 : 1.7, o = p.id ? 1.8 : 3.4; g.beginPath(); g.arc(p.x - o, p.y, r, 0, 7); g.arc(p.x + o, p.y, r, 0, 7); g.fill(); if (!p.id && S.trip[p.i]) { g.strokeStyle = '#ff5a4d'; g.lineWidth = 2; g.beginPath(); g.arc(p.x, p.y, 11.5, 0, 7); g.stroke(); } }
-    if (hot || (sel && sel === p)) { g.strokeStyle = sel === p ? '#fff' : '#4cc9f0'; g.lineWidth = 1.4; g.beginPath(); g.arc(p.x, p.y, p.id ? 6.5 : 12, 0, 7); g.stroke(); } }
-  function cable(ax, ay, bx, by, col, w) { const dx = Math.abs(bx - ax), sag = 14 + Math.min(160, dx * .22 + Math.abs(by - ay) * .1); g.beginPath(); g.moveTo(ax, ay); g.bezierCurveTo(ax + (bx - ax) * .1, ay + sag, bx - (bx - ax) * .1, by + sag, bx, by); g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = w + 1.6; g.stroke(); g.strokeStyle = col; g.lineWidth = w; g.stroke(); }
+    if (hot || me) { g.strokeStyle = me ? '#fff' : '#4cc9f0'; g.lineWidth = 1.4; g.beginPath(); g.arc(p.x, p.y, p.id ? 6.5 : 12, 0, 7); g.stroke(); } }
+  function cable(pts, col, w) { const tight = pts.length > 2; g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) { const [ax, ay] = pts[i - 1], [bx, by] = pts[i], sag = sagOf(ax, ay, bx, by, tight); g.bezierCurveTo(ax + (bx - ax) * .1, ay + sag, bx - (bx - ax) * .1, by + sag, bx, by); }
+    g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = w + 1.6; g.stroke(); g.strokeStyle = col; g.lineWidth = w; g.stroke(); for (let i = 1; i < pts.length - 1; i++) { g.fillStyle = '#9aa3ad'; g.beginPath(); g.arc(pts[i][0], pts[i][1], 3.2, 0, 7); g.fill(); g.fillStyle = '#2a2f36'; g.beginPath(); g.arc(pts[i][0], pts[i][1], 1.3, 0, 7); g.fill(); } }
+  const sagOf = (ax, ay, bx, by, tight) => tight ? 3 + Math.hypot(bx - ax, by - ay) * .05 : 14 + Math.min(160, Math.abs(bx - ax) * .22 + Math.abs(by - ay) * .1);
+  const cpts = c => { const a = PM.get(pkey(...c.a)), b = PM.get(pkey(...c.b)); return a && b ? [[a.x, a.y], ...(c.w || []), [b.x, b.y]] : null; };
+  function wallBox() { const st = SITE[S.site]; return [-250, -740 - Math.floor((st.isp - 1) / 4) * 26, -120, -380]; }
+  function drawWall() { const st = SITE[S.site]; rr(-250, -740 - Math.floor((st.isp - 1) / 4) * 26, 130, 100 + Math.floor((st.isp - 1) / 4) * 26, 8); g.fillStyle = '#d9d4c7'; g.fill(); g.fillStyle = '#1d2835'; g.font = '800 9px Inter'; g.fillText('INTERNET · ' + PLAN[S.plan].n.toUpperCase(), -240, -648); const oh = Math.floor((st.out - 1) / 4) * 34; rr(-250, -450 - oh, 130, 70 + oh, 8); g.fillStyle = S.out > 0 ? '#6b6659' : '#cfc9bb'; g.fill(); g.fillStyle = '#1d2835'; g.fillText(S.out > 0 ? 'ÁRAMSZÜNET' : 'HÁLÓZATI ÁRAM', -240, -388); for (const p of RP[-1] || []) drawPort(p); }
+  function drawRack(i) { const r = S.racks[i], [x, y] = rackXY(i), by = Math.floor(i / ROW) * RY;
+    if (!r) { g.setLineDash([6, 6]); g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = 1.5; g.strokeRect(x, by - 134, RW + 28, 134); g.setLineDash([]); g.fillStyle = 'rgba(255,255,255,.22)'; g.font = '700 11px Inter'; g.textAlign = 'center'; g.fillText('ÜRES HELY', x + RW / 2 + 14, by - 62); g.textAlign = 'left'; return; }
+    const n = RACK[r.t].u; if (!TEX) { g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(x + 6, by, RW + 28, 5); if (lift(i)) { g.fillStyle = '#6b4a2c'; g.fillRect(x - 8, by - LIFT, RW + 44, 12); g.fillStyle = '#4e3620'; g.fillRect(x - 2, by - LIFT + 12, 10, LIFT - 12); g.fillRect(x + RW + 20, by - LIFT + 12, 10, LIFT - 12); } } rr(x, y, RW + 28, n * U + 14, 4); g.fillStyle = '#111317'; g.fill(); g.strokeStyle = '#2f343b'; g.lineWidth = 2; g.stroke(); g.fillStyle = '#0a0b0d'; g.fillRect(x + 14, y + 7, RW, n * U);
+    g.fillStyle = '#23272d'; for (let u = 0; u < n; u++) { g.fillRect(x + 6, y + 7 + u * U + 4, 3, 3); g.fillRect(x + 6, y + 7 + u * U + 13, 3, 3); g.fillRect(x + RW + 19, y + 7 + u * U + 4, 3, 3); g.fillRect(x + RW + 19, y + 7 + u * U + 13, 3, 3); g.fillStyle = 'rgba(255,255,255,.035)'; g.fillRect(x + 14, y + 7 + u * U + U - 1, RW, 1); g.fillStyle = '#23272d'; }
+    for (const dv of r.dev) drawDev(dv, x + 14, y + 7 + dv.u * U);
+    if (place) { const h = hitU(mouse[0], mouse[1]); if (h && h.ri === i && free(h.ri, h.u, DEV[place.t].u, place.id)) drawDev(place, x + 14, y + 7 + h.u * U, 1); }
+    for (const p of RP[i] || []) drawPort(p); }
   function draw() { const d = devicePixelRatio || 1, W = cv.width, H = cv.height, st = SITE[S.site], s = cam.s * d; g.setTransform(1, 0, 0, 1, 0, 0);
     const rows = Math.ceil(st.racks / ROW), gw = g.createLinearGradient(0, 0, 0, H); gw.addColorStop(0, st.bg[1]); gw.addColorStop(1, st.bg[0]); g.fillStyle = gw; g.fillRect(0, 0, W, H); g.setTransform(s, 0, 0, s, W / 2 - cam.x * s, H / 2 - cam.y * s);
     const vx0 = cam.x - W / 2 / s, vx1 = cam.x + W / 2 / s;
     for (let r = 0; r < rows; r++) { const y = r * RY; g.fillStyle = st.bg[2]; g.fillRect(vx0, y, vx1 - vx0, 46); g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(vx0, y, vx1 - vx0, 3); if (S.site === 0) { g.strokeStyle = 'rgba(0,0,0,.14)'; g.lineWidth = 1; for (let yy = y - 40; yy > y - 900; yy -= 40) { g.beginPath(); g.moveTo(Math.max(vx0, -300), yy); g.lineTo(Math.min(vx1, 700), yy); g.stroke(); } } }
-    // fali csatlakozók
-    rr(-250, -390 - Math.floor((st.isp - 1) / 4) * 26, 130, 100 + Math.floor((st.isp - 1) / 4) * 26, 8); g.fillStyle = '#d9d4c7'; g.fill(); g.fillStyle = '#1d2835'; g.font = '800 9px Inter'; g.fillText('INTERNET · ' + PLAN[S.plan].n.toUpperCase(), -240, -300 + 2); const oh = Math.floor((st.out - 1) / 4) * 34; rr(-250, -100 - oh, 130 + (st.out > 4 ? 0 : 0), 70 + oh, 8); g.fillStyle = S.out > 0 ? '#6b6659' : '#cfc9bb'; g.fill(); g.fillStyle = '#1d2835'; g.fillText(S.out > 0 ? 'ÁRAMSZÜNET' : 'HÁLÓZATI ÁRAM', -240, -38);
-    // rackek
-    for (let i = 0; i < st.racks; i++) { const r = S.racks[i], [x, y] = rackXY(i), by = Math.floor(i / ROW) * RY; if (x + 280 < vx0 || x - 20 > vx1) continue;
-      if (!r) { g.setLineDash([6, 6]); g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = 1.5; g.strokeRect(x, by - 134, RW + 28, 134); g.setLineDash([]); g.fillStyle = 'rgba(255,255,255,.22)'; g.font = '700 11px Inter'; g.textAlign = 'center'; g.fillText('ÜRES HELY', x + RW / 2 + 14, by - 62); g.textAlign = 'left'; continue; }
-      const n = RACK[r.t].u; g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(x + 6, by, RW + 28, 5); rr(x, y, RW + 28, n * U + 14, 4); g.fillStyle = '#111317'; g.fill(); g.strokeStyle = '#2f343b'; g.lineWidth = 2; g.stroke(); g.fillStyle = '#0a0b0d'; g.fillRect(x + 14, y + 7, RW, n * U);
-      g.fillStyle = '#23272d'; for (let u = 0; u < n; u++) { g.fillRect(x + 6, y + 7 + u * U + 4, 3, 3); g.fillRect(x + 6, y + 7 + u * U + 13, 3, 3); g.fillRect(x + RW + 19, y + 7 + u * U + 4, 3, 3); g.fillRect(x + RW + 19, y + 7 + u * U + 13, 3, 3); g.fillStyle = 'rgba(255,255,255,.035)'; g.fillRect(x + 14, y + 7 + u * U + U - 1, RW, 1); g.fillStyle = '#23272d'; }
-      for (const dv of r.dev) drawDev(dv, x + 14, y + 7 + dv.u * U); }
-    if (place) { const h = hitU(mouse[0], mouse[1]); if (h && free(h.ri, h.u, DEV[place.t].u, place.id)) { const [x, y] = rackXY(h.ri); drawDev(place, x + 14, y + 7 + h.u * U, 1); } }
-    for (const p of PORTS) drawPort(p);
-    S.cables.forEach((c, i) => { const a = PM.get(pkey(...c.a)), b = PM.get(pkey(...c.b)); if (!a || !b) return; if (c.a[1] === 'n') cable(a.x, a.y, b.x, b.y, NC[c.c % NC.length], 2.2); else cable(a.x, a.y, b.x, b.y, '#16181b', 3.4); });
-    if (sel) cable(sel.x, sel.y, mouse[0], mouse[1], sel.k === 'n' ? '#4cc9f0' : '#555', sel.k === 'n' ? 2.2 : 3.4); }
+    drawWall(); for (let i = 0; i < st.racks; i++) { const x = rackXY(i)[0]; if (x + 280 < vx0 || x - 20 > vx1) continue; drawRack(i); }
+    for (const c of S.cables) { const p = cpts(c); if (p) cable(p, c.a[1] === 'n' ? NC[c.c % NC.length] : '#16181b', c.a[1] === 'n' ? 2.2 : 3.4); }
+    if (sel) cable([[sel.x, sel.y], ...sel.w, mouse], sel.k === 'n' ? '#4cc9f0' : '#555', sel.k === 'n' ? 2.2 : 3.4); }
+  // a 3D nézet textúrái: egy rack vagy a fali csatlakozók rajza saját vászonra
+  function drawTo(ctx, k, x, y, w, h, f) { g = ctx; TEX = 1; g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w * k, h * k); g.setTransform(k, 0, 0, k, -x * k, -y * k); try { f(); } finally { g = g2; TEX = 0; } }
 
   /* ---------- kattintás, elhelyezés, kábelezés ---------- */
   const toW = e => { const r = cv.getBoundingClientRect(); return [cam.x + (e.clientX - r.left - r.width / 2) / cam.s, cam.y + (e.clientY - r.top - r.height / 2) / cam.s]; };
@@ -164,24 +181,26 @@
   function hitPort(x, y) { let b = null, bd = 1e9; for (const p of PORTS) { const r = (p.id ? 7 : 12) + 3 / cam.s, dd = Math.hypot(p.x - x, p.y - y); if (dd < r && dd < bd) { b = p; bd = dd; } } return b; }
   function hitU(x, y) { for (let i = 0; i < SITE[S.site].racks; i++) { const r = S.racks[i]; if (!r) continue; const [rx, ry] = rackXY(i), n = RACK[r.t].u; if (x >= rx && x <= rx + RW + 28 && y >= ry && y <= ry + n * U + 14) { const u = Math.max(0, Math.min(n - 1, Math.floor((y - ry - 7) / U))); return { ri: i, u, dev: r.dev.find(d => u >= d.u && u < d.u + DEV[d.t].u) }; } } return null; }
   const free = (ri, u, h, skip) => { const r = S.racks[ri]; return !!r && u + h <= RACK[r.t].u && !r.dev.some(d => d.id !== skip && u < d.u + DEV[d.t].u && d.u < u + h); };
+  const cancel = () => { if (sel && sel.re) { beep(300); dirty = 1; } sel = place = null; hint(); };
   function click(x, y) { const p = hitPort(x, y);
     if (place) { const h = hitU(x, y); if (h && free(h.ri, h.u, DEV[place.t].u)) { place.u = h.u; S.spare = S.spare.filter(d => d !== place); S.racks[h.ri].dev.push(place); const d = place; place = null; beep(520); dirty = 1; hint(); openDev(d.id); } else if (!h) { place = null; hint(); } return; }
-    if (sel) { if (p && ok2(sel, p)) { const net = sel.k === 'n', c = net ? (Math.min(sel.sp, p.sp) >= 10000 ? 6000 : 600) : 900; if (pay(c)) { S.cables.push({ a: [sel.id, sel.k, sel.i], b: [p.id, p.k, p.i], c: S.nid++ }); dirty = 1; } } sel = null; hint(); return; }
-    if (p) { if (!p.id && p.k === 'po' && S.trip[p.i]) { delete S.trip[p.i]; dirty = 1; beep(440); return; } const o = other(p.id, p.k, p.i); if (o) { const key = pkey(p.id, p.k, p.i); S.cables = S.cables.filter(c => pkey(...c.a) !== key && pkey(...c.b) !== key); dirty = 1; beep(300); } else { sel = p; hint(); } return; }
+    if (sel) { if (p && ok2(sel, p)) { const net = sel.k === 'n', c = net ? (Math.min(sel.sp, p.sp) >= 10000 ? 6000 : 600) : 900; if (sel.re || pay(c)) { S.cables.push({ a: [sel.id, sel.k, sel.i], b: [p.id, p.k, p.i], c: sel.re ? sel.re.c : S.nid++, w: sel.w }); if (sel.re) beep(520); sel = null; dirty = 1; } } else if (!p && sel.w.length < 24) { sel.w.push([Math.round(x), Math.round(y)]); beep(420, .04); } hint(); return; }
+    if (p) { if (!p.id && p.k === 'po' && S.trip[p.i]) { delete S.trip[p.i]; dirty = 1; beep(440); return; } const key = pkey(p.id, p.k, p.i), ci = S.cables.findIndex(c => pkey(...c.a) === key || pkey(...c.b) === key);
+      if (ci >= 0) { const c = S.cables[ci], mine = pkey(...c.a) === key, o = PM.get(pkey(...(mine ? c.b : c.a))); S.cables.splice(ci, 1); sel = { ...o, w: mine ? (c.w || []).slice().reverse() : (c.w || []).slice(), re: c }; dirty = 1; beep(300); } else sel = { ...p, w: [] }; hint(); return; }
     const h = hitU(x, y); if (h && h.dev) return openDev(h.dev.id); if (h) return openRack(h.ri); if (view === 'dev' || view === 'rack') closeP(); }
-  function hint() { const e = $('#hint'); if (place) { e.hidden = false; e.innerHTML = '📥 ' + esc(DEV[place.t].n) + ' <button class="b sm" data-a="cancel">Mégse</button>'; } else if (sel) { e.hidden = false; e.innerHTML = (sel.k === 'n' ? '🔌 Hálózati kábel' : '⚡ Tápkábel') + ' <button class="b sm" data-a="cancel">Mégse</button>'; } else e.hidden = true; }
+  function hint() { const e = $('#hint'); if (place) { e.hidden = false; e.innerHTML = '📥 ' + esc(DEV[place.t].n) + ' <button class="b sm" data-a="cancel">Mégse</button>'; } else if (sel) { e.hidden = false; e.innerHTML = (sel.k === 'n' ? '🔌 Hálózati kábel' : '⚡ Tápkábel') + (sel.w.length ? ' · ' + sel.w.length + ' rögzítő' : '') + ' <button class="b sm" data-a="cancel">Mégse</button>'; } else e.hidden = true; }
   const PT = new Map(); let moved = 0;
-  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); PT.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; pan = { x: e.clientX, y: e.clientY }; if (PT.size === 2) { const [a, b] = [...PT.values()]; pan.pin = Math.hypot(a[0] - b[0], a[1] - b[1]); pan.s0 = cam.s; } });
-  cv.addEventListener('pointermove', e => { mouse = toW(e); if (!PT.has(e.pointerId)) return; PT.set(e.pointerId, [e.clientX, e.clientY]); if (PT.size === 2 && pan && pan.pin) { const [a, b] = [...PT.values()]; cam.s = Math.max(.15, Math.min(4, pan.s0 * Math.hypot(a[0] - b[0], a[1] - b[1]) / pan.pin)); moved = 99; return; } if (!pan) return; const dx = e.clientX - pan.x, dy = e.clientY - pan.y; moved += Math.abs(dx) + Math.abs(dy); if (moved > 6) { cam.x -= dx / cam.s; cam.y -= dy / cam.s; } pan.x = e.clientX; pan.y = e.clientY; });
-  cv.addEventListener('pointerup', e => { PT.delete(e.pointerId); if (moved <= 6 && pan && !pan.pin) { mouse = toW(e); click(mouse[0], mouse[1]); } if (!PT.size) pan = null; });
+  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); PT.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; pan = { x: e.clientX, y: e.clientY }; { const w = toW(e); pan.w = w; pan.port = !sel && !place && !!hitPort(w[0], w[1]); } if (PT.size === 2) { const [a, b] = [...PT.values()]; pan.pin = Math.hypot(a[0] - b[0], a[1] - b[1]); pan.s0 = cam.s; } });
+  cv.addEventListener('pointermove', e => { mouse = toW(e); if (!PT.has(e.pointerId)) return; PT.set(e.pointerId, [e.clientX, e.clientY]); if (PT.size === 2 && pan && pan.pin) { const [a, b] = [...PT.values()]; cam.s = Math.max(.15, Math.min(4, pan.s0 * Math.hypot(a[0] - b[0], a[1] - b[1]) / pan.pin)); moved = 99; return; } if (!pan) return; const dx = e.clientX - pan.x, dy = e.clientY - pan.y; moved += Math.abs(dx) + Math.abs(dy); if (pan.port) { if (moved > 6 && !pan.drag) { pan.drag = 1; click(pan.w[0], pan.w[1]); } } else if (moved > 6) { cam.x -= dx / cam.s; cam.y -= dy / cam.s; } pan.x = e.clientX; pan.y = e.clientY; });
+  cv.addEventListener('pointerup', e => { PT.delete(e.pointerId); if (moved <= 6 && pan && !pan.pin) { mouse = toW(e); click(mouse[0], mouse[1]); } else if (pan && pan.drag) { mouse = toW(e); if (hitPort(mouse[0], mouse[1])) click(mouse[0], mouse[1]); } if (!PT.size) pan = null; });
   cv.addEventListener('pointercancel', e => { PT.delete(e.pointerId); pan = null; });
   cv.addEventListener('wheel', e => { e.preventDefault(); const w = toW(e), f = Math.exp(-Math.max(-80, Math.min(80, e.deltaY)) * .0022), s1 = Math.max(.15, Math.min(4, cam.s * f)); cam.x = w[0] - (w[0] - cam.x) * cam.s / s1; cam.y = w[1] - (w[1] - cam.y) * cam.s / s1; cam.s = s1; }, { passive: false });
-  cv.addEventListener('contextmenu', e => { e.preventDefault(); sel = place = null; hint(); });
-  addEventListener('keydown', e => { if (e.key === 'Escape') { sel = place = null; hint(); } if (e.key === ' ' && $('#menu').hidden) { e.preventDefault(); S.spd = S.spd ? 0 : 1; } });
+  cv.addEventListener('contextmenu', e => { e.preventDefault(); cancel(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape') cancel(); if (e.key === ' ' && $('#menu').hidden) { e.preventDefault(); S.spd = S.spd ? 0 : 1; } });
 
   /* ---------- panelek ---------- */
   let shopTab = 'rack', devId = 0, slot = null, rackI = 0;
-  const openP = (v, t) => { view = v; $('#pnl').hidden = false; $('#pt').textContent = t; ui(); }, closeP = () => { view = null; $('#pnl').hidden = true; };
+  const openP = (v, t) => { if (document.pointerLockElement) document.exitPointerLock(); view = v; $('#pnl').hidden = false; $('#pt').textContent = t; ui(); }, closeP = () => { view = null; $('#pnl').hidden = true; };
   const openDev = id => { devId = id; slot = null; openP('dev', ''); }, openRack = i => { rackI = i; openP('rack', ''); };
   const it = (a, b, btn) => `<div class="it"><div><b>${a}</b><small>${b}</small></div>${btn || ''}</div>`, B = (a, v, t, dis, cl) => `<button class="b sm ${cl || ''}" data-a="${a}" data-v="${v}" ${dis ? 'disabled' : ''}>${t}</button>`;
   const bar = (a, b, u) => `<small>${u}: ${num(a)} / ${num(b)}</small><div class="bar"><i class="${a > b + 1e-6 ? 'hi' : ''}" style="width:${Math.min(100, b ? a / b * 100 : 0)}%"></i></div>`;
@@ -212,7 +231,7 @@
     $('#tmp').textContent = '🌡 ' + C.temp.toFixed(0) + ' °C'; $('#tmp').style.color = C.temp > 38 ? 'var(--bad)' : C.temp > 32 ? 'var(--gold2)' : ''; $('#net').innerHTML = '🌐 ' + num(C.bw) + '<small>/ ' + PLAN[S.plan].sp.toLocaleString('hu-HU') + ' Mbit</small>'; $('#coin').innerHTML = '₿ ' + Math.round(S.coin) + '<small>Ft/pont</small>'; $('#rep').textContent = '★ ' + Math.floor(S.rep);
     const G = GOALS[S.goal]; $('#goal').hidden = !G; if (G) $('#goal').innerHTML = '🎯 ' + G[0] + ' · <b>+' + ft(G[2]) + '</b>'; }
   function act(a, v) { const [d, ri] = view === 'dev' ? findDev(devId) : [null, -1];
-    if (a === 'cancel') { sel = place = null; hint(); } else if (a === 'tab') shopTab = v; else if (a === 'spd') S.spd = +v;
+    if (a === 'cancel') cancel(); else if (a === 'tab') shopTab = v; else if (a === 'spd') S.spd = +v;
     else if (a === 'rack') { const i = S.racks.slice(0, SITE[S.site].racks).findIndex(r => !r); if (i >= 0 && pay(RACK[v].c)) { S.racks[i] = { t: v, dev: [] }; cam.x = rackXY(i)[0] + 130; closeP(); } }
     else if (a === 'rup') { const r = S.racks[rackI]; if (pay(RACK[v].c - RACK[r.t].c * .5)) r.t = v; } else if (a === 'rdel') { S.money += RACK[S.racks[rackI].t].c * .5; S.racks[rackI] = null; closeP(); }
     else if (a === 'part') { if (pay(PART[v].c)) S.inv[v] = (S.inv[v] || 0) + 1; } else if (a === 'cool') { if (pay(COOL[v].c)) S.cool[v] = (S.cool[v] || 0) + 1; }
@@ -235,15 +254,24 @@
   $('#mPlay').onclick = () => { $('#menu').hidden = true; beep(660); };
   $('#mNew').onclick = () => { const b = $('#mNew'); if (b.dataset.sure) { localStorage.removeItem(KEY); fresh(); calc(); delete b.dataset.sure; b.textContent = 'Új játék'; $('#menu').hidden = true; closeP(); } else { b.dataset.sure = 1; b.textContent = 'Biztos? Minden elvész'; } };
 
+  /* ---------- 3D (belső nézet): fps.js ---------- */
+  let F3 = null, f3load = 0;
+  window.SZ3 = { get S() { return S; }, get C() { return C; }, get PORTS() { return PORTS; }, get PM() { return PM; }, get sel() { return sel; }, get place() { return place; }, get gen() { return GEN; }, SITE, RACK, DEV, U, RW, RX, ROW, RY, NC, rackXY, lift, wallBox, pkey, cpts, sagOf, click, cancel, hitPort, hitU, setMouse: (x, y) => { mouse = [x, y]; },
+    rackTo: (ctx, i, k) => { const [x, y] = rackXY(i), r = S.racks[i]; drawTo(ctx, k, x, y, RW + 28, RACK[r.t].u * U + 14, () => drawRack(i)); }, wallTo: (ctx, k) => { const b = wallBox(); drawTo(ctx, k, b[0], b[1], b[2] - b[0], b[3] - b[1], () => { g.fillStyle = '#7d8187'; g.fillRect(b[0], b[1], 130, b[3] - b[1]); drawWall(); }); } };
+  function toggle3D(on) { if (on === undefined) on = !(F3 && F3.on); $('#bFps').classList.toggle('on', on); if (!on) { if (F3) F3.stop(); $('#c3').hidden = true; cv.hidden = false; return; }
+    const go = () => { $('#c3').hidden = false; cv.hidden = true; F3.start(); }; if (F3) return go(); if (f3load) return; f3load = 1;
+    import('./fps.js?v=202611220336').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; $('#bFps').classList.remove('on'); toast('A belső nézet nem indult el.', 1); }); }
+  $('#bFps').onclick = () => toggle3D();
+
   /* ---------- főciklus ---------- */
   const score = () => { try { if (window.top !== window && S.life > 0) parent.postMessage({ hgws: 'score', game: GAME, score: Math.floor(S.life) }, location.origin); } catch (_) {} };
   function resize() { const d = devicePixelRatio || 1; cv.width = innerWidth * d; cv.height = innerHeight * d; } addEventListener('resize', resize); resize();
   let last = performance.now(), acc = 0, uiT = 0, saveT = 5, scT = 60;
   function loop(now) { const dt = Math.min(.1, (now - last) / 1000); last = now;
     if ($('#menu').hidden && S.spd) { acc += dt * S.spd; while (acc >= .25) { acc -= .25; if (dirty) calc(); tick(.25 / DAY); } }
-    if (dirty) calc(); draw(); if ((uiT -= dt) <= 0) { uiT = .5; top(); if (view === 'dev' && !slot || view === 'site') ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); } if ((scT -= dt) <= 0) { scT = 60; score(); }
+    if (dirty) calc(); if (F3 && F3.on) F3.frame(dt); else draw(); if ((uiT -= dt) <= 0) { uiT = .5; top(); if (view === 'dev' && !slot || view === 'site') ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); } if ((scT -= dt) <= 0) { scT = 60; score(); }
     requestAnimationFrame(loop); }
   const had = load(); if (!had) fresh(); if (had) { $('#mPlay').textContent = '▶ Folytatás'; $('#mNew').hidden = false; } calc(); top(); addEventListener('pagehide', () => { save(); score(); });
-  window.__sz = () => ({ S, C, act, click, calc, tick, PORTS, DEV, PART, mk, cam, accept, fit, offer }); Object.defineProperty(window.__sz, 'S', { get: () => S });
+  window.__sz = () => ({ toggle3D, get F3() { return F3; }, get sel() { return sel; }, S, C, act, click, calc, tick, PORTS, DEV, PART, mk, cam, accept, fit, offer }); Object.defineProperty(window.__sz, 'S', { get: () => S });
   requestAnimationFrame(loop);
 })();

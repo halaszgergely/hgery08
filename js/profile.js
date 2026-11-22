@@ -1,8 +1,8 @@
 // HGWS – tag profiloldala (#/profil/<uid>): rang, tagek, bemutatkozás, Arcade-rekordok, értékelései
-import { FB, db, $, esc, bigNum, lbDec, avatar, toDate, timeLabel, isOnline, roleOf, OWNER_UID, notify } from './core.js?v=202611220300';
-import { I, bgOf } from './fx.js?v=202611220300';
-import * as Admin from './admin.js?v=202611220300';
-import { GAMES } from './browse.js?v=202611220300';
+import { FB, db, $, esc, bigNum, lbDec, avatar, toDate, timeLabel, isOnline, roleOf, OWNER_UID, notify } from './core.js?v=202611220336';
+import { I, bgOf } from './fx.js?v=202611220336';
+import * as Admin from './admin.js?v=202611220336';
+import { GAMES } from './browse.js?v=202611220336';
 
 let C = null, gen = 0;
 export function init(ctx) { C = ctx; }
