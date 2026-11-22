@@ -5,7 +5,7 @@
    - drone: sebességtartó robotpilóta, akkumulátor. airship: felhajtóerő ≈ súly, ballaszt, erősen sodorja a szél.
    A víz tömege beleszámít: tele tartállyal nehezebb és lomhább. */
 import * as THREE from 'three';
-import { FORGO } from './config.js?v=202611220107';
+import { FORGO } from './config.js?v=202611220119';
 
 const g0 = 9.81, V3 = () => new THREE.Vector3();
 const _f = V3(), _u = V3(), _r = V3(), _va = V3(), _F = V3(), _t = V3(), _q = new THREE.Quaternion(), _e = new THREE.Euler(0, 0, 0, 'YXZ'), _n = V3();
@@ -51,7 +51,7 @@ export function step(b, I, dt, env) {
 function wingForces(b, I, dt, V, m, heavy, gh, env) {
   const gep = b.gep, S = gep.szarny, h = b.pos.y, r = rho(h);
   // gáz
-  if (gep.kind !== 'glider') { b.thr = Math.max(0, Math.min(1, b.thr + (I.thrAbs !== undefined ? (I.thrAbs - b.thr) * Math.min(1, dt * 3) : I.thr * dt * .6))); }
+  if (gep.kind !== 'glider') { b.thr = Math.max(0, Math.min(1, b.thr + (I.thrAbs !== undefined ? (I.thrAbs - b.thr) * Math.min(1, dt * (b.real ? 1.2 : 3)) : I.thr * dt * (b.real ? .4 : .6)))); }
   else b.thr = 0;
   b.burner = !!(gep.uteg && I.burner && b.thr > .9);
   b.rpm += ((gep.kind === 'glider' ? 0 : .25 + b.thr * .75) - b.rpm) * Math.min(1, dt * 2);
@@ -67,9 +67,9 @@ function wingForces(b, I, dt, V, m, heavy, gh, env) {
   const CLm = b.CLmax * (1 + b.flaps * .3) * (gep.kind === 'gyro' ? Math.min(1, b.rotor) : 1);
   const a = Math.abs(alpha);
   if (a < stallA) CL = b.CLa * alpha + b.flaps * .35 * Math.sign(vf);
-  else { CL = Math.sign(alpha) * CLm * Math.max(.35, 1 - (a - stallA) * 2.2); }
+  else { CL = Math.sign(alpha) * CLm * Math.max(b.real ? .2 : .35, 1 - (a - stallA) * (b.real ? 3.2 : 2.2)); }
   CL = Math.max(-CLm, Math.min(CLm * 1.05, CL));
-  b.stall = !b.onGround && (a > stallA * .97 || V < gep.vstall * .9) && gep.kind !== 'gyro';
+  b.stall = !b.onGround && (a > stallA * .97 || V < gep.vstall * (b.real ? 1 : .9)) && gep.kind !== 'gyro';
   // felhajtóerő a sebességre merőlegesen, a szárny síkjában
   _t.crossVectors(_r, _va).normalize(); _F.addScaledVector(_t, q * S * CL);
   const CD = b.CD0 * (1 + b.gear * .25 + b.flaps * .5 + (b.ramp || 0) * .3) + b.K * CL * CL + (a > stallA ? .3 * Math.sin(a) : 0) + (gep.kind === 'gyro' ? .05 : 0);
@@ -78,7 +78,7 @@ function wingForces(b, I, dt, V, m, heavy, gh, env) {
   const eff = Math.min(1, Math.max(.12, V / (gep.vstall * 1.6))) * (gep.kind === 'rocket' ? 1 : 1);
   // trimm: a stabilitás a vízszintes repüléshez szükséges állásszög felé húz (nem a nulla felé) – kézből elengedve tartja a magasságot
   const trim = Math.max(-.05, Math.min(stallA * .8, (m * g0 * Math.max(.3, _u.y)) / (q * S * b.CLa) - b.flaps * .35 / b.CLa));
-  angular(b, I, dt, V, heavy, (alpha - trim) * (a > stallA ? .3 : 1), beta, eff, a > stallA);
+  angular(b, I, dt, V, heavy, (alpha - trim * (b.real ? .7 : 1)) * (a > stallA ? .3 : 1), beta, eff, a > stallA);
   // hangsebesség
   const mach = V / 340; if (!b.sonic && mach >= 1) { b.sonic = true; env.event?.('sonic'); } else if (b.sonic && mach < .97) b.sonic = false; b.mach = mach;
 }
@@ -86,7 +86,11 @@ function angular(b, I, dt, V, heavy, alpha, beta, eff, stalled) {
   const gep = b.gep, f = gep.ford, resp = (3.2 * f) / heavy;
   const sens = I.sens || 1;
   let tp = (I.pitch * .9 * Math.sqrt(f) * sens) * eff, tr = (-I.roll * 1.9 * f * sens) * eff, ty = (-I.yaw * .42 * f) * eff;
-  if (!b.onGround) { tp -= alpha * 2.2 * eff + (stalled ? .5 : 0); ty -= beta * 2.4 * eff; }
+  if (!b.onGround) { if (b.real) {   // realisztikus: gyengébb önstabilitás, nincs automatikus koordináció, csűrőellenhatás, motornyomaték, átesésnél szárnybillenés
+      tp -= alpha * 1.3 * eff + (stalled ? .35 : 0); ty -= beta * 1.1 * eff - I.roll * .1 * f * eff;
+      if (gep.kind !== 'glider' && gep.kind !== 'gyro' && !gep.uteg) tr += b.thr * .06;
+      if (stalled) { b.wd = (b.wd || 0) * .97 + (Math.random() - .5) * .25; tr += b.wd * 1.6; } }
+    else { tp -= alpha * 2.2 * eff + (stalled ? .5 : 0); ty -= beta * 2.4 * eff; } }
   else { tr = 0; ty = -I.yaw * Math.min(.7, V / 12) - I.roll * Math.min(.5, V / 15) * .5; }
   if (gep.kind === 'rocket') { tp += (Math.random() - .5) * .9; ty += (Math.random() - .5) * .6; tr += (Math.random() - .5) * 1.2; }
   b.w.x += (tp - b.w.x) * Math.min(1, dt * resp); b.w.y += (ty - b.w.y) * Math.min(1, dt * resp); b.w.z += (tr - b.w.z) * Math.min(1, dt * resp * 1.3);
@@ -115,12 +119,12 @@ function heliForces(b, I, dt, V, m, heavy, gh, env) {
   // légellenállás (a végsebesség a max. dőlésnél ≈ vmax)
   const kq = gep.tolo * .42 / (gep.vmax * gep.vmax); _F.addScaledVector(_va, -kq * V - m * .04);
   // ciklikus: dőlésszög-cél; a Ka-26 és a Chinook stabilabb, a Chinook lomhább
-  const maxT = tandem ? .32 : coax ? .38 : .45, stiff = (tandem ? 1.6 : coax ? 3.2 : 2.6) / heavy, damp = coax ? 1.25 : 1;
+  const maxT = (tandem ? .32 : coax ? .38 : .45) * (b.real ? 1.35 : 1), stiff = (tandem ? 1.6 : coax ? 3.2 : 2.6) / heavy * (b.real ? .45 : 1), damp = (coax ? 1.25 : 1) * (b.real ? .6 : 1);
   const tp = I.pitch * maxT, tr = -I.roll * maxT * (tandem ? .8 : 1);
   b.w.x += ((tp - pitch) * stiff - b.w.x) * Math.min(1, dt * 4 * damp); b.w.z += ((tr - roll) * stiff - b.w.z) * Math.min(1, dt * 4 * damp);
   // forgás: farokrotor (nyomatékhatás) / koaxiális differenciál (nincs nyomatékhatás, lassabb) / tandem (oldalirányú dőlés)
   let ty = -I.yaw * (coax ? .75 : tandem ? .5 : 1.1) * gep.ford;
-  if (kind === 'heli') ty += (b.col - hoverCol(b)) * .35;   // a főrotor nyomatéka – a pedállal kell ellensúlyozni
+  if (kind === 'heli') ty += (b.col - hoverCol(b)) * (b.real ? .7 : .35);   // a főrotor nyomatéka – a pedállal kell ellensúlyozni
   b.w.y += (ty - b.w.y) * Math.min(1, dt * (coax ? 2 : 3));
 }
 
@@ -153,7 +157,7 @@ function contact(b, I, dt, gh, env) {
   else if (surf.tip === 'terep') ok = gep.felsz.includes('terep') && flat;
   if (kind === 'airship') ok = true;
   if (!ok) why = water ? 'A gép nem tud vízre szállni' : surf.tip === 'erdo' ? 'Az erdőbe zuhantál' : surf.tip === 'varos' ? 'Beleszálltál a házak közé' : surf.tip === 'beton' ? 'Ez a gép csak nagy reptéren szállhat le' : 'Ez a terep nem alkalmas a leszállásra';
-  const lim = FORGO(kind) ? -3.4 : kind === 'airship' ? -4 : -4.6;
+  const lim = (FORGO(kind) ? -3.4 : kind === 'airship' ? -4 : -4.6) * (b.real ? .75 : 1);
   if (wasAir) { b.lastImpact = vs;
     if (!ok && (hs > 4 || vs < -1.5 || !FORGO(kind))) return crash(b, env, why);
     if (vs < lim * 1.5) return crash(b, env, 'Túl kemény landolás');

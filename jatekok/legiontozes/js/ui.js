@@ -1,6 +1,6 @@
 /* Menük: főmenü, hangár (3D előnézet a bázison), küldetések, ranglista, beállítások, irányítás-súgó, szünet, küldetés vége. */
-import { GEPEK, GEP, KULDETESEK, MODOK, REPTEREK, FORGO } from './config.js?v=202611220107';
-import * as RL from './ranglista.js?v=202611220107';
+import { GEPEK, GEP, KULDETESEK, MODOK, REPTEREK, FORGO } from './config.js?v=202611220119';
+import * as RL from './ranglista.js?v=202611220119';
 
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const KONNYU = { permetezo: .92, ancsa: .85, vadasz: .38, concorde: .28, jumbo: .22, herkules: .42, ketelt: .55, hidro: .8, vitorlazo: .6, kopter: .5, kamov: .72, chinook: .45, giro: .88, dron: .96, leghajo: .7, slag: .04, zero: .82 };
@@ -14,14 +14,20 @@ export function createUI(app) {
   document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => { app.audio.fx.click(); (backTo || menu)(); });
   $('#menu').querySelectorAll('[data-go]').forEach(b => b.onclick = () => { app.audio.init(); app.audio.fx.click(); const g = b.dataset.go;
     if (g === 'szabad') freePick(); if (g === 'kuldetes') missions(); if (g === 'hangar') hangar(); if (g === 'rang') leaderboard(); if (g === 'beall') settings(menu); if (g === 'sugo') help(menu);
-    if (g === 'vissza') { if (window.top !== window) { try { parent.postMessage({ hgws: 'close' }, location.origin); } catch (_) {} const x = parent.document?.querySelector?.('#extX'); if (x) x.click(); } else location.href = '../../arcade.html'; } });
+    if (g === 'vissza') {   // vissza az oldal új Arcade-listájára (#/arcade); beágyazva az Arcade bezárja a játékot és ő navigál
+      let top = null; try { top = window.top.document.querySelector('.arcframe') ? window.top : null; } catch (_) {}
+      if (window.top !== window && top) { try { parent.postMessage({ hgws: 'close' }, location.origin); } catch (_) {} const x = parent.document?.querySelector?.('#extX'); if (x) x.click(); setTimeout(() => { try { if (top.location.hash !== '#/arcade') top.location.hash = '#/arcade'; } catch (_) {} }, 150); }
+      else { try { window.top.location.href = new URL('../../#/arcade', location.href).href; } catch (_) { location.href = '../../#/arcade'; } } } });
   function menu() { backTo = null; app.toMenu(); show('#menu'); const st = RL.status(); $('#who').textContent = st.user ? (st.guest ? 'Vendégként: ' + (RL.getNick() || 'Vendég pilóta') : 'Bejelentkezve – a feloldások a fiókodhoz mentődnek') : 'Az eredményekhez jelentkezz be az Arcade-ban.'; }
   function sheet(title, html, extra = '') { show('#sheet'); $('#shT').textContent = title; $('#shB').innerHTML = html; $('#shX').innerHTML = extra; return $('#shB'); }
 
+  /* ---- repülési modell: arcade / realisztikus (+50% küldetéspont) ---- */
+  const fmHtml = () => `<div class="tabs fm"><button class="btn ${app.SET.real ? '' : 'on'}" data-fm="0">Arcade</button><button class="btn ${app.SET.real ? 'on' : ''}" data-fm="1">Realisztikus · +50% pont</button></div>`;
+  const fmBind = (b, again) => b.querySelectorAll('[data-fm]').forEach(x => x.onclick = () => { app.SET.real = +x.dataset.fm; app.persist(); again(); });
   /* ---- szabad repülés: reptér választása ---- */
   function freePick() { backTo = menu; const g = GEP[app.save.gep], ok = REPTEREK.filter(r => app.canUse(g, r));
-    const b = sheet('Szabad repülés – honnan indulsz?', `<div class="mut" style="margin-bottom:10px">Gép: <b>${esc(g.nev)}</b> · <a href="#" id="chg" class="y">másik gép</a></div><div class="grid">${ok.map(r => `<div class="card"><h3>${esc(r.nev)}</h3><div class="meta">${r.tip === 'viz' ? 'Vízi leszálló' : r.tip === 'heli' ? 'Helipad' : r.tip === 'fu' ? 'Füves pálya' : 'Betonpálya'} · ${r.len >= 300 ? r.len + ' m' : ''}${r.allomas ? ' · HGWS töltőállomás' : ''}</div><div class="row"><button class="btn ${r.fo ? 'y' : ''} sm" data-r="${r.id}">Indulás</button>${r.fo ? '<span class="tag y">főbázis</span>' : ''}</div></div>`).join('')}</div>`);
-    b.querySelector('#chg').onclick = e => { e.preventDefault(); hangar(freePick); };
+    const b = sheet('Szabad repülés – honnan indulsz?', `<div class="mut" style="margin-bottom:10px">Gép: <b>${esc(g.nev)}</b> · <a href="#" id="chg" class="y">másik gép</a></div>${fmHtml()}<div class="grid">${ok.map(r => `<div class="card"><h3>${esc(r.nev)}</h3><div class="meta">${r.tip === 'viz' ? 'Vízi leszálló' : r.tip === 'heli' ? 'Helipad' : r.tip === 'fu' ? 'Füves pálya' : 'Betonpálya'} · ${r.len >= 300 ? r.len + ' m' : ''}${r.allomas ? ' · HGWS töltőállomás' : ''}</div><div class="row"><button class="btn ${r.fo ? 'y' : ''} sm" data-r="${r.id}">Indulás</button>${r.fo ? '<span class="tag y">főbázis</span>' : ''}</div></div>`).join('')}</div>`);
+    b.querySelector('#chg').onclick = e => { e.preventDefault(); hangar(freePick); }; fmBind(b, freePick);
     b.querySelectorAll('[data-r]').forEach(x => x.onclick = () => { hideAll(); app.start({ mode: 'szabad', repter: x.dataset.r }); }); }
 
   /* ---- küldetések ---- */
@@ -31,8 +37,8 @@ export function createUI(app) {
     const list = KULDETESEK.filter(k => k.mod === misTab).map(k => { const best = app.save.best[k.id]; const rec = k.ajanl.map(a => GEP[a]?.nev.replace('HGWS ', '')).join(', ');
       return `<div class="card"><h3>${esc(k.nev)}</h3><div class="meta">${esc(k.leir)}</div><div class="meta">Ajánlott: ${esc(rec)}${k.ido ? ' · ' + Math.round(k.ido / 60) + ' perc' : ''}</div>
         <div class="row"><button class="btn y sm" data-k="${k.id}">Indulás – ${esc(g.nev.replace('HGWS ', ''))}</button>${best ? `<span class="tag g">rekord: ${best.toLocaleString('hu-HU')}</span>` : ''}</div></div>`; }).join('');
-    const b = sheet('Küldetések', `<div class="tabs">${tabs}</div>${g.csakSzabad ? '<div class="card" style="margin-bottom:10px"><b class="y">A Rakétás Kerti Slag csak szabad repülésben használható.</b></div>' : ''}<div class="grid">${list}</div>`, `<button class="btn sm" id="mHg">🛩 ${esc(g.nev.replace('HGWS ', ''))}</button>`);
-    b.querySelectorAll('[data-t]').forEach(x => x.onclick = () => { misTab = x.dataset.t; missions(); });
+    const b = sheet('Küldetések', `<div class="tabs">${tabs}</div>${fmHtml()}${g.csakSzabad ? '<div class="card" style="margin-bottom:10px"><b class="y">A Rakétás Kerti Slag csak szabad repülésben használható.</b></div>' : ''}<div class="grid">${list}</div>`, `<button class="btn sm" id="mHg">🛩 ${esc(g.nev.replace('HGWS ', ''))}</button>`);
+    b.querySelectorAll('[data-t]').forEach(x => x.onclick = () => { misTab = x.dataset.t; missions(); }); fmBind(b, missions);
     b.querySelectorAll('[data-k]').forEach(x => { x.disabled = !!g.csakSzabad; x.onclick = () => { hideAll(); app.start({ mode: KULDETESEK.find(k => k.id === x.dataset.k).mod, mission: x.dataset.k }); }; });
     $('#mHg').onclick = () => hangar(missions); }
 
@@ -102,7 +108,7 @@ export function createUI(app) {
     $('#endT').textContent = (m.lost ? 'Elveszett küldetés – ' : m.allDone ? 'Küldetés teljesítve – ' : 'Lejárt az idő – ') + m.def.nev;
     const row = (a, b) => `<span>${a}</span><b>${b}</b>`;
     $('#endB').innerHTML = `<div class="rows">${row(m.mode === 'verseny' ? 'Idő' : 'Teljesítés', m.mode === 'verseny' ? Math.round(m.t) + ' s' : Math.round((m.frac || 0) * 100) + '%')}${row('Alappont', res.base.toLocaleString('hu-HU'))}${row('Pontosság', Math.round(res.acc * 100) + '%')}${row('Időbónusz', '+' + res.time)}${row('Landolás', res.land ? '+' + res.land + (res.land >= 600 ? ' (sima)' : '') : '–')}${res.pen ? row('Büntetés', '−' + res.pen) : ''}${row('Gépszorzó', '×' + res.k.toFixed(2))}</div>
-      <div class="tot">${res.total.toLocaleString('hu-HU')}</div><div class="mut" style="text-align:center;margin-bottom:10px">${dev ? '<span class="devB">DEV</span> nincs pont, rekord és ranglista' : '+' + Math.round(res.total / 10) + ' küldetéspont'}${newly.length ? ' · Feloldva: <b class="y">' + newly.map(esc).join(', ') + '</b>' : ''}</div>
+      <div class="tot">${res.total.toLocaleString('hu-HU')}</div><div class="mut" style="text-align:center;margin-bottom:10px">${dev ? '<span class="devB">DEV</span> nincs pont, rekord és ranglista' : '+' + res.xp + ' küldetéspont' + (res.real ? ' (realisztikus ×1,5)' : '')}${newly.length ? ' · Feloldva: <b class="y">' + newly.map(esc).join(', ') + '</b>' : ''}</div>
       ${ranked && res.total > 0 && st.guest ? `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><span>Beceneved:</span><input type="text" id="nick" maxlength="16" value="${esc(RL.getNick())}" style="flex:1"></div><div id="nickE" class="mut" style="color:var(--bad);font-size:12px"></div>` : ''}
       <div id="sub" class="mut" style="font-size:12px;margin-bottom:10px"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">${ranked && res.total > 0 ? '<button class="btn y" id="eSave">Mentés a ranglistára</button>' : ''}<button class="btn" id="eAgain">Újra</button><button class="btn" id="eMenu">Menü</button></div>`;

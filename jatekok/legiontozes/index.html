@@ -76,7 +76,7 @@ select,input[type=text]{background:#0c131b;border:1px solid var(--ln);color:var(
 #cock .g small{display:block;font:700 min(1.4vh,10px) Inter;color:#8fa0ae;letter-spacing:.1em}
 #mapS{position:fixed;inset:0;z-index:30;background:rgba(4,7,10,.88);display:flex;flex-direction:column}
 #mapS header{display:flex;align-items:center;gap:10px;padding:10px 14px}#mapS header h2{flex:1;font-size:18px}
-#mapC{flex:1;width:100%;min-height:0;touch-action:none}
+#mapC{flex:1;width:100%;min-height:0;touch-action:none;cursor:crosshair}#mapTp.on{border-color:var(--y);color:var(--y)}
 #end{z-index:35}
 #end .sheet{width:min(560px,94vw)}#end .rows{display:grid;grid-template-columns:1fr auto;gap:6px 18px;font-size:15px;margin:10px 0}#end .rows b{text-align:right}#end .tot{font:900 34px Inter;color:var(--y);text-align:center;margin:6px 0}
 #crash{z-index:34}#crash .sheet{width:min(460px,92vw);text-align:center}#crash .body{display:flex;flex-direction:column;gap:12px;align-items:center}
@@ -96,7 +96,7 @@ select,input[type=text]{background:#0c131b;border:1px solid var(--ln);color:var(
 /* teljes képernyő gomb, DEV jelzés */
 .fsB{border:1px solid var(--ln);background:rgba(9,14,20,.7);color:var(--ink);border-radius:10px;width:38px;height:38px;display:grid;place-items:center;font:900 16px Inter;cursor:pointer;pointer-events:auto}
 @media (pointer:coarse){#hudFs{display:none!important}}
-#hudFs{position:absolute;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom))}
+#hudFs{position:absolute;right:calc(max(12px,env(safe-area-inset-right)) + 48px);bottom:max(12px,env(safe-area-inset-bottom))}
 .devB{display:inline-block;font:900 11px Inter;letter-spacing:.18em;padding:4px 9px;border-radius:7px;background:#e0322a;color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
 #hudDev{position:absolute;left:50%;bottom:max(10px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:3}
 #fps{position:fixed;left:50%;bottom:6px;transform:translateX(-50%);z-index:60;font:700 11px ui-monospace,monospace;color:#9fdcff;background:rgba(0,0,0,.55);padding:3px 8px;border-radius:6px;pointer-events:none;white-space:pre}
@@ -139,9 +139,9 @@ select,input[type=text]{background:#0c131b;border:1px solid var(--ln);color:var(
 
 <div id="sheet" class="scr" hidden><div class="sheet pn"><header><button class="btn sm" data-back>← Vissza</button><h2 id="shT"></h2><span id="shX"></span></header><div class="body" id="shB"></div></div></div>
 
-<div id="mapS" hidden><header><h2>Magyarország</h2><span class="mut" id="mapH"></span><button class="btn sm" id="mapX">Bezárás (M)</button></header><canvas id="mapC"></canvas></div>
+<div id="mapS" hidden><header><h2>Magyarország</h2><span class="mut" id="mapH"></span><button class="btn sm" id="mapTp" hidden>Teleport</button><button class="btn sm" id="mapClr" hidden>Útvonal törlése</button><button class="btn sm" id="mapX">Bezárás (M)</button></header><canvas id="mapC"></canvas></div>
 <div id="end" class="scr" hidden><div class="sheet pn"><header><h2 id="endT">Küldetés vége</h2></header><div class="body" id="endB"></div></div></div>
 <div id="crash" class="scr" hidden><div class="sheet pn"><div class="body"><div style="font-size:40px">💥</div><h2>Összetörted a gépet</h2><div class="mut" id="crashW"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button class="btn y" id="crashR">Újrakezdés a legközelebbi reptéren</button><button class="btn" id="crashM">Menü</button></div></div></div></div>
 <div id="fps" hidden></div>
-<script type="module" src="js/main.js?v=202611220107"></script>
+<script type="module" src="js/main.js?v=202611220119"></script>
 </body></html>
