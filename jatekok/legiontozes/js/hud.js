@@ -1,6 +1,6 @@
 /* HUD: sebesség, magasság, emelkedés, gáz/kollektív, víz, akku, mesterséges horizont + iránytű, minitérkép, szélirány,
    átesés-figyelmeztetés, küldetés-időzítő és célnyíl. Nagy térkép (M): nagyítás, mozgatás, útpontok, gyorsutazás. A DOM-írások gyorsítótárazva. */
-import { REPTEREK, VIZEK, P, FORGO, W_MAX, H_MAX } from './config.js?v=202611220119';
+import { REPTEREK, VIZEK, P, FORGO, W_MAX, H_MAX } from './config.js?v=202611220136';
 
 const $ = s => document.querySelector(s);
 const cache = new Map(); const setH = (el, k, v) => { if (cache.get(k) !== v) { cache.set(k, v); el.innerHTML = v; } };
@@ -61,6 +61,7 @@ export function createHud() {
     if (s.marks) for (const [mx2, mz, k] of s.marks) dot(mx2, mz, k === 'ok' ? '#3fbf63' : k === 'tuz' ? '#ff6b2e' : '#ff5a4d', 7);
     if (WP.length) { x.strokeStyle = '#d36bff'; x.lineWidth = 2; x.beginPath(); x.moveTo(0, 0); for (const [wx, wz] of WP) x.lineTo((wx - b.pos.x) * sc, (wz - b.pos.z) * sc); x.stroke(); for (const [wx, wz] of WP) dot(wx, wz, '#d36bff', 6); }
     x.restore(); x.fillStyle = '#fff'; x.beginPath(); x.moveTo(W / 2, W / 2 - 12); x.lineTo(W / 2 - 8, W / 2 + 9); x.lineTo(W / 2 + 8, W / 2 + 9); x.fill();
+    { const q = W / 170 * 1.4, cx = W - 20 * q, cy = 20 * q, e = 5 * q; x.fillStyle = 'rgba(9,14,20,.7)'; x.beginPath(); x.arc(cx, cy, 13 * q, 0, 6.3); x.fill(); x.strokeStyle = '#fff'; x.lineWidth = 1.6 * q; x.lineCap = 'round'; x.beginPath(); x.moveTo(cx - e, cy - e + 3 * q); x.lineTo(cx - e, cy - e); x.lineTo(cx - e + 3 * q, cy - e); x.moveTo(cx + e, cy + e - 3 * q); x.lineTo(cx + e, cy + e); x.lineTo(cx + e - 3 * q, cy + e); x.moveTo(cx - e, cy - e); x.lineTo(cx + e, cy + e); x.stroke(); }
     x.fillStyle = 'rgba(9,14,20,.8)'; x.fillRect(0, W - 26, W, 26); x.fillStyle = '#cfe6ff'; x.font = '700 15px Inter'; x.textAlign = 'center'; x.fillText(s.place || '', W / 2, W - 8); }
   return { update, say, show(v) { $('#hud').hidden = !v; } };
 }

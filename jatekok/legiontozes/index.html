@@ -61,7 +61,7 @@ select,input[type=text]{background:#0c131b;border:1px solid var(--ln);color:var(
 #flags{display:flex;gap:5px;flex-wrap:wrap}#flags span{font:800 10px Inter;letter-spacing:.1em;padding:3px 7px;border-radius:6px;background:rgba(9,14,20,.8);border:1px solid var(--ln);color:var(--mut)}#flags span.on{color:var(--y);border-color:rgba(242,194,48,.5)}
 #hR{position:absolute;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));display:flex;flex-direction:column;gap:8px;align-items:flex-end}
 #att{width:150px;height:150px;border-radius:50%;display:block}
-#mini{width:170px;height:170px;border-radius:12px;display:block;border:1px solid var(--ln)}
+#mini{width:170px;height:170px;border-radius:12px;display:block;border:1px solid var(--ln);pointer-events:auto;cursor:pointer;touch-action:manipulation}
 #mis{position:absolute;left:50%;top:max(12px,env(safe-area-inset-top));transform:translateX(-50%);padding:8px 16px;text-align:center;min-width:220px}
 #mis .t{font:900 22px/1.1 Inter;font-variant-numeric:tabular-nums}#mis .s{font-size:12px;color:var(--mut)}
 #warn{position:absolute;left:50%;top:34%;transform:translateX(-50%);font:900 26px Inter;letter-spacing:.1em;color:var(--bad);text-shadow:0 2px 10px #000;animation:bl .5s steps(2) infinite}@keyframes bl{50%{opacity:.25}}
@@ -92,7 +92,7 @@ select,input[type=text]{background:#0c131b;border:1px solid var(--ln);color:var(
 #tYawL{right:calc(max(16px,env(safe-area-inset-right)) + 162px);bottom:max(30px,env(safe-area-inset-bottom))}#tYawR{right:calc(max(16px,env(safe-area-inset-right)) + 70px);bottom:calc(max(24px,env(safe-area-inset-bottom)) + 96px)}
 #tTop{right:max(12px,env(safe-area-inset-right));top:calc(max(12px,env(safe-area-inset-top)) + 360px);display:flex;flex-direction:column;gap:6px;position:absolute}
 @media (max-width:760px){#att{width:104px;height:104px}#mini{width:118px;height:118px}#tele{min-width:0;grid-template-columns:auto auto;padding:6px 9px}#tele .v{font-size:17px}#bars{min-width:0;padding:6px 9px}.hb{grid-template-columns:44px 70px 30px}#mis{left:max(12px,env(safe-area-inset-left));transform:none;top:auto;bottom:calc(max(20px,env(safe-area-inset-bottom)) + 168px);min-width:0;max-width:62vw;padding:5px 10px;text-align:left}#mis .t{font-size:16px}#tTop{top:calc(max(12px,env(safe-area-inset-top)) + 250px)}#hInfo{top:auto;bottom:150px;padding:10px}#hInfo p{display:none}#warn{font-size:18px}}
-@media (max-height:500px){#tele>:nth-child(n+5){display:none}#mis{left:max(12px,env(safe-area-inset-left));transform:none;top:calc(max(10px,env(safe-area-inset-top)) + 160px);bottom:auto;max-width:300px;min-width:0;text-align:left;padding:4px 9px}#mis .t{font-size:14px}#mis .s{font-size:10.5px}#mis .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#tTop{top:max(10px,env(safe-area-inset-top));right:calc(max(12px,env(safe-area-inset-right)) + 128px);flex-direction:row}#mini{display:none}#att{width:92px;height:92px}#joy{width:120px;height:120px}#thr{height:130px}}
+@media (max-height:500px){#tele>:nth-child(n+5){display:none}#mis{left:max(12px,env(safe-area-inset-left));transform:none;top:calc(max(10px,env(safe-area-inset-top)) + 160px);bottom:auto;max-width:300px;min-width:0;text-align:left;padding:4px 9px}#mis .t{font-size:14px}#mis .s{font-size:10.5px}#mis .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#tTop{top:max(10px,env(safe-area-inset-top));right:calc(max(12px,env(safe-area-inset-right)) + 128px);flex-direction:row}#mini{width:96px;height:96px}#att{width:88px;height:88px}#hR{gap:6px}#joy{width:120px;height:120px}#thr{height:130px}}
 /* teljes képernyő gomb, DEV jelzés */
 .fsB{border:1px solid var(--ln);background:rgba(9,14,20,.7);color:var(--ink);border-radius:10px;width:38px;height:38px;display:grid;place-items:center;font:900 16px Inter;cursor:pointer;pointer-events:auto}
 @media (pointer:coarse){#hudFs{display:none!important}}
@@ -143,5 +143,5 @@ select,input[type=text]{background:#0c131b;border:1px solid var(--ln);color:var(
 <div id="end" class="scr" hidden><div class="sheet pn"><header><h2 id="endT">Küldetés vége</h2></header><div class="body" id="endB"></div></div></div>
 <div id="crash" class="scr" hidden><div class="sheet pn"><div class="body"><div style="font-size:40px">💥</div><h2>Összetörted a gépet</h2><div class="mut" id="crashW"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button class="btn y" id="crashR">Újrakezdés a legközelebbi reptéren</button><button class="btn" id="crashM">Menü</button></div></div></div></div>
 <div id="fps" hidden></div>
-<script type="module" src="js/main.js?v=202611220119"></script>
+<script type="module" src="js/main.js?v=202611220136"></script>
 </body></html>
