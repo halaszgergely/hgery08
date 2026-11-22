@@ -203,10 +203,10 @@
     else if (TEX) { g.fillStyle = 'rgba(235,239,246,.6)'; g.font = '600 5.5px Inter'; g.fillText(D.n.toUpperCase(), x + 9, y + h / 2 + 2); }
     g.globalAlpha = 1; }
   function drawPort(p) { const used = !!other(p.id, p.k, p.i), hot = sel && ok2(sel, p), me = sel && sel.id === p.id && sel.k === p.k && sel.i === p.i;
-    if (p.k === 'n') { g.fillStyle = '#0a0c0f'; g.fillRect(p.x - 3.6, p.y - 3.2, 7.2, 6.4); if (fib(p.sp)) { g.fillStyle = p.sp >= 100000 ? '#ff6bd6' : p.sp >= 40000 ? '#b197fc' : '#4cc9f0'; g.beginPath(); g.arc(p.x - 1.6, p.y - .6, 1.1, 0, 7); g.arc(p.x + 1.6, p.y - .6, 1.1, 0, 7); g.fill(); } else { g.fillStyle = '#c9ced6'; g.fillRect(p.x - 2.6, p.y - 2.2, 5.2, 1.2); } if (used) { const o = p.id ? C.d[p.id] : { live: 1 }; g.fillStyle = o && (o.live || o.st === 'ok') && Math.sin(performance.now() / 90 + p.x) > -.3 ? '#5ee08a' : '#1d3b28'; g.fillRect(p.x + 1.2, p.y + 1.2, 1.8, 1.4); } }
+    if (p.k === 'n') { g.fillStyle = '#0a0c0f'; g.fillRect(p.x - 3.6, p.y - 3.2, 7.2, 6.4); if (p.id && fib(p.sp)) { g.fillStyle = p.sp >= 100000 ? '#ff6bd6' : p.sp >= 40000 ? '#b197fc' : '#4cc9f0'; g.beginPath(); g.arc(p.x - 1.6, p.y - .6, 1.1, 0, 7); g.arc(p.x + 1.6, p.y - .6, 1.1, 0, 7); g.fill(); } else { g.fillStyle = '#c9ced6'; g.fillRect(p.x - 2.6, p.y - 2.2, 5.2, 1.2); } if (used) { const o = p.id ? C.d[p.id] : { live: 1 }; g.fillStyle = o && (o.live || o.st === 'ok') && Math.sin(performance.now() / 90 + p.x) > -.3 ? '#5ee08a' : '#1d3b28'; g.fillRect(p.x + 1.2, p.y + 1.2, 1.8, 1.4); } }
     else { g.fillStyle = p.k === 'pi' ? '#0a0c0f' : '#e9e4d8'; g.beginPath(); g.arc(p.x, p.y, p.id ? 4.6 : 9, 0, 7); g.fill(); g.fillStyle = p.k === 'pi' ? '#c9a227' : '#222'; const r = p.id ? 1 : 1.7, o = p.id ? 1.8 : 3.4; g.beginPath(); g.arc(p.x - o, p.y, r, 0, 7); g.arc(p.x + o, p.y, r, 0, 7); g.fill(); if (!p.id && S.trip[p.i]) { g.strokeStyle = '#ff5a4d'; g.lineWidth = 2; g.beginPath(); g.arc(p.x, p.y, 11.5, 0, 7); g.stroke(); } }
     if (hot || me) { g.strokeStyle = me ? '#fff' : '#4cc9f0'; g.lineWidth = 1.4; g.beginPath(); g.arc(p.x, p.y, p.id ? 6.5 : 12, 0, 7); g.stroke(); } }
-  function drawWall() { const W = wallDim(); rr(0, 0, W.w, W.h, 8); g.fillStyle = '#d9d4c7'; g.fill(); g.fillStyle = '#1d2835'; g.font = '800 7.5px Inter'; g.fillText('INTERNET · ' + PLAN[S.plan].n.toUpperCase() + (fib(PLAN[S.plan].sp) ? ' · OPTIKA' : ''), 8, W.oy - 6); g.fillStyle = 'rgba(0,0,0,.15)'; g.fillRect(8, W.oy, W.w - 16, 1); g.fillStyle = S.out > 0 ? '#c0392b' : '#1d2835'; g.fillText(S.out > 0 ? 'ÁRAMSZÜNET' : 'HÁLÓZATI ÁRAM', 8, W.h - 7); for (const p of RP.W || []) drawPort(p); }
+  function drawWall() { const W = wallDim(); rr(0, 0, W.w, W.h, 8); g.fillStyle = '#d9d4c7'; g.fill(); g.fillStyle = '#1d2835'; g.font = '800 7.5px Inter'; g.fillText('INTERNET · ' + PLAN[S.plan].n.toUpperCase() , 8, W.oy - 6); g.fillStyle = 'rgba(0,0,0,.15)'; g.fillRect(8, W.oy, W.w - 16, 1); g.fillStyle = S.out > 0 ? '#c0392b' : '#1d2835'; g.fillText(S.out > 0 ? 'ÁRAMSZÜNET' : 'HÁLÓZATI ÁRAM', 8, W.h - 7); for (const p of RP.W || []) drawPort(p); }
   function drawRack(i) { const r = S.racks[i], n = RACK[r.t].u, x = 0, y = 0; g.fillStyle = '#15171b'; g.fillRect(x, y, 14, n * U + 14); g.fillRect(x + RW + 14, y, 14, n * U + 14); g.fillRect(x, y, RW + 28, 7); g.fillRect(x, y + n * U + 7, RW + 28, 7);
     g.fillStyle = '#23272d'; for (let u = 0; u < n; u++) { g.fillRect(x + 6, y + 7 + u * U + 4, 3, 3); g.fillRect(x + 6, y + 7 + u * U + 13, 3, 3); g.fillRect(x + RW + 19, y + 7 + u * U + 4, 3, 3); g.fillRect(x + RW + 19, y + 7 + u * U + 13, 3, 3); }
     for (const dv of r.dev) if (dv.id !== insp) drawDev(dv, x + 14, y + 7 + dv.u * U); const t = place && aim.pl; if (t && t.rack && t.rack.ri === i && t.ok) drawDev(place, x + 14, y + 7 + t.rack.u * U, 1);
@@ -217,11 +217,11 @@
   function drawTo(ctx, k, x, y, w, h, f) { g = ctx; TEX = 1; g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w * k, h * k); g.setTransform(k, 0, 0, k, -x * k, -y * k); try { f(); } finally { g = g2; TEX = 0; } }
 
   /* ---------- kattintás, elhelyezés, kábelezés ---------- */
-  const ok2 = (a, b) => !(a.id === b.id && a.k === b.k && a.i === b.i) && !(a.id === b.id && a.id !== 0) && !other(b.id, b.k, b.i) && ((a.k === 'n' && b.k === 'n' && fib(a.sp) === fib(b.sp)) || (a.k === 'pi' && b.k === 'po') || (a.k === 'po' && b.k === 'pi')) && !(a.id === 0 && b.id === 0);
+  const ok2 = (a, b) => !(a.id === b.id && a.k === b.k && a.i === b.i) && !(a.id === b.id && a.id !== 0) && !other(b.id, b.k, b.i) && ((a.k === 'n' && b.k === 'n' && (!a.id || !b.id || fib(a.sp) === fib(b.sp))) || (a.k === 'pi' && b.k === 'po') || (a.k === 'po' && b.k === 'pi')) && !(a.id === 0 && b.id === 0);
   const free = (ri, u, h, skip) => { const r = S.racks[ri]; return !!r && u + h <= RACK[r.t].u && !r.dev.some(d => d.id !== skip && u < d.u + DEV[d.t].u && d.u < u + h); };
-  // réz és optika nem dugható össze: az érvénytelenné vált kábelek (pl. előfizetés-váltás után) kikerülnek
-  function purge() { const n = S.cables.length; S.cables = S.cables.filter(c => { if (c.a[1] !== 'n') return true; const a = PM.get(pkey(...c.a)), b = PM.get(pkey(...c.b)); return a && b && fib(a.sp) === fib(b.sp); }); if (S.cables.length !== n) { dirty = 1; toast('A nem illő hálózati kábelek kikerültek (réz ↔ optika).', 1); } }
-  const cabCost = (a, b) => a.k !== 'n' ? 900 : !fib(a.sp) ? 600 : Math.min(a.sp, b.sp) >= 100000 ? 120000 : Math.min(a.sp, b.sp) >= 40000 ? 45000 : 12000;
+  // a fali internetportok kombináltak: réz és optikai kábel is mehet beléjük; cabFib: optikai-e a kábel (a nem fali vége dönti el)
+  const cabFib = (a, b) => fib((a.id ? a : b).sp);
+  const cabCost = (a, b) => a.k !== 'n' ? 900 : !cabFib(a, b) ? 600 : Math.min(a.sp, b.sp) >= 100000 ? 120000 : Math.min(a.sp, b.sp) >= 40000 ? 45000 : 12000;
   const cancel = () => { if (sel && sel.re) { beep(300); dirty = 1; } if (place && place.rk && place.mv == null) S.money += RACK[place.rk].c; sel = place = null; hint(); };
   // aim: amire a célkereszt mutat – { p: port, d: eszköz, h: rackhely { ri, u, dev }, rk: rack sorszáma, tray, pt: [X,Y,Z] rögzítőpont, pl: lerakási hely }
   let aim = {};
@@ -314,7 +314,7 @@
     else if (a === 'sellp') { if (S.inv[v] > 0) { S.inv[v]--; S.money += PART[v].c * .5; } }
     else if (a === 'acc') accept(+v); else if (a === 'drop') { const c = S.cons.find(c => c.id === +v); if (c) { S.rep = Math.max(0, S.rep - 1); dropCon(c); } }
     else if (a === 'move') { const x = SITE[+v]; if (+v === S.site + 1 && pay(x.c)) { S.site = +v; S.trip = {}; toast('Átköltöztél: ' + x.n); } }
-    else if (a === 'plan') { S.plan = +v; calc(); purge(); }
+    else if (a === 'plan') S.plan = +v;
     else if (a === 'slot') { const [k, i] = v.split(':'); slot = [k, +i]; } else if (a === 'slotx') slot = null;
     else if (a === 'unpart' && d) { const [k, i] = slot, cur = got(d, k, i), back = x => { if (!broken(x)) S.inv[x] = (S.inv[x] || 0) + 1; }; if (cur) { back(cur); if (k === 'mb') { d.mb = null; for (const q of ['cpu', 'ram', 'pci']) { d[q].forEach(back); d[q] = []; } } else d[k].splice(i, 1); } slot = null; if (insp) { dirty = 1; calc(); return closeP(); } }
     else if (a === 'inst' && d) { const [k, i] = slot, P = PART[v], back = x => { if (!broken(x)) S.inv[x] = (S.inv[x] || 0) + 1; }; if (k === 'mb' && P.u > DEV[d.t].u) return; if (!(S.inv[v] > 0) && !pay(P.c)) return; if (S.inv[v] > 0) S.inv[v]--; const cur = got(d, k, i); if (cur) back(cur);
@@ -332,11 +332,11 @@
   let F3 = null, f3load = 0;
   window.SZ3 = { get S() { return S; }, get C() { return C; }, get PM() { return PM; }, get RP() { return RP; }, get sel() { return sel; }, get place() { return place; }, get gen() { return GEN; }, get busy() { return !!view || !$('#menu').hidden || !!insp; }, get insp() { return insp; }, lim, get view() { return view; }, PART, pv, broken, setHov: h => { hov = h; }, slotClick: (k, i) => { devId = insp; slot = [k, i]; openP('dev', ''); },
     devTo: (ctx, d, k) => { const ri = findDev(d.id)[1]; drawTo(ctx, k, 0, 0, RW, DEV[d.t].u * U, () => { drawDev(d, 0, 0); if (ri >= 0) g.translate(-14, -(7 + d.u * U)); const was = insp; insp = 0; for (const p of RP[ri >= 0 ? 'R' + ri : 'L' + d.id] || []) if (p.id === d.id) drawPort(p); insp = was; }); },
-    SITE, RACK, DEV, U, RW, NC, K, GR, TRAYH, ROOM, lift, wallDim, pkey, free, ok2, fib, wallMount, onTop, cancel, setAim: a => { aim = a; }, doClick: () => doClick(aim),
+    SITE, RACK, DEV, U, RW, NC, K, GR, TRAYH, ROOM, lift, wallDim, pkey, free, ok2, fib, cabFib, wallMount, onTop, cancel, setAim: a => { aim = a; }, doClick: () => doClick(aim),
     rackTo: (ctx, i, k) => drawTo(ctx, k, 0, 0, RW + 28, RACK[S.racks[i].t].u * U + 14, () => drawRack(i)), wallTo: (ctx, k) => { const W = wallDim(); drawTo(ctx, k, 0, 0, W.w, W.h, drawWall); }, looseTo: (ctx, d, k) => drawTo(ctx, k, 0, 0, RW, DEV[d.t].u * U, () => drawLoose(d)) };
   function toggle3D(on) { if (on === undefined) on = !(F3 && F3.on); if (!on) { if (F3) F3.stop(); $('#c3').hidden = true; cv.hidden = false; return; }
     const go = () => { $('#c3').hidden = false; cv.hidden = true; F3.start(); }; if (F3) return go(); if (f3load) return; f3load = 1;
-    import('./fps.js?v=202611221455').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
+    import('./fps.js?v=202611221458').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
   $('#bPh').onclick = () => view ? closeP() : openP(lastApp, '');
 
   /* ---------- főciklus ---------- */
@@ -347,7 +347,7 @@
     if ($('#menu').hidden && S.spd) { acc += dt * S.spd; while (acc >= .25) { acc -= .25; if (dirty) calc(); tick(.25 / DAY); } }
     if (dirty) calc(); if (F3 && F3.on) { F3.frame(dt); ctxUI(); } if ((uiT -= dt) <= 0) { uiT = .5; top(); if (insp) inspUI(); if (view === 'dev' && !slot || view === 'site') ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); } if ((scT -= dt) <= 0) { scT = 60; score(); }
     requestAnimationFrame(loop); }
-  const had = load(); if (!had) fresh(); if (had) { $('#mPlay').textContent = '▶ Folytatás'; $('#mNew').hidden = false; } calc(); purge(); top(); keysUI(); cv.hidden = true; toggle3D(true); addEventListener('pagehide', () => { save(); score(); });
-  window.__sz = () => ({ SZ: window.SZ3, purge, doClick, get aim() { return aim; }, get F3() { return F3; }, get sel() { return sel; }, S, C, act, calc, tick, DEV, PART, mk, accept, fit, mkOffer, fillOffers, ensureOffer, TIER });
+  const had = load(); if (!had) fresh(); if (had) { $('#mPlay').textContent = '▶ Folytatás'; $('#mNew').hidden = false; } calc(); top(); keysUI(); cv.hidden = true; toggle3D(true); addEventListener('pagehide', () => { save(); score(); });
+  window.__sz = () => ({ SZ: window.SZ3, doClick, get aim() { return aim; }, get F3() { return F3; }, get sel() { return sel; }, S, C, act, calc, tick, DEV, PART, mk, accept, fit, mkOffer, fillOffers, ensureOffer, TIER });
   requestAnimationFrame(loop);
 })();
