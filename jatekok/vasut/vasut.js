@@ -450,7 +450,7 @@
   $('#bPark').onclick = park;
   function setRev(r) { if (Math.abs(S.v) > .5 && r !== 0 && r !== S.rev) return toast('Irányváltás csak álló helyzetben.', 1); S.rev = r; if (!r) S.ccA = 0; beep(500, .05); plan(); ui(); }
   $('#bSw').onclick = flip; $('#bCons').onclick = showCons; $('#bFind').onclick = () => showFind(); $('#bBots').onclick = showBots; $('#bBoard').onclick = showBoard; $('#bDepo').onclick = showDepo; $('#bFollow').onclick = () => { cam.follow = 1; PIN = null; };
-  $('#bMap').onclick = () => { if (cam.s > .003) { cam.prev = cam.s; cam.s = Math.min(cv.width, cv.height) / (devicePixelRatio || 1) / 560000; cam.follow = 0; } else { cam.s = cam.prev || .25; cam.follow = 1; } };
+  $('#bMap').onclick = () => { if (V3 && V3.on) return setM3(m3 === 2 ? 1 : 2); if (cam.s > .003) { cam.prev = cam.s; cam.s = Math.min(cv.width, cv.height) / (devicePixelRatio || 1) / 560000; cam.follow = 0; } else { cam.s = cam.prev || .25; cam.follow = 1; } };
   $('#bMenu').onclick = () => { save(); $('#menu').hidden = false; $('#mPlay').textContent = '▶ Folytatás'; };
   const hold = (el, f) => { let iv = null; el.addEventListener('pointerdown', e => { e.preventDefault(); f(); iv = setInterval(f, 180); }); for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, () => { clearInterval(iv); iv = null; }); };
   /* ---------- vezetőállás-konzol: karok, gombok, sebességmérő ---------- */
@@ -483,9 +483,10 @@
   addEventListener('keydown', e => { if (!S || !$('#menu').hidden || e.target.tagName === 'INPUT') return; if (e.key === '/') { e.preventDefault(); $('#q').focus(); return; } const k = e.key.toLowerCase(); if (e.key === ' ') e.preventDefault(); if (keys[k]) return; keys[k] = 1;
     if (k === 'c') cc(); else if (k === 'x') ccAuto(); else if (k === 'w' || k === 's') { cam.follow = 1; if (k === 'w' && S.park) toast('Old ki a rögzítőféket (P).', 1); S.sp = Math.max(0, Math.min(10, Math.round(((S.ccA ? curSp() : S.sp || 0) + (k === 'w' ? .5 : -.5)) * 2) / 2)); S.ccA = 0; }
     if (k === 'b' || k === ' ') S.ccA = 0; if (k === 'b') S.brk = Math.min(6, Math.round(S.brk) + 1); if (k === 'n') { S.eb = 0; S.brk = Math.max(0, Math.round(S.brk) - 1); } if (k === 'h') horn(1);
-    if (k === 'p') park(); if (k === 'r') setRev(S.rev === 1 ? 0 : S.rev === 0 ? (S.v > .5 ? 1 : -1) : 0); if (k === 'v') flip(); if (k === '3') toggle3D(); if (k === 'f' && V3 && V3.on) V3.cab(); if (k === 'm') { toggle3D(false); $('#bMap').onclick(); }; if (k === 'escape') { if (!$('#pnl').hidden) closeP(); else $('#bMenu').onclick(); } ui(); });
+    if (k === 'p') park(); if (k === 'r') setRev(S.rev === 1 ? 0 : S.rev === 0 ? (S.v > .5 ? 1 : -1) : 0); if (k === 'v') flip(); if (k === '3') toggle3D(); if (k === 'f' && V3 && V3.on) V3.cab(); if (k === 'm') $('#bMap').onclick(); if (k === 'escape') { if (!$('#pnl').hidden) closeP(); else $('#bMenu').onclick(); } ui(); });
   addEventListener('keyup', e => { keys[e.key.toLowerCase()] = 0; if (e.key.toLowerCase() === 'h') horn(0); });
   // kamera: görgő, húzás, kattintás váltóra
+  cv.addEventListener('pointerdown', e => { if (m3 === 1) { e.stopImmediatePropagation(); setM3(2); } }, true);
   cv.addEventListener('wheel', e => { e.preventDefault(); const f = Math.exp(-Math.max(-80, Math.min(80, e.deltaY)) * .0025); cam.s = Math.max(.0012, Math.min(8, cam.s * f)); }, { passive: false });
   let drag = null; const PT = new Map();
   cv.addEventListener('pointerdown', e => { PT.set(e.pointerId, { x: e.clientX, y: e.clientY }); drag = { x: e.clientX, y: e.clientY, m: 0 }; if (PT.size === 2) { const [a, b] = [...PT.values()]; drag.pinch = Math.hypot(a.x - b.x, a.y - b.y); drag.s0 = cam.s; } });
@@ -572,11 +573,11 @@
   let AX = null; function beep(f, d) { try { AX = AX || new AudioContext(); const o = AX.createOscillator(), gn = AX.createGain(); o.frequency.value = f; o.type = 'square'; gn.gain.value = .04; gn.gain.exponentialRampToValueAtTime(.0001, AX.currentTime + d); o.connect(gn).connect(AX.destination); o.start(); o.stop(AX.currentTime + d); } catch (_) {} }
 
   /* ---------- főciklus ---------- */
-  function resize() { const d = devicePixelRatio || 1; cv.width = innerWidth * d; cv.height = innerHeight * d; } addEventListener('resize', resize); resize();
+  function resize() { const d = devicePixelRatio || 1; cv.width = (cv.clientWidth || innerWidth) * d; cv.height = (cv.clientHeight || innerHeight) * d; } addEventListener('resize', resize); resize();
   let uiT = 0, saveT = 0, scT = 0;
   function loop(t) { requestAnimationFrame(loop); const dt = Math.min(.05, (t - lastT) / 1000 || 0); lastT = t; FDT = dt; if (!H || !S) return;
     if ($('#menu').hidden && $('#pnl').hidden) { const sub = 4; for (let k = 0; k < sub; k++) step(dt * TS / sub); agentsTick(dt * TS); }
-    if (V3 && V3.on) V3.frame(dt); else draw(); if ((uiT -= dt) <= 0) { uiT = .15; ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); } if ((scT -= dt) <= 0) { scT = 60; score(); }
+    if (V3 && V3.on) { if (m3 === 2) draw(); else { V3.frame(dt); if (!(m3f++ % 3)) draw(); } } else draw(); if ((uiT -= dt) <= 0) { uiT = .15; ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); } if ((scT -= dt) <= 0) { scT = 60; score(); }
     if (toastT > 0 && (toastT -= dt) <= 0) $('#toast').hidden = true; }
   requestAnimationFrame(loop);
   if (window.Taj) Taj.load('202611220059').catch(() => {});
@@ -587,13 +588,16 @@
   $('#mNew').onclick = () => { if ($('#mNew').dataset.sure) { localStorage.removeItem(KEY); fresh(); S.nearIdx = []; nearT = 0; $('#menu').hidden = true; delete $('#mNew').dataset.sure; $('#mNew').textContent = 'Új játék'; } else { $('#mNew').dataset.sure = 1; $('#mNew').textContent = 'Biztos? Minden elvész'; } };
   addEventListener('pagehide', save);
   /* ---------- 3D nézet (harom.js): külső követő kamera és vezetőállás ---------- */
-  let V3 = null, v3load = 0;
+  let V3 = null, v3load = 0, m3 = 0, m3f = 0; const cam3 = { mini: .09, s2d: .25 };
+  // 3D módban a 2D vászon a minitérkép (1) vagy a teljes képernyős nagy térkép (2)
+  function setM3(m) { if (m3 === 1) cam3.mini = cam.s; if (m3 === 0) cam3.s2d = cam.s; m3 = m; cv.classList.toggle('mini', m === 1); cv.classList.toggle('big', m === 2); $('#bMap').classList.toggle('on', m === 2);
+    cam.s = m === 1 ? cam3.mini : m === 2 ? .012 : cam3.s2d; cam.follow = 1; if (m === 2 && S) { const p = front(); cam.x = p[0]; cam.y = p[1]; cam.follow = 0; } resize(); }
   window.V3API = { get S() { return S; }, get E() { return E; }, get ST() { return ST; }, get PL() { return PL; }, get SB() { return SB; }, LOCOS, CARGO, CAR_L, IND, at, along, front, trainLen,
     agents: () => [...NPC.map(a => ({ a, name: '' })), ...(S.bots || []).map(b => ({ a: botAgent(b), name: b.n }))].filter(q => q.a && q.a.segs).map(q => ({ id: q.a, name: q.name, cons: q.a.cons, tl: q.a.tl, pt: x => agPt(q.a, q.a.pos - q.a.tl + x) })) };
-  function toggle3D(on) { if (on === undefined) on = !(V3 && V3.on); if (!on) { if (V3) V3.stop(); $('#c3').hidden = true; $('#b3d').classList.remove('on'); return; }
+  function toggle3D(on) { if (on === undefined) on = !(V3 && V3.on); if (!on) { if (V3) V3.stop(); setM3(0); $('#c3').hidden = true; $('#b3d').classList.remove('on'); return; }
     if (!window.Taj || !Taj.ready) return toast('A táj még töltődik.', 1); cam.follow = 1; $('#b3d').classList.add('on');
-    if (V3) { $('#c3').hidden = false; V3.start(); return; } if (v3load) return; v3load = 1; toast('3D nézet betöltése…');
-    import('./harom.js?v=202611220107').then(m => { V3 = m; $('#c3').hidden = false; m.init($('#c3'), window.V3API); m.start(); }).catch(e => { console.error(e); v3load = 0; $('#b3d').classList.remove('on'); toast('A 3D nézet nem indult el.', 1); }); }
+    if (V3) { $('#c3').hidden = false; V3.start(); setM3(1); return; } if (v3load) return; v3load = 1; toast('3D nézet betöltése…');
+    import('./harom.js?v=202611220139').then(m => { V3 = m; $('#c3').hidden = false; m.init($('#c3'), window.V3API); m.start(); setM3(1); }).catch(e => { console.error(e); v3load = 0; $('#b3d').classList.remove('on'); toast('A 3D nézet nem indult el.', 1); }); }
   $('#b3d').onclick = () => toggle3D();
   window.__vt = () => ({ toggle3D, get V3() { return V3; }, NPC, agentsTick, botAgent, agPt, showBots, S, E, ST, TT, CARGO, aligned, onTT, fixRear, NX, NY, ADJ, dijkstra, exits, outDir, routeTo, succ, step, ui, move, plan, nextSwitch, flip, board, take, couple, uncouple, nearSt, front, along, cam });
 })();

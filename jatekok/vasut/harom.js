@@ -2,7 +2,7 @@
    A vonat körüli ~2,5 km-t rajzolja: valódi domborzat (dem/*.png, tools/vasut_dem.py), a 2D térkép csempéi talajtextúraként (Taj.compose),
    épületek a megyei .haz fájlokból, fák az erdőkben, sínek töltéssel, peronok, állomásépületek, vonatok.
    Koordináták: jelenet x = világ x − OX, z = világ y − OY, y = magasság (m). */
-import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611220107';
+import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611220139';
 
 const V = new URL(import.meta.url).search, CH = 1024, CN = 32, RAD = 2600, BRAD = 1700, TRAD = 1500;
 let A = null, cv = null, R = null, scene = null, camera = null, OX = 0, OY = 0, raf = 0;
@@ -30,7 +30,7 @@ const mat = { }; let treeGeo = null;
 function prism(out, p, y0, y1, wall, roof) { // p: [x0, z0, …] jelenet-koordináta; out: { pos, col }
   const n = p.length / 2; let ar = 0; for (let i = 0; i < n; i++) { const j = (i + 1) % n; ar += p[2 * i] * p[2 * j + 1] - p[2 * j] * p[2 * i + 1]; } const cw = ar > 0, P = out.pos, C = out.col;
   for (let i = 0; i < n; i++) { const j = (i + 1) % n, ax = p[2 * i], az = p[2 * i + 1], bx = p[2 * j], bz = p[2 * j + 1], sh = .72 + .28 * Math.abs((bx - ax) / (Math.hypot(bx - ax, bz - az) || 1));
-    const q = cw ? [ax, y0, az, bx, y0, bz, bx, y1, bz, ax, y0, az, bx, y1, bz, ax, y1, az] : [bx, y0, bz, ax, y0, az, ax, y1, az, bx, y0, bz, ax, y1, az, bx, y1, bz]; for (let k = 0; k < 18; k++) P.push(q[k]); for (let k = 0; k < 6; k++) C.push(wall[0] * sh, wall[1] * sh, wall[2] * sh); }
+    const q = !cw ? [ax, y0, az, bx, y0, bz, bx, y1, bz, ax, y0, az, bx, y1, bz, ax, y1, az] : [bx, y0, bz, ax, y0, az, ax, y1, az, bx, y0, bz, ax, y1, az, bx, y1, bz]; for (let k = 0; k < 18; k++) P.push(q[k]); for (let k = 0; k < 6; k++) C.push(wall[0] * sh, wall[1] * sh, wall[2] * sh); }
   const pts = []; for (let i = 0; i < n; i++) pts.push(new THREE.Vector2(p[2 * i], p[2 * i + 1])); let tr; try { tr = THREE.ShapeUtils.triangulateShape(pts, []); } catch (_) { tr = []; }
   for (const t of tr) { const o = cw ? [t[0], t[2], t[1]] : t; for (const i of o) { P.push(p[2 * i], y1, p[2 * i + 1]); C.push(roof[0], roof[1], roof[2]); } } }
 function meshOf(out, m) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(out.pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(out.col, 3)); g.computeVertexNormals(); const me = new THREE.Mesh(g, m || mat.vc); me.matrixAutoUpdate = false; return me; }
@@ -130,7 +130,7 @@ export function init(canvas, api) { A = api; cv = canvas; R = new THREE.WebGLRen
     treeGeo = new THREE.BufferGeometry(); treeGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); treeGeo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); treeGeo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); treeGeo.userData.shared = true; }
   railGrid(); fetch('dem/index.json' + V).then(r => r.json()).then(j => { j.set = new Set(j.t); DI = j; demGen++; }).catch(() => {});
   // kamera: húzás – körbeforgatás, görgő – távolság
-  let dr = null; cv.addEventListener('pointerdown', e => { dr = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); cv.style.cursor = 'grabbing'; }); cv.addEventListener('pointermove', e => { if (!dr) return; cam.az -= (e.clientX - dr.x) * .006; cam.el = Math.max(-.05, Math.min(1.45, cam.el + (e.clientY - dr.y) * .005)); dr.x = e.clientX; dr.y = e.clientY; });
+  let dr = null; cv.addEventListener('pointerdown', e => { dr = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); cv.style.cursor = 'grabbing'; }); cv.addEventListener('pointermove', e => { if (!dr) return; cam.az += (e.clientX - dr.x) * .006; cam.el = Math.max(-.05, Math.min(1.45, cam.el + (e.clientY - dr.y) * .005)); dr.x = e.clientX; dr.y = e.clientY; });
   for (const ev of ['pointerup', 'pointercancel']) cv.addEventListener(ev, () => { dr = null; cv.style.cursor = 'grab'; }); cv.addEventListener('wheel', e => { e.preventDefault(); cam.dist = Math.max(12, Math.min(900, cam.dist * Math.exp(Math.max(-80, Math.min(80, e.deltaY)) * .0022))); }, { passive: false });
   addEventListener('resize', size); size(); }
 function size() { if (!R) return; const w = innerWidth, h = innerHeight; R.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }

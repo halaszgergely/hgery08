@@ -1,21 +1,21 @@
 /* HGWS Légi Öntözés – főprogram: betöltés, renderelés, játékhurok, kamerák, töltés, küldetések, feloldások. */
 import * as THREE from 'three';
-import { GEPEK, GEP, REPTER, REPTEREK, KULDETESEK, FORGO, ZERO_HELY, GAME } from './config.js?v=202611220136';
-import * as GEO from './geo.js?v=202611220136';
-import { createTerrain } from './terep.js?v=202611220136';
-import { createWorld } from './vilag.js?v=202611220136';
-import { createOSM } from './osm.js?v=202611220136';
-import { buildModel, animate } from './modellek.js?v=202611220136';
-import { createBody, placeOn, step } from './fizika.js?v=202611220136';
-import { createSpray } from './permet.js?v=202611220136';
-import { createMission } from './kuldetes.js?v=202611220136';
-import { createAudio } from './hang.js?v=202611220136';
-import { createControls } from './iranyitas.js?v=202611220136';
-import { createHud, setMapImage, drawMap } from './hud.js?v=202611220136';
-import * as HUDM from './hud.js?v=202611220136';
-import { createUI } from './ui.js?v=202611220136';
-import * as RL from './ranglista.js?v=202611220136';
-import { createPost } from './utofeldolgozas.js?v=202611220136';
+import { GEPEK, GEP, REPTER, REPTEREK, KULDETESEK, FORGO, ZERO_HELY, GAME } from './config.js?v=202611220139';
+import * as GEO from './geo.js?v=202611220139';
+import { createTerrain } from './terep.js?v=202611220139';
+import { createWorld } from './vilag.js?v=202611220139';
+import { createOSM } from './osm.js?v=202611220139';
+import { buildModel, animate } from './modellek.js?v=202611220139';
+import { createBody, placeOn, step } from './fizika.js?v=202611220139';
+import { createSpray } from './permet.js?v=202611220139';
+import { createMission } from './kuldetes.js?v=202611220139';
+import { createAudio } from './hang.js?v=202611220139';
+import { createControls } from './iranyitas.js?v=202611220139';
+import { createHud, setMapImage, drawMap } from './hud.js?v=202611220139';
+import * as HUDM from './hud.js?v=202611220139';
+import { createUI } from './ui.js?v=202611220139';
+import * as RL from './ranglista.js?v=202611220139';
+import { createPost } from './utofeldolgozas.js?v=202611220139';
 
 const $ = s => document.querySelector(s);
 const LS = 'hgws_legi_v1', TOUCH = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window;

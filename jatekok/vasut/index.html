@@ -4,7 +4,7 @@
 <style>
 :root{--pn:#0b1119;--pn2:#121b27;--ln:rgba(140,180,230,.16);--ink:#ebeff6;--mut:#93a1b5;--gold:#e8b656;--gold2:#ffe29a;--ok:#5ee08a;--bad:#ff5a4d;--glass:rgba(7,11,17,.74)}
 *{box-sizing:border-box;margin:0}html,body{height:100%;background:#0d1410;color:var(--ink);font:500 14px/1.45 Inter,system-ui,sans-serif;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;touch-action:none}
-canvas#c,canvas#c3{position:fixed;inset:0;width:100%;height:100%;display:block}canvas#c3{touch-action:none;cursor:grab}[hidden]{display:none!important}
+canvas#c,canvas#c3{position:fixed;inset:0;width:100%;height:100%;display:block}canvas#c3{touch-action:none;cursor:grab}canvas#c.mini{inset:auto;left:12px;top:104px;width:210px;height:210px;border-radius:14px;border:2px solid rgba(255,255,255,.28);box-shadow:0 6px 20px rgba(0,0,0,.5);z-index:2;cursor:pointer}canvas#c.big{z-index:2}@media (max-width:700px){canvas#c.mini{width:120px;height:120px;top:150px;left:8px}}[hidden]{display:none!important}
 .gl{background:var(--glass);border:1px solid rgba(140,180,230,.15);border-radius:14px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .b{border:1px solid var(--ln);background:var(--pn2);color:var(--ink);border-radius:11px;padding:8px 13px;font:700 13px Inter;cursor:pointer;display:inline-flex;align-items:center;gap:6px;pointer-events:auto;white-space:nowrap}
 .b:hover{border-color:rgba(232,182,86,.6)}.b.g{background:linear-gradient(180deg,#f0c56a,#d79a32);color:#1a1004;border:0}.b.sm{padding:5px 9px;font-size:12px;border-radius:9px}.b:disabled{opacity:.4;cursor:default}
@@ -75,6 +75,6 @@ h2{font:800 11px Inter;letter-spacing:.18em;color:var(--mut);margin:14px 0 6px;t
   <div class="row" style="margin-top:14px"><button class="b g" id="mPlay" disabled>▶ Játék</button><button class="b" id="mNew" hidden>Új játék</button></div>
   <h2>Irányítás</h2><div class="keys"><b>W / S</b><span>sebességkar fel / le</span><b>Szóköz, B / N</b><span>fék (tartva) · fékfokozat fel / le</span><b>C</b><span>a mostani sebesség tartása</span><b>X</b><span>automata tempomat</span><b>P</b><span>rögzítőfék be / ki</span><b>H</b><span>kürt</span><b>R</b><span>irány: előre – üres – hátra</span><b>V</b><span>a következő váltó állítása</span><b>3</b><span>3D nézet be / ki · F: vezetőállás / külső kamera · egérrel körbeforgatható</span><b>M</b><span>térkép</span><b>Egér</b><span>görgő: nagyítás · húzás: mozgatás · kattintás a váltóra: állítás</span></div>
   <p class="mut" style="margin-top:12px;font-size:12px">Térkép és vasúthálózat: © OpenStreetMap-közreműködők (ODbL)</p></div></div>
-<script src="taj.js?v=202611220107"></script>
-<script src="vasut.js?v=202611220107"></script>
+<script src="taj.js?v=202611220139"></script>
+<script src="vasut.js?v=202611220139"></script>
 </body></html>
