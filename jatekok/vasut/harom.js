@@ -2,7 +2,7 @@
    A vonat körüli ~2,5 km-t rajzolja: valódi domborzat (dem/*.png, tools/vasut_dem.py), a 2D térkép csempéi talajtextúraként (Taj.compose),
    épületek a megyei .haz fájlokból, fák az erdőkben, sínek töltéssel, peronok, állomásépületek, vonatok.
    Koordináták: jelenet x = világ x − OX, z = világ y − OY, y = magasság (m). */
-import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611220059';
+import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611220107';
 
 const V = new URL(import.meta.url).search, CH = 1024, CN = 32, RAD = 2600, BRAD = 1700, TRAD = 1500;
 let A = null, cv = null, R = null, scene = null, camera = null, OX = 0, OY = 0, raf = 0;
@@ -100,7 +100,9 @@ function trainSync(id, cons, pt, name) { const sig = cons.map(u => u.l || u.cg).
 /* ---------- a jelenet karbantartása ---------- */
 let frameN = 0, scanT = 0;
 function rebase(p) { for (const c of CHK.values()) { drop(c.mesh); drop(c.trees); c.tex.dispose(); } CHK.clear(); for (const g of BLD.values()) drop(g); BLD.clear(); for (const g of RAIL.values()) drop(g); RAIL.clear(); for (const g of MISC.values()) drop(g); MISC.clear(); for (const t of TR.values()) drop(t.g); TR.clear(); jobs.length = 0; OX = Math.round(p[0] / CH) * CH; OY = Math.round(p[1] / CH) * CH; }
+let sGen = -1;
 function scan(p) { const px = p[0], py = p[1], want = [];
+  if (sGen !== demGen) { sGen = demGen; for (const g of BLD.values()) drop(g); BLD.clear(); for (const g of RAIL.values()) drop(g); RAIL.clear(); for (const g of MISC.values()) drop(g); MISC.clear(); for (const c of CHK.values()) if (c.trees) { drop(c.trees); c.trees = null; jobs.push(() => chunkTrees(c)); } }
   for (let cx = Math.floor((px - RAD) / CH); cx <= Math.floor((px + RAD) / CH); cx++) for (let cy = Math.floor((py - RAD) / CH); cy <= Math.floor((py + RAD) / CH); cy++) { const d = Math.hypot((cx + .5) * CH - px, (cy + .5) * CH - py); if (d < RAD + CH * .7) want.push([d, cx, cy]); }
   want.sort((a, b) => a[0] - b[0]); const keep = new Set(want.map(w => w[1] + ':' + w[2])); for (const [k, c] of CHK) if (!keep.has(k)) { drop(c.mesh); drop(c.trees); c.tex.dispose(); CHK.delete(k); }
   let made = 0; for (const [, cx, cy] of want) { const c = CHK.get(cx + ':' + cy); if (!c) { if (made++ < 2) mkChunk(cx, cy); continue; } if (c.dg !== demGen) chunkGeo(c); if (c.partial && c.tg !== window.Taj.gen) chunkTex(c); }
@@ -134,7 +136,8 @@ export function init(canvas, api) { A = api; cv = canvas; R = new THREE.WebGLRen
 function size() { if (!R) return; const w = innerWidth, h = innerHeight; R.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
 export function start() { on = true; size(); const p = A.front(); rebase(p); cam.tx = p[0]; cam.tz = p[1]; cam.ty = Ht(p[0], p[1]); cam.hd = p[2]; scanT = 0; }
 export function stop() { on = false; }
-export function cab() { cam.cab = !cam.cab; }
+export function cab() { cam.cab = !cam.cab; cam.az = 0; cam.el = .38; }
+export const _dbg = () => ({ scene, camera, THREE, MISC, BLD, RAIL, CHK });
 export function frame(dt) { if (!on) return; frameN++; const S = A.S, L = A.trainLen(), f = A.front(), pm = A.along(Math.max(0, L - 8));
   if (Math.hypot(f[0] - OX, f[1] - OY) > 40000) rebase(f);
   if ((scanT -= dt) <= 0) { scanT = .25; scan(f); }
