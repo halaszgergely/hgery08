@@ -5,8 +5,8 @@
    Géptípusonként: fúvókasor (keskeny, egyenletes függöny), rámpa (egy tömbben zúduló víz), vízzsák (zuhatag nagy cseppekkel),
    felhőöntözés (széles, szétterülő pára). Minden részecske egyetlen rajzhívás, a kamera közelében lévő origóhoz képest tárolva. */
 import * as THREE from 'three';
-import { ground, isWater } from './geo.js?v=202611221646';
-import { SU, LOGV_PARS, LOGV, LOGF_PARS, LOGF } from './kozos.js?v=202611221646';
+import { ground, isWater } from './geo.js?v=202611221651';
+import { SU, LOGV_PARS, LOGV, LOGF_PARS, LOGF } from './kozos.js?v=202611221651';
 
 export function createSpray(scene, max = 1200, mistMax = 6000) {
   const origin = new THREE.Vector3();
