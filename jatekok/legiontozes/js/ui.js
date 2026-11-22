@@ -1,6 +1,6 @@
 /* Menük: főmenü, hangár (3D előnézet a bázison), küldetések, ranglista, beállítások, irányítás-súgó, szünet, küldetés vége. */
-import { GEPEK, GEP, KULDETESEK, MODOK, REPTEREK, FORGO } from './config.js?v=202611221828';
-import * as RL from './ranglista.js?v=202611221828';
+import { GEPEK, GEP, KULDETESEK, MODOK, REPTEREK, FORGO } from './config.js?v=202611221905';
+import * as RL from './ranglista.js?v=202611221905';
 
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const KONNYU = { permetezo: .92, ancsa: .85, vadasz: .38, concorde: .28, jumbo: .22, herkules: .42, ketelt: .55, hidro: .8, vitorlazo: .6, kopter: .5, kamov: .72, chinook: .45, giro: .88, dron: .96, leghajo: .7, slag: .04, zero: .82 };
@@ -117,12 +117,12 @@ export function createUI(app) {
         sv.disabled = true; $('#sub').textContent = 'Mentés…'; const r = await RL.submit(res.total, m.mode, gep.id); $('#sub').textContent = r.ok ? 'Felkerültél a ranglistára!' : (r.why || 'A mentés nem sikerült.'); if (r.ok) app.audio.fx.ok(); };
       sv.onclick = go; if (!st.guest && st.user) go(); } }
   /* titkos fejlesztői menü */
-  function dev() { backTo = menu; const D = app.DEV, ck = (k, t) => `<label class="card" style="flex-direction:row;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" data-d="${k}" ${D[k] ? 'checked' : ''}> ${t}</label>`;
+  function dev(back) { backTo = back || menu; const D = app.DEV, ck = (k, t) => `<label class="card" style="flex-direction:row;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" data-d="${k}" ${D[k] ? 'checked' : ''}> ${t}</label>`;
     const b = sheet('DEV', `<div class="grid">${ck('all', 'Minden gép feloldása (Zero gépével együtt)')}${ck('water', 'Végtelen víz')}${ck('god', 'Sérthetetlen gép')}${ck('fps', 'FPS és teljesítmény kijelző')}
-      <div class="card"><b>Teleport</b><div class="meta">Térkép (M) → kattintás bárhová, küldetés közben is.</div></div></div>
+</div>
       <div style="margin-top:14px"><button class="btn" id="devOff" style="border-color:#e0322a">Dev mód kikapcsolása</button></div>`, '<span class="devB">DEV</span>');
     b.querySelectorAll('[data-d]').forEach(x => x.onchange = () => { D[x.dataset.d] = x.checked ? 1 : 0; app.persistDev(); app.applySettings('fps'); });
-    b.querySelector('#devOff').onclick = () => { app.setDev(0); menu(); }; }
+    b.querySelector('#devOff').onclick = () => { app.setDev(0); (back || menu)(); }; }
   function crash(why, onR, onM) { show('#crash'); $('#crashW').textContent = why || ''; $('#crashR').onclick = () => { hideAll(); onR(); }; $('#crashM').onclick = () => menu(); }
   return { menu, hangar, missions, pause, end, crash, dev, hideAll, settings, help, refreshHangar: drawHangar };
 }

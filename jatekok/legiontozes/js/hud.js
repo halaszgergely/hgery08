@@ -1,11 +1,36 @@
 /* HUD: sebesség, magasság, emelkedés, gáz/kollektív, víz, akku, mesterséges horizont + iránytű, minitérkép, szélirány,
    átesés-figyelmeztetés, küldetés-időzítő és célnyíl. Nagy térkép (M): nagyítás, mozgatás, útpontok, gyorsutazás. A DOM-írások gyorsítótárazva. */
-import { REPTEREK, VIZEK, P, FORGO, W_MAX, H_MAX } from './config.js?v=202611221828';
+import { REPTEREK, VIZEK, P, FORGO, W_MAX, H_MAX } from './config.js?v=202611221905';
+import { megyek } from './geo.js?v=202611221905';
 
 const $ = s => document.querySelector(s);
 const cache = new Map(); const setH = (el, k, v) => { if (cache.get(k) !== v) { cache.set(k, v); el.innerHTML = v; } };
 let MAP = null; export function setMapImage(img) { MAP = img; }
 const R = 250;   // a térképkép felbontása (m / px)
+/* részletes vektoros réteg a nagy térképhez közelítéskor: a Holtváros vármegyei OSM-adataiból (erdők, parkok, vizek, folyók, vasutak, utak, helynevek), igény szerint betöltve */
+const VEC = new Map(); let vecRedraw = null;
+function vecCounty(id) { let c = VEC.get(id); if (c) return c; c = { st: 0 }; VEC.set(id, c); const m = megyek()[id], ax = m[0], sx = m[1], ay = m[2];
+  const conv = f => { const a = new Float32Array(f.length); let x0 = 1e12, z0 = 1e12, x1 = -1e12, z1 = -1e12; for (let i = 0; i < f.length; i += 2) { const X = ax + f[i] * sx, Z = ay + f[i + 1]; a[i] = X; a[i + 1] = Z; if (X < x0) x0 = X; if (X > x1) x1 = X; if (Z < z0) z0 = Z; if (Z > z1) z1 = Z; } a.bb = [x0, z0, x1, z1]; return a; };
+  fetch('../holtvaros/terkep/' + id + '.json').then(r => r.json()).then(d => {
+    c.green = d.green.map(([k, rings]) => ({ k, r: rings.map(conv) })); c.wpoly = d.wpoly.map(rings => rings.map(conv)); c.water = d.water.map(([w, f]) => ({ w, f: conv(f) }));
+    c.rails = d.rails.map(conv); c.roads = d.roads.map(([k, f]) => ({ k, f: conv(f) })).sort((a, b) => a.k - b.k); c.labels = (d.labels || []).map(([lx, ly, n, sz]) => [ax + lx * sx, ay + ly, n, sz || 10]);
+    c.st = 1; vecRedraw?.(); }).catch(() => { c.st = -1; });
+  return c; }
+const RC = ['#ffffff', '#ffffff', '#fff3b8', '#ffd76a', '#ffb347', '#f08a3c'], RW = [5, 6, 8, 11, 15, 22], RMIN = [.6, .7, .9, 1.3, 1.7, 2.2];
+function drawVec(x, k, ox, oy, W, H) { const vx0 = -ox / k, vz0 = -oy / k, vx1 = (W - ox) / k, vz1 = (H - oy) / k, vis = bb => bb[2] >= vx0 && bb[0] <= vx1 && bb[3] >= vz0 && bb[1] <= vz1;
+  const path = (f, close) => { x.moveTo(ox + f[0] * k, oy + f[1] * k); for (let i = 2; i < f.length; i += 2) x.lineTo(ox + f[i] * k, oy + f[i + 1] * k); if (close) x.closePath(); };
+  const cs = []; for (const id in megyek()) { const m = megyek()[id]; if (m[5] < vx0 || m[3] > vx1 || m[6] < vz0 || m[4] > vz1) continue; const c = vecCounty(id); if (c.st === 1) cs.push(c); }
+  const a = Math.min(1, (k * 250 - 1.2) / 1.5); if (a <= 0) return; x.save(); x.globalAlpha = a; x.lineJoin = x.lineCap = 'round';
+  for (const [kind, col] of [[0, 'rgba(46,96,52,.55)'], [1, 'rgba(98,160,84,.45)']]) { x.fillStyle = col; x.beginPath(); for (const c of cs) for (const gr of c.green) if (gr.k === kind) for (const r of gr.r) if (vis(r.bb)) path(r, true); x.fill('evenodd'); }
+  x.fillStyle = '#3f86b5'; x.beginPath(); for (const c of cs) for (const rings of c.wpoly) if (rings[0] && vis(rings[0].bb)) for (const r of rings) path(r, true); x.fill('evenodd');
+  x.strokeStyle = '#3f86b5'; for (const c of cs) for (const w of c.water) if (vis(w.f.bb)) { x.lineWidth = Math.max(1, w.w * k); x.beginPath(); path(w.f); x.stroke(); }
+  const minK = k * 250 > 6 ? 0 : k * 250 > 3.5 ? 2 : 3;
+  for (let pass = 0; pass < 2; pass++) for (const c of cs) for (const r of c.roads) { if (r.k < minK || !vis(r.f.bb)) continue; const w = Math.max(RMIN[r.k], RW[r.k] * k);
+    x.strokeStyle = pass ? RC[r.k] : 'rgba(40,30,20,.55)'; x.lineWidth = pass ? w : w + 1.6; x.beginPath(); path(r.f); x.stroke(); }
+  x.strokeStyle = '#4b4038'; x.lineWidth = Math.max(1.4, 4 * k); x.beginPath(); for (const c of cs) for (const r of c.rails) if (vis(r.bb)) path(r); x.stroke();
+  if (k * 250 > 5) { x.strokeStyle = '#efe9df'; x.lineWidth = Math.max(.8, 2 * k); x.setLineDash([4, 4]); x.beginPath(); for (const c of cs) for (const r of c.rails) if (vis(r.bb)) path(r); x.stroke(); x.setLineDash([]); }
+  if (k * 250 > 9) { x.textAlign = 'center'; x.font = '600 10px Inter'; x.fillStyle = 'rgba(255,255,255,.85)'; x.strokeStyle = 'rgba(0,0,0,.6)'; x.lineWidth = 3; for (const c of cs) for (const [lx, lz, n] of c.labels) { const px = ox + lx * k, py = oy + lz * k; if (px < -40 || py < -10 || px > W + 40 || py > H + 10) continue; x.strokeText(n, px, py); x.fillText(n, px, py); } }
+  x.restore(); }
 
 export function createHud() {
   const tele = $('#tele'), bars = $('#bars'), flags = $('#flags'), att = $('#att'), ax = att.getContext('2d'), mini = $('#mini'), mx = mini.getContext('2d');
@@ -76,7 +101,7 @@ export function drawMap(cv, s, towns, onPick, onEmpty) { const W = cv.clientWidt
   let k, ox, oy; const X = wx => ox + wx * k, Y = wz => oy + wz * k, toW = (px, py) => [(px - ox) / k, (py - oy) / k];
   let hits = [];
   function draw() { clampV(); k = fit * MV.z; ox = W / 2 - MV.cx * k; oy = H / 2 - MV.cz * k; x.setTransform(dpr, 0, 0, dpr, 0, 0);
-    x.fillStyle = '#0a0f14'; x.fillRect(0, 0, W, H); if (MAP) { x.imageSmoothingEnabled = MV.z < 8; x.drawImage(MAP, ox, oy, W_MAX * k, H_MAX * k); }
+    x.fillStyle = '#0a0f14'; x.fillRect(0, 0, W, H); if (MAP) { x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(MAP, ox, oy, W_MAX * k, H_MAX * k); } drawVec(x, k, ox, oy, W, H);
     x.textAlign = 'center'; const tmin = MV.z > 14 ? 0 : MV.z > 7 ? 4 : MV.z > 3.5 ? 12 : MV.z > 1.6 ? 25 : 45;
     for (const [n, tx, tz, pop] of towns) if (pop > tmin) { const px = X(tx), py = Y(tz); if (px < -50 || py < -20 || px > W + 50 || py > H + 20) continue; x.font = `700 ${pop > 90 ? 12 : 11}px Inter`; x.fillStyle = '#fff'; x.beginPath(); x.arc(px, py, 2.5, 0, 6.3); x.fill(); x.fillStyle = 'rgba(255,255,255,.85)'; x.fillText(n, px, py - 6); }
     x.font = 'italic 700 12px Inter'; x.fillStyle = '#9fdcff'; for (const [n, lon, lat] of VIZEK) { const [wx, wz] = P(lon, lat); x.fillText(n, X(wx), Y(wz)); }
@@ -91,7 +116,7 @@ export function drawMap(cv, s, towns, onPick, onEmpty) { const W = cv.clientWidt
     // lépték
     const p10 = Math.pow(10, Math.floor(Math.log10(100 / k))), sk = [1, 2, 5, 10].map(f => f * p10).find(v => v * k >= 60) || 10 * p10, L = sk * k;
     x.fillStyle = 'rgba(9,14,20,.75)'; x.fillRect(10, H - 30, L + 20, 22); x.strokeStyle = '#fff'; x.lineWidth = 2; x.beginPath(); x.moveTo(20, H - 14); x.lineTo(20 + L, H - 14); x.stroke(); x.fillStyle = '#fff'; x.font = '700 10px Inter'; x.textAlign = 'left'; x.fillText(sk >= 1000 ? sk / 1000 + ' km' : sk + ' m', 22, H - 18); }
-  draw(); cv._redraw = draw;
+  draw(); cv._redraw = draw; vecRedraw = () => { if (cv.isConnected && !cv.closest('[hidden]')) { cancelAnimationFrame(cv._vr); cv._vr = requestAnimationFrame(draw); } };
   // nagyítás, mozgatás, koppintás
   const P2 = new Map(); let moved = 0, pinch = null;
   const zoomAt = (px, py, f) => { const [wx, wz] = toW(px, py); MV.z *= f; clampV(); const k2 = fit * MV.z; MV.cx = wx - (px - W / 2) / k2; MV.cz = wz - (py - H / 2) / k2; draw(); };
