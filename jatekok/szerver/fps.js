@@ -4,7 +4,7 @@
    helye a felület saját rajzkoordinátáiban van; innen számoljuk térbe. A rackek rácsra (GR) illesztve, 90°-onként
    forgatva állnak, a szabad eszközök bárhol. Képkockánként kiszámoljuk, mire mutat a célkereszt (aim); a műveleteket
    a szerver.js doClick() végzi. Lépték: K méter / rajzegység (1U = 20 egység = 4,4 cm). */
-import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611221804';
+import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611221812';
 
 const REACH = 3, EYE = 1.62, MAXP = 2500, RD = .9; // RD, RWID: a rack alapterülete
 let A = null, K = .0022, cv = null, R = null, scene = null, cam = null, room = null, cabG = null, held = null, ghost = null, pts = null;
@@ -225,7 +225,7 @@ export function init(canvas, api) { A = api; K = A.K; cv = canvas; R = new THREE
   { const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d'), gr = x.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, '#fff'); gr.addColorStop(.35, 'rgba(255,255,255,.7)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 32, 32);
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAXP * 3), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(MAXP * 3), 3)); g.setDrawRange(0, 0); pts = new THREE.Points(g, new THREE.PointsMaterial({ size: .035, map: new THREE.CanvasTexture(c), vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); pts.frustumCulled = false; scene.add(pts); }
   cv.addEventListener('click', e => { if (A.insp) { mouse.x = e.clientX / innerWidth * 2 - 1; mouse.y = -(e.clientY / innerHeight) * 2 + 1; if (DR && DR.hv) A.slotClick(DR.hv.k, DR.hv.i); return; } if (e.pointerType && e.pointerType !== 'mouse') return; if (document.pointerLockElement !== cv) { try { const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (_) {} return; } interact(); });
-  cv.addEventListener('contextmenu', e => { e.preventDefault(); if (!A.popWp()) A.cancel(); });
+  cv.addEventListener('contextmenu', e => { e.preventDefault(); if (A.insp) { if (DR && DR.hv) A.slotRm(DR.hv.k, DR.hv.i); return; } if (!A.popWp()) A.cancel(); });
   cv.addEventListener('wheel', e => { e.preventDefault(); if (A.place) rot += Math.sign(e.deltaY); }, { passive: false });
   document.addEventListener('mousemove', e => { if (!on || document.pointerLockElement !== cv) return; P.yaw -= e.movementX * .0022; P.pitch = Math.max(-1.45, Math.min(1.45, P.pitch - e.movementY * .0022)); });
   // érintés: a bal oldalon húzva járás, a jobb oldalon nézelődés, koppintás: művelet
