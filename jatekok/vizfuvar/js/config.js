@@ -13,7 +13,7 @@ export const JARMUVEK = [
   { id: 'rigo', nev: 'Rigó-13', tipus: 'Moped', ag: 'retro', ar: 0, kezdo: 1, fiz: 'moped', tomeg: 52, ballon: 2, tank: 4.5, fogy: 2.2, keverek: 1,
     teljesitmeny: 1200, vmax: 38 / 3.6, leiras: 'Riga jellegű moped kis oldalkosárral: két ballon fér rá. Kicsit lassabb, de stabilabb.',
     szinek: [['HGWS', 0xf2c230, 0x2f9e4f], ['Bordó', 0x7a2430, 0xd8d2c2], ['Világoskék', 0x6fa3c8, 0xd8d2c2], ['Narancs', 0xd9762b, 0xd8d2c2]] },
-  { id: 'trabo', nev: 'Trabó 601', tipus: 'Személyautó', ag: 'retro', ar: 85000, fiz: 'auto', tomeg: 615, ballon: 12, tank: 24, fogy: 7.2, keverek: 1,
+  { id: 'trabo', nev: 'Trabó 601', tipus: 'Személyautó', ag: 'retro', ar: 24000, fiz: 'auto', tomeg: 615, ballon: 12, tank: 24, fogy: 7.2, keverek: 1,
     leiras: 'Trabant jellegű kétütemű kisautó: ballonok a hátsó ülésen és a csomagtartóban. Rugózik a tehertől, gyengén fékez, nincs szervókormány.',
     meret: [1.5, 1.44, 3.56], tengelytav: 2.02, nyomtav: 1.22, kerekR: .28, sulypont: .52,
     motor: { gorbe: [[800, 30], [1500, 42], [2500, 52], [3000, 54], [3800, 50], [4200, 45], [4700, 30]], alap: 850, piros: 4600, gears: [4.08, 2.32, 1.52, 1.103], hatra: 3.83, fo: 4.33, kezi: 1, hajt: 'elso', motorfek: 18 },
@@ -27,7 +27,7 @@ export const GAZD = {
   kezdoPenz: 3000,
   ballonAr: 120,              // a telephelyen egy ballon töltése
   benzinAr: 620, keverekFelar: 40,   // Ft/l; a kétüteműhöz olaj is kell a keverékhez
-  fuvarAlap: 650, fuvarKm: 260, fuvarBallon: 520,   // díj: alap + km·tarifa + ballononként
+  fuvarAlap: 1400, fuvarKm: 260, fuvarBallon: 520,   // díj: alap + km·tarifa + ballononként
   keses: .35, serules: .5,   // levonások aránya
   elsoFuvar: 2500,
 };

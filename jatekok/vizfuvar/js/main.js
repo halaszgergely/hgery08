@@ -1,20 +1,21 @@
 /* HGWS Vízfuvar – főprogram: betöltés (a Légi Öntözés domborzata, terepe, égboltja és OSM-világa), játékhurok rögzített 120 Hz-es fizikával,
    kamerák, fuvarok, töltés és lerakás, tankolás, rádió, mentés, ranglista, dev mód. */
 import * as THREE from 'three';
-import { JARMU, JARMUVEK, GAZD, DT, BALLON_KG, GAME } from './config.js?v=202611222030';
-import { epitJarmu, salAnim } from './jarmuvek.js?v=202611222030';
-import { createCar, placeCar, stepCar, setLoad, createMoped, placeMoped, stepMoped, createProp, stepProp } from './fizika.js?v=202611222030';
-import { createPlaces } from './helyszinek.js?v=202611222030';
-import { createAudio } from './hang.js?v=202611222030';
-import { createRadio } from './radio.js?v=202611222030';
-import { createHud } from './hud.js?v=202611222030';
-import { drawMap, setMapImage, setGeo } from './terkep.js?v=202611222030';
-import { createControls, ALAP_KIOSZTAS } from './iranyitas.js?v=202611222030';
-import { createUI } from './ui.js?v=202611222030';
-import { UJ_MENTES, ujPiac, elszamol, tankolasAr, vagyon } from './gazdasag.js?v=202611222030';
-import { ballon as ballonMesh } from './modellkit.js?v=202611222030';
-import * as RL from './ranglista.js?v=202611222030';
-import { createRouter } from './utvonal.js?v=202611222030';
+import { JARMU, JARMUVEK, GAZD, DT, BALLON_KG, GAME } from './config.js?v=202611222034';
+import { epitJarmu, salAnim } from './jarmuvek.js?v=202611222034';
+import { createCar, placeCar, stepCar, setLoad, createMoped, placeMoped, stepMoped, createProp, stepProp } from './fizika.js?v=202611222034';
+import { createPlaces } from './helyszinek.js?v=202611222034';
+import { createAudio } from './hang.js?v=202611222034';
+import { createRadio } from './radio.js?v=202611222034';
+import { createHud } from './hud.js?v=202611222034';
+import { drawMap, setMapImage, setGeo } from './terkep.js?v=202611222034';
+import { createControls, ALAP_KIOSZTAS } from './iranyitas.js?v=202611222034';
+import { createUI } from './ui.js?v=202611222034';
+import { UJ_MENTES, ujPiac, elszamol, tankolasAr, vagyon } from './gazdasag.js?v=202611222034';
+import { ballon as ballonMesh } from './modellkit.js?v=202611222034';
+import * as RL from './ranglista.js?v=202611222034';
+import { createStreetLights } from './kozvilagitas.js?v=202611222034';
+import { createRouter } from './utvonal.js?v=202611222034';
 
 // a Légi Öntözés világa egyetlen, verziózott belépési ponton át (így a modulok mindig összetartoznak)
 const K = await import(new URL('../../legiontozes/js/vilagkit.js', import.meta.url).href); const GEO = K.GEO; setGeo(GEO);
@@ -48,7 +49,7 @@ addEventListener('keydown', e => { if (e.code === 'KeyK' && !e.repeat && FS_OK &
 const audio = createAudio(), hud = createHud(), ctl = createControls(SET.kiosztas || ALAP_KIOSZTAS), radio = createRadio(audio);
 ctl.bindTouch($('#tc')); radio.onSub((t, ms) => hud.subtitle(t, ms));
 let terrain, world, osm, places, D, ui, state = 'load', v = null, mdl = null, camMode = 'kulso', look = { yaw: 0, pitch: 0, drag: null }, mapOpen = false, props = [], tod = 13;
-let router = null, headL = null, previewMdl = null, previewId = null, orbit = 0, lightsOn = false, ind = 0, blinkT = 0, honk = false, jobT = 0, jobDmg0 = 0, saveT = 0, idleMsgT = 0, whistleT = 8, envT = 0, prevFallen = false;
+let router = null, lampak = null, headL = null, previewMdl = null, previewId = null, orbit = 0, lightsOn = false, ind = 0, blinkT = 0, honk = false, jobT = 0, jobDmg0 = 0, saveT = 0, idleMsgT = 0, whistleT = 8, envT = 0, prevFallen = false;
 
 /* ---------- környezet a fizikának: felület (terep + útfelület), normál, tapadás, épületek ---------- */
 let segCache = [], segAt = [1e9, 1e9], bldCache = [], bldAt = [1e9, 1e9];
@@ -68,7 +69,7 @@ async function boot() { const bar = $('#loadB'), txt = $('#loadT'), prog = (p, t
   try { prog(10, 'Magyarország domborzata…'); await GEO.load('../vasut/');
     prog(35, 'Térkép, fuvarcélok…'); const img = new Image(); img.src = '../vasut/taj.jpg'; await img.decode().catch(() => {}); setMapImage(img); D = await (await fetch('adat/celok.json')).json();
     prog(55, 'Táj, utak, épületek…');
-    terrain = K.createTerrain(scene, { viewR: SET.view * 1000 }); world = K.createWorld(scene, {}); osm = K.createOSM(scene, { waterMat: terrain.waterMat, lift: .1, step: 8, marks: true, roadR: 2200, bldR: 1600 }); router = createRouter(osm);
+    terrain = K.createTerrain(scene, { viewR: SET.view * 1000 }); world = K.createWorld(scene, {}); osm = K.createOSM(scene, { waterMat: terrain.waterMat, lift: .1, step: 8, marks: true, roadR: 2200, bldR: 1600, lamps: false }); router = createRouter(osm); lampak = createStreetLights(scene, osm, GEO.ground, K.SU);
     places = createPlaces(scene, GEO.ground, D); GEO.onTile(bd => { world.fixGround?.(bd); places.fixGround(bd); segAt = [1e9, 1e9]; });
     world.setWind?.(2); ui = createUI(app); applySettings(); devBadge(); await radio.ready;
     radio.setNews(news);
@@ -175,7 +176,7 @@ function frame(now) { requestAnimationFrame(frame); const rdt = Math.min(DEBUG ?
   else if (state === 'menu' || state === 'sheet') { orbit += rdt * .12; const [px, pz] = places.pontok.bemutato, gy = GEO.ground(px, pz), r = previewId === 'trabo' ? 7 : 4.2; cam.position.set(px + Math.sin(orbit) * r, gy + 1.9, pz + Math.cos(orbit) * r); cam.lookAt(px, gy + .7, pz); if (previewMdl) previewMdl.g.position.y = gy + .1; }
   else if (state === 'pause' && v) { orbit += rdt * .15; cam.position.set(v.pos.x + Math.sin(orbit) * 9, v.pos.y + 3.5, v.pos.z + Math.cos(orbit) * 9); cam.lookAt(v.pos); }
   if ((tileT -= rdt) <= 0) { tileT = 1; const c = v && state === 'drive' ? v.pos : cam.position; GEO.requestAround(c.x, c.z, 14000); }
-  terrain.update(cam, rdt); osm.update(cam, rdt); world.update(cam, rdt, cam.far, v && state === 'drive' ? v.pos : cam.position); places.update(now / 1000);
+  terrain.update(cam, rdt); osm.update(cam, rdt); lampak.update(v && state === 'drive' ? v.pos : cam.position, rdt); world.update(cam, rdt, cam.far, v && state === 'drive' ? v.pos : cam.position); places.update(now / 1000);
   world.updateEnv?.(renderer); resize(); post.frameTime?.(rdt); renderer.info.reset(); post.render(scene, cam);
   if (DEBUG) window.__perf = { fps: Math.round(fps), calls: renderer.info.render.calls, tris: renderer.info.render.triangles, osm: osm.stats(), state, v: v ? { x: v.pos.x, y: v.pos.y, z: v.pos.z, spd: v.speed, cargo: v.cargo } : null }; }
 

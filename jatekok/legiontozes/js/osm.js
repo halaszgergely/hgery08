@@ -7,9 +7,9 @@
    A megyék határán kettőzés elkerülése: minden elem csak annál a megyénél jelenik meg, amelyiknek a körvonalán belül van a közepe (256 m-es maszk).
    A réteg a terep közeli (2 km-es) csonkjaihoz épül, időkerettel, és csak ha az alatta lévő domborzati csempe már betöltődött. */
 import * as THREE from 'three';
-import { ground, megyek, onTile, tileReady, inAirport } from './geo.js?v=202611222030';
-import { SU, withWorld } from './kozos.js?v=202611222030';
-import { NEVEZETES, P } from './config.js?v=202611222030';
+import { ground, megyek, onTile, tileReady, inAirport } from './geo.js?v=202611222034';
+import { SU, withWorld } from './kozos.js?v=202611222034';
+import { NEVEZETES, P } from './config.js?v=202611222034';
 
 const BASE = '../holtvaros/terkep/', T = 2048, LEAF = 2000, MASK = 256;
 const ROADW = [5.5, 7, 9, 12, 16, 24], ROADC = [[.4, .4, .39], [.33, .33, .33], [.31, .31, .32], [.29, .29, .3], [.27, .27, .28], [.25, .25, .27]];
@@ -115,7 +115,7 @@ export function createOSM(scene, opt = {}) {
     if (pos.length) { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
       const nrm = new Float32Array(pos.length); for (let i = 1; i < nrm.length; i += 3) nrm[i] = 1; geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3)); geo.computeBoundingSphere();
       const m = new THREE.Mesh(geo, roadMat); m.receiveShadow = true; m.renderOrder = 1; g.add(m); }
-    if (lamps.length) { const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lamps, 3)); lg.computeBoundingSphere(); const lp = new THREE.Points(lg, lampMat); lp.visible = night; lp.userData.lamp = 1; g.add(lp); }
+    if (lamps.length && opt.lamps !== false) { const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lamps, 3)); lg.computeBoundingSphere(); const lp = new THREE.Points(lg, lampMat); lp.visible = night; lp.userData.lamp = 1; g.add(lp); }
     return g; }
 
   /* ---- épületek egy 2 km-es csonkhoz ---- */
