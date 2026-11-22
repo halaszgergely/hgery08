@@ -7,9 +7,9 @@
    A megyék határán kettőzés elkerülése: minden elem csak annál a megyénél jelenik meg, amelyiknek a körvonalán belül van a közepe (256 m-es maszk).
    A réteg a terep közeli (2 km-es) csonkjaihoz épül, időkerettel, és csak ha az alatta lévő domborzati csempe már betöltődött. */
 import * as THREE from 'three';
-import { ground, megyek, onTile, tileReady } from './geo.js?v=202611220139';
-import { SU, withWorld } from './kozos.js?v=202611220139';
-import { NEVEZETES, P } from './config.js?v=202611220139';
+import { ground, megyek, onTile, tileReady, inAirport } from './geo.js?v=202611220201';
+import { SU, withWorld } from './kozos.js?v=202611220201';
+import { NEVEZETES, P } from './config.js?v=202611220201';
 
 const BASE = '../holtvaros/terkep/', T = 2048, LEAF = 2000, MASK = 256;
 const ROADW = [5.5, 7, 9, 12, 16, 24], ROADC = [[.4, .4, .39], [.33, .33, .33], [.31, .31, .32], [.29, .29, .3], [.27, .27, .28], [.25, .25, .27]];
@@ -103,7 +103,7 @@ export function createOSM(scene, opt = {}) {
         for (let i = 0, o = off + nn * 4; i < ne; i++, o += 6) { const a = DV.getUint16(o, true), b = DV.getUint16(o + 2, true), cc = DV.getUint8(o + 4), f = DV.getUint8(o + 5); if (f & 16) continue;
           const t2 = t + (Math.floor(cc / 3) - 1) * c.TYN + (cc % 3 - 1); let B = t2 === t ? A : nb.get(t2); if (!B) { B = nodes(c, t2); nb.set(t2, B); }
           const lax = A[2 * a], lay = A[2 * a + 1], lbx = B[2 * b], lby = B[2 * b + 1]; if (!owns(c, (lax + lbx) / 2, (lay + lby) / 2)) continue;
-          const [ax, az] = toN(c, lax, lay), [bx, bz] = toN(c, lbx, lby); if (!inLeaf((ax + bx) / 2, (az + bz) / 2, x0, z0)) continue;
+          const [ax, az] = toN(c, lax, lay), [bx, bz] = toN(c, lbx, lby); if (!inLeaf((ax + bx) / 2, (az + bz) / 2, x0, z0) || inAirport((ax + bx) / 2, (az + bz) / 2)) continue;
           const cl = f & 7, built = f & 32, dirt = !cl && !built, w = dirt ? 3.6 : ROADW[cl], rgb = dirt ? [.5, .43, .32] : ROADC[cl];
           strip(ax, az, bx, bz, w, rgb, .35 + cl * .03, f & 8 ? bridgeH(ax, az, bx, bz) : null);
           if (built && !(f & 8)) { const L = Math.hypot(bx - ax, bz - az); for (let s = 20; s < L; s += 48) { const k = s / L, x = ax + (bx - ax) * k, z = az + (bz - az) * k, dx = (bz - az) / L, dz = -(bx - ax) / L, off2 = w / 2 + 3; lamps.push(x + dx * off2 - x0, ground(x, z) + 7, z + dz * off2 - z0); } } } }
@@ -122,7 +122,7 @@ export function createOSM(scene, opt = {}) {
     const pos = [], col = [];
     const tri = (a, b, cc, rgb) => { pos.push(a[0], a[1], a[2], b[0], b[1], b[2], cc[0], cc[1], cc[2]); for (let k = 0; k < 3; k++) col.push(rgb[0], rgb[1], rgb[2]); };
     const hsh = (x, z) => { let h = Math.imul(Math.round(x * 7) | 0, 374761393) + Math.imul(Math.round(z * 7) | 0, 668265263); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
-    const near = (X, Z) => LANDMARKS.some(([lx, lz]) => Math.hypot(X - lx, Z - lz) < 170);
+    const near = (X, Z) => inAirport(X, Z) || LANDMARKS.some(([lx, lz]) => Math.hypot(X - lx, Z - lz) < 170);
     function building(ring, h, cx, cz, rect) { // ring: [[x,z], …] országos koordinátákban, óramutató szerint vagy ellene
       let base = 1e9; for (let i = 0; i < ring.length; i += Math.max(1, ring.length / 6 | 0)) base = Math.min(base, ground(ring[i][0], ring[i][1])); base -= .6; const gc = ground(cx, cz), top = gc + Math.max(3, h);
       const r = hsh(cx, cz), wall = CC.setHex(WALL[(r * WALL.length) | 0]).toArray(), small = rect && h <= 9, roofC = CC.setHex(small ? ROOF[(hsh(cz, cx) * ROOF.length) | 0] : FLAT[(hsh(cz, cx) * FLAT.length) | 0]).toArray();

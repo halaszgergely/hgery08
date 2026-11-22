@@ -57,24 +57,25 @@ export const FORGO = k => k === 'heli' || k === 'coax' || k === 'tandem' || k ==
 
 /* repülőterek: hdg = futópálya iránya (fok, északtól az óra járásával), len/wid méterben
    tip: beton | fu | viz | heli | arboc · meret: nagy | kozep | kis · allomas: HGWS víztöltő */
+// a repterek helye: lakott területen kívül, épület és út nélküli, sík terepen (a Holtváros OSM-adataiból és a domborzatból keresve)
 export const REPTEREK = [
-  { id: 'miskolc', nev: 'Miskolc – HGWS főbázis', lon: 20.784, lat: 48.136, hdg: 58, len: 1500, wid: 40, tip: 'beton', meret: 'kozep', allomas: 1, fo: 1, heli: 1, arboc: 1, fu2: 1 },
-  { id: 'budapest', nev: 'Budapest Liszt Ferenc', lon: 19.256, lat: 47.436, hdg: 135, len: 3200, wid: 55, tip: 'beton', meret: 'nagy', allomas: 1, heli: 1 },
-  { id: 'debrecen', nev: 'Debrecen', lon: 21.615, lat: 47.489, hdg: 47, len: 2600, wid: 50, tip: 'beton', meret: 'nagy', allomas: 1, heli: 1, arboc: 1 },
-  { id: 'sarmellek', nev: 'Sármellék (Balaton)', lon: 17.159, lat: 46.686, hdg: 165, len: 2500, wid: 45, tip: 'beton', meret: 'kozep', allomas: 1, heli: 1 },
-  { id: 'pecs', nev: 'Pécs-Pogány', lon: 18.241, lat: 45.991, hdg: 155, len: 1500, wid: 30, tip: 'beton', meret: 'kozep', allomas: 1 },
-  { id: 'gyor', nev: 'Győr-Pér', lon: 17.813, lat: 47.624, hdg: 70, len: 1600, wid: 30, tip: 'beton', meret: 'kozep', allomas: 1 },
-  { id: 'kecskemet', nev: 'Kecskemét', lon: 19.749, lat: 46.918, hdg: 120, len: 2500, wid: 45, tip: 'beton', meret: 'kozep', allomas: 1 },
-  { id: 'hortobagy', nev: 'Hortobágy füves pálya', lon: 21.15, lat: 47.58, hdg: 90, len: 700, wid: 30, tip: 'fu', meret: 'kis', allomas: 1, heli: 1 },
-  { id: 'nyireg', nev: 'Nyíregyháza', lon: 21.692, lat: 47.984, hdg: 15, len: 1000, wid: 30, tip: 'fu', meret: 'kis', allomas: 1 },
-  { id: 'szeged', nev: 'Szeged', lon: 20.065, lat: 46.251, hdg: 160, len: 1100, wid: 30, tip: 'fu', meret: 'kis', allomas: 1, heli: 1 },
-  { id: 'kiskun', nev: 'Kiskunfélegyháza füves', lon: 19.88, lat: 46.74, hdg: 0, len: 650, wid: 30, tip: 'fu', meret: 'kis', allomas: 1 },
-  { id: 'zala', nev: 'Zalaegerszeg-Andráshida', lon: 16.79, lat: 46.86, hdg: 125, len: 800, wid: 30, tip: 'fu', meret: 'kis', allomas: 1 },
-  { id: 'eger', nev: 'Eger – Bükki helipad', lon: 20.42, lat: 47.93, hdg: 0, len: 60, wid: 60, tip: 'heli', meret: 'kis', allomas: 1, heli: 1 },
-  { id: 'lillafured', nev: 'Lillafüred – HGWS töltőállomás', lon: 20.62, lat: 48.10, hdg: 0, len: 60, wid: 60, tip: 'heli', meret: 'kis', allomas: 1, heli: 1 },
+  { id: 'miskolc', nev: 'Miskolc – HGWS főbázis', lon: 20.8144, lat: 48.1449, hdg: 358, len: 1500, wid: 40, tip: 'beton', meret: 'kozep', allomas: 1, fo: 1, heli: 1, arboc: 1, fu2: 1 },
+  { id: 'budapest', nev: 'Budapest – Alsónémedi', lon: 19.1413, lat: 47.2993, hdg: 135, len: 3200, wid: 55, tip: 'beton', meret: 'nagy', allomas: 1, heli: 1 },
+  { id: 'debrecen', nev: 'Debrecen', lon: 21.6027, lat: 47.4494, hdg: 107, len: 2600, wid: 50, tip: 'beton', meret: 'nagy', allomas: 1, heli: 1, arboc: 1 },
+  { id: 'sarmellek', nev: 'Sármellék (Balaton)', lon: 17.1917, lat: 46.6969, hdg: 105, len: 2500, wid: 45, tip: 'beton', meret: 'kozep', allomas: 1, heli: 1 },
+  { id: 'pecs', nev: 'Pécs-Pogány', lon: 18.2748, lat: 45.955, hdg: 155, len: 1500, wid: 30, tip: 'beton', meret: 'kozep', allomas: 1 },
+  { id: 'gyor', nev: 'Győr-Pér', lon: 17.8147, lat: 47.6259, hdg: 130, len: 1600, wid: 30, tip: 'beton', meret: 'kozep', allomas: 1 },
+  { id: 'kecskemet', nev: 'Kecskemét', lon: 19.7374, lat: 46.8806, hdg: 80, len: 2500, wid: 45, tip: 'beton', meret: 'kozep', allomas: 1 },
+  { id: 'hortobagy', nev: 'Hortobágy füves pálya', lon: 21.1336, lat: 47.5724, hdg: 150, len: 700, wid: 30, tip: 'fu', meret: 'kis', allomas: 1, heli: 1 },
+  { id: 'nyireg', nev: 'Nyíregyháza', lon: 21.6903, lat: 47.9906, hdg: 315, len: 1000, wid: 30, tip: 'fu', meret: 'kis', allomas: 1 },
+  { id: 'szeged', nev: 'Szeged', lon: 20.0574, lat: 46.2553, hdg: 250, len: 1100, wid: 30, tip: 'fu', meret: 'kis', allomas: 1, heli: 1 },
+  { id: 'kiskun', nev: 'Kiskunfélegyháza füves', lon: 19.8783, lat: 46.7419, hdg: 320, len: 650, wid: 30, tip: 'fu', meret: 'kis', allomas: 1 },
+  { id: 'zala', nev: 'Zalaegerszeg-Andráshida', lon: 16.7754, lat: 46.8802, hdg: 105, len: 800, wid: 30, tip: 'fu', meret: 'kis', allomas: 1 },
+  { id: 'eger', nev: 'Eger – Bükki helipad', lon: 20.4274, lat: 47.9175, hdg: 60, len: 60, wid: 60, tip: 'heli', meret: 'kis', allomas: 1, heli: 1 },
+  { id: 'lillafured', nev: 'Bükk (Lillafüred) – HGWS töltőállomás', lon: 20.5843, lat: 48.0595, hdg: 0, len: 60, wid: 60, tip: 'heli', meret: 'kis', allomas: 1, heli: 1 },
   { id: 'balaton', nev: 'Balaton – vízi leszálló (Siófok)', lon: 18.03, lat: 46.93, hdg: 60, len: 3000, wid: 200, tip: 'viz', meret: 'kozep', allomas: 1 },
-  { id: 'tiszato', nev: 'Tisza-tó – vízi leszálló', lon: 20.64, lat: 47.62, hdg: 0, len: 2200, wid: 200, tip: 'viz', meret: 'kozep', allomas: 1 },
-  { id: 'duna', nev: 'Duna – vízi leszálló (Csepel)', lon: 19.07, lat: 47.385, hdg: 175, len: 2000, wid: 150, tip: 'viz', meret: 'kis', allomas: 1 },
+  { id: 'tiszato', nev: 'Tisza-tó – vízi leszálló', lon: 20.6499, lat: 47.62, hdg: 0, len: 2200, wid: 200, tip: 'viz', meret: 'kozep', allomas: 1 },
+  { id: 'duna', nev: 'Duna – vízi leszálló (Tököl)', lon: 18.9474, lat: 47.3277, hdg: 30, len: 2000, wid: 150, tip: 'viz', meret: 'kis', allomas: 1 },
 ];
 for (const r of REPTEREK) { const [x, z] = P(r.lon, r.lat); r.x = x; r.z = z; const a = r.hdg * Math.PI / 180; r.dx = Math.sin(a); r.dz = -Math.cos(a); }
 export const REPTER = Object.fromEntries(REPTEREK.map(r => [r.id, r]));
