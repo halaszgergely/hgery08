@@ -3,7 +3,7 @@
    a szabadon lerakott eszközök bárhol állhatnak a teremben, elforgatva is ({ wx, wy, wz, yaw } méterben).
    Minden képkockában kiszámoljuk, mire mutat a célkereszt (aim), a műveleteket a szerver.js doClick() végzi.
    Lépték: K méter / rajzegység (1U = 20 egység = 4,4 cm). Az r-edik sor előlapja a z = -r·ROWZ síkban van. */
-import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611221410';
+import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611221413';
 
 const DEPTH = .85, REACH = 2.9, EYE = 1.62, MAXP = 1500;
 let A = null, K = .0022, ROWZ = 3.2, cv = null, R = null, scene = null, cam = null, room = null, cabG = null, held = null, ghost = null, pts = null, wallT = null;
@@ -14,7 +14,7 @@ const PC = ['#ff6bd6', '#7dffb0', '#ffe066', '#6bd6ff', '#ffffff'].map(c => new 
 const L = (c, o) => new THREE.MeshLambertMaterial({ color: c, ...o });
 const rowOf = y => Math.max(0, Math.floor((y + 990) / A.RY)), to3 = (x, y, dz = 0) => { const r = rowOf(y); return new THREE.Vector3(x * K, Math.max(.012, (r * A.RY - y) * K), -r * ROWZ + dz); };
 const dims = () => { const st = A.SITE[A.S.site], cols = Math.min(A.ROW, st.racks), rows = Math.ceil(st.racks / A.ROW); return { st, cols, rows, x0: -.95, x1: cols * A.RX * K + 1.3, z0: -(rows - 1) * ROWZ - DEPTH - .7, z1: 2.9, h: A.S.site ? 3.3 : 2.7 }; };
-const dH = d => A.DEV[d.t].u * A.U * K, dD = d => A.wallMount(d) ? .05 : .5;
+const dH = d => A.DEV[d.t].u * A.U * K, dD = d => A.wallMount(d) ? .05 : A.DEV[d.t].k === 'tbl' ? .62 : .5;
 // szabadon álló eszköz előlapjának pontja (lx, ly: rajzegység a bal felső saroktól) → térbeli pont
 const loose3 = (d, lx, ly, out = .012) => { const s = Math.sin(d.yaw), c = Math.cos(d.yaw), a = (lx - A.RW / 2) * K; return new THREE.Vector3(d.wx + c * a + s * out, d.wy + dH(d) - ly * K, d.wz - s * a + c * out); };
 const port3 = (p, out) => p.L ? loose3(p.dev, p.x, p.y, out) : to3(p.x, p.y, out === undefined ? .012 : out), wp3 = w => w.length === 3 ? new THREE.Vector3(w[0], w[1], w[2]) : to3(w[0], w[1], .012);
@@ -39,7 +39,8 @@ function build() { if (room) { scene.remove(room); room.traverse(o => { o.geomet
       if (r) for (const x of xs) { for (const dx of [-.12, .12]) add(new THREE.BoxGeometry(.025, .025, ROWZ), wh, x + dx, ty - .02, zf + ROWZ / 2); for (let z = zf + .2; z < zf + ROWZ; z += .3) { const m = M.makeTranslation(x, ty - .02, z).clone(); m.multiply(new THREE.Matrix4().makeRotationY(Math.PI / 2)); rung.push(m); } } }
     const ri = new THREE.InstancedMesh(new THREE.BoxGeometry(.02, .02, .24), wh, rung.length); rung.forEach((m, i) => ri.setMatrixAt(i, m)); room.add(ri); const ci = new THREE.InstancedMesh(new THREE.BoxGeometry(.022, .05, .035), og, clip.length); clip.forEach((m, i) => ci.setMatrixAt(i, m)); room.add(ci); }
   // szabadon lerakott eszközök: csoport a helyén elforgatva; a doboz és az előlap célozható
-  for (const dv of A.S.loose) { const h = dH(dv), dp = dD(dv), g = new THREE.Group(); g.position.set(dv.wx, dv.wy, dv.wz); g.rotation.y = dv.yaw; room.add(g); const bx = add(new THREE.BoxGeometry(A.RW * K, h, dp), body, 0, h / 2, -dp / 2 - .001, g); bx.userData = { dev: dv };
+  for (const dv of A.S.loose) { const h = dH(dv), dp = dD(dv), g = new THREE.Group(); g.position.set(dv.wx, dv.wy, dv.wz); g.rotation.y = dv.yaw; room.add(g); if (A.DEV[dv.t].k === 'tbl') { const tw = A.RW * K + .1, tp = add(new THREE.BoxGeometry(tw, .04, dp), L('#6b4a2c'), 0, h - .02, -dp / 2 + .05, g); tp.userData = { dev: dv }; LM.push(tp); for (const q of [[-tw / 2 + .04, 0], [tw / 2 - .04, 0], [-tw / 2 + .04, -dp + .1], [tw / 2 - .04, -dp + .1]]) { const lg = add(new THREE.BoxGeometry(.05, h - .04, .05), L('#4e3620'), q[0], (h - .04) / 2, q[1], g); lg.userData = { dev: dv }; LM.push(lg); } continue; }
+    const bx = add(new THREE.BoxGeometry(A.RW * K, h, dp), body, 0, h / 2, -dp / 2 - .001, g); bx.userData = { dev: dv };
     if (A.wallMount(dv) && dv.wy > .1) add(new THREE.BoxGeometry(.03, dv.wy, .03), L('#3a3f46'), 0, -dv.wy / 2, -.07, g); const t = tex(A.RW, A.DEV[dv.t].u * A.U, 4), fp = add(new THREE.PlaneGeometry(A.RW * K, h), new THREE.MeshBasicMaterial({ map: t.t }), 0, h / 2, .002, g); fp.userData = { dev: dv, front: 1 }; LM.push(bx, fp); RT.set('L' + dv.id, t); }
   room.updateMatrixWorld(true); gen = -1; }
 const paint = i => { const t = RT.get(i); if (!t) return; if (typeof i === 'number') { if (!A.S.racks[i]) return; A.rackTo(t.x, i, t.k); } else { const d = A.S.loose.find(d => 'L' + d.id === i); if (!d) return; A.looseTo(t.x, d, t.k); } t.t.needsUpdate = true; };
@@ -70,7 +71,7 @@ function pick() { const dir = new THREE.Vector3(); cam.getWorldDirection(dir); c
   // padló
   let F = null; if (dir.y < -.02) { const t = o.y / -dir.y; if (t < 4) F = { t, x: o.x + dir.x * t, z: o.z + dir.z * t }; }
   if (pl) { const wm = A.wallMount(pl), h = dH(pl);
-    if (Pn && Pn.h && (!Lh || Pn.t < Lh.t)) { const [rx, ry] = A.rackXY(Pn.h.ri); a.pl = { rack: Pn.h, ok: A.free(Pn.h.ri, Pn.h.u, A.DEV[pl.t].u), box: [to3(rx + 14 + A.RW / 2, ry + 7 + Pn.h.u * A.U + A.DEV[pl.t].u * A.U / 2, .02), 0, .03] }; }
+    if (Pn && Pn.h && A.DEV[pl.t].k !== 'tbl' && (!Lh || Pn.t < Lh.t)) { const [rx, ry] = A.rackXY(Pn.h.ri); a.pl = { rack: Pn.h, ok: A.free(Pn.h.ri, Pn.h.u, A.DEV[pl.t].u), box: [to3(rx + 14 + A.RW / 2, ry + 7 + Pn.h.u * A.U + A.DEV[pl.t].u * A.U / 2, .02), 0, .03] }; }
     else if (Lh) { const top = stackTop(Lh.d); a.pl = { wx: top.wx, wy: top.wy + dH(top), wz: top.wz, yaw: top.yaw, stack: 1 }; }
     else if (wm && Pn && (!F || Pn.t < F.t)) a.pl = { wx: Pn.x * K, wy: Math.max(0, (Pn.r * A.RY - Pn.y) * K - h / 2), wz: -Pn.r * ROWZ, yaw: 0, wall: 1 };
     else if (F) a.pl = { wx: F.x, wy: 0, wz: F.z, yaw: Math.round(Math.atan2(o.x - F.x, o.z - F.z) / (Math.PI / 12)) * (Math.PI / 12) + rot };
@@ -114,7 +115,7 @@ export function frame(dt) { if (!on) return; const S = A.S, D = dims(), s2 = S.s
   else { const hv = aim.h ? aim.h.ri : -1; if (sel || pl) { if (lastHover >= 0 && lastHover !== hv) paint(lastHover); if (hv >= 0) paint(hv); } lastHover = sel || pl ? hv : -1;
     if ((ledT -= dt) <= 0) { ledT = .3; let n = 0; for (const i of RT.keys()) { if (typeof i !== 'number') { paint(i); continue; } const [x] = A.rackXY(i), zf = -Math.floor(i / A.ROW) * ROWZ; if (Math.hypot(x * K + .3 - P.x, zf - P.z) < 5 && n++ < 6) paint(i); } if (sel) { A.wallTo(wallT.x, wallT.k); wallT.t.needsUpdate = true; } } }
   // a lerakandó eszköz körvonala
-  const gp = aim.pl; ghost.visible = !!gp; if (gp) { const [c, yaw, dp] = gp.box; ghost.position.copy(c); ghost.rotation.y = yaw; ghost.scale.set(A.RW * K, dH(pl), dp); ghost.material.color.set(gp.ok ? 0x5ee08a : 0xff5a4d); }
+  const gp = aim.pl; ghost.visible = !!gp; if (gp) { const [c, yaw, dp] = gp.box; ghost.position.copy(c); ghost.rotation.y = yaw; ghost.scale.set(A.RW * K, gp.rack ? dH(pl) : dH(pl), dp); ghost.material.color.set(gp.ok ? 0x5ee08a : 0xff5a4d); }
   // a kézben tartott kábel
   if (sel) { const p = [port3(sel, .03), ...sel.w.map(wp3)], dir = new THREE.Vector3(); cam.getWorldDirection(dir); p.push(aim.x != null ? to3(aim.x, aim.y, .03) : aim.pt ? new THREE.Vector3(...aim.pt) : cam.position.clone().addScaledVector(dir, .8).add(new THREE.Vector3(0, -.25, 0))); held.geometry.setFromPoints(p); held.material.color.set(sel.k === 'n' ? 0x4cc9f0 : 0x888888); held.visible = true; } else held.visible = false;
   flow(A.S.spd ? dt : 0); R.render(scene, cam); }
