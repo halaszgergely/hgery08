@@ -172,7 +172,7 @@ startHero();
 function deep() { const m = location.hash.match(/^#play=(\w+)(?:\.(\w+))?/); const gm = m && GAMES.find(x => x.id === m[1]); if (gm) { gm.room = m[2] || ''; launch(gm); history.replaceState(null, '', location.pathname + location.search); } }
 deep(); addEventListener('hashchange', deep);
 /* online ranglista: az adatokat a HGWS főoldal küldi (ott van a bejelentkezés) */
-let LB = null, lbt = 'week';
+let LB = null, lbt = 'all';
 function lbDraw() {
   if (!LB) return;
   $('#lbw').hidden = false;
