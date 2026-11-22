@@ -4,7 +4,7 @@
 (() => {
   'use strict';
   const $ = s => document.querySelector(s), cv = $('#c'), g2 = cv.getContext('2d'), KEY = 'hgws_szerver_v1', GAME = 'szerver';
-  const DAY = 240, SLEEPX = 27, KWH = 70, U = 20, RW = 240, RW2 = RW * 2; // SLEEPX: alvás közben ennyiszeres idő // DAY: egy játéknap másodpercben
+  const DAY = 480, SLEEPX = 40, KWH = 70, U = 20, RW = 240, RW2 = RW * 2; // SLEEPX: alvás közben ennyiszeres idő // DAY: egy játéknap másodpercben
   let g = g2, TEX = 0, GEN = 0;
   const ft = v => Math.round(v).toLocaleString('hu-HU') + ' Ft', sp = v => v >= 1000 ? v / 1000 + 'G' : v + 'M', rnd = (a, b) => a + Math.random() * (b - a), esc = s => String(s).replace(/[<>&]/g, '');
   const num = v => v >= 100 ? Math.round(v).toLocaleString('hu-HU') : (Math.round(v * 10) / 10).toLocaleString('hu-HU');
@@ -367,7 +367,7 @@
   const stow = (d, ri) => { if (ri >= 0) S.racks[ri].dev = S.racks[ri].dev.filter(x => x !== d); else S.loose = S.loose.filter(x => x !== d); S.spare.push(d); dirty = 1; };
   function act(a, v) { const [d, ri] = view === 'dev' ? findDev(devId) : view === 'srv' && srvSel ? findDev(srvSel) : insp ? findDev(insp) : [null, -1]; if (a === 'iclose') return closeInsp();
     if (a === 'cancel') cancel(); else if (a === 'tab') shopTab = v; else if (a === 'ptab') partTab = v; else if (a === 'warn') { const x = (C.bad || [])[0]; if (x) { if (DEV[x.t].k === 'srv') { srvSel = x.id; mvCon = 0; openP('srv', ''); } else openDev(x.id); } return; } else if (a === 'mod' && d && DEV[d.t].mod) { if ((d.mods || 0) < DEV[d.t].modMax && pay(DEV[d.t].modC)) d.mods = (d.mods || 0) + 1; } else if (a === 'ctab') cliTab = +v; else if (a === 'ssel') { srvSel = +v; mvCon = 0; } else if (a === 'mv') mvCon = +v; else if (a === 'mvx') mvCon = 0;
-    else if (a === 'mvto') { const c = S.cons.find(c => c.id === mvCon), x = findDev(+v)[0], o = x && C.d[x.id]; if (c && o && o.st === 'ok') { const u = o.use; if (o.cap.cores - u.cores >= c.cores && o.cap.ram - u.ram >= c.ram && o.cap.tb - u.tb + 1e-6 >= c.tb && o.cap.gpu - u.gpu >= c.gpu && o.bw - u.bw >= c.bw) { c.srv = x.id; beep(880); } else toast('Oda nem fér rá.', 1); } mvCon = 0; } else if (a === 'spd') S.spd = +v; else if (a === 'askx') return ask(0); else if (a === 'sleepy') { ask(0); S.sleepTo = S.day + 1 / 3; sleepM = S.money; S.spd = 1; return; }
+    else if (a === 'mvto') { const c = S.cons.find(c => c.id === mvCon), x = findDev(+v)[0], o = x && C.d[x.id]; if (c && o && o.st === 'ok') { const u = o.use; if (o.cap.cores - u.cores >= c.cores && o.cap.ram - u.ram >= c.ram && o.cap.tb - u.tb + 1e-6 >= c.tb && o.cap.gpu - u.gpu >= c.gpu && o.bw - u.bw >= c.bw) { c.srv = x.id; beep(880); } else toast('Oda nem fér rá.', 1); } mvCon = 0; } else if (a === 'spd') S.spd = +v; else if (a === 'askx') return ask(0); else if (a === 'sleepy') { ask(0); S.sleepTo = S.day + 1 / 4; sleepM = S.money; S.spd = 1; return; }
     else if (a === 'rack') { if (S.racks.length >= SITE[S.site].racks) return toast('Több rack ide nem fér.', 1); if (pay(RACK[v].c)) { place = { rk: v }; closeP(); hint(); } }
     else if (a === 'rup') { const r = S.racks[rackI]; if (pay(RACK[v].c - RACK[r.t].c * .5)) r.t = v; } else if (a === 'rdel') { S.money += RACK[S.racks[rackI].t].c * .5; S.racks.splice(rackI, 1); closeP(); } else if (a === 'rarm') { delete S.racks[rackI].arm; S.spare.push(mk('arm')); } else if (a === 'rvcm') { delete S.racks[rackI].vcm; S.spare.push(mk('vcm')); } else if (a === 'rmove') { place = { rk: S.racks[rackI].t, mv: rackI }; closeP(); hint(); }
     else if (a === 'loan') { const l = LOAN[+v]; if (S.loans.length < 3 && l.a <= 3e5 + 45 * C.inc) { S.loans.push({ n: l.n, p: l.a, d: l.d, r: l.r }); S.money += l.a; beep(880); } } else if (a === 'repay') { const l = S.loans[+v]; if (l && S.money >= l.p) { S.money -= l.p; S.loans.splice(+v, 1); beep(700); } }
@@ -402,7 +402,7 @@
     rackTo: (ctx, i, k) => drawTo(ctx, k, 0, 0, rwOf(S.racks[i]) + 28, RACK[S.racks[i].t].u * U + 14, () => drawRack(i)), wallTo: (ctx, k, key) => { const W = wallDim(key); drawTo(ctx, k, 0, 0, W.w, W.h, () => drawWall(key)); }, wallKeys, dw, rwOf, fitsRack: (d, ri) => !!DEV[d.t].wide === !!RACK[S.racks[ri].t].wide, looseTo: (ctx, d, k) => drawTo(ctx, k, 0, 0, dw(d), DEV[d.t].u * U, () => drawLoose(d)) };
   function toggle3D(on) { if (on === undefined) on = !(F3 && F3.on); if (!on) { if (F3) F3.stop(); $('#c3').hidden = true; cv.hidden = false; return; }
     const go = () => { $('#c3').hidden = false; cv.hidden = true; F3.start(); }; if (F3) return go(); if (f3load) return; f3load = 1;
-    import('./fps.js?v=202611221632').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
+    import('./fps.js?v=202611221635').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
   $('#bPh').onclick = () => view ? closeP() : openP(lastApp, '');
 
   /* ---------- főciklus ---------- */
@@ -410,7 +410,7 @@
   function resize() { const d = devicePixelRatio || 1; cv.width = innerWidth * d; cv.height = innerHeight * d; } addEventListener('resize', resize); resize();
   let last = performance.now(), acc = 0, uiT = 0, saveT = 5, scT = 60;
   function loop(now) { requestAnimationFrame(loop); const dt = Math.min(.1, (now - last) / 1000); last = now; // az újrahívás elöl: egy hiba se állítsa meg a játékot
-    if ($('#menu').hidden && (S.spd || S.sleepTo)) { acc += dt * (S.sleepTo ? SLEEPX : 1); let n = 0; while (acc >= .25 && n++ < 400) { acc -= .25; if (dirty) calc(); tick(.25 / DAY); if (S.sleepTo && S.day >= S.sleepTo) { S.sleepTo = 0; acc = 0; const dm = S.money - sleepM; toast('Aludtál 8 órát · ' + (dm >= 0 ? '+' : '') + ft(dm)); beep(880, .2); } } }
+    if ($('#menu').hidden && (S.spd || S.sleepTo)) { acc += dt * (S.sleepTo ? SLEEPX : 1); let n = 0; while (acc >= .25 && n++ < 400) { acc -= .25; if (dirty) calc(); tick(.25 / DAY); if (S.sleepTo && S.day >= S.sleepTo) { S.sleepTo = 0; acc = 0; const dm = S.money - sleepM; toast('Aludtál 6 órát · ' + (dm >= 0 ? '+' : '') + ft(dm)); beep(880, .2); } } }
     { const e = $('#sleep'); e.classList.toggle('on', !!S.sleepTo); if (S.sleepTo) { const m = Math.floor((S.day % 1) * 1440 + 360) % 1440; e.firstChild.textContent = '💤 ' + String(m / 60 | 0).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); } }
     if (dirty) calc(); if (F3 && F3.on) { try { F3.frame(dt); ctxUI(); } catch (e) { console.error(e); if (!(loop.err > now)) { loop.err = now + 4000; toast('Hiba: ' + (e && e.message || e), 1); } sel = place = null; hint(); } } if ((uiT -= dt) <= 0) { uiT = .5; top(); if (insp) inspUI(); if (view === 'dev' && !slot || view === 'site' || view === 'srv') ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); } if ((scT -= dt) <= 0) { scT = 60; score(); }
   }
