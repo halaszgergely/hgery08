@@ -4,7 +4,7 @@
    helye a felület saját rajzkoordinátáiban van; innen számoljuk térbe. A rackek rácsra (GR) illesztve, 90°-onként
    forgatva állnak, a szabad eszközök bárhol. Képkockánként kiszámoljuk, mire mutat a célkereszt (aim); a műveleteket
    a szerver.js doClick() végzi. Lépték: K méter / rajzegység (1U = 20 egység = 4,4 cm). */
-import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611221455';
+import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611221458';
 
 const REACH = 3, EYE = 1.62, MAXP = 2500, RD = .9, RWID = .6; // RD, RWID: a rack alapterülete
 let A = null, K = .0022, cv = null, R = null, scene = null, cam = null, room = null, cabG = null, held = null, ghost = null, pts = null;
@@ -129,9 +129,9 @@ function path(p, tight) { const o = []; for (let i = 1; i < p.length; i++) { con
 const fcol = sp => sp >= 100000 ? '#ff6bd6' : sp >= 40000 ? '#4fd8c8' : '#ffd43b';
 function cables() { if (cabG) { scene.remove(cabG); cabG.traverse(o => { o.geometry?.dispose(); o.material?.dispose?.(); }); } cabG = new THREE.Group(); scene.add(cabG); FLOW.length = 0; surfaces();
   const plugG = { n: new THREE.BoxGeometry(.012, .009, .024), f: new THREE.BoxGeometry(.011, .007, .034), p: new THREE.BoxGeometry(.024, .024, .04) }, plugM = { n: L('#dfe4ea'), f: L('#2f7fd6'), p: L('#0e0f11') };
-  for (const c of A.S.cables) { const pa = A.PM.get(A.pkey(...c.a)), pb = A.PM.get(A.pkey(...c.b)); if (!pa || !pb) continue; const w = c.w || [], net = c.a[1] === 'n', fb = net && A.fib(pa.sp), ty = net ? (fb ? 'f' : 'n') : 'p', out = ty === 'p' ? .05 : .04;
+  for (const c of A.S.cables) { const pa = A.PM.get(A.pkey(...c.a)), pb = A.PM.get(A.pkey(...c.b)); if (!pa || !pb) continue; const w = c.w || [], net = c.a[1] === 'n', fb = net && A.cabFib(pa, pb), ty = net ? (fb ? 'f' : 'n') : 'p', out = ty === 'p' ? .05 : .04;
     const v = path([port3(pa, .004), port3(pa, out), ...w.map(wp3), port3(pb, out), port3(pb, .004)], w.length > 0), g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(v, false, 'centripetal'), Math.min(240, v.length * 2), net ? (fb ? .0026 : .0035) : .0055, 5);
-    cabG.add(new THREE.Mesh(g, L(net ? (fb ? fcol(Math.min(pa.sp, pb.sp)) : A.NC[c.c % 6]) : '#1b1d20')));
+    cabG.add(new THREE.Mesh(g, L(net ? (fb ? fcol(Math.min(pa.id ? pa.sp : pb.sp, pb.id ? pb.sp : pa.sp)) : A.NC[c.c % 6]) : '#1b1d20')));
     for (const p of [pa, pb]) { const m = new THREE.Mesh(plugG[ty], plugM[ty]); m.position.copy(port3(p, ty === 'p' ? .022 : .014)); m.rotation.y = SF.get(p.sf).yaw; cabG.add(m); }
     for (const q of w) { const m = new THREE.Mesh(new THREE.TorusGeometry(.011, .003, 5, 10), L(q[1] > A.TRAYH - .1 ? '#ff8a2a' : '#b9c0c8')); m.position.copy(wp3(q)); if (q[1] < .05) m.rotation.x = Math.PI / 2; cabG.add(m); }
     const load = net ? A.C.cl.get(c) || 0 : 0; if (load > 0) { const cu = g.parameters.path, len = cu.getLength(), n = Math.max(1, Math.min(70, Math.ceil((.6 + Math.sqrt(load) / 2.2) * Math.max(.6, len / 1.5)))), sp = (fb ? 1.3 : .7) + Math.min(1.5, load / 3000); for (let i = 0; i < n && FLOW.length < MAXP; i++) FLOW.push({ cu, len, ph: Math.random(), dir: i & 1 ? 1 : -1, sp: sp * (.7 + Math.random() * .6), col: PC[Math.random() * PC.length | 0] }); } }
