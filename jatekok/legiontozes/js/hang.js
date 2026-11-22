@@ -35,13 +35,14 @@ export function createAudio() {
     spray.g.gain.setTargetAtTime(st.spray ? .18 : 0, t, .08); }
   function blip(f, d = .12, type = 'sine', g = .2, slide = 0) { if (!ctx) return; const o = ctx.createOscillator(), gg = ctx.createGain(); o.type = type; o.frequency.value = f; if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(20, f + slide), ctx.currentTime + d);
     gg.gain.setValueAtTime(g, ctx.currentTime); gg.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + d); o.connect(gg); gg.connect(master); o.start(); o.stop(ctx.currentTime + d + .05); }
-  function burst(f, d, g, t = 'lowpass') { if (!ctx) return; const s = ctx.createBufferSource(); s.buffer = NB; const fl = ctx.createBiquadFilter(); fl.type = t; fl.frequency.value = f; const gg = ctx.createGain(); gg.gain.setValueAtTime(g, ctx.currentTime); gg.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + d); s.connect(fl); fl.connect(gg); gg.connect(master); s.start(); s.stop(ctx.currentTime + d); }
+  function burst(f, d, g, t = 'lowpass') { if (!ctx) return; const s = ctx.createBufferSource(); s.buffer = NB; const fl = ctx.createBiquadFilter(); fl.type = t; fl.frequency.value = f; const gg = ctx.createGain(); gg.gain.setValueAtTime(g, ctx.currentTime); gg.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + d); s.loop = d > 1.9; s.connect(fl); fl.connect(gg); gg.connect(master); s.start(); s.stop(ctx.currentTime + d); }
   const fx = {
     boom() { burst(120, 1.6, 1.4); blip(55, .9, 'sine', .9, -30); },
     crash() { burst(400, 2.2, 1.2); blip(70, 1.2, 'sawtooth', .4, -50); },
     stall() { blip(880, .18, 'square', .08); }, scoop() { burst(900, .5, .35, 'bandpass'); }, ring() { blip(880, .1, 'sine', .25); setTimeout(() => blip(1320, .16, 'sine', .25), 90); },
     ok() { blip(660, .12, 'triangle', .2); setTimeout(() => blip(990, .18, 'triangle', .2), 110); }, bad() { blip(220, .25, 'square', .12, -60); }, click() { blip(1200, .04, 'square', .05); },
-    touch() { burst(300, .25, .4); }, refill() { burst(700, .8, .2, 'bandpass'); },
+    touch() { burst(300, .25, .4); }, tick(hi) { blip(hi ? 1320 : 880, hi ? .5 : .14, 'sine', .3); },
+    launch(k) { burst(70, 14, 1.3 * k); burst(260, 9, .7 * k); burst(1400, 4, .25 * k, 'bandpass'); blip(45, 3, 'sine', .8 * k, -15); }, refill() { burst(700, .8, .2, 'bandpass'); },
   };
   return { init, setType, update, fx, get ctx() { return ctx; },
     setVol(v) { vol = v; if (master) master.gain.setTargetAtTime(muted ? 0 : vol, ctx.currentTime, .05); },

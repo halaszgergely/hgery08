@@ -1,21 +1,22 @@
 /* HGWS Légi Öntözés – főprogram: betöltés, renderelés, játékhurok, kamerák, töltés, küldetések, feloldások. */
 import * as THREE from 'three';
-import { GEPEK, GEP, REPTER, REPTEREK, KULDETESEK, FORGO, ZERO_HELY, GAME } from './config.js?v=202611220201';
-import * as GEO from './geo.js?v=202611220201';
-import { createTerrain } from './terep.js?v=202611220201';
-import { createWorld } from './vilag.js?v=202611220201';
-import { createOSM } from './osm.js?v=202611220201';
-import { buildModel, animate } from './modellek.js?v=202611220201';
-import { createBody, placeOn, step } from './fizika.js?v=202611220201';
-import { createSpray } from './permet.js?v=202611220201';
-import { createMission } from './kuldetes.js?v=202611220201';
-import { createAudio } from './hang.js?v=202611220201';
-import { createControls } from './iranyitas.js?v=202611220201';
-import { createHud, setMapImage, drawMap } from './hud.js?v=202611220201';
-import * as HUDM from './hud.js?v=202611220201';
-import { createUI } from './ui.js?v=202611220201';
-import * as RL from './ranglista.js?v=202611220201';
-import { createPost } from './utofeldolgozas.js?v=202611220201';
+import { GEPEK, GEP, REPTER, REPTEREK, KULDETESEK, FORGO, ZERO_HELY, GAME } from './config.js?v=202611220217';
+import * as GEO from './geo.js?v=202611220217';
+import { createTerrain } from './terep.js?v=202611220217';
+import { createWorld } from './vilag.js?v=202611220217';
+import { createOSM } from './osm.js?v=202611220217';
+import { createRocket } from './titok.js?v=202611220217';
+import { buildModel, animate } from './modellek.js?v=202611220217';
+import { createBody, placeOn, step } from './fizika.js?v=202611220217';
+import { createSpray } from './permet.js?v=202611220217';
+import { createMission } from './kuldetes.js?v=202611220217';
+import { createAudio } from './hang.js?v=202611220217';
+import { createControls } from './iranyitas.js?v=202611220217';
+import { createHud, setMapImage, drawMap } from './hud.js?v=202611220217';
+import * as HUDM from './hud.js?v=202611220217';
+import { createUI } from './ui.js?v=202611220217';
+import * as RL from './ranglista.js?v=202611220217';
+import { createPost } from './utofeldolgozas.js?v=202611220217';
 
 const $ = s => document.querySelector(s);
 const LS = 'hgws_legi_v1', TOUCH = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window;
@@ -53,7 +54,7 @@ const FS_OK = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled)
 function toggleFs() { const d = document, el = d.documentElement; if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d); else (el.requestFullscreen || el.webkitRequestFullscreen).call(el, { navigationUI: 'hide' })?.catch?.(() => {}); }
 document.querySelectorAll('.fsB, .fsM').forEach(b => { b.hidden = !FS_OK; b.onclick = e => { e.stopPropagation(); toggleFs(); }; });
 addEventListener('keydown', e => { if (e.code === 'KeyK' && !e.repeat && FS_OK && !/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName || '')) toggleFs(); });
-let terrain, world, osm, spray, ui, towns = [];
+let terrain, world, osm, rocket, spray, ui, towns = [];
 /* ---------- állapot ---------- */
 let state = 'load', mode = 'szabad', b = null, model = null, mission = null, missionDef = null, camMode = 'kulso', timeK = 1, acc = 0, lastTouch = 0, refillMsg = 0, ended = false, crashT = 0, debris = null;
 let startRepter = 'miskolc', previewId = null, previewModel = null, menuAng = 0, orbit = { yaw: 0, pitch: .25, dist: 0 }, mapOpen = false, scoreShow = 0, tileT = 0;
@@ -76,7 +77,7 @@ async function boot() {
   try { prog(10, 'Magyarország domborzata…'); await GEO.load('../vasut/');
     prog(40, 'Térkép…'); const img = new Image(); img.src = '../vasut/taj.jpg'; await img.decode().catch(() => {}); setMapImage(img);
     towns = GEO.townList(); prog(55, 'Táj és városok…');
-    terrain = createTerrain(scene, { viewR: SET.view * 1000 }); world = createWorld(scene, {}); osm = createOSM(scene, { waterMat: terrain.waterMat }); spray = createSpray(scene, 1600, TOUCH ? 3000 : 7000);
+    terrain = createTerrain(scene, { viewR: SET.view * 1000 }); world = createWorld(scene, {}); osm = createOSM(scene, { waterMat: terrain.waterMat }); rocket = createRocket(scene, { hud, audio }); spray = createSpray(scene, 1600, TOUCH ? 3000 : 7000);
     GEO.onTile(bd => { wpSeen = -1; world.rebuildTowns(bd); world.fixGround?.(bd); mission?.redrape?.(bd); });
     ui = createUI(app); applyAll(); devBadge(); prog(80, 'Bázis…');
     RL.init().then(async () => { const c = await RL.cloudLoad(); if (c && (c.pont || 0) >= save.pont) { save = { ...save, ...c, set: SET }; ui && state === 'menu' && ui.menu(); } });
@@ -190,7 +191,7 @@ canvas.addEventListener('wheel', e => { if (state === 'pause' || state === 'menu
 
 /* ---------- a repülés egy képkockája ---------- */
 const I0 = { pitch: 0, roll: 0, yaw: 0, thr: 0, spray: false, burner: false, brake: false };
-function fly(rdt) { const gep = b.gep; wpStep();
+function fly(rdt) { const gep = b.gep; wpStep(); const rs = rocket.update(rdt, b); if (rs > 0) shake = Math.max(shake, rs * 1.6);
   for (const e of ctl.events()) handle(e);
   if (state !== 'fly') return;
   const I = ctl.poll(b.kind), dt = rdt * timeK;
