@@ -311,6 +311,15 @@ service cloud.firestore {
     }
 
     // ---------- Arcade népszerűség: játékonkénti indításszám, csak eggyel nőhet ----------
+    // ---------- ki mit játszik éppen az Arcade-ban: mindenki csak a saját jelenlétét írja (percenként), bárki olvashatja ----------
+    match /playing/{uid} {
+      allow read: if signedIn();
+      allow delete: if signedIn() && request.auth.uid == uid;
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['g', 'at'])
+        && request.resource.data.g is string && request.resource.data.g.matches('^[a-z0-9]{2,24}$')
+        && request.resource.data.at == request.time;
+    }
     match /plays/{gid} {
       allow read: if true;
       allow create: if signedIn() && gid.matches('^[a-z0-9]{2,24}$') && request.resource.data.keys().hasOnly(['n']) && request.resource.data.n == 1;
