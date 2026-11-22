@@ -4,7 +4,7 @@
    helye a felület saját rajzkoordinátáiban van; innen számoljuk térbe. A rackek rácsra (GR) illesztve, 90°-onként
    forgatva állnak, a szabad eszközök bárhol. Képkockánként kiszámoljuk, mire mutat a célkereszt (aim); a műveleteket
    a szerver.js doClick() végzi. Lépték: K méter / rajzegység (1U = 20 egység = 4,4 cm). */
-import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611221702';
+import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611221716';
 
 const REACH = 3, EYE = 1.62, MAXP = 2500, RD = .9; // RD, RWID: a rack alapterülete
 let A = null, K = .0022, cv = null, R = null, scene = null, cam = null, room = null, cabG = null, held = null, ghost = null, pts = null;
@@ -152,10 +152,12 @@ function screens() { for (const sc of SCR) { const r = A.S.racks[sc.i]; if (!r) 
 // a tálca modellje; one: ha meg van adva, minden része ebből az anyagból készül (előnézet)
 function trayModel(tt, H, one) { const g = new THREE.Group(), wh = one || std('#e8ecf0', { metalness: .2 }), og = one || std('#ff8a2a', { metalness: 0, roughness: .7 }), [L0, W0] = traySize(tt), hw = W0 / 2 - .03, hl = L0 / 2, sq = L0 === W0, add = (w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); g.add(o); };
   const sym = (len, f) => { const n = Math.max(1, Math.round((len - .2) / .25)); for (let i = 0; i <= n; i++) f(-n * .125 + i * .25); }; // a létrafokok középre szimmetrikusan
-  if (!sq) for (const dz of [-hw, hw]) add(L0, .025, .025, wh, 0, 0, dz); else if (tt === 'trayc') { add(L0, .025, .025, wh, 0, 0, -hw); add(.025, .025, W0 - .06, wh, hl - .0125, 0, 0); for (const [a, b] of [[-1, 1]]) add(.05, .03, .05, wh, a * (hl - .025), 0, b * (hw + .005)); } else for (const [a, b] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) add(.05, .03, .05, wh, a * (hl - .025), 0, b * (hw + .005));
+  if (!sq) for (const dz of [-hw, hw]) add(L0, .025, .025, wh, 0, 0, dz); else if (tt === 'trayc' || tt === 'traycs') { add(L0, .025, .025, wh, 0, 0, -hw); add(.025, .025, W0 - .06, wh, hl - .0125, 0, 0); for (const [a, b] of [[-1, 1]]) add(.05, .03, .05, wh, a * (hl - .025), 0, b * (hw + .005)); } else for (const [a, b] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) add(.05, .03, .05, wh, a * (hl - .025), 0, b * (hw + .005));
   sym(L0, x => { add(.02, .02, hw * 2, wh, x, 0, 0); add(.012, .012, hw * 2 - .02, og, x, -.012, 0); }); if (sq) sym(W0, z => add(L0 - .04, .02, .02, wh, 0, -.001, z));
   for (const [a, b] of sq ? [[-1, -1], [1, 1]] : [[-1, 0], [1, 0]]) add(.015, H - A.TRAYH, .015, wh, a * (hl - .05), (H - A.TRAYH) / 2, b * (hw - .02)); return g; }
-const traySize = t => t === 'trays' ? [.6, .3] : t === 'trayw' ? [1.2, .6] : t === 'trayc' || t === 'trayx' ? [.6, .6] : [1.2, .3]; // [hossz, szélesség]
+const traySize = t => t === 'trays' ? [.6, .3] : t === 'trayw' ? [1.2, .6] : t === 'trayc' || t === 'trayx' ? [.6, .6] : t === 'traycs' || t === 'trayxs' ? [.3, .3] : [1.2, .3];
+// a tálca csatlakozási pontjai a térben: [x, z, kifelé mutató irány x, z] – ezeknél pattannak össze a szomszédos elemek
+function conns(tt, x, z, rt) { const [L0, W0] = traySize(tt), c = Math.round(Math.cos(rt * Math.PI / 2)), s = Math.round(Math.sin(rt * Math.PI / 2)), loc = L0 === W0 ? [[L0 / 2, 0, 1, 0], [-L0 / 2, 0, -1, 0], [0, W0 / 2, 0, 1], [0, -W0 / 2, 0, -1]] : [[L0 / 2, 0, 1, 0], [-L0 / 2, 0, -1, 0]]; return loc.map(([lx, lz, dx, dz]) => [x + lx * c + lz * s, z - lx * s + lz * c, dx * c + dz * s, -dx * s + dz * c]); } // [hossz, szélesség]
 const paint = key => { const t = RT.get(key); if (!t) return; if (key[0] === 'W') A.wallTo(t.x, t.k, key); else if (key[0] === 'R') { const i = +key.slice(1); if (!A.S.racks[i]) return; A.rackTo(t.x, i, t.k); } else { const d = A.S.loose.find(d => 'L' + d.id === key); if (!d) return; A.looseTo(t.x, d, t.k); } t.t.needsUpdate = true; };
 
 /* ---------- kábelek, csatlakozók, adatforgalom ---------- */
@@ -199,7 +201,10 @@ function pick() { const dir = V(0, 0, 0); cam.getWorldDirection(dir); const o = 
   // lerakás
   const kd = pl.rk ? 'rack' : A.DEV[pl.t].k, yawOf = r => r * Math.PI / 2;
   if (kd === 'rack') { if (F) { const rt = Math.round((((face + rot / 6) % 4 + 4) % 4) * 6) / 6, x = Math.round(Math.round(F.x / .15) * 15) / 100, z = Math.round(Math.round(F.z / .15) * 15) / 100, small = A.RACK[pl.rk].u <= 18, dp = small ? .55 : .85, hh = (A.RACK[pl.rk].u * A.U + 14) * K, lf = small ? 380 * K : 0, s = Math.sin(yawOf(rt)), c = Math.cos(yawOf(rt)); a.pl = { x, z, rot: rt, turn: 1, ok: rackOk(x, z, rt, pl.mv, fw(pl.rk)), box: [V(x - s * dp / 2, lf + hh / 2, z - c * dp / 2), yawOf(rt), [fw(pl.rk), hh, dp]] }; } return a; }
-  if (kd === 'tray') { if (dir.y > .05) { const t = (A.TRAYH - o.y) / dir.y; if (t < 5) { const [L0, W0] = traySize(pl.t), sq = L0 === W0, x = snapG(o.x + dir.x * t), z = snapG(o.z + dir.z * t), rt = sq ? ((rot % 4) + 4) % 4 : ((Math.abs(dir.x) > Math.abs(dir.z) ? 0 : 1) + rot) % 2 & 1, m = Math.max(L0, W0) / 2 - .1; a.pl = { x, z, rot: rt, turn: 1, ok: x > m && x < W - m && z > m && z < D - m && !A.S.trays.some(q => q.x === x && q.z === z && (sq || q.t === 'trayc' || q.t === 'trayx' || q.rot === rt)), box: [V(x, A.TRAYH, z), yawOf(rt), [L0, .06, W0]] }; } } return a; }
+  if (kd === 'tray') { if (dir.y > .05) { const t = (A.TRAYH - o.y) / dir.y; if (t < 5) { const [L0, W0] = traySize(pl.t), sq = L0 === W0, rx = o.x + dir.x * t, rz = o.z + dir.z * t, r2 = v => Math.round(v * 100) / 100; let x = snapG(rx), z = snapG(rz), rt = sq ? ((rot % 4) + 4) % 4 : ((Math.abs(dir.x) > Math.abs(dir.z) ? 0 : 1) + rot) % 2 & 1, bd = .5, snapped = false;
+        // mágnes: ha a közelben van egy tálca szabad vége, az új elem pontosan hozzáilleszkedik (az egyenes elem irányt is vált hozzá)
+        for (const q of A.S.trays) for (const [ex, ez, dx, dz] of conns(q.t, q.x, q.z, q.rot)) for (const rr of sq ? [rt] : [0, 1]) for (const [nx, nz, ndx, ndz] of conns(pl.t, 0, 0, rr)) { if (Math.abs(ndx + dx) > .01 || Math.abs(ndz + dz) > .01) continue; const cx = ex - nx, cz = ez - nz, dd = Math.hypot(cx - rx, cz - rz); if (dd < bd && !A.S.trays.some(w => Math.hypot(w.x - cx, w.z - cz) < .1)) { bd = dd; x = r2(cx); z = r2(cz); rt = rr; snapped = true; } }
+        const m = Math.max(L0, W0) / 2 - .1; a.pl = { x, z, rot: rt, turn: 1, snapped, ok: x > m && x < W - m && z > m && z < D - m && !A.S.trays.some(q => Math.hypot(q.x - x, q.z - z) < .1), box: [V(x, A.TRAYH, z), yawOf(rt), [L0, .06, W0]] }; } } return a; }
   if (kd === 'vcm') { if (a.rk != null) { const r = A.S.racks[a.rk], f = SF.get('R' + a.rk); a.pl = { vcm: a.rk, ok: !r.vcm && A.RACK[r.t].u <= 24, box: [s3(f, f.w / 2, f.h / 2, .05), f.yaw, [f.w * K + .14, f.h * K, .1]] }; } return a; }
   if (kd === 'arm') { if (a.rk != null) { const r = A.S.racks[a.rk], f = SF.get('R' + a.rk), s = Math.sin(f.yaw), c = Math.cos(f.yaw); a.pl = { arm: a.rk, ok: !r.arm, box: [V(r.x + s * .28, f.wy + f.h * K + .27, r.z + c * .28), f.yaw, [.05, .05, .72]] }; } return a; }
   const h = dH(pl), wm = A.wallMount(pl), dp = dD(pl);

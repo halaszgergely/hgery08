@@ -2,7 +2,7 @@
    A vonat körüli ~2,5 km-t rajzolja: valódi domborzat (dem/*.png, tools/vasut_dem.py), a 2D térkép csempéi talajtextúraként (Taj.compose),
    épületek a megyei .haz fájlokból, fák az erdőkben, sínek töltéssel, peronok, állomásépületek, vonatok.
    Koordináták: jelenet x = világ x − OX, z = világ y − OY, y = magasság (m). */
-import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611221702';
+import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611221716';
 
 const V = new URL(import.meta.url).search, CH = 1024, CN = 32, RAD = 2600, BRAD = 1700, TRAD = 1500;
 let A = null, cv = null, R = null, scene = null, camera = null, OX = 0, OY = 0, raf = 0;
