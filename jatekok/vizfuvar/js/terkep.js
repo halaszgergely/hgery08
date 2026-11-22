@@ -36,6 +36,7 @@ export function drawMap(cv, s, onPick) { const W = cv.clientWidth, H = cv.client
       if (lab) { x.font = '800 11px Inter'; x.textAlign = 'center'; x.fillStyle = '#fff'; x.strokeStyle = 'rgba(0,0,0,.7)'; x.lineWidth = 3; x.strokeText(lab, px, py - r - 5); x.fillText(lab, px, py - r - 5); } if (obj) hits.push([px, py, obj]); };
     for (const k2 of s.kutak || []) pin(k2.x, k2.z, '#d9413a', 5, MV.z > 60 ? 'Benzinkút' : '');
     for (const j of s.jobs || []) pin(j.px, j.pz, j.sel ? '#2aa7d9' : '#9fd7ef', j.sel ? 8 : 6, j.sel || MV.z > 80 ? j.nev : '', j);
+    for (const [ex, ez, en] of s.emps || []) pin(ex, ez, '#f08a24', 6, MV.z > 40 ? en : '');
     pin(s.base[0], s.base[1], '#2f9e4f', 9, 'HGWS telephely');
     const px = X(s.p.x), py = Y(s.p.z); x.save(); x.translate(px, py); x.rotate(-s.yaw); x.fillStyle = '#f2c230'; x.strokeStyle = '#000'; x.lineWidth = 2; x.beginPath(); x.moveTo(0, -12); x.lineTo(-8, 9); x.lineTo(8, 9); x.closePath(); x.fill(); x.stroke(); x.restore();
     const p10 = Math.pow(10, Math.floor(Math.log10(100 / k))), sk = [1, 2, 5, 10].map(f => f * p10).find(v => v * k >= 60) || 10 * p10, L = sk * k;

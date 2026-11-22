@@ -1,7 +1,7 @@
 /* Gazdaság: mentés, fuvarpiac, díjazás, tankolás, ballontöltés, járművásárlás. Tiszta függvények + a mentés objektum. */
-import { GAZD, JARMU } from './config.js?v=202611222034';
+import { GAZD, JARMU } from './config.js?v=202611222043';
 
-export const UJ_MENTES = () => ({ v: 1, penz: GAZD.kezdoPenz, flotta: [], aktiv: null, szin: {}, uzemanyag: {}, fuvarok: 0, legjobb: 0, kiomlott: 0, km: 0, elso: false, hirnev: 50, kezdes: null, set: {}, piac: null, munka: null });
+export const UJ_MENTES = () => ({ v: 1, penz: GAZD.kezdoPenz, flotta: [], aktiv: null, szin: {}, uzemanyag: {}, fuvarok: 0, legjobb: 0, kiomlott: 0, km: 0, elso: false, hirnev: 50, kezdes: null, set: {}, piac: null, munka: null, dolgozok: [], dolgFuvar: 0 });
 const rnd = Math.random;
 export function fuvarDij(km, n, hirnev = 50) { return Math.round((GAZD.fuvarAlap + km * GAZD.fuvarKm + n * GAZD.fuvarBallon) * (.85 + hirnev / 333) / 10) * 10; }
 /* fuvarpiac: 6 ajánlat a célok közül; az első fuvar mindig a HGWS iroda */
