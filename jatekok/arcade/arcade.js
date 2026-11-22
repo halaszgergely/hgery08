@@ -22,7 +22,7 @@ const Drift = window.HGDrift ? window.HGDrift({ G, Sfx, rr, store, hud }) : null
 const Zombi = window.HGZombi ? window.HGZombi({ G, Sfx, rr, store, hud }) : null;
 const Vasut = { id: 'vasut', name: 'DERAIL HUNGARY', ext: 'jatekok/vasut/index.html', tag: 'ÚJ', lbx: 1, icon: '🚂', fmt: v => Math.floor(v).toLocaleString('hu-HU') + ' Ft',
   desc: 'Teherfuvarozás Magyarország valódi, 8400 km-es vasúthálózatán: kocsik, váltók, menetrend, mozdonyok és engedélyek.' };
-const Szerver = { id: 'szerver', name: 'SZERVERFARM', ext: 'jatekok/szerver/index.html', tag: 'ÚJ', lbx: 1, icon: '🖥️', fmt: v => Math.floor(v).toLocaleString('hu-HU') + ' Ft',
+const Szerver = { id: 'szerver', name: 'CABLE HORROR', ext: 'jatekok/szerver/index.html', tag: 'ÚJ', lbx: 1, icon: '🖥️', fmt: v => Math.floor(v).toLocaleString('hu-HU') + ' Ft',
   desc: 'Garázsszervertől az adatközpontig: építs szervert alkatrészekből, kábelezd be a racket, szerezz ügyfeleket és bányássz.' };
 const LegiOntozes = { id: 'flightsim', name: 'HGWS LÉGI ÖNTÖZÉS', ext: 'jatekok/legiontozes/index.html', tag: 'ÚJ', lbx: 1, icon: '✈️', fmt: v => Math.floor(v).toLocaleString('hu-HU') + ' p',
   desc: '3D repülőszimulátor egész Magyarország felett: 17 öntözőgép, mezőöntözés, erdőtüzek, precíziós célok és vízikarikák a miskolci bázisról.' };
