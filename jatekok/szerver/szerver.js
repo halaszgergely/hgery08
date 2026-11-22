@@ -12,16 +12,27 @@
   /* ---------- katalógus ---------- */
   const RACK = { k9: { n: 'Fali rack 9U', u: 9, c: 38e3 }, k18: { n: 'Rack 18U', u: 18, c: 85e3 }, k32: { n: 'Rack 32U', u: 32, c: 18e4 }, k47: { n: 'Rack 47U', u: 47, c: 34e4 }, k6: { n: 'Fali rack 6U', u: 6, c: 25e3 }, k12: { n: 'Rack 12U', u: 12, c: 55e3 }, k24: { n: 'Rack 24U', u: 24, c: 12e4 }, k42: { n: 'Rack 42U', u: 42, c: 26e4 } };
   const DEV = {
-    mp: { n: 'Mini PC polcon', k: 'srv', u: 1, c: 12e3, cpu: 1, ram: 1, bay: 1, pci: 0, net: [1000], d: '1 CPU · 1 RAM · 1 lemez' },
-    h1: { n: 'Házi szerver', k: 'srv', u: 2, c: 28e3, cpu: 1, ram: 2, bay: 2, pci: 1, net: [1000], d: '1 CPU · 2 RAM · 2 lemez · 1 bővítőhely' },
-    m3: { n: 'Bányászkeret', k: 'srv', u: 3, c: 45e3, cpu: 1, ram: 1, bay: 1, pci: 6, net: [1000], d: '1 CPU · 1 RAM · 1 lemez · 6 bővítőhely' },
-    r1: { n: 'Rack szerver 1U', k: 'srv', u: 1, c: 12e4, cpu: 2, ram: 8, bay: 4, pci: 1, net: [1000, 1000], d: '2 CPU · 8 RAM · 4 lemez · 1 bővítőhely' },
-    r2: { n: 'Rack szerver 2U', k: 'srv', u: 2, c: 26e4, cpu: 2, ram: 16, bay: 12, pci: 3, net: [1000, 1000], d: '2 CPU · 16 RAM · 12 lemez · 3 bővítőhely' },
-    m6: { n: 'Bányászkeret XL', k: 'srv', u: 4, c: 11e4, cpu: 1, ram: 2, bay: 1, pci: 12, net: [1000], d: '1 CPU · 2 RAM · 1 lemez · 12 bővítőhely' },
-    d2u: { n: 'Sűrű szerver 2U', k: 'srv', u: 2, c: 48e4, cpu: 4, ram: 32, bay: 6, pci: 2, net: [10000, 10000], d: '4 CPU · 32 RAM · 6 lemez · 2 bővítőhely' },
-    r4: { n: 'Rack szerver 4U', k: 'srv', u: 4, c: 42e4, cpu: 4, ram: 24, bay: 24, pci: 4, net: [1000, 1000, 10000, 10000], d: '4 CPU · 24 RAM · 24 lemez · 4 bővítőhely' },
-    s4: { n: 'Tárolószerver 4U', k: 'srv', u: 4, c: 52e4, cpu: 1, ram: 8, bay: 36, pci: 2, net: [10000, 10000], d: '1 CPU · 8 RAM · 36 lemez · 2 bővítőhely' },
-    g4: { n: 'GPU szerver 4U', k: 'srv', u: 4, c: 65e4, cpu: 2, ram: 16, bay: 8, pci: 8, net: [10000, 10000], d: '2 CPU · 16 RAM · 8 lemez · 8 bővítőhely' },
+    mp: { n: 'Mini PC polcon', k: 'srv', cat: 'kis', dp: .25, u: 1, c: 12e3, cpu: 1, ram: 1, bay: 1, pci: 0, net: [1000], d: '1 CPU · 1 RAM · 1 lemez' },
+    h1: { n: 'Házi szerver', k: 'srv', cat: 'kis', dp: .45, u: 2, c: 28e3, cpu: 1, ram: 2, bay: 2, pci: 1, net: [1000], d: '1 CPU · 2 RAM · 2 lemez · 1 bővítőhely' },
+    m3: { n: 'Bányászkeret', k: 'srv', cat: 'bany', dp: .45, fan: 1, u: 3, c: 45e3, cpu: 1, ram: 1, bay: 1, pci: 6, net: [1000], d: '1 CPU · 1 RAM · 1 lemez · 6 bővítőhely' },
+    r1: { n: 'Rack szerver 1U', k: 'srv', cat: 'alt', dp: .65, u: 1, c: 12e4, cpu: 2, ram: 8, bay: 4, pci: 1, net: [1000, 1000], d: '2 CPU · 8 RAM · 4 lemez · 1 bővítőhely' },
+    r2: { n: 'Rack szerver 2U', k: 'srv', cat: 'alt', dp: .7, u: 2, c: 26e4, cpu: 2, ram: 16, bay: 12, pci: 3, net: [1000, 1000], d: '2 CPU · 16 RAM · 12 lemez · 3 bővítőhely' },
+    m6: { n: 'Bányászkeret XL', k: 'srv', cat: 'bany', dp: .5, fan: 1, u: 4, c: 11e4, cpu: 1, ram: 2, bay: 1, pci: 12, net: [1000], d: '1 CPU · 2 RAM · 1 lemez · 12 bővítőhely' },
+    d2u: { n: 'Sűrű szerver 2U', k: 'srv', cat: 'suru', dp: .75, u: 2, c: 48e4, cpu: 4, ram: 32, bay: 6, pci: 2, net: [10000, 10000], d: '4 CPU · 32 RAM · 6 lemez · 2 bővítőhely' },
+    r4: { n: 'Rack szerver 4U', k: 'srv', cat: 'alt', dp: .72, u: 4, c: 42e4, cpu: 4, ram: 24, bay: 24, pci: 4, net: [1000, 1000, 10000, 10000], d: '4 CPU · 24 RAM · 24 lemez · 4 bővítőhely' },
+    s4: { n: 'Tárolószerver 4U', k: 'srv', cat: 'tar', dp: .75, u: 4, c: 52e4, cpu: 1, ram: 8, bay: 36, pci: 2, net: [10000, 10000], d: '1 CPU · 8 RAM · 36 lemez · 2 bővítőhely' },
+    g4: { n: 'GPU szerver 4U', k: 'srv', cat: 'gpu', dp: .75, fan: 1, u: 4, c: 65e4, cpu: 2, ram: 16, bay: 8, pci: 8, net: [10000, 10000], d: '2 CPU · 16 RAM · 8 lemez · 8 bővítőhely' },
+    nas2: { n: 'Asztali NAS', k: 'srv', cat: 'kis', dp: .3, u: 3, c: 42e3, cpu: 1, ram: 2, bay: 6, pci: 0, net: [1000], d: '1 CPU · 2 RAM · 6 lemez' },
+    twr: { n: 'Toronyszerver', k: 'srv', cat: 'kis', dp: .5, u: 4, c: 75e3, cpu: 1, ram: 4, bay: 6, pci: 2, net: [1000, 1000], d: '1 CPU · 4 RAM · 6 lemez · 2 bővítőhely' },
+    r1s: { n: 'Rövid szerver 1U', k: 'srv', cat: 'alt', dp: .4, u: 1, c: 65e3, cpu: 1, ram: 4, bay: 2, pci: 1, net: [1000, 1000], d: '1 CPU · 4 RAM · 2 lemez · 1 bővítőhely' },
+    r1x: { n: 'Rack szerver 1U Pro', k: 'srv', cat: 'alt', dp: .72, u: 1, c: 21e4, cpu: 2, ram: 16, bay: 8, pci: 2, net: [10000, 10000], d: '2 CPU · 16 RAM · 8 lemez · 2 bővítőhely · optika' },
+    d1u: { n: 'Sűrű szerver 1U', k: 'srv', cat: 'suru', dp: .75, u: 1, c: 3e5, cpu: 2, ram: 24, bay: 2, pci: 1, net: [10000, 10000], d: '2 CPU · 24 RAM · 2 lemez · 1 bővítőhely' },
+    d4u: { n: 'Nagymemóriás szerver 4U', k: 'srv', cat: 'suru', dp: .78, u: 4, c: 95e4, cpu: 4, ram: 64, bay: 8, pci: 4, net: [10000, 10000, 40000, 40000], d: '4 CPU · 64 RAM · 8 lemez · 4 bővítőhely' },
+    s2: { n: 'Tárolószerver 2U', k: 'srv', cat: 'tar', dp: .72, u: 2, c: 24e4, cpu: 1, ram: 4, bay: 16, pci: 1, net: [1000, 1000], d: '1 CPU · 4 RAM · 16 lemez · 1 bővítőhely' },
+    s5: { n: 'Lemezfiókos szerver 5U', k: 'srv', cat: 'tar', dp: .78, u: 5, c: 11e5, cpu: 2, ram: 8, bay: 60, pci: 3, net: [10000, 10000, 40000, 40000], d: '2 CPU · 8 RAM · 60 lemez · 3 bővítőhely' },
+    g2: { n: 'GPU szerver 2U', k: 'srv', cat: 'gpu', dp: .75, fan: 1, u: 2, c: 3e5, cpu: 2, ram: 8, bay: 4, pci: 4, net: [10000, 10000], d: '2 CPU · 8 RAM · 4 lemez · 4 bővítőhely' },
+    g8: { n: 'GPU szerver 8U', k: 'srv', cat: 'gpu', dp: .78, fan: 1, u: 8, c: 16e5, cpu: 2, ram: 32, bay: 8, pci: 16, net: [40000, 40000], d: '2 CPU · 32 RAM · 8 lemez · 16 bővítőhely' },
+    m12: { n: 'Bányászfal 6U', k: 'srv', cat: 'bany', dp: .5, fan: 1, u: 6, c: 24e4, cpu: 1, ram: 2, bay: 1, pci: 18, net: [1000], d: '1 CPU · 2 RAM · 1 lemez · 18 bővítőhely' },
     sw5: { n: 'Switch 5 port', k: 'sw', u: 1, c: 9e3, w: 8, net: Array(5).fill(1000), d: '5 × 1G' },
     sw8: { n: 'Switch 8 port', k: 'sw', u: 1, c: 16e3, w: 12, net: Array(8).fill(1000), d: '8 × 1G' },
     sw16: { n: 'Switch 16 port', k: 'sw', u: 1, c: 38e3, w: 20, net: Array(16).fill(1000), d: '16 × 1G' },
@@ -43,6 +54,7 @@
     up15: { n: 'UPS 3 kW', k: 'ups', u: 2, c: 26e4, out: 6, max: 3000, wh: 1500, d: '6 aljzat · 3 kW · 1,5 kWh' },
     up2: { n: 'UPS 6 kW', k: 'ups', u: 4, c: 65e4, out: 8, max: 6000, wh: 4000, d: '8 aljzat · 6 kW · 4 kWh' },
     up3: { n: 'UPS 20 kW', k: 'ups', u: 6, c: 24e5, out: 16, max: 20000, wh: 20000, d: '16 aljzat · 20 kW · 20 kWh' } };
+  const CAT = { kis: 'Asztali és kezdő', alt: 'Általános rack szerver', suru: 'Sűrű számítás', tar: 'Tárolás', gpu: 'GPU szerver', bany: 'Bányászat' };
   const PART = {
     c2: { n: 'CPU 2 mag', k: 'cpu', c: 12e3, w: 35, v: 2 }, c4: { n: 'CPU 4 mag', k: 'cpu', c: 3e4, w: 65, v: 4 }, c6: { n: 'CPU 6 mag', k: 'cpu', c: 55e3, w: 80, v: 6 }, c8: { n: 'CPU 8 mag', k: 'cpu', c: 85e3, w: 95, v: 8 }, c12: { n: 'CPU 12 mag', k: 'cpu', c: 15e4, w: 125, v: 12 }, c16: { n: 'CPU 16 mag', k: 'cpu', c: 24e4, w: 150, v: 16 }, c24: { n: 'CPU 24 mag', k: 'cpu', c: 43e4, w: 185, v: 24 }, c32: { n: 'CPU 32 mag', k: 'cpu', c: 7e5, w: 225, v: 32 }, c48: { n: 'CPU 48 mag', k: 'cpu', c: 12e5, w: 270, v: 48 }, c64: { n: 'CPU 64 mag', k: 'cpu', c: 19e5, w: 320, v: 64 }, c96: { n: 'CPU 96 mag', k: 'cpu', c: 34e5, w: 400, v: 96 },
     r4: { n: 'RAM 4 GB', k: 'ram', c: 4500, w: 2, v: 4 }, r8: { n: 'RAM 8 GB', k: 'ram', c: 8e3, w: 3, v: 8 }, r16: { n: 'RAM 16 GB', k: 'ram', c: 18e3, w: 4, v: 16 }, r32: { n: 'RAM 32 GB', k: 'ram', c: 4e4, w: 5, v: 32 }, r64: { n: 'RAM 64 GB', k: 'ram', c: 95e3, w: 7, v: 64 }, r128: { n: 'RAM 128 GB', k: 'ram', c: 22e4, w: 10, v: 128 }, r256: { n: 'RAM 256 GB', k: 'ram', c: 52e4, w: 14, v: 256 },
@@ -66,8 +78,8 @@
     ai: { i: '🧠', n: 'MI-tanítás', rep: 15, f: m => [1 * m, 4 * m, .2 * m, 10 * m, 50 * m], x: 1.2 }, rend: { i: '🎬', n: 'Renderfarm', rep: 25, f: m => [4 * m, 4 * m, .3 * m, 6 * m, 40 * m], x: 1.1 } };
   const NA = ['Tisza', 'Bükk', 'Pannon', 'Avas', 'Zemplén', 'Duna', 'Mátra', 'Hernád', 'Borsod', 'Alföld', 'Bakony', 'Rába', 'Kék', 'Zöld', 'Arany', 'Nova', 'Delta', 'Orion'], NB = ['Soft', 'Web', 'Média', 'Logisztika', 'Labs', 'Stúdió', 'Trade', 'Bt.', 'Kft.', 'Digital', 'Games', 'Pékség', 'Autóház', 'Könyvelő', 'Tech', 'Agro'];
   const GOALS = [['Vegyél egy racket a boltban', () => S.racks.some(r => r), 1e4], ['Építs meg és szerelj be egy szervert', () => devs().some(d => DEV[d.t].k === 'srv' && C.d[d.id] && C.d[d.id].boot), 2e4], ['Kösd a szervert áramra és internetre', () => C.online > 0, 2e4], ['Szerezd meg az első ügyfelet', () => S.cons.length > 0, 3e4],
-    ['Érj el napi 10 000 Ft bevételt', () => C.inc >= 1e4, 4e4], ['Indíts kriptobányászatot', () => C.hash > 0, 5e4], ['Szerelj be egy switchet', () => devs().some(d => DEV[d.t].k === 'sw'), 3e4], ['Üzemeltess egyszerre 4 szervert', () => C.online >= 4, 1e5],
-    ['Költözz ki a garázsból', () => S.site >= 1, 2e5], ['Érj el napi 250 000 Ft bevételt', () => C.inc >= 25e4, 5e5], ['Költözz szerverterembe', () => S.site >= 2, 1e6], ['Érj el napi 2 000 000 Ft bevételt', () => C.inc >= 2e6, 4e6], ['Nyisd meg az adatközpont-csarnokot', () => S.site >= 3, 1e7], ['Érj el napi 20 000 000 Ft bevételt', () => C.inc >= 2e7, 5e7]];
+    ['Érj el napi 10 000 Ft bevételt', () => C.inc >= 1e4, 4e4], ['Indíts kriptobányászatot', () => C.hash > 0, 0], ['Szerelj be egy switchet', () => devs().some(d => DEV[d.t].k === 'sw'), 0], ['Üzemeltess egyszerre 4 szervert', () => C.online >= 4, 0],
+    ['Költözz ki a garázsból', () => S.site >= 1, 0], ['Érj el napi 250 000 Ft bevételt', () => C.inc >= 25e4, 0], ['Költözz szerverterembe', () => S.site >= 2, 0], ['Érj el napi 2 000 000 Ft bevételt', () => C.inc >= 2e6, 0], ['Nyisd meg az adatközpont-csarnokot', () => S.site >= 3, 0], ['Érj el napi 20 000 000 Ft bevételt', () => C.inc >= 2e7, 0]];
 
   /* ---------- állapot ---------- */
   let S = null, C = { d: {}, inc: 0, cost: 0, online: 0, hash: 0, heat: 0, temp: 21, bw: 0, wall: [] }, PORTS = [], PM = new Map(), RP = {}, dirty = 1;
@@ -167,17 +179,17 @@
     for (const d of devs()) { const o = C.d[d.id]; if (!o) continue; if (o.k === 'ups') { const D = DEV[d.t]; if (o.onbat) { d.bat = Math.max(0, d.bat - (o.load || 0) * dt * 24); if (d.bat <= 0) dirty = 1; } else if (o.live && d.bat < D.wh) d.bat = Math.min(D.wh, d.bat + D.wh * dt * 6); }
       if (o.k === 'srv' && o.st !== 'off' && o.live) { const p = dt * .0035 * (C.temp > 38 ? 4 : 1); d.hdd.forEach((k, i) => { if (!broken(k) && !pv(k).ssd && Math.random() < p) { d.hdd[i] = '!' + k; toast(DEV[d.t].n + ': meghibásodott egy lemez.', 1); dirty = 1; } }); if (C.temp > 50) { d.on = 0; dirty = 1; } } }
     if (C.temp > 50 && !tick.hot) { toast('Túlmelegedés! A szerverek vészleálltak.', 1); beep(120, .3); } tick.hot = C.temp > 50;
-    const G = GOALS[S.goal]; if (G && G[1]()) { S.money += G[2]; S.goal++; toast('🎯 Cél teljesítve: +' + ft(G[2])); beep(990, .15); } }
+    const G = GOALS[S.goal]; if (G && G[1]()) { S.money += G[2]; S.goal++; toast('🎯 Cél teljesítve' + (G[2] ? ': +' + ft(G[2]) : '')); beep(990, .15); } }
 
   /* ---------- rajz ---------- */
   const NC = ['#3d8bfd', '#39c5bb', '#f59f00', '#e64980', '#94d82d', '#ae3ec9', '#ffd43b', '#ff922b'];
   function rr(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
   function drawDev(d, x, y, ghost) { const D = DEV[d.t], h = D.u * U - 1, o = C.d[d.id] || {}, t = performance.now() / 1000; g.globalAlpha = ghost ? .55 : 1;
-    const gr = g.createLinearGradient(0, y, 0, y + h); if (D.k === 'sw') { gr.addColorStop(0, '#2d4257'); gr.addColorStop(1, '#1b2a3a'); } else if (D.k === 'pw') { gr.addColorStop(0, '#26282c'); gr.addColorStop(1, '#17181b'); } else if (D.k === 'ups') { gr.addColorStop(0, '#3a3f46'); gr.addColorStop(1, '#22262b'); } else if (d.t === 'm3') { gr.addColorStop(0, '#2a2420'); gr.addColorStop(1, '#191512'); } else { gr.addColorStop(0, '#4a5058'); gr.addColorStop(1, '#2c3036'); }
+    const gr = g.createLinearGradient(0, y, 0, y + h); if (D.k === 'sw') { gr.addColorStop(0, '#2d4257'); gr.addColorStop(1, '#1b2a3a'); } else if (D.k === 'pw') { gr.addColorStop(0, '#26282c'); gr.addColorStop(1, '#17181b'); } else if (D.k === 'ups') { gr.addColorStop(0, '#3a3f46'); gr.addColorStop(1, '#22262b'); } else if (D.cat === 'bany') { gr.addColorStop(0, '#2a2420'); gr.addColorStop(1, '#191512'); } else { gr.addColorStop(0, '#4a5058'); gr.addColorStop(1, '#2c3036'); }
     rr(x, y, RW, h, 2.5); g.fillStyle = gr; g.fill(); g.strokeStyle = 'rgba(255,255,255,.14)'; g.lineWidth = .6; g.stroke(); g.fillStyle = '#15171a'; g.fillRect(x, y, 5, h); g.fillRect(x + RW - 5, y, 5, h);
     if (D.k === 'srv') { const led = o.st === 'ok' ? '#5ee08a' : o.st === 'off' || !o.st ? '#333' : o.st === 'parts' ? '#e8b656' : '#ff5a4d'; g.fillStyle = led; g.beginPath(); g.arc(x + 11, y + h / 2, 2.2, 0, 7); g.fill();
       const np = netPorts(d).length, bx = x + 18, bw = RW - 62 - (np > 8 ? Math.ceil(np / 2) : np) * 9.5 - 18, gp = d.pci.filter(k => pv(k).k === 'gpu').length;
-      if (d.t === 'm3' || d.t === 'g4') { const n = D.pci, fw = Math.min(h - 8, (bw - 4) / n - 3); for (let i = 0; i < n; i++) { const cx = bx + 4 + i * (fw + 3) + fw / 2, cy = y + h / 2, has = i < gp; g.fillStyle = has ? '#0d0f12' : 'rgba(0,0,0,.25)'; g.beginPath(); g.arc(cx, cy, fw / 2, 0, 7); g.fill(); if (has) { g.strokeStyle = o.st === 'ok' && d.mine ? '#5ee08a' : '#59616b'; g.lineWidth = 1.2; const a = o.st === 'ok' ? t * 9 + i : i; for (let k = 0; k < 3; k++) { g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a + k * 2.094) * fw * .42, cy + Math.sin(a + k * 2.094) * fw * .42); g.stroke(); } } } }
+      if (D.fan) { const n = D.pci, fw = Math.min(h - 8, (bw - 4) / n - 3); for (let i = 0; i < n; i++) { const cx = bx + 4 + i * (fw + 3) + fw / 2, cy = y + h / 2, has = i < gp; g.fillStyle = has ? '#0d0f12' : 'rgba(0,0,0,.25)'; g.beginPath(); g.arc(cx, cy, fw / 2, 0, 7); g.fill(); if (has) { g.strokeStyle = o.st === 'ok' && d.mine ? '#5ee08a' : '#59616b'; g.lineWidth = 1.2; const a = o.st === 'ok' ? t * 9 + i : i; for (let k = 0; k < 3; k++) { g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a + k * 2.094) * fw * .42, cy + Math.sin(a + k * 2.094) * fw * .42); g.stroke(); } } } }
       else { const rows = Math.max(1, Math.round(D.u * (D.bay > 12 ? 2.25 : D.bay > 4 ? 1.5 : 1))), cols = Math.ceil(D.bay / rows), cw = Math.min(26, bw / cols), ch = (h - 5) / rows; for (let i = 0; i < D.bay; i++) { const cx = bx + (i % cols) * cw, cy = y + 2.5 + Math.floor(i / cols) * ch, k = d.hdd[i]; g.fillStyle = k ? (broken(k) ? '#5a1f1c' : '#1c2026') : 'rgba(0,0,0,.28)'; g.fillRect(cx + .6, cy + .6, cw - 1.2, ch - 1.2); if (k) { g.fillStyle = broken(k) ? '#ff5a4d' : o.st === 'ok' && Math.sin(t * 7 + i * 1.7 + d.id) > .2 ? '#5ee08a' : '#2f6f45'; g.fillRect(cx + 2, cy + ch - 3.2, 2.5, 1.5); } } }
       if (TEX) { g.fillStyle = 'rgba(235,239,246,.6)'; g.font = '600 5.5px Inter'; g.textAlign = 'right'; g.fillText(D.n.toUpperCase(), x + RW - 24 - (np > 8 ? Math.ceil(np / 2) : np) * 9.5 - 12, y + 7.5); g.textAlign = 'left'; } }
     else if (D.k === 'ups') { g.fillStyle = '#0c1014'; g.fillRect(x + 150, y + h / 2 - 6, 60, 12); g.fillStyle = o.onbat ? '#f59f00' : '#5ee08a'; g.fillRect(x + 152, y + h / 2 - 4, 56 * (d.bat / D.wh), 8); if (d.trip) { g.fillStyle = '#ff5a4d'; g.fillRect(x + 216, y + h / 2 - 3, 6, 6); } }
@@ -189,10 +201,10 @@
     else { g.fillStyle = p.k === 'pi' ? '#0a0c0f' : '#e9e4d8'; g.beginPath(); g.arc(p.x, p.y, p.id ? 4.6 : 9, 0, 7); g.fill(); g.fillStyle = p.k === 'pi' ? '#c9a227' : '#222'; const r = p.id ? 1 : 1.7, o = p.id ? 1.8 : 3.4; g.beginPath(); g.arc(p.x - o, p.y, r, 0, 7); g.arc(p.x + o, p.y, r, 0, 7); g.fill(); if (!p.id && S.trip[p.i]) { g.strokeStyle = '#ff5a4d'; g.lineWidth = 2; g.beginPath(); g.arc(p.x, p.y, 11.5, 0, 7); g.stroke(); } }
     if (hot || me) { g.strokeStyle = me ? '#fff' : '#4cc9f0'; g.lineWidth = 1.4; g.beginPath(); g.arc(p.x, p.y, p.id ? 6.5 : 12, 0, 7); g.stroke(); } }
   function drawWall() { const W = wallDim(); rr(0, 0, W.w, W.h, 8); g.fillStyle = '#d9d4c7'; g.fill(); g.fillStyle = '#1d2835'; g.font = '800 7.5px Inter'; g.fillText('INTERNET · ' + PLAN[S.plan].n.toUpperCase() + (fib(PLAN[S.plan].sp) ? ' · OPTIKA' : ''), 8, W.oy - 6); g.fillStyle = 'rgba(0,0,0,.15)'; g.fillRect(8, W.oy, W.w - 16, 1); g.fillStyle = S.out > 0 ? '#c0392b' : '#1d2835'; g.fillText(S.out > 0 ? 'ÁRAMSZÜNET' : 'HÁLÓZATI ÁRAM', 8, W.h - 7); for (const p of RP.W || []) drawPort(p); }
-  function drawRack(i) { const r = S.racks[i], n = RACK[r.t].u, x = 0, y = 0; rr(x, y, RW + 28, n * U + 14, 4); g.fillStyle = '#111317'; g.fill(); g.strokeStyle = '#2f343b'; g.lineWidth = 2; g.stroke(); g.fillStyle = '#0a0b0d'; g.fillRect(x + 14, y + 7, RW, n * U);
-    g.fillStyle = '#23272d'; for (let u = 0; u < n; u++) { g.fillRect(x + 6, y + 7 + u * U + 4, 3, 3); g.fillRect(x + 6, y + 7 + u * U + 13, 3, 3); g.fillRect(x + RW + 19, y + 7 + u * U + 4, 3, 3); g.fillRect(x + RW + 19, y + 7 + u * U + 13, 3, 3); g.fillStyle = 'rgba(255,255,255,.035)'; g.fillRect(x + 14, y + 7 + u * U + U - 1, RW, 1); g.fillStyle = '#23272d'; }
-    for (const dv of r.dev) drawDev(dv, x + 14, y + 7 + dv.u * U); const t = place && aim.pl; if (t && t.rack && t.rack.ri === i && t.ok) drawDev(place, x + 14, y + 7 + t.rack.u * U, 1);
-    for (const p of RP['R' + i] || []) drawPort(p); }
+  function drawRack(i) { const r = S.racks[i], n = RACK[r.t].u, x = 0, y = 0; g.fillStyle = '#15171b'; g.fillRect(x, y, 14, n * U + 14); g.fillRect(x + RW + 14, y, 14, n * U + 14); g.fillRect(x, y, RW + 28, 7); g.fillRect(x, y + n * U + 7, RW + 28, 7);
+    g.fillStyle = '#23272d'; for (let u = 0; u < n; u++) { g.fillRect(x + 6, y + 7 + u * U + 4, 3, 3); g.fillRect(x + 6, y + 7 + u * U + 13, 3, 3); g.fillRect(x + RW + 19, y + 7 + u * U + 4, 3, 3); g.fillRect(x + RW + 19, y + 7 + u * U + 13, 3, 3); }
+    for (const dv of r.dev) if (dv.id !== insp) drawDev(dv, x + 14, y + 7 + dv.u * U); const t = place && aim.pl; if (t && t.rack && t.rack.ri === i && t.ok) drawDev(place, x + 14, y + 7 + t.rack.u * U, 1);
+    for (const p of RP['R' + i] || []) if (p.id !== insp) drawPort(p); }
   function drawLoose(d) { drawDev(d, 0, 0); for (const p of RP['L' + d.id] || []) drawPort(p); }
 
   // a 3D nézet textúrái: egy rack vagy a fali csatlakozók rajza saját vászonra
@@ -220,15 +232,15 @@
 
   const aimed = () => aim;
   addEventListener('keydown', e => { if (!$('#menu').hidden || e.ctrlKey || e.metaKey || e.altKey) return; const k = e.code, app = { KeyB: 'shop', KeyI: 'inv', KeyU: 'cli', KeyT: 'site' }[k];
-    if (k === 'Tab') { e.preventDefault(); return view ? closeP() : openP(lastApp, ''); } if (app) return view === app ? closeP() : openP(app, ''); if (k === 'Escape') return view ? closeP() : cancel();
+    if (k === 'Tab') { e.preventDefault(); return view ? closeP() : openP(lastApp, ''); } if (app) return view === app ? closeP() : openP(app, ''); if (k === 'Escape') return view ? closeP() : insp ? closeInsp() : cancel();
     if (k === 'Space') { e.preventDefault(); S.spd = S.spd ? 0 : 1; return top(); } if (k === 'Digit1' || k === 'Digit2' || k === 'Digit3') { S.spd = { Digit1: 1, Digit2: 3, Digit3: 8 }[k]; return top(); } if (k === 'KeyH') { S.nokeys = S.nokeys ? 0 : 1; return keysUI(); } if (k === 'KeyP') return fullscreen(); if (view) return;
-    if (k === 'KeyE') { if (F3 && F3.on) F3.interact(); return; } if (k === 'KeyQ') return cancel(); if (k === 'KeyR' && !place && !sel && !aim.d) { if (aim.tray) { const t = aim.tray; S.trays = S.trays.filter(x => x !== t); const n = { id: t.id, t: t.t, u: 0 }; S.spare.push(n); place = n; dirty = 1; hint(); return beep(420); } if (aim.rk != null) { place = { rk: S.racks[aim.rk].t, mv: aim.rk }; hint(); return beep(420); } } const d = aimed().d; if (!d || place || sel) return; const D = DEV[d.t];
+    if (insp && (k === 'KeyQ' || k === 'KeyE')) return closeInsp(); if (k === 'KeyE') { if (F3 && F3.on) F3.interact(); return; } if (k === 'KeyQ') return cancel(); if (k === 'KeyR' && !place && !sel && !aim.d) { if (aim.tray) { const t = aim.tray; S.trays = S.trays.filter(x => x !== t); const n = { id: t.id, t: t.t, u: 0 }; S.spare.push(n); place = n; dirty = 1; hint(); return beep(420); } if (aim.rk != null) { place = { rk: S.racks[aim.rk].t, mv: aim.rk }; hint(); return beep(420); } } const d = insp ? findDev(insp)[0] : aimed().d; if (!d || place || sel) return; const D = DEV[d.t];
     if (k === 'KeyF') { if (D.k === 'srv') d.on = d.on ? 0 : 1; else if (d.trip) delete d.trip; dirty = 1; beep(500); } else if (k === 'KeyM' && D.k === 'srv') { d.mine = d.mine ? 0 : 1; dirty = 1; beep(500); }
-    else if (k === 'KeyR') { if (S.cons.some(x => x.srv === d.id)) return toast('Ezen a szerveren ügyfelek vannak.', 1); if (findDev(d.id)[1] === -2 && onTop(d)) return toast('Előbb vedd le, ami rajta van.', 1); stow(d, findDev(d.id)[1]); place = d; hint(); beep(420); } });
+    else if (k === 'KeyR') { if (S.cons.some(x => x.srv === d.id)) return toast('Ezen a szerveren ügyfelek vannak.', 1); if (findDev(d.id)[1] === -2 && onTop(d)) return toast('Előbb vedd le, ami rajta van.', 1); stow(d, findDev(d.id)[1]); if (insp) closeInsp(); place = d; hint(); beep(420); } if (insp) inspUI(); });
   const fullscreen = () => { try { if (document.fullscreenElement) document.exitFullscreen(); else { const r = document.documentElement.requestFullscreen(); if (r && r.catch) r.catch(() => toast('A böngésző nem engedi a teljes képernyőt.', 1)); } } catch (_) {} };
   const kb = (k, t) => `<span><kbd>${k}</kbd>${t}</span>`;
   function keysUI() { const e = $('#keys'); e.innerHTML = S.nokeys ? kb('H', 'Gombok') : kb('Tab', 'Telefon') + kb('B', 'Bolt') + kb('I', 'Raktár') + kb('U', 'Ügyfelek') + kb('T', 'Telephely') + kb('WASD', 'Mozgás') + kb('Shift', 'Futás') + kb('C', 'Guggolás') + kb('Space', 'Szünet') + kb('1 2 3', 'Sebesség') + kb('P', 'Teljes képernyő') + kb('H', 'Elrejt'); }
-  let ctxS = ''; function ctxUI() { let h = ''; if (!view && F3 && F3.on) { const a = aimed();
+  let ctxS = ''; function ctxUI() { let h = ''; if (insp) { if (hov && !view) { const d = findDev(insp)[0], cur = d && (hov[0] === 'psu' ? d.psu : d[hov[0]][hov[1]]); h = `<b>${PK[hov[0]]}</b>` + (cur ? pv(cur).n + (broken(cur) ? ' (hibás)' : '') : 'üres'); } } else if (!view && F3 && F3.on) { const a = aimed();
       if (place) { const t = a.pl; h = (t && t.ok ? kb('E', t.rack || t.arm != null ? 'Felszerel' : 'Lerak') : '') + (t && t.turn ? kb('Görgő', 'Forgat') : '') + kb('Q', 'Mégse'); }
       else if (sel) h = (a.p && ok2(sel, a.p) ? kb('E', 'Bedug') : a.p || !a.pt ? '' : kb('E', 'Rögzítő')) + kb('Q', sel.re ? 'Eldob' : 'Mégse');
       else if (a.p) h = !a.p.id && a.p.k === 'po' && S.trip[a.p.i] ? kb('E', 'Biztosíték vissza') : kb('E', other(a.p.id, a.p.k, a.p.i) ? 'Kihúz' : a.p.k === 'n' ? 'Hálózati kábel · ' + sp(a.p.sp) : 'Tápkábel');
@@ -240,8 +252,13 @@
   let cliTab = 0, shopTab = 'rack', devId = 0, slot = null, rackI = 0;
   const APPS = ['shop', 'inv', 'cli', 'site']; let lastApp = 'shop';
   const relock = () => { if (F3 && F3.on && matchMedia('(pointer:fine)').matches) try { const r = $('#c3').requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (_) {} };
-  const openP = (v, t) => { if (document.pointerLockElement) document.exitPointerLock(); view = v; if (APPS.includes(v)) lastApp = v; $('#pnl').hidden = false; $('#pt').textContent = t; for (const b of document.querySelectorAll('#nav [data-p]')) b.classList.toggle('on', b.dataset.p === v); ui(); }, closeP = () => { const was = view; view = null; $('#pnl').hidden = true; if (was) relock(); };
-  const openDev = id => { devId = id; slot = null; openP('dev', ''); }, openRack = i => { rackI = i; openP('rack', ''); };
+  const openP = (v, t) => { if (document.pointerLockElement) document.exitPointerLock(); view = v; if (APPS.includes(v)) lastApp = v; $('#pnl').hidden = false; $('#pt').textContent = t; for (const b of document.querySelectorAll('#nav [data-p]')) b.classList.toggle('on', b.dataset.p === v); ui(); }, closeP = () => { const was = view; view = null; $('#pnl').hidden = true; if (was && !insp) relock(); };
+  // insp: a kihúzott, nyitott szerverház azonosítója (3D-ben szerelhető); hov: az egér alatti foglalat
+  let insp = 0, hov = null;
+  const closeInsp = () => { if (!insp) return; insp = 0; hov = null; dirty = 1; $('#insp').hidden = true; if (view === 'dev') closeP(); else relock(); };
+  function inspUI() { const e = $('#insp'), [d] = insp ? findDev(insp) : [null]; if (!d) { if (insp) closeInsp(); e.hidden = true; return; } const D = DEV[d.t], o = C.d[d.id] || {}, c = o.cap || cap(d), u = o.use || { cores: 0, ram: 0, tb: 0, gpu: 0 }, s = ST[o.st || 'off'];
+    const h = `<b>${D.n}</b><span class="st ${s[1]}">${s[0]}</span><span class="st ${c.psu < c.w ? 'bad' : ''}">${c.w} / ${c.psu} W</span><span class="st">${num(u.cores)}/${c.cores} mag</span><span class="st">${num(u.ram)}/${c.ram} GB</span><span class="st">${num(u.tb)}/${num(c.tb)} TB</span>${c.gpu ? `<span class="st">${c.gpu} GPU</span>` : ''}<span class="sp"></span>` + B('pwr', 0, kb('F', d.on ? 'Kikapcsol' : 'Bekapcsol')) + (c.gpu ? B('mine', 0, kb('M', 'Bányászat'), 0, d.mine ? 'on' : '') : '') + B('iclose', 0, kb('Q', 'Visszatol'), 0, 'pr'); if (e.dataset.h !== h) { e.dataset.h = h; e.innerHTML = h; } e.hidden = false; }
+  const openDev = id => { const [d, ri] = findDev(id); if (d && ri !== -1 && DEV[d.t].k === 'srv' && F3 && F3.on) { if (view) closeP(); if (document.pointerLockElement) document.exitPointerLock(); insp = id; dirty = 1; return inspUI(); } devId = id; slot = null; openP('dev', ''); }, openRack = i => { rackI = i; openP('rack', ''); };
   const it = (a, b, btn) => `<div class="it"><div><b>${a}</b><small>${b}</small></div>${btn || ''}</div>`, B = (a, v, t, dis, cl) => `<button class="b sm ${cl || ''}" data-a="${a}" data-v="${v}" ${dis ? 'disabled' : ''}>${t}</button>`;
   const bar = (a, b, u) => `<small>${u}: ${num(a)} / ${num(b)}</small><div class="bar"><i class="${a > b + 1e-6 ? 'hi' : ''}" style="width:${Math.min(100, b ? a / b * 100 : 0)}%"></i></div>`;
   const need = c => [c.cores + ' mag', c.ram + ' GB RAM', num(c.tb) + ' TB', c.gpu ? c.gpu + ' GPU-pont' : '', c.bw + ' Mbit'].filter(Boolean).join(' · ');
@@ -250,6 +267,7 @@
       if (shopTab === 'rack') { const fr = S.racks.length < SITE[S.site].racks; for (const k in RACK) h += it(RACK[k].n, RACK[k].u + ' egység magas', B('rack', k, ft(RACK[k].c), !fr)); if (!fr) h += `<div class="h">A telephelyen legfeljebb ${SITE[S.site].racks} rack fér el</div>`; h += '<div class="h">Kábelvezetés és bútor</div>' + ['tray', 'arm', 'tbl'].map(k => it(DEV[k].n, DEV[k].d, B('dev', k, ft(DEV[k].c)))).join(''); }
       else if (shopTab === 'part') { let lk = ''; for (const k in PART) { const P = PART[k]; if (P.k !== lk) { lk = P.k; h += `<div class="h">${{ cpu: 'Processzor', ram: 'Memória', hdd: 'Lemez', gpu: 'Videókártya', nic: 'Hálókártya', psu: 'Tápegység' }[lk]}</div>`; } h += it(P.n, (P.w ? P.w + ' W' : '') + (S.inv[k] ? ' · raktáron: ' + S.inv[k] : ''), B('part', k, ft(P.c))); } }
       else if (shopTab === 'cool') { for (const k in COOL) { const P = COOL[k]; if (P.s > S.site) continue; h += it(P.n + (S.cool[k] ? ' × ' + S.cool[k] : ''), `${num(P.v / 1000)} kW hűtés · ${P.w} W fogyasztás`, B('cool', k, ft(P.c))); } }
+      else if (shopTab === 'srv') for (const c in CAT) { h += `<div class="h">${CAT[c]}</div>`; for (const k in DEV) if (DEV[k].cat === c) h += it(DEV[k].n, DEV[k].u + 'U · ' + DEV[k].d, B('dev', k, ft(DEV[k].c))); }
       else for (const k in DEV) { const D = DEV[k]; if ((shopTab === 'srv') !== (D.k === 'srv') || (shopTab === 'sw' && D.k !== 'sw' && D.k !== 'pp') || (shopTab === 'pw' && D.k !== 'pw' && D.k !== 'ups')) continue; h += it(D.n, D.u + 'U · ' + D.d, B('dev', k, ft(D.c))); } }
     else if (view === 'inv') { $('#pt').textContent = '📦 Raktár'; h = '<div class="h">Eszközök</div>' + (S.spare.map(d => it(DEV[d.t].n, (['tbl', 'tray', 'arm'].includes(DEV[d.t].k) ? 'Tartozék' : DEV[d.t].u + 'U') + (DEV[d.t].k === 'srv' ? ' · ' + [...d.cpu, ...d.ram, ...d.hdd, ...d.pci].length + ' alkatrész' : ''), (DEV[d.t].k === 'srv' ? B('open', d.id, 'Szerelés') : '') + B('place', d.id, 'Lerak', 0, 'pr') + B('selld', d.id, 'Elad ' + ft(DEV[d.t].c * .5)))).join('') || '<small>Üres.</small>') + '<div class="h">Alkatrészek</div>' + (Object.keys(S.inv).filter(k => S.inv[k] > 0).map(k => it(PART[k].n + ' × ' + S.inv[k], '', B('sellp', k, 'Elad ' + ft(PART[k].c * .5)))).join('') || '<small>Üres.</small>'); }
     else if (view === 'cli') { $('#pt').textContent = '🤝 Ügyfelek'; const lock = t => S.rep < TIER[t].rep;
@@ -274,16 +292,16 @@
   function top() { const st = SITE[S.site], net = C.inc - C.cost - loanPay(), tw = C.wall.reduce((a, b) => a + b, 0); $('#money').textContent = ft(S.money); $('#money').style.color = S.money < 0 ? 'var(--bad)' : ''; $('#inc').innerHTML = `<span style="color:${net >= 0 ? 'var(--ok)' : 'var(--bad)'}">${net >= 0 ? '+' : ''}${ft(net)}</span><small>/nap</small>`; $('#day').textContent = (S.day + 1 | 0) + '. nap';
     $('#spd').innerHTML = [0, 1, 3, 8].map(v => `<span data-a="spd" data-v="${v}" style="cursor:pointer;padding:0 3px;color:${S.spd === v ? 'var(--cy)' : 'var(--mut)'}">${v ? v + '×' : '⏸'}</span>`).join(''); $('#pw').innerHTML = (S.out > 0 ? '🔌' : '⚡') + ' ' + num(C.heat / 1000) + ' kW'; $('#pw').style.color = S.out > 0 ? 'var(--bad)' : '';
     $('#tmp').textContent = '🌡 ' + C.temp.toFixed(0) + ' °C'; $('#tmp').style.color = C.temp > 38 ? 'var(--bad)' : C.temp > 32 ? 'var(--gold2)' : ''; $('#net').innerHTML = '🌐 ' + num(C.bw) + '<small>/ ' + PLAN[S.plan].sp.toLocaleString('hu-HU') + ' Mbit</small>'; $('#coin').innerHTML = '₿ ' + Math.round(S.coin) + '<small>Ft/pont</small>'; $('#rep').textContent = '★ ' + Math.floor(S.rep);
-    const G = GOALS[S.goal]; $('#goal').hidden = !G; if (G) $('#goal').innerHTML = '🎯 ' + G[0] + ' · <b>+' + ft(G[2]) + '</b>'; }
+    const G = GOALS[S.goal]; $('#goal').hidden = !G; if (G) $('#goal').innerHTML = '🎯 ' + G[0] + (G[2] ? ' · <b>+' + ft(G[2]) + '</b>' : ''); }
   const onTop = d => d.wx !== undefined && S.loose.some(o => o !== d && Math.abs(o.wx - d.wx) < .02 && Math.abs(o.wz - d.wz) < .02 && o.wy > d.wy);
   const stow = (d, ri) => { if (ri >= 0) S.racks[ri].dev = S.racks[ri].dev.filter(x => x !== d); else S.loose = S.loose.filter(x => x !== d); S.spare.push(d); dirty = 1; };
-  function act(a, v) { const [d, ri] = view === 'dev' ? findDev(devId) : [null, -1];
+  function act(a, v) { const [d, ri] = view === 'dev' ? findDev(devId) : insp ? findDev(insp) : [null, -1]; if (a === 'iclose') return closeInsp();
     if (a === 'cancel') cancel(); else if (a === 'tab') shopTab = v; else if (a === 'ctab') cliTab = +v; else if (a === 'spd') S.spd = +v;
     else if (a === 'rack') { if (S.racks.length >= SITE[S.site].racks) return toast('Több rack ide nem fér.', 1); if (pay(RACK[v].c)) { place = { rk: v }; closeP(); hint(); } }
     else if (a === 'rup') { const r = S.racks[rackI]; if (pay(RACK[v].c - RACK[r.t].c * .5)) r.t = v; } else if (a === 'rdel') { S.money += RACK[S.racks[rackI].t].c * .5; S.racks.splice(rackI, 1); closeP(); } else if (a === 'rarm') { delete S.racks[rackI].arm; S.spare.push(mk('arm')); } else if (a === 'rmove') { place = { rk: S.racks[rackI].t, mv: rackI }; closeP(); hint(); }
     else if (a === 'loan') { const l = LOAN[+v]; if (S.loans.length < 3 && l.a <= 3e5 + 45 * C.inc) { S.loans.push({ n: l.n, p: l.a, d: l.d, r: l.r }); S.money += l.a; beep(880); } } else if (a === 'repay') { const l = S.loans[+v]; if (l && S.money >= l.p) { S.money -= l.p; S.loans.splice(+v, 1); beep(700); } }
     else if (a === 'part') { if (pay(PART[v].c)) S.inv[v] = (S.inv[v] || 0) + 1; } else if (a === 'cool') { if (pay(COOL[v].c)) S.cool[v] = (S.cool[v] || 0) + 1; }
-    else if (a === 'dev') { if (pay(DEV[v].c)) { const n = mk(v); S.spare.push(n); if (DEV[v].k === 'srv') openDev(n.id); else { place = n; closeP(); hint(); } } }
+    else if (a === 'dev') { if (pay(DEV[v].c)) { const n = mk(v); S.spare.push(n); place = n; closeP(); hint(); } }
     else if (a === 'open') openDev(+v); else if (a === 'goto') { const [x] = findDev(+v); if (x) openDev(x.id); }
     else if (a === 'place') { place = S.spare.find(x => x.id === +v) || null; if (place) { closeP(); hint(); } }
     else if (a === 'selld') { const x = S.spare.find(x => x.id === +v); if (x) { S.spare = S.spare.filter(y => y !== x); S.money += DEV[x.t].c * .5; if (x.cpu) for (const k of [...x.cpu, ...x.ram, ...x.hdd, ...x.pci, ...(x.psu ? [x.psu] : [])]) if (!broken(k)) S.inv[k] = (S.inv[k] || 0) + 1; } }
@@ -292,11 +310,11 @@
     else if (a === 'move') { const x = SITE[+v]; if (+v === S.site + 1 && pay(x.c)) { S.site = +v; S.trip = {}; toast('Átköltöztél: ' + x.n); } }
     else if (a === 'plan') { S.plan = +v; calc(); purge(); }
     else if (a === 'slot') { const [k, i] = v.split(':'); slot = [k, +i]; } else if (a === 'slotx') slot = null;
-    else if (a === 'unpart' && d) { const [k, i] = slot; const cur = k === 'psu' ? d.psu : d[k][i]; if (cur) { if (!broken(cur)) S.inv[cur] = (S.inv[cur] || 0) + 1; if (k === 'psu') d.psu = null; else d[k].splice(i, 1); } slot = null; }
-    else if (a === 'inst' && d) { const [k, i] = slot; if (!(S.inv[v] > 0) && !pay(PART[v].c)) return; if (S.inv[v] > 0) S.inv[v]--; else S.inv[v] = 0; const cur = k === 'psu' ? d.psu : d[k][i]; if (cur && !broken(cur)) S.inv[cur] = (S.inv[cur] || 0) + 1; if (k === 'psu') d.psu = v; else if (cur) d[k][i] = v; else d[k].push(v); slot = null; beep(600); }
+    else if (a === 'unpart' && d) { const [k, i] = slot; const cur = k === 'psu' ? d.psu : d[k][i]; if (cur) { if (!broken(cur)) S.inv[cur] = (S.inv[cur] || 0) + 1; if (k === 'psu') d.psu = null; else d[k].splice(i, 1); } slot = null; if (insp) { dirty = 1; calc(); return closeP(); } }
+    else if (a === 'inst' && d) { const [k, i] = slot; if (!(S.inv[v] > 0) && !pay(PART[v].c)) return; if (S.inv[v] > 0) S.inv[v]--; else S.inv[v] = 0; const cur = k === 'psu' ? d.psu : d[k][i]; if (cur && !broken(cur)) S.inv[cur] = (S.inv[cur] || 0) + 1; if (k === 'psu') d.psu = v; else if (cur) d[k][i] = v; else d[k].push(v); slot = null; beep(600); if (insp) { dirty = 1; calc(); return closeP(); } }
     else if (a === 'pwr' && d) d.on = d.on ? 0 : 1; else if (a === 'mine' && d) d.mine = d.mine ? 0 : 1; else if (a === 'untrip' && d) delete d.trip;
-    else if (a === 'unmount' && d && ri !== -1) { if (ri === -2 && onTop(d)) return toast('Előbb vedd le, ami rajta van.', 1); stow(d, ri); closeP(); }
-    dirty = 1; calc(); if (view) ui(); top(); }
+    else if (a === 'unmount' && d && ri !== -1) { if (ri === -2 && onTop(d)) return toast('Előbb vedd le, ami rajta van.', 1); stow(d, ri); if (insp) closeInsp(); closeP(); }
+    dirty = 1; calc(); if (view) ui(); top(); if (insp) inspUI(); }
   $('#bFs').onclick = fullscreen;
   document.addEventListener('click', e => { const t = e.target.closest('[data-a]'); if (t) return act(t.dataset.a, t.dataset.v); const p = e.target.closest('[data-p]'); if (p) { const v = p.dataset.p; if (view === v) closeP(); else openP(v, ''); } });
   $('#px').onclick = closeP; $('#bMenu').onclick = () => { save(); $('#menu').hidden = false; $('#mPlay').textContent = '▶ Folytatás'; $('#mNew').hidden = false; };
@@ -305,12 +323,13 @@
 
   /* ---------- 3D (belső nézet): fps.js ---------- */
   let F3 = null, f3load = 0;
-  window.SZ3 = { get S() { return S; }, get C() { return C; }, get PM() { return PM; }, get RP() { return RP; }, get sel() { return sel; }, get place() { return place; }, get gen() { return GEN; }, get busy() { return !!view || !$('#menu').hidden; },
+  window.SZ3 = { get S() { return S; }, get C() { return C; }, get PM() { return PM; }, get RP() { return RP; }, get sel() { return sel; }, get place() { return place; }, get gen() { return GEN; }, get busy() { return !!view || !$('#menu').hidden || !!insp; }, get insp() { return insp; }, get view() { return view; }, PART, pv, broken, setHov: h => { hov = h; }, slotClick: (k, i) => { devId = insp; slot = [k, i]; openP('dev', ''); },
+    devTo: (ctx, d, k) => { const ri = findDev(d.id)[1]; drawTo(ctx, k, 0, 0, RW, DEV[d.t].u * U, () => { drawDev(d, 0, 0); if (ri >= 0) g.translate(-14, -(7 + d.u * U)); const was = insp; insp = 0; for (const p of RP[ri >= 0 ? 'R' + ri : 'L' + d.id] || []) if (p.id === d.id) drawPort(p); insp = was; }); },
     SITE, RACK, DEV, U, RW, NC, K, GR, TRAYH, ROOM, lift, wallDim, pkey, free, ok2, fib, wallMount, onTop, cancel, setAim: a => { aim = a; }, doClick: () => doClick(aim),
     rackTo: (ctx, i, k) => drawTo(ctx, k, 0, 0, RW + 28, RACK[S.racks[i].t].u * U + 14, () => drawRack(i)), wallTo: (ctx, k) => { const W = wallDim(); drawTo(ctx, k, 0, 0, W.w, W.h, drawWall); }, looseTo: (ctx, d, k) => drawTo(ctx, k, 0, 0, RW, DEV[d.t].u * U, () => drawLoose(d)) };
   function toggle3D(on) { if (on === undefined) on = !(F3 && F3.on); if (!on) { if (F3) F3.stop(); $('#c3').hidden = true; cv.hidden = false; return; }
     const go = () => { $('#c3').hidden = false; cv.hidden = true; F3.start(); }; if (F3) return go(); if (f3load) return; f3load = 1;
-    import('./fps.js?v=202611221437').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
+    import('./fps.js?v=202611221445').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
   $('#bPh').onclick = () => view ? closeP() : openP(lastApp, '');
 
   /* ---------- főciklus ---------- */
@@ -319,7 +338,7 @@
   let last = performance.now(), acc = 0, uiT = 0, saveT = 5, scT = 60;
   function loop(now) { const dt = Math.min(.1, (now - last) / 1000); last = now;
     if ($('#menu').hidden && S.spd) { acc += dt * S.spd; while (acc >= .25) { acc -= .25; if (dirty) calc(); tick(.25 / DAY); } }
-    if (dirty) calc(); if (F3 && F3.on) { F3.frame(dt); ctxUI(); } if ((uiT -= dt) <= 0) { uiT = .5; top(); if (view === 'dev' && !slot || view === 'site') ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); } if ((scT -= dt) <= 0) { scT = 60; score(); }
+    if (dirty) calc(); if (F3 && F3.on) { F3.frame(dt); ctxUI(); } if ((uiT -= dt) <= 0) { uiT = .5; top(); if (insp) inspUI(); if (view === 'dev' && !slot || view === 'site') ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); } if ((scT -= dt) <= 0) { scT = 60; score(); }
     requestAnimationFrame(loop); }
   const had = load(); if (!had) fresh(); if (had) { $('#mPlay').textContent = '▶ Folytatás'; $('#mNew').hidden = false; } calc(); purge(); top(); keysUI(); cv.hidden = true; toggle3D(true); addEventListener('pagehide', () => { save(); score(); });
   window.__sz = () => ({ SZ: window.SZ3, purge, doClick, get aim() { return aim; }, get F3() { return F3; }, get sel() { return sel; }, S, C, act, calc, tick, DEV, PART, mk, accept, fit, mkOffer, fillOffers, ensureOffer, TIER });
