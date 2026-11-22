@@ -1,7 +1,7 @@
 // HGWS matricák és saját emojik – a leíró: img/stickers/hgws/stickers.json
 // Egy matrica képe később cserélhető (PNG/WebP): ugyanaz az id marad, csak a JSON „file” mezője változik.
-import { esc } from './core.js?v=202611221546';
-import { popover, closePop, EMOJIS } from './ui.js?v=202611221546';
+import { esc } from './core.js?v=202611221550';
+import { popover, closePop, EMOJIS } from './ui.js?v=202611221550';
 
 const JSON_URL = new URL('../img/stickers/hgws/stickers.json', import.meta.url).href + new URL(import.meta.url).search;
 let DATA = { base: 'img/stickers/hgws/', stickers: [], emojis: [], categories: {} };
