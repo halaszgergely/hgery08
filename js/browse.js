@@ -1,11 +1,11 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611222211';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611222211';
-import * as Player from './player.js?v=202611222211';
-import * as Party from './party.js?v=202611222211';
-import * as VP from './vplayer.js?v=202611222211';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611222211';
-import * as ArcL from './arcade-lista.js?v=202611222211';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611222240';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611222240';
+import * as Player from './player.js?v=202611222240';
+import * as Party from './party.js?v=202611222240';
+import * as VP from './vplayer.js?v=202611222240';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611222240';
+import * as ArcL from './arcade-lista.js?v=202611222240';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -282,16 +282,19 @@ async function loadPlays() {
   return PLAYS;
 }
 /* felhőmentés idle játékokhoz: cloudsaves/{uid}/g/{játék} = { life, st, updatedAt } – a szabály csak nagyobb vagy egyenlő life-ot enged */
-const CS_GAMES = ['birodalom'];
+const CS_GAMES = ['birodalom', 'szerver'], CS_GAP = 30 * 60e3; // automatikus mentés legfeljebb 30 percenként + kilépéskor; kézi mentést csak admin indíthat (minden felhőmentéses játékra)
+const csLast = g => { try { return +localStorage.getItem('hgws_cs_' + g) || 0; } catch (_) { return 0; } };
 async function cloudGet(win, game) {
   if (!CS_GAMES.includes(game) || guest() || !C.uid()) return win.postMessage({ hgws: 'cs', game, none: 1 }, location.origin);
-  try { const d = (await FB.getDoc(FB.doc(db, 'cloudsaves', C.uid(), 'g', game))).data(); win.postMessage({ hgws: 'cs', game, life: d ? +d.life || 0 : 0, lg: d && typeof d.lg === 'number' ? d.lg : undefined, st: d ? d.st : null }, location.origin); }
+  try { const d = (await FB.getDoc(FB.doc(db, 'cloudsaves', C.uid(), 'g', game))).data(); win.postMessage({ hgws: 'cs', game, life: d ? +d.life || 0 : 0, lg: d && typeof d.lg === 'number' ? d.lg : undefined, st: d ? d.st : null, admin: C.isAdmin() }, location.origin); }
   catch (_) { win.postMessage({ hgws: 'cs', game, none: 1 }, location.origin); }
 }
 function cloudPut(m, win) {
   const ack = (ok, err) => { if (m.ack) win?.postMessage({ hgws: 'cs', game: m.game, ack: 1, ok, err }, location.origin); };
   if (!CS_GAMES.includes(m.game) || guest() || !C.uid() || typeof m.st !== 'string' || m.st.length > 900000 || !(m.life >= 0)) return ack(false, 'nincs bejelentkezve');
-  FB.setDoc(FB.doc(db, 'cloudsaves', C.uid(), 'g', m.game), { life: Math.min(9e15, +m.life || 0), lg: typeof m.lg === 'number' && isFinite(m.lg) ? m.lg : 0, st: m.st, updatedAt: FB.serverTimestamp() }).then(() => ack(true), er => ack(false, er?.code === 'permission-denied' ? 'elutasítva – kisebb mentés, túl gyakori írás vagy nincs kint a szabály' : 'hálózati hiba'));
+  if (m.man && !C.isAdmin()) return ack(false, 'kézi mentést csak admin indíthat');
+  if (!m.man && !m.exit && Date.now() - csLast(m.game) < CS_GAP) return ack(false, 'automatikus mentés 30 percenként egyszer');
+  FB.setDoc(FB.doc(db, 'cloudsaves', C.uid(), 'g', m.game), { life: Math.min(9e15, +m.life || 0), lg: typeof m.lg === 'number' && isFinite(m.lg) ? m.lg : 0, st: m.st, updatedAt: FB.serverTimestamp() }).then(() => { try { localStorage.setItem('hgws_cs_' + m.game, Date.now()); } catch (_) {} ack(true); }, er => ack(false, er?.code === 'permission-denied' ? 'elutasítva – kisebb mentés, túl gyakori írás vagy nincs kint a szabály' : 'hálózati hiba'));
 }
 function countPlay(id) {
   if (!/^[a-z0-9]{2,24}$/.test(id || '') || !C.uid()) return;
@@ -467,6 +470,7 @@ addEventListener('message', async e => {
   if (e.data.hgws === 'play') countPlay(e.data.game);
   if (e.data.hgws === 'csreq') cloudGet(fr.contentWindow, e.data.game);
   if (e.data.hgws === 'cssave') cloudPut(e.data, fr.contentWindow);
+  if (e.data.hgws === 'csdel' && CS_GAMES.includes(e.data.game) && !guest() && C.uid()) FB.deleteDoc(FB.doc(db, 'cloudsaves', C.uid(), 'g', e.data.game)).catch(() => {}); // új játék: a régi felhőmentés törlése
   if (e.data.hgws === 'sync' && !guest() && C.uid()) { const first = !synced; synced = true; let ch = 0; for (const [g, v] of Object.entries(e.data.bests || {})) if (v > (syncBest[g] || 0)) { syncBest[g] = v; ch = 1; await saveScore(g, v, false, first); } if (ch) sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'nickreq') { await renameNick(); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbprof') lbProfile(e.data.uid, e.data.nick);
