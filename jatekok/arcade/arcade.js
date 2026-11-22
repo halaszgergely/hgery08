@@ -29,7 +29,7 @@ const LegiOntozes = { id: 'flightsim', name: 'HGWS LÉGI ÖNTÖZÉS', ext: 'jate
 const Vizfuvar = { id: 'vizfuvar', name: 'HGWS VÍZFUVAR', ext: 'jatekok/vizfuvar/index.html', tag: 'ÚJ', lbx: 1, icon: '🚚', fmt: v => Math.floor(v).toLocaleString('hu-HU') + ' Ft',
   desc: 'Vízszállító-szimulátor Miskolc valódi utcáin: Babettóval egyetlen ballonnal kezded, aztán Trabóval, később tartálykocsival és kamionnal építed a HGWS flottáját.' };
 const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Ugro, Torony, Birodalom, BoOnline, Aszaly, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, Atemelotelep, Vasut, Szerver, LegiOntozes, Vizfuvar, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
-const NOSPON = ['locsolo', 'vizagyu', 'csepp'];
+const NOSPON = ['locsolo', 'vizagyu', 'csepp', 'vizfuvar'];
 GAMES.forEach(g => { if (NOSPON.includes(g.id)) delete g.sponsor; else g.sponsor = 'A Zerosites támogatásával'; });
 /* népszerűség: a főoldal küldi a játékonkénti indításszámot (plays), helyben is megjegyezzük a gyors sorrendhez */
 let PLAYS = (() => { try { return JSON.parse(localStorage.getItem('hgws_plays') || '{}') || {}; } catch (_) { return {}; } })();

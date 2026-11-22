@@ -139,8 +139,9 @@ export function stepMoped(b, I, env, dt, onFall) { const J = b.J, m = b.m;
   const grade = Math.sin(b.pitch), Fres = .5 * 1.2 * .6 * b.v * Math.abs(b.v) + sf.crr * 1.4 * m * G * Math.sign(b.v) + m * G * grade;
   const Fb = I.brake * m * G * .5 * Math.min(1, sf.mu);
   let a = (Fd - Fres) / m; if (Fb) a -= Math.sign(b.v || 1) * Math.min(Fb / m, Math.abs(b.v) / dt + (b.v > .05 ? 0 : 0));
-  if (b.v < .3 && I.brake > .5 && !I.thr) a = -.9 - b.v * 2;   // tolás hátrafelé
-  b.v = Math.max(-1.2, b.v + a * dt); if (Math.abs(b.v) < .02 && !I.thr && Fb) b.v = 0;
+  const tol = b.v < .3 && I.brake > .5 && !I.thr;   // álló helyzetben fékkel: lábbal hátratolás (~4 km/h)
+  if (tol) a = (-1.2 - b.v) * 2.2 - G * grade * .3;
+  b.v = Math.max(-1.3, b.v + a * dt); if (!tol && Math.abs(b.v) < .02 && !I.thr && Fb) b.v = 0;
   // kormányzás: a dőlés adja az ívet; lassan a lábával egyensúlyoz
   const s = I.steer, vv = Math.abs(b.v), Rmin = Math.max(2.4, vv * vv / (sf.mu * G * .85)), kapD = s / Rmin;
   const leanT = Math.atan(vv * vv * kapD / G) * (vv > 2.5 ? 1 : vv / 2.5), kL = 14 * loadK * loadK, dL = 6 * loadK;
