@@ -2,9 +2,9 @@
    Parlament), Miskolc (Diósgyőri vár), repülőterek (pálya, hangár, torony, helipadok, HGWS víztöltő, kikötőárboc), vízfeliratok,
    a titkos ZERO felirat, termikek és szél. */
 import * as THREE from 'three';
-import { P, REPTEREK, VIZEK, NEVEZETES, ZERO_HELY, SZIN } from './config.js?v=202611221804';
-import { ground, cls, hash2, townList, heightAt } from './geo.js?v=202611221804';
-import { SU, withWorld, LOGV_PARS, LOGV, LOGF_PARS, LOGF } from './kozos.js?v=202611221804';
+import { P, REPTEREK, VIZEK, NEVEZETES, ZERO_HELY, SZIN } from './config.js?v=202611221812';
+import { ground, cls, hash2, townList, heightAt } from './geo.js?v=202611221812';
+import { SU, withWorld, LOGV_PARS, LOGV, LOGF_PARS, LOGF } from './kozos.js?v=202611221812';
 
 const MC = new Map(); const M = (c, o = {}) => { const k = c + JSON.stringify(o); if (!MC.has(k)) MC.set(k, new THREE.MeshLambertMaterial({ color: c, flatShading: true, ...o })); return MC.get(k); };
 function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; }
