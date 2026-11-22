@@ -15,10 +15,10 @@ export function createRouter(osm) {
     G = { x: raw.x, z: raw.z, n, deg, adj, cost }; gBox = [x0 + 300, z0 + 300, x1 - 300, z1 - 300]; return true; }
   function nearest(x, z) { let best = -1, bd = 1e18; for (let i = 0; i < G.n; i++) { if (G.deg[i + 1] === G.deg[i]) continue; const d = (G.x[i] - x) ** 2 + (G.z[i] - z) ** 2; if (d < bd) { bd = d; best = i; } } return best; }
   function plan(p) { const s = nearest(p.x, p.z), t = nearest(target[0], target[1]); if (s < 0 || t < 0) return null; const tx = G.x[t], tz = G.z[t];
-    const g = new Float32Array(G.n).fill(Infinity), from = new Int32Array(G.n).fill(-1), done = new Uint8Array(G.n), h = []; g[s] = 0; heapPush(h, 0, s);
+    const g = new Float64Array(G.n).fill(Infinity), from = new Int32Array(G.n).fill(-1), done = new Uint8Array(G.n), h = []; g[s] = 0; heapPush(h, 0, s);
     while (h.length) { const [, u] = heapPop(h); if (done[u]) continue; done[u] = 1; if (u === t) break;
-      for (let k = G.deg[u]; k < G.deg[u + 1]; k++) { const w = G.adj[k], ng = g[u] + G.cost[k]; if (ng < g[w]) { g[w] = ng; from[w] = u; heapPush(h, ng + Math.hypot(G.x[w] - tx, G.z[w] - tz) / 30, w); } } }
-    if (!done[t]) return null; const out = [[target[0], target[1]]]; for (let u = t; u !== -1; u = from[u]) out.push([G.x[u], G.z[u]]); out.push([p.x, p.z]); return out.reverse(); }
+      for (let k = G.deg[u]; k < G.deg[u + 1]; k++) { const w = G.adj[k]; if (done[w]) continue; const ng = g[u] + G.cost[k]; if (ng < g[w]) { g[w] = ng; from[w] = u; heapPush(h, ng + Math.hypot(G.x[w] - tx, G.z[w] - tz) / 30, w); } } }
+    if (!done[t]) return null; const out = [[target[0], target[1]]]; for (let u = t, g2 = 0; u !== -1 && g2 < G.n; u = from[u], g2++) out.push([G.x[u], G.z[u]]); out.push([p.x, p.z]); return out.reverse(); }
   // a jármű legközelebbi pontja az útvonalon: [távolság, szakaszindex]
   function onRoute(p) { let bd = 1e9, bi = 0; for (let i = 0; i + 1 < route.length; i++) { const [ax, az] = route[i], [bx, bz] = route[i + 1], dx = bx - ax, dz = bz - az, L = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((p.x - ax) * dx + (p.z - az) * dz) / L)), d = Math.hypot(p.x - ax - dx * t, p.z - az - dz * t); if (d < bd) { bd = d; bi = i; } } return [bd, bi]; }
   function replan(p) { if (!G || p.x < gBox[0] || p.z < gBox[1] || p.x > gBox[2] || p.z > gBox[3]) { if (!buildGraph(p)) { waitT = 1; return; } } route = plan(p); if (!route) waitT = 3; }
