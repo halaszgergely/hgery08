@@ -478,9 +478,9 @@
   document.addEventListener('click', e => { const t = e.target.closest('[data-a]'); if (t) return act(t.dataset.a, t.dataset.v); const p = e.target.closest('[data-p]'); if (p) { const v = p.dataset.p; if (view === v) closeP(); else openP(v, ''); } });
   document.addEventListener('contextmenu', e => { const t = e.target.closest && e.target.closest('[data-a="slot"]'); if (t) { e.preventDefault(); act('rmpart', t.dataset.v); } });
   document.addEventListener('mouseover', e => { const t = e.target.closest && e.target.closest('[data-hl]'); hlId = t ? +t.dataset.hl : 0; });
-  $('#px').onclick = closeP; $('#bMenu').onclick = () => { save(); $('#menu').hidden = false; $('#mPlay').textContent = '▶ Folytatás'; $('#mNew').hidden = false; };
+  $('#px').onclick = closeP; $('#bMenu').onclick = () => { save(); cloudPush('exit'); $('#menu').hidden = false; $('#mPlay').textContent = '▶ Folytatás'; $('#mNew').hidden = false; };
   $('#mPlay').onclick = () => { $('#menu').hidden = true; beep(660); relock(); };
-  $('#mNew').onclick = () => { const b = $('#mNew'); if (b.dataset.sure) { localStorage.removeItem(KEY); fresh(); calc(); delete b.dataset.sure; b.textContent = 'Új játék'; $('#menu').hidden = true; closeP(); } else { b.dataset.sure = 1; b.textContent = 'Biztos? Minden elvész'; } };
+  $('#mNew').onclick = () => { const b = $('#mNew'); if (b.dataset.sure) { localStorage.removeItem(KEY); if (CL.on) { parent.postMessage({ hgws: 'csdel', game: GAME }, location.origin); CL.life = 0; } fresh(); calc(); delete b.dataset.sure; b.textContent = 'Új játék'; $('#menu').hidden = true; closeP(); } else { b.dataset.sure = 1; b.textContent = 'Biztos? Minden elvész'; } };
 
   /* ---------- 3D (belső nézet): fps.js ---------- */
   let F3 = null, f3load = 0;
@@ -490,7 +490,7 @@
     rackTo: (ctx, i, k) => drawTo(ctx, k, 0, 0, rwOf(S.racks[i]) + 28, RACK[S.racks[i].t].u * U + 14, () => drawRack(i)), wallTo: (ctx, k, key) => { const W = wallDim(key); drawTo(ctx, k, 0, 0, W.w, W.h, () => drawWall(key)); }, wallKeys, dw, rwOf, fitsRack: (d, ri) => !!DEV[d.t].wide === !!RACK[S.racks[ri].t].wide && !!DEV[d.t].bm === !!RACK[S.racks[ri].t].bat, maxOf, ubase, looseTo: (ctx, d, k) => drawTo(ctx, k, 0, 0, dw(d), DEV[d.t].u * U, () => drawLoose(d)) };
   function toggle3D(on) { if (on === undefined) on = !(F3 && F3.on); if (!on) { if (F3) F3.stop(); $('#c3').hidden = true; cv.hidden = false; return; }
     const go = () => { $('#c3').hidden = false; cv.hidden = true; F3.start(); }; if (F3) return go(); if (f3load) return; f3load = 1;
-    import('./fps.js?v=202611222211').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
+    import('./fps.js?v=202611222240').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
   $('#bPh').onclick = () => view ? closeP() : openP(lastApp, '');
 
   /* ---------- főciklus ---------- */
@@ -500,9 +500,19 @@
   function loop(now) { requestAnimationFrame(loop); const dt = Math.min(.1, (now - last) / 1000); last = now; // az újrahívás elöl: egy hiba se állítsa meg a játékot
     if ($('#menu').hidden && (S.spd || S.sleepTo)) { acc += dt * (S.sleepTo ? SLEEPX : 1); let n = 0; while (acc >= .25 && n++ < 400) { acc -= .25; if (dirty) calc(); tick(.25 / DAY); if (S.sleepTo && S.day >= S.sleepTo) { S.sleepTo = 0; acc = 0; const dm = S.money - sleepM; toast('Aludtál 8 órát · ' + (dm >= 0 ? '+' : '') + ft(dm)); beep(880, .2); } } }
     { const e = $('#sleep'); e.classList.toggle('on', !!S.sleepTo); if (S.sleepTo) { const m = Math.floor((S.day % 1) * 1440 + 360) % 1440; e.firstChild.textContent = '💤 ' + String(m / 60 | 0).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); } }
-    if (dirty) calc(); if (F3 && F3.on) { try { F3.frame(dt); ctxUI(); } catch (e) { console.error(e); if (!(loop.err > now)) { loop.err = now + 4000; toast('Hiba: ' + (e && e.message || e), 1); } sel = place = null; hint(); } } if ((uiT -= dt) <= 0) { uiT = .5; top(); if (insp) inspUI(); if (view === 'dev' && !slot || view === 'site' || view === 'srv') ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); } if ((scT -= dt) <= 0) { scT = 60; score(); }
+    if (dirty) calc(); if (F3 && F3.on) { try { F3.frame(dt); ctxUI(); } catch (e) { console.error(e); if (!(loop.err > now)) { loop.err = now + 4000; toast('Hiba: ' + (e && e.message || e), 1); } sel = place = null; hint(); } } if ((uiT -= dt) <= 0) { uiT = .5; top(); if (insp) inspUI(); if (view === 'dev' && !slot || view === 'site' || view === 'srv') ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); cloudPush('auto'); } if ((scT -= dt) <= 0) { scT = 60; score(); }
   }
-  const had = load(); if (!had) fresh(); if (had) { $('#mPlay').textContent = '▶ Folytatás'; $('#mNew').hidden = false; } calc(); top(); keysUI(); cv.hidden = true; toggle3D(true); addEventListener('pagehide', () => { save(); score(); });
+  /* felhőmentés (bejelentkezve, az Arcade keretoldalán át): automatikusan 30 percenként és kilépéskor; kézzel csak admin. Betöltéskor a nagyobb összbevételű mentés marad meg. */
+  const inFrame = () => { try { return window.top !== window; } catch (_) { return false; } }, CL = { on: 0, admin: 0, life: 0, at: Date.now(), ex: 0, man: 0 };
+  function cloudPush(kind) { if (!CL.on || !S) return; const now = Date.now(); if ((kind === 'auto' && now - CL.at < 30 * 60e3) || (kind === 'exit' && now - CL.ex < 60e3) || (kind === 'man' && !CL.admin)) return; if (Math.floor(S.life) < CL.life) { if (kind === 'man') toast('☁️ A felhőben nagyobb mentés van – az marad meg', 1); return; }
+    save(); const st = JSON.stringify(S); if (st.length > 900000) { if (kind !== 'exit') toast('☁️ A mentés túl nagy a felhőhöz, csak helyben marad meg.', 1); CL.at = now; return; } CL.at = now; CL.ex = now; CL.man = kind === 'man' ? 1 : 0; CL.sent = Math.floor(S.life);
+    try { parent.postMessage({ hgws: 'cssave', game: GAME, life: CL.sent, lg: CL.sent, st, ack: 1, man: CL.man, exit: kind === 'exit' ? 1 : 0 }, location.origin); } catch (_) {} }
+  addEventListener('message', e => { if (e.origin !== location.origin || e.source !== parent || !e.data || e.data.hgws !== 'cs' || e.data.game !== GAME) return; const d = e.data;
+    if (d.ack) { if (d.ok) CL.life = CL.sent || CL.life; if (CL.man) toast(d.ok ? '☁️ Felhőbe mentve' : '☁️ Nem sikerült menteni' + (d.err ? ' (' + d.err + ')' : ''), !d.ok); CL.man = 0; return; }
+    if (d.none) { CL.on = 0; return; } CL.on = 1; CL.admin = d.admin ? 1 : 0; CL.life = typeof d.lg === 'number' ? d.lg : +d.life || 0; $('#mCloud').hidden = !CL.admin;
+    if (d.st && CL.life > Math.floor(S.life) + 1) { const old = localStorage.getItem(KEY); try { JSON.parse(d.st); localStorage.setItem(KEY, d.st); if (load()) { cancel(); dirty = 1; calc(); top(); keysUI(); $('#mPlay').textContent = '▶ Folytatás'; $('#mNew').hidden = false; toast('☁️ Felhőmentés betöltve'); } else if (old) { localStorage.setItem(KEY, old); load(); } } catch (_) { if (old) localStorage.setItem(KEY, old); } } });
+  $('#mCloud').onclick = () => cloudPush('man');
+  const had = load(); if (!had) fresh(); if (had) { $('#mPlay').textContent = '▶ Folytatás'; $('#mNew').hidden = false; } calc(); top(); keysUI(); cv.hidden = true; toggle3D(true); addEventListener('pagehide', () => { save(); score(); cloudPush('exit'); }); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') cloudPush('exit'); });
   window.__sz = () => ({ SZ: window.SZ3, doClick, get aim() { return aim; }, get F3() { return F3; }, get sel() { return sel; }, S, C, act, calc, tick, DEV, PART, mk, accept, fit, mkOffer, fillOffers, ensureOffer, TIER });
-  requestAnimationFrame(loop);
+  requestAnimationFrame(loop); if (inFrame()) try { parent.postMessage({ hgws: 'csreq', game: GAME }, location.origin); } catch (_) {}
 })();

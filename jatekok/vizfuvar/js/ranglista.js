@@ -3,10 +3,10 @@
    - Allisták: vizfuvar_fuvarok (teljesített fuvarok), vizfuvar_legjobb (a legjobb fuvar pontszáma), vizfuvar_dolgozok (alkalmazottak száma).
    - Vendég: becenévvel (nick mező), bejelentkezett felhasználó: a profil neve.
    - Mentés bejelentkezve: cloudsaves/<uid>/g/vizfuvar (ha a szabályok engedik; különben csak helyben). */
-import { GAME } from './config.js?v=202611222211';
+import { GAME } from './config.js?v=202611222240';
 
 let core = null, user = null, ready = null; const names = new Map();
-export function init() { if (ready) return ready; ready = (async () => { try { const v = new URL(import.meta.url).searchParams.get('v') || ''; core = await import('../../../js/core.js?v=202611222211' + (v ? '?v=' + v : '')); if (!core || core.notConfigured || !core.auth) { core = null; return; }
+export function init() { if (ready) return ready; ready = (async () => { try { const v = new URL(import.meta.url).searchParams.get('v') || ''; core = await import('../../../js/core.js?v=202611222240' + (v ? '?v=' + v : '')); if (!core || core.notConfigured || !core.auth) { core = null; return; }
     await new Promise(ok => { const un = core.FB.onAuthStateChanged(core.auth, u => { user = u; ok(); un && un(); }); setTimeout(ok, 4000); }); core.FB.onAuthStateChanged(core.auth, u => { user = u; }); } catch (e) { console.info('ranglista nem érhető el', e); core = null; } })(); return ready; }
 export const status = () => ({ on: !!core, user: !!user, guest: !!user?.isAnonymous, uid: user?.uid || null });
 export const getNick = () => { try { return localStorage.getItem('hgws_nick') || ''; } catch (_) { return ''; } };
@@ -29,6 +29,7 @@ export async function top(lb, n = 10) { await init(); if (!core || !user) return
     return rows.map(r => ({ ...r, name: r.nick || names.get(r.uid) || 'Sofőr', guest: !!r.nick })); } catch (e) { console.warn('ranglista olvasás', e?.code || e); return []; } }
 // feloldások: helyben mindig, bejelentkezve a felhőben is
 export async function cloudLoad() { await init(); if (!core || !user || user.isAnonymous) return null; try { const d = await core.FB.getDoc(core.FB.doc(core.db, 'cloudsaves', user.uid, 'g', GAME)); return d.exists() ? JSON.parse(d.data().st || 'null') : null; } catch (_) { return null; } }
-let lastCloud = 0;
-export async function cloudSave(save) { await init(); if (!core || !user || user.isAnonymous) return; if (Date.now() - lastCloud < 15000) return; lastCloud = Date.now();
+let lastCloud = 0, pend = null; // felhőmentés: legfeljebb 30 percenként, plusz kilépéskor (kézi mentés nincs)
+export async function cloudSave(save, exit) { pend = save; await init(); if (!core || !user || user.isAnonymous) return; if (Date.now() - lastCloud < (exit ? 15000 : 30 * 60e3)) return; lastCloud = Date.now(); pend = null;
   try { await core.FB.setDoc(core.FB.doc(core.db, 'cloudsaves', user.uid, 'g', GAME), { life: Math.min(9e15, Math.max(0, Math.floor(save.penz || 0))), lg: 0, st: JSON.stringify(save), updatedAt: core.FB.serverTimestamp() }); } catch (e) { console.info('felhőmentés', e?.code || e); } }
+if (typeof addEventListener === 'function') { const flush = () => { if (pend) cloudSave(pend, true); }; addEventListener('pagehide', flush); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); }); }
