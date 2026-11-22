@@ -4,7 +4,7 @@
    helye a felület saját rajzkoordinátáiban van; innen számoljuk térbe. A rackek rácsra (GR) illesztve, 90°-onként
    forgatva állnak, a szabad eszközök bárhol. Képkockánként kiszámoljuk, mire mutat a célkereszt (aim); a műveleteket
    a szerver.js doClick() végzi. Lépték: K méter / rajzegység (1U = 20 egység = 4,4 cm). */
-import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611222026';
+import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611222050';
 
 const REACH = 3, EYE = 1.62, MAXP = 2500, RD = .9; // RD, RWID: a rack alapterülete
 let A = null, K = .0022, cv = null, R = null, scene = null, cam = null, room = null, cabG = null, held = null, ghost = null, pts = null;
@@ -238,18 +238,21 @@ export function start() { on = true; size(); document.querySelector('#xh').hidde
 export function stop() { on = false; document.querySelector('#xh').hidden = true; if (document.pointerLockElement === cv) document.exitPointerLock(); }
 export const look = (x, z, yaw, pitch) => { P.x = x; P.z = z; P.yaw = yaw; P.pitch = pitch; };
 
+let hovKey = '', heldKey = '', cabSig = null, ledI = 0; const stale = new Set();
+// számítás után: a textúrák soronként frissülnek (képkockánként néhány), a kábelek csak akkor épülnek újra, ha tényleg változtak
+function regen() { let ch = false; if (A.gen !== gen) { const full = gen === -1; gen = A.gen; ch = true; if (full) { stale.clear(); for (const k of RT.keys()) paint(k); } else for (const k of RT.keys()) stale.add(k); const cs = sig + '#' + A.S.cables.map(c => { const pa = A.PM.get(A.pkey(...c.a)), pb = A.PM.get(A.pkey(...c.b)); return c.a + '|' + c.b + '|' + c.c + '|' + (c.w ? c.w.map(q => q.map(n => Math.round(n * 500)).join(',')).join('/') : '') + '|' + (pa ? pa.sf + pa.x + ',' + pa.y : '') + '|' + (pb ? pb.sf + pb.x + ',' + pb.y : '') + '|' + Math.round(A.C.cl.get(c) || 0); }).join(';'); if (cs !== cabSig) { cabSig = cs; cables(); } }
+  if (stale.size) { let n = 0; for (const k of stale) { stale.delete(k); if (!RT.has(k)) continue; paint(k); if (++n >= 4) break; } } return ch; }
 export function frame(dt) { if (!on) return; const S = A.S, [W, D] = room3(), s2 = S.site + '|' + S.racks.map(r => [r.t, r.x, r.z, r.rot, r.arm ? 1 : 0, r.vcm ? 1 : 0].join(':')).join(',') + '|' + S.loose.map(d => [d.id, d.wx, d.wy, d.wz, d.yaw].join(':')).join(',') + '|' + S.trays.map(t => [t.t, t.x, t.z, t.rot].join(':')).join(',') + '|' + S.racks.map(r => r.dev.map(d => d.id + '.' + d.u).join(',')).join(';') + '|' + (A.insp || 0);
   if (s2 !== sig) { sig = s2; build(); if (site !== S.site) { site = S.site; P.x = W / 2; P.z = D - 1.2; P.yaw = 0; } }
   // mozgás, ütközés a falakkal és a rackekkel
   const busy = A.busy, f = busy ? 0 : (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - stick.y, sd = busy ? 0 : (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + stick.x; if (f || sd) { const v = (keys.ShiftLeft ? 4.2 : 2.2) * dt / Math.max(1, Math.hypot(f, sd)), sn = Math.sin(P.yaw), cs = Math.cos(P.yaw), cl = (q, m) => Math.max(.3, Math.min(m - .3, q)); let nx = cl(P.x + (-sn * f + cs * sd) * v, W), nz = cl(P.z + (-cs * f - sn * sd) * v, D);
     if (inRack(nx, nz, .22) && !inRack(P.x, P.z, .2)) { if (!inRack(nx, P.z, .22)) nz = P.z; else if (!inRack(P.x, nz, .22)) nx = P.x; else { nx = P.x; nz = P.z; } } P.x = nx; P.z = nz; }
   now += dt; cam.position.set(P.x, P.crouch ? .85 : EYE, P.z); cam.rotation.set(P.pitch, P.yaw, 0); cam.updateMatrixWorld();
-  if (inspect(dt)) { document.querySelector('#xh').hidden = true; if (A.gen !== gen) { gen = A.gen; for (const k of RT.keys()) paint(k); cables(); } ghost.visible = false; for (const o of held.children.slice()) { held.remove(o); o.geometry.dispose(); o.material.dispose(); } A.setAim({}); marks(); flow(A.S.spd ? dt : 0); R.render(scene, cam); return; } document.querySelector('#xh').hidden = false;
+  if (inspect(dt)) { document.querySelector('#xh').hidden = true; regen(); ghost.visible = false; for (const o of held.children.slice()) { held.remove(o); o.geometry.dispose(); o.material.dispose(); } A.setAim({}); marks(); flow(A.S.spd ? dt : 0); R.render(scene, cam); return; } document.querySelector('#xh').hidden = false;
   // célzás
   const sel = A.sel, pl = A.place; if (!pl) rot = 0; aim = pick(); A.setAim(aim); document.querySelector('#xh').classList.toggle('hot', !!(aim.p || aim.d || aim.wp || aim.sleep || aim.tray || aim.rk != null || (aim.pl && aim.pl.ok)));
-  if (A.gen !== gen) { gen = A.gen; for (const k of RT.keys()) paint(k); cables(); }
-  else { const hv = aim.h ? 'R' + aim.h.ri : ''; if (sel || pl) { if (lastHover && lastHover !== hv) paint(lastHover); if (hv) paint(hv); } lastHover = sel || pl ? hv : '';
-    if ((ledT -= dt) <= 0) { ledT = .3; let n = 0; for (const k of RT.keys()) { if (k[0] !== 'R') { if (k[0] !== 'W' || sel) paint(k); continue; } const r = S.racks[+k.slice(1)]; if (r && Math.hypot(r.x - P.x, r.z - P.z) < 5 && n++ < 6) paint(k); } } }
+  if (!regen()) { const hv = aim.h ? 'R' + aim.h.ri : '', hk = sel || pl ? hv + '|' + (aim.h ? aim.h.u : '') + '|' + (aim.p ? A.pkey(aim.p.id, aim.p.k, aim.p.i) : '') + '|' + (aim.pl ? aim.pl.ok : '') : ''; if (hk !== hovKey) { hovKey = hk; if (lastHover && lastHover !== hv) paint(lastHover); if (hv) paint(hv); } lastHover = sel || pl ? hv : '';
+    if ((ledT -= dt) <= 0) { ledT = .25; const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), near = (x, z) => { const dx = x - P.x, dz = z - P.z, d = Math.hypot(dx, dz); return d < 5 && (d < 1.2 || (dx * fx + dz * fz) / d > .2); }, cand = []; for (const k of RT.keys()) { if (k[0] === 'W') { if (sel) cand.push(k); continue; } if (k[0] === 'R') { const r = S.racks[+k.slice(1)]; if (r && near(r.x, r.z)) cand.push(k); continue; } const d = S.loose.find(d => 'L' + d.id === k); if (d && near(d.wx, d.wz)) cand.push(k); } for (let i = 0; i < Math.min(2, cand.length); i++) paint(cand[ledI++ % cand.length]); } }
   // a lerakandó dolog körvonala
   const gp = aim.pl, tp = gp && gp.box && pl && !pl.rk && A.DEV[pl.t].k === 'tray' ? pl.t : '';
   if (tgKey !== tp + (gp && gp.ok)) { if (tGhost) { scene.remove(tGhost); tGhost.traverse(o => { o.geometry?.dispose(); }); tGhost = null; } tgKey = tp + (gp && gp.ok); if (tp) { tGhost = trayModel(tp, room3()[2], new THREE.MeshBasicMaterial({ color: gp.ok ? 0x5ee08a : 0xff5a4d, transparent: true, opacity: .6, depthWrite: false })); scene.add(tGhost); } }
@@ -257,13 +260,14 @@ export function frame(dt) { if (!on) return; const S = A.S, [W, D] = room3(), s2
   ghost.visible = !!(gp && gp.box) && !tp; if (ghost.visible) { const [c, yaw, d] = gp.box; ghost.position.copy(c); ghost.rotation.y = yaw; ghost.scale.set(d[0], d[1], d[2]); ghost.material.color.set(gp.ok ? 0x5ee08a : 0xff5a4d); }
   // a kézben tartott kábel
   // a kézben tartott kábel előnézete: ugyanaz a vonalvezetés és belógás, mint ami bedugva lesz, vastagabb világító csővel
-  for (const o of held.children.slice()) { held.remove(o); o.geometry.dispose(); o.material.dispose(); }
+  const hkey = (A.mv ? 'm' + A.mv.i : '') + '|' + (sel ? sel.sf + ':' + A.pkey(sel.id, sel.k, sel.i) + ':' + sel.w.length : '') + '|' + (aim.p ? A.pkey(aim.p.id, aim.p.k, aim.p.i) : '') + '|' + (aim.pt ? aim.pt.map(n => Math.round(n * 400)).join(',') : !sel ? '' : [P.x, P.z, P.yaw, P.pitch, P.crouch].map(n => Math.round(n * 150)).join(',')) + '|' + gen, same = hkey === heldKey; heldKey = hkey;
+  if (!same) { for (const o of held.children.slice()) { held.remove(o); o.geometry.dispose(); o.material.dispose(); }
   if (A.mv && aim.pt) { const c = A.mv.c, pa = A.PM.get(A.pkey(...c.a)), pb = A.PM.get(A.pkey(...c.b)); if (pa && pb) { const net = c.a[1] === 'n', out = net ? .04 : .05, w = c.w.map((q, i) => i === A.mv.i ? V(...aim.pt) : wp3(q)), v = path([port3(pa, .004), port3(pa, out), ...w, port3(pb, out), port3(pb, .004)], true), mat = () => new THREE.MeshBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: .9 });
       held.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(v, false, 'centripetal'), Math.min(200, v.length * 2), net ? .006 : .008, 6), mat())); const m = new THREE.Mesh(new THREE.TorusGeometry(.02, .004, 6, 14), mat()); m.position.set(...aim.pt); if (aim.pt[1] < .05 || aim.pt[1] > A.TRAYH - .05) m.rotation.x = Math.PI / 2; held.add(m); } }
   if (sel && SF.get(sel.sf)) { const net = sel.k === 'n', out = net ? .04 : .05, okp = aim.p && A.ok2(sel, aim.p), dir = V(0, 0, 0); cam.getWorldDirection(dir); const end = okp ? [port3(aim.p, out), port3(aim.p, .004)] : [aim.pt ? V(...aim.pt) : cam.position.clone().addScaledVector(dir, .7).add(V(0, -.22, 0))];
     const v = path([port3(sel, .004), port3(sel, out), ...sel.w.map(wp3), ...end], sel.w.length > 0 || (!okp && !!aim.pt)), col = net ? (A.fib(sel.sp) && sel.id ? 0xffd43b : 0x4cc9f0) : 0xd0d4da, mat = () => new THREE.MeshBasicMaterial({ color: okp ? 0x5ee08a : col, transparent: true, opacity: .9 });
     held.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(v, false, 'centripetal'), Math.min(200, v.length * 2), net ? .006 : .008, 6), mat())); const tip = new THREE.Mesh(new THREE.SphereGeometry(okp ? .016 : .012, 10, 8), mat()); tip.position.copy(v[v.length - 1]); held.add(tip);
     for (const q of sel.w) { const m = new THREE.Mesh(new THREE.SphereGeometry(.011, 8, 6), mat()); m.position.copy(wp3(q)); held.add(m); }
-    if (!okp && aim.pt) { const m = new THREE.Mesh(new THREE.TorusGeometry(.02, .004, 6, 14), new THREE.MeshBasicMaterial({ color: 0xff8a2a })); m.position.set(...aim.pt); if (aim.pt[1] < .05 || aim.pt[1] > A.TRAYH) m.rotation.x = Math.PI / 2; held.add(m); } }
+    if (!okp && aim.pt) { const m = new THREE.Mesh(new THREE.TorusGeometry(.02, .004, 6, 14), new THREE.MeshBasicMaterial({ color: 0xff8a2a })); m.position.set(...aim.pt); if (aim.pt[1] < .05 || aim.pt[1] > A.TRAYH) m.rotation.x = Math.PI / 2; held.add(m); } } }
   if ((scrT -= dt) <= 0) { scrT = 1; screens(); }
   marks(); flow(A.S.spd ? dt : 0); R.render(scene, cam); }

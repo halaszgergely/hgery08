@@ -165,7 +165,8 @@
   function buildPorts() { PORTS = wallPorts(); S.racks.forEach((r, ri) => { for (const d of r.dev) for (const p of portsOf(d)) PORTS.push({ ...p, id: d.id, dev: d, sf: 'R' + ri, x: 14 + p.x, y: 7 + d.u * U + p.y }); });
     for (const d of S.loose) for (const p of portsOf(d)) PORTS.push({ ...p, id: d.id, dev: d, sf: 'L' + d.id });
     PM = new Map(PORTS.map(p => [pkey(p.id, p.k, p.i), p])); RP = {}; for (const p of PORTS) (RP[p.sf] = RP[p.sf] || []).push(p); const n0 = S.cables.length; S.cables = S.cables.filter(c => PM.has(pkey(...c.a)) && PM.has(pkey(...c.b))); if (S.cables.length !== n0) dirty = 1; }
-  const other = (id, k, i) => { const key = pkey(id, k, i); for (const c of S.cables) { if (pkey(...c.a) === key) return c.b; if (pkey(...c.b) === key) return c.a; } return null; };
+  // port → a kábel másik vége; gyorsítótárból, mert a rajzolás portonként kérdezi (változás után, a következő számításig mindig frissen épül)
+  let LK = new Map(), lkGen = -1, lkN = -1, lkRef = null; const other = (id, k, i) => { if (dirty || lkGen !== GEN || lkN !== S.cables.length || lkRef !== S.cables) { LK = new Map(); for (const c of S.cables) { const ka = pkey(...c.a), kb2 = pkey(...c.b); if (!LK.has(ka)) LK.set(ka, c.b); if (!LK.has(kb2)) LK.set(kb2, c.a); } lkGen = GEN; lkN = S.cables.length; lkRef = S.cables; } return LK.get(pkey(id, k, i)) || null; };
 
   /* ---------- számítás: áram, hálózat, hő, bevétel ---------- */
   function calc() { buildPorts(); const st = SITE[S.site], link = new Map(); for (const c of S.cables) { link.set(pkey(...c.a), c.b); link.set(pkey(...c.b), c.a); }
@@ -261,7 +262,7 @@
     for (const l of S.loans.slice()) { const pr = Math.min(l.p, l.p / Math.max(l.d, dt) * dt); S.money -= pr + l.p * l.r * dt; l.p -= pr; l.d -= dt; if (l.d <= 0 || l.p < 1) { S.loans = S.loans.filter(x => x !== l); toast(l.n + ': törlesztve.'); } }
     for (const c of S.cons.slice()) { if (c.ok) { c.pat = Math.min(1, c.pat + dt * .15); c.left -= dt; S.rep += dt * .05 * (1 + (c.tier || 0) * 1.5); if (c.left <= 0) { if (c.short) { S.rep += 1 + (c.tier || 0); if (c.fix) { S.money += c.fix; S.life += c.fix; } dropCon(c, 'elkészült a render' + (c.fix ? ' · +' + ft(c.fix) : '.')); } else if (Math.random() < .65) c.left = rnd(25, 90); else { S.rep += 1 + (c.tier || 0); dropCon(c, 'lejárt a szerződés, elégedetten távozott.'); } } } else { c.pat -= dt * 1.6; if (c.pat <= 0) { S.rep = Math.max(0, S.rep - 2); dropCon(c, 'felmondta a szolgáltatást a leállás miatt.', 1); } } }
     if ((S.ot -= dt) <= 0) { S.ot = .5; if (fillOffers() && view === 'cli') ui(); } if ((S.ct = (S.ct || 0) - dt) <= 0) { S.ct = .4; S.coin = Math.max(50, Math.min(520, S.coin * Math.exp(rnd(-.09, .09)) + (180 - S.coin) * .02)); ensureOffer(); }
-    if (S.out > 0) { S.out -= dt; if (S.out <= 0) { S.out = 0; toast('Visszajött az áram.'); } dirty = 1; } else if (S.day > 6 && Math.random() < dt * .035) { S.out = rnd(.03, .1); toast('Áramszünet!', 1); beep(120, .3); dirty = 1; }
+    if (S.out > 0) { S.out -= dt; if (S.out <= 0) { S.out = 0; toast('Visszajött az áram.'); dirty = 1; } } else if (S.day > 6 && Math.random() < dt * .035) { S.out = rnd(.03, .1); toast('Áramszünet!', 1); beep(120, .3); dirty = 1; }
     for (const d of devs()) { const o = C.d[d.id]; if (!o) continue; if (o.k === 'ups' && !o.sub) { const D = DEV[d.t]; if (d.bat > whOf(d)) d.bat = whOf(d); if (o.onbat) { d.bat = Math.max(0, d.bat - (o.load || 0) * dt * 24); if (d.bat <= 0) dirty = 1; } else if (o.live && d.bat < whOf(d)) d.bat = Math.min(whOf(d), d.bat + whOf(d) * dt * 6); }
       if ((o.k === 'srv' && o.st !== 'off' && o.live) || (o.k === 'sto' && o.live)) { const p = dt * .0035 * (C.temp > 38 ? 4 : 1); d.hdd.forEach((k, i) => { if (!broken(k) && !pv(k).ssd && Math.random() < p) { d.hdd[i] = '!' + k; toast(DEV[d.t].n + ': meghibásodott egy lemez.', 1); dirty = 1; } }); if (C.temp > 50) { d.on = 0; dirty = 1; } } }
     if (C.temp > 50 && !tick.hot) { toast('Túlmelegedés! A szerverek vészleálltak.', 1); beep(120, .3); } tick.hot = C.temp > 50;
@@ -448,7 +449,7 @@
     rackTo: (ctx, i, k) => drawTo(ctx, k, 0, 0, rwOf(S.racks[i]) + 28, RACK[S.racks[i].t].u * U + 14, () => drawRack(i)), wallTo: (ctx, k, key) => { const W = wallDim(key); drawTo(ctx, k, 0, 0, W.w, W.h, () => drawWall(key)); }, wallKeys, dw, rwOf, fitsRack: (d, ri) => !!DEV[d.t].wide === !!RACK[S.racks[ri].t].wide && !!DEV[d.t].bm === !!RACK[S.racks[ri].t].bat, maxOf, ubase, looseTo: (ctx, d, k) => drawTo(ctx, k, 0, 0, dw(d), DEV[d.t].u * U, () => drawLoose(d)) };
   function toggle3D(on) { if (on === undefined) on = !(F3 && F3.on); if (!on) { if (F3) F3.stop(); $('#c3').hidden = true; cv.hidden = false; return; }
     const go = () => { $('#c3').hidden = false; cv.hidden = true; F3.start(); }; if (F3) return go(); if (f3load) return; f3load = 1;
-    import('./fps.js?v=202611222026').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
+    import('./fps.js?v=202611222050').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
   $('#bPh').onclick = () => view ? closeP() : openP(lastApp, '');
 
   /* ---------- főciklus ---------- */
