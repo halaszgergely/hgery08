@@ -1,0 +1,10 @@
+{
+  "_leiras": "A rádióállomások listája. A 'stream' mezőbe a forrásállomás HIVATALOS, nyilvános élő adásának címe kerül (a honlapjuk online lejátszójából). Üres 'stream' esetén a játék saját, generált zenét játszik az állomás stílusában. Retró: szól-e a régi, csöves URH-rádiós járművekben.",
+  "allomasok": [
+    { "id": "rock", "nev": "Csőtörés Rock 103,5", "frek": "103,5", "mufaj": "rock", "szlogen": "Nálunk szól a legnagyobb nyomással!", "stream": "", "forras": "BDPST Rock", "honlap": "https://bdpstrock.hu", "retro": false },
+    { "id": "mulatos", "nev": "Lajtos Mulatós Rádió", "frek": "96,4", "mufaj": "mulatos", "szlogen": "Húzd rá, a tartály még tele!", "stream": "", "forras": "Nóta FM", "honlap": "https://notafm.hu", "retro": true },
+    { "id": "retro", "nev": "Retró FM 88,0", "frek": "88,0", "mufaj": "retro", "szlogen": "A 70-es, 80-as, 90-es évek slágerei – mint amikor még Trabóval hordtuk a vizet.", "stream": "", "forras": "Retro Rádió", "honlap": "https://www.retroradio.hu", "retro": true },
+    { "id": "kut", "nev": "Kút FM", "frek": "91,1", "mufaj": "chill", "szlogen": "Nyugi, a víz is ráér.", "stream": "", "forras": "Jazzy Rádió", "honlap": "https://jazzy.hu", "retro": false },
+    { "id": "info", "nev": "Locsoló Info", "frek": "100,0", "mufaj": "beszelgetos", "szlogen": "Hírek, idő, forgalom – csöpögésmentesen.", "stream": "", "forras": "", "honlap": "", "retro": true }
+  ]
+}

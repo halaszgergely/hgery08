@@ -26,7 +26,9 @@ const Szerver = { id: 'szerver', name: 'CABLE HORROR', ext: 'jatekok/szerver/ind
   desc: 'Garázsszervertől az adatközpontig: építs szervert alkatrészekből, kábelezd be a racket, szerezz ügyfeleket és bányássz.' };
 const LegiOntozes = { id: 'flightsim', name: 'HGWS LÉGI ÖNTÖZÉS', ext: 'jatekok/legiontozes/index.html', tag: 'ÚJ', lbx: 1, icon: '✈️', fmt: v => Math.floor(v).toLocaleString('hu-HU') + ' p',
   desc: '3D repülőszimulátor egész Magyarország felett: 17 öntözőgép, mezőöntözés, erdőtüzek, precíziós célok és vízikarikák a miskolci bázisról.' };
-const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Ugro, Torony, Birodalom, BoOnline, Aszaly, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, Atemelotelep, Vasut, Szerver, LegiOntozes, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
+const Vizfuvar = { id: 'vizfuvar', name: 'HGWS VÍZFUVAR', ext: 'jatekok/vizfuvar/index.html', tag: 'ÚJ', lbx: 1, icon: '🚚', fmt: v => Math.floor(v).toLocaleString('hu-HU') + ' Ft',
+  desc: 'Vízszállító-szimulátor Miskolc valódi utcáin: Babettóval egyetlen ballonnal kezded, aztán Trabóval, később tartálykocsival és kamionnal építed a HGWS flottáját.' };
+const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Ugro, Torony, Birodalom, BoOnline, Aszaly, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, Atemelotelep, Vasut, Szerver, LegiOntozes, Vizfuvar, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
 const NOSPON = ['locsolo', 'vizagyu', 'csepp'];
 GAMES.forEach(g => { if (NOSPON.includes(g.id)) delete g.sponsor; else g.sponsor = 'A Zerosites támogatásával'; });
 /* népszerűség: a főoldal küldi a játékonkénti indításszámot (plays), helyben is megjegyezzük a gyors sorrendhez */
@@ -91,6 +93,13 @@ const ARTS = {
     const cols = ['#c8b26a', '#8a6a48', '#6f8f3e', '#a99a5a', '#7c9a4c']; for (let i = 0; i < 9; i++) { x.fillStyle = cols[i % 5]; x.beginPath(); const y0 = H * .62 + i * i * 1.6, y1 = H * .62 + (i + 1) * (i + 1) * 1.6; x.moveTo(0, y0); x.lineTo(W, y0 - 6); x.lineTo(W, y1 - 6); x.lineTo(0, y1); x.fill(); }
     const px = W * (.15 + ((t * .08) % 1) * .9), py = H * .34 + Math.sin(t * 1.3) * 6; x.fillStyle = 'rgba(210,235,255,.55)'; for (let i = 0; i < 26; i++) { const k = i / 26; x.fillRect(px - 8 - k * 70 + Math.sin(i * 7 + t * 9) * 3, py + 6 + k * 46, 3, 3); }
     x.save(); x.translate(px, py); x.fillStyle = '#f2c230'; x.fillRect(-20, -3, 40, 6); x.fillRect(-4, -14, 9, 28); x.fillStyle = '#2f9e4f'; x.fillRect(16, -9, 5, 9); x.fillStyle = '#2aa7d9'; x.fillRect(-6, -1, 14, 2); x.restore();
+    x.fillStyle = '#fff'; x.font = '900 13px Inter, Arial'; x.fillText('HGWS', 10, 20); },
+  vizfuvar: (c, x, t) => { const W = c.width, H = c.height, g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#6fa6d8'); g.addColorStop(.5, '#cfe0ec'); g.addColorStop(.5, '#6f8f45'); g.addColorStop(1, '#4f6e33'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    x.fillStyle = '#3a3c3f'; x.beginPath(); x.moveTo(W * .44, H * .5); x.lineTo(W * .56, H * .5); x.lineTo(W * .95, H); x.lineTo(W * .05, H); x.fill(); x.fillStyle = '#efe9da'; for (let i = 0; i < 6; i++) { const k = ((i / 6 + t * .35) % 1), y = H * .5 + k * k * H * .5, w = 1 + k * 5; x.fillRect(W / 2 - w / 2, y, w, 2 + k * 12); }
+    for (let i = 0; i < 5; i++) { x.fillStyle = ['#d9cfb8', '#c9b89a', '#e3dccb'][i % 3]; x.fillRect(W * (.02 + i * .07), H * (.26 + (i % 2) * .06), W * .06, H * (.24 - (i % 2) * .06)); x.fillRect(W * (.66 + i * .07), H * (.3 - (i % 2) * .05), W * .06, H * (.2 + (i % 2) * .05)); }
+    const bx = W * .5, by = H * .76 + Math.sin(t * 6) * 1.5; x.fillStyle = '#f2c230'; x.beginPath(); x.roundRect(bx - 34, by - 26, 68, 30, 8); x.fill(); x.fillStyle = '#2f9e4f'; x.beginPath(); x.roundRect(bx - 26, by - 44, 52, 20, 6); x.fill();
+    x.fillStyle = '#1a2a33'; x.fillRect(bx - 22, by - 40, 44, 12); x.fillStyle = '#15181c'; x.fillRect(bx - 32, by + 2, 12, 9); x.fillRect(bx + 20, by + 2, 12, 9); x.fillStyle = '#d01010'; x.fillRect(bx - 30, by - 18, 10, 6); x.fillRect(bx + 20, by - 18, 10, 6);
+    x.fillStyle = 'rgba(95,183,230,.85)'; for (let i = 0; i < 3; i++) { x.beginPath(); x.roundRect(bx - 18 + i * 13, by - 36, 9, 12, 3); x.fill(); }
     x.fillStyle = '#fff'; x.font = '900 13px Inter, Arial'; x.fillText('HGWS', 10, 20); },
   atemelotelep: (c, x, t) => { const W = c.width, H = c.height; x.fillStyle = '#05070b'; x.fillRect(0, 0, W, H); x.fillStyle = 'rgba(150,170,200,.25)'; for (let i = 0; i < 60; i++) { const rx = (i * 53.7) % W, ry = ((i * 31.3) + t * 140) % H; x.fillRect(rx, ry, 1, 7); }
     x.fillStyle = '#1a1d22'; x.fillRect(W * .12, H * .42, W * .36, H * .4); x.fillStyle = '#2a2d33'; x.fillRect(W * .6, H * .62, W * .3, H * .2); x.fillStyle = Math.sin(t * 3) > 0 ? '#ff3a2a' : '#4a1010'; x.beginPath(); x.arc(W * .3, H * .4, 5, 0, 6.283); x.fill();

@@ -7,9 +7,9 @@
    A megyék határán kettőzés elkerülése: minden elem csak annál a megyénél jelenik meg, amelyiknek a körvonalán belül van a közepe (256 m-es maszk).
    A réteg a terep közeli (2 km-es) csonkjaihoz épül, időkerettel, és csak ha az alatta lévő domborzati csempe már betöltődött. */
 import * as THREE from 'three';
-import { ground, megyek, onTile, tileReady, inAirport } from './geo.js?v=202611221922';
-import { SU, withWorld } from './kozos.js?v=202611221922';
-import { NEVEZETES, P } from './config.js?v=202611221922';
+import { ground, megyek, onTile, tileReady, inAirport } from './geo.js?v=202611222004';
+import { SU, withWorld } from './kozos.js?v=202611222004';
+import { NEVEZETES, P } from './config.js?v=202611222004';
 
 const BASE = '../holtvaros/terkep/', T = 2048, LEAF = 2000, MASK = 256;
 const ROADW = [5.5, 7, 9, 12, 16, 24], ROADC = [[.4, .4, .39], [.33, .33, .33], [.31, .31, .32], [.29, .29, .3], [.27, .27, .28], [.25, .25, .27]];
@@ -20,6 +20,7 @@ const LANDMARKS = [NEVEZETES.parlament, NEVEZETES.diosgyor].map(([lo, la]) => P(
 export function createOSM(scene, opt = {}) {
   const ver = opt.ver || '', root = new THREE.Group(); scene.add(root);
   const C = new Map(), roadOv = new Map(), bldOv = new Map(), waterKeys = new Set(); let roadR = opt.roadR || 4500, bldR = opt.bldR || 3200, night = false, frame = 0;
+  const LIFT = opt.lift ?? .35, STEP = opt.step || 28, MARK = !!opt.marks;   // úton járó játékhoz (Vízfuvar): alacsonyabb, sűrűbben mintavételezett útfelület felfestéssel
   // anyagok
   // logaritmikus mélységnél a polygonOffset hatástalan: a csúcsokat a távolsággal arányosan a kamera felé húzzuk
   const bias = (m, k) => { m.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
@@ -27,7 +28,7 @@ export function createOSM(scene, opt = {}) {
   const roadMat = bias(new THREE.MeshLambertMaterial({ vertexColors: true }), .9982);
   const bMat = new THREE.MeshLambertMaterial({ vertexColors: true });
   bMat.onBeforeCompile = sh => { withWorld(sh); sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-    { vec3 cr = cross(dFdx(vWPos), dFdy(vWPos)); float cl = length(cr); vec3 fn = cl > 1e-9 ? cr / cl : vec3(0., 1., 0.); if (abs(fn.y) < .5) { float u = abs(fn.x) > abs(fn.z) ? vWPos.z : vWPos.x; vec2 cw = vec2(u / 3.6, vWPos.y / 3.3);
+    { vec3 cr = cross(dFdx(vViewPosition), dFdy(vViewPosition)); float cl = length(cr); vec3 fn = cl > 1e-12 ? (vec4(cr / cl, 0.) * viewMatrix).xyz : vec3(0., 1., 0.); if (abs(fn.y) < .5) { float u = abs(fn.x) > abs(fn.z) ? vWPos.z : vWPos.x; vec2 cw = vec2(u / 3.6, vWPos.y / 3.3);
       vec2 f = fract(cw); float win = step(.22, f.x) * step(f.x, .78) * step(.3, f.y) * step(f.y, .82);
       float lit = step(.58, h21(floor(cw) + floor(vWPos.xz / 50.))) * uNight;
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.16,.22,.28), win * .8); totalEmissiveRadiance += win * lit * vec3(2.2, 1.6, .9); } }`); };
@@ -92,10 +93,10 @@ export function createOSM(scene, opt = {}) {
 
   /* ---- utak, sínek, lámpák egy 2 km-es csonkhoz ---- */
   function buildRoads(x0, z0) { const cs = countiesAt(x0, z0); if (cs.some(c => c.st === 0 || c.bst < 2 && c.bst !== -1 && (loadBig(c), true))) return null;
-    const pos = [], col = [], lamps = [];
+    const pos = [], col = [], lamps = [], segs = [];
     const quad = (ax, az, ha, bx, bz, hb, w, c0) => { const rgb = lin(c0); const dx = bx - ax, dz = bz - az, l = Math.hypot(dx, dz) || 1, nx = -dz / l * w / 2, nz = dx / l * w / 2;
       pos.push(ax + nx - x0, ha, az + nz - z0, bx + nx - x0, hb, bz + nz - z0, ax - nx - x0, ha, az - nz - z0, bx + nx - x0, hb, bz + nz - z0, bx - nx - x0, hb, bz - nz - z0, ax - nx - x0, ha, az - nz - z0); for (let k = 0; k < 6; k++) col.push(rgb[0], rgb[1], rgb[2]); };
-    const strip = (ax, az, bx, bz, w, rgb, lift, bridge) => { const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(L / 28)); let px = ax, pz = az, ph = bridge ? bridge[0] : ground(ax, az) + lift;
+    const strip = (ax, az, bx, bz, w, rgb, lift, bridge) => { const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(L / STEP)); let px = ax, pz = az, ph = bridge ? bridge[0] : ground(ax, az) + lift;
       for (let s = 1; s <= n; s++) { const t = s / n, qx = ax + (bx - ax) * t, qz = az + (bz - az) * t, qh = bridge ? bridge[0] + (bridge[1] - bridge[0]) * t : ground(qx, qz) + lift; quad(px, pz, ph, qx, qz, qh, w, rgb); px = qx; pz = qz; ph = qh; } };
     const bridgeH = (ax, az, bx, bz) => { const dx = bx - ax, dz = bz - az, l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l; let h = -1e9; for (const k of [-320, -160, 0, l / 2, l, l + 160, l + 320]) h = Math.max(h, ground(ax + ux * k, az + uz * k)); return [h + 1.2, h + 1.2]; };
     for (const c of cs) { if (c.bst !== 2) continue; const [tx0, tx1, ty0, ty1] = tileRange(c, x0, z0, LEAF), DV = c.bin;
@@ -105,11 +106,12 @@ export function createOSM(scene, opt = {}) {
           const lax = A[2 * a], lay = A[2 * a + 1], lbx = B[2 * b], lby = B[2 * b + 1]; if (!owns(c, (lax + lbx) / 2, (lay + lby) / 2)) continue;
           const [ax, az] = toN(c, lax, lay), [bx, bz] = toN(c, lbx, lby); if (!inLeaf((ax + bx) / 2, (az + bz) / 2, x0, z0) || inAirport((ax + bx) / 2, (az + bz) / 2) || Math.hypot((ax + bx) / 2 - PAD[0], (az + bz) / 2 - PAD[1]) < 32) continue;
           const cl = f & 7, built = f & 32, dirt = !cl && !built, w = dirt ? 3.6 : ROADW[cl], rgb = dirt ? [.5, .43, .32] : ROADC[cl];
-          strip(ax, az, bx, bz, w, rgb, .35 + cl * .03, f & 8 ? bridgeH(ax, az, bx, bz) : null);
+          const br = f & 8 ? bridgeH(ax, az, bx, bz) : null; strip(ax, az, bx, bz, w, rgb, LIFT + cl * .01, br); segs.push(ax, az, bx, bz, w, cl, f, br ? br[0] : -1e9);
+          if (MARK && !dirt && cl >= 1) { const L = Math.hypot(bx - ax, bz - az); for (let s = 1.5; s + 3 < L; s += 9) { const p0 = s / L, p1 = (s + 3) / L; strip(ax + (bx - ax) * p0, az + (bz - az) * p0, ax + (bx - ax) * p1, az + (bz - az) * p1, .14, [.92, .92, .88], LIFT + cl * .01 + .015, br ? [br[0] + .015, br[1] + .015] : null); } }
           if (built && !(f & 8)) { const L = Math.hypot(bx - ax, bz - az); for (let s = 20; s < L; s += 48) { const k = s / L, x = ax + (bx - ax) * k, z = az + (bz - az) * k, dx = (bz - az) / L, dz = -(bx - ax) / L, off2 = w / 2 + 3; lamps.push(x + dx * off2 - x0, ground(x, z) + 7, z + dz * off2 - z0); } } } }
       for (const k of [Math.floor((x0 + 1) / LEAF) + ':' + Math.floor((z0 + 1) / LEAF)]) { const r = c.rails?.get(k); if (!r) continue;
         for (let i = 0; i < r.length; i += 4) { strip(r[i], r[i + 1], r[i + 2], r[i + 3], 6, [.42, .39, .35], .45); strip(r[i], r[i + 1], r[i + 2], r[i + 3], 2.2, [.2, .17, .15], .55); } } }
-    const g = new THREE.Group(); g.position.set(x0, 0, z0);
+    const g = new THREE.Group(); g.position.set(x0, 0, z0); g.userData.segs = new Float32Array(segs);
     if (pos.length) { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
       const nrm = new Float32Array(pos.length); for (let i = 1; i < nrm.length; i += 3) nrm[i] = 1; geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3)); geo.computeBoundingSphere();
       const m = new THREE.Mesh(geo, roadMat); m.receiveShadow = true; m.renderOrder = 1; g.add(m); }
@@ -119,7 +121,7 @@ export function createOSM(scene, opt = {}) {
   /* ---- épületek egy 2 km-es csonkhoz ---- */
   const CC = new THREE.Color();
   function buildBuildings(x0, z0) { const cs = countiesAt(x0, z0); if (cs.some(c => c.st === 0 || c.bst < 2 && c.bst !== -1 && (loadBig(c), true))) return null;
-    const pos = [], col = [];
+    const pos = [], col = [], fps = [];
     const tri = (a, b, cc, rgb) => { pos.push(a[0], a[1], a[2], b[0], b[1], b[2], cc[0], cc[1], cc[2]); for (let k = 0; k < 3; k++) col.push(rgb[0], rgb[1], rgb[2]); };
     const hsh = (x, z) => { let h = Math.imul(Math.round(x * 7) | 0, 374761393) + Math.imul(Math.round(z * 7) | 0, 668265263); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
     const near = (X, Z) => inAirport(X, Z) || Math.hypot(X - PAD[0], Z - PAD[1]) < 50 || LANDMARKS.some(([lx, lz]) => Math.hypot(X - lx, Z - lz) < 170);
@@ -127,6 +129,7 @@ export function createOSM(scene, opt = {}) {
       let base = 1e9; for (let i = 0; i < ring.length; i += Math.max(1, ring.length / 6 | 0)) base = Math.min(base, ground(ring[i][0], ring[i][1])); base -= .6; const gc = ground(cx, cz), top = gc + Math.max(3, h);
       const r = hsh(cx, cz), wall = CC.setHex(WALL[(r * WALL.length) | 0]).toArray(), small = rect && h <= 9, roofC = CC.setHex(small ? ROOF[(hsh(cz, cx) * ROOF.length) | 0] : FLAT[(hsh(cz, cx) * FLAT.length) | 0]).toArray();
       // irány: legyen az óramutatóval ellentétes (a falak kifelé nézzenek)
+      fps.push(ring);
       let ar = 0; for (let i = 0; i < ring.length; i++) { const p = ring[i], q = ring[(i + 1) % ring.length]; ar += p[0] * q[1] - q[0] * p[1]; } if (ar > 0) ring = ring.slice().reverse();
       const L = p => [p[0] - x0, base, p[1] - z0], U = p => [p[0] - x0, top, p[1] - z0];
       for (let i = 0; i < ring.length; i++) { const p = ring[i], q = ring[(i + 1) % ring.length]; const sh = .85 + .15 * Math.abs((q[0] - p[0]) / (Math.hypot(q[0] - p[0], q[1] - p[1]) || 1)), wc = [wall[0] * sh, wall[1] * sh, wall[2] * sh];
@@ -154,9 +157,9 @@ export function createOSM(scene, opt = {}) {
           if (!owns(c, lx, ly)) continue; const [X, Z] = toN(c, lx, ly); if (!inLeaf(X, Z, x0, z0) || near(X, Z) || n < 3) continue; const ring = [];
           for (let i = 0; i < n; i++) ring.push([X + HV.getInt16(st + i * 4, true) / 4 * c.sx, Z + HV.getInt16(st + i * 4 + 2, true) / 4]);
           if (ring.length > 3 && Math.hypot(ring[0][0] - ring[ring.length - 1][0], ring[0][1] - ring[ring.length - 1][1]) < .5) ring.pop(); if (ring.length >= 3) building(ring, h, X, Z, false); } } }
-    if (!pos.length) return new THREE.Group();
+    if (!pos.length) { const e = new THREE.Group(); e.userData.fps = fps; return e; }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); geo.computeVertexNormals(); geo.computeBoundingSphere();
-    const m = new THREE.Mesh(geo, bMat); m.position.set(x0, 0, z0); m.castShadow = true; m.receiveShadow = true; return m; }
+    const m = new THREE.Mesh(geo, bMat); m.position.set(x0, 0, z0); m.castShadow = true; m.receiveShadow = true; m.userData.fps = fps; return m; }
 
   /* ---- frissítés: a terep látható közeli csonkjai szerint ---- */
   const dirty = new Set();
@@ -179,5 +182,18 @@ export function createOSM(scene, opt = {}) {
     for (const [, map, k, [x0, z0], fn] of todo) { if (performance.now() - t0 > 4) break; if (!tileReady(x0 + LEAF / 2, z0 + LEAF / 2)) continue; const o = fn(x0, z0); if (!o) continue; const old = map.get(k); if (old?.o) { root.remove(old.o); old.o.traverse(x => { if (x.geometry) x.geometry.dispose(); }); }
       root.add(o); map.set(k, { o, xz: [x0, z0], dirty: false, far: 0 }); }
   }
-  return { update, root, set(o) { if (o.roadR) roadR = o.roadR; if (o.bldR) bldR = o.bldR; }, stats: () => ({ counties: C.size, roads: roadOv.size, bld: bldOv.size, big: [...C.values()].filter(c => c.bst === 2).length }) };
+  /* lekérdezések a járműfizikához: közeli épület-alaprajzok és útszakaszok (a már felépült 2 km-es csonkokból) */
+  const leafAround = (map, x, z, r, fn) => { const i0 = Math.floor((x - r) / LEAF), i1 = Math.floor((x + r) / LEAF), j0 = Math.floor((z - r) / LEAF), j1 = Math.floor((z + r) / LEAF);
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) { const e = map.get(i * LEAF + ':' + j * LEAF); if (e?.o) fn(e.o); } };
+  function buildingsNear(x, z, r) { const out = []; leafAround(bldOv, x, z, r, o => { for (const ring of o.userData.fps || []) { const p = ring[0]; if (Math.abs(p[0] - x) < r + 60 && Math.abs(p[1] - z) < r + 60) out.push(ring); } }); return out; }
+  // a legközelebbi útszakasz: { d (m a középvonaltól), w (szélesség), cl (osztály), f (jelzők), h (híd magassága vagy −1e9), ax, az, bx, bz }
+  function roadAt(x, z, r = 30) { let best = null; leafAround(roadOv, x, z, r, o => { const s = o.userData.segs; if (!s) return;
+      for (let i = 0; i < s.length; i += 8) { const ax = s[i], az = s[i + 1], bx = s[i + 2], bz = s[i + 3]; if (Math.max(ax, bx) < x - r || Math.min(ax, bx) > x + r || Math.max(az, bz) < z - r || Math.min(az, bz) > z + r) continue;
+        const dx = bx - ax, dz = bz - az, L = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L)), d = Math.hypot(x - ax - dx * t, z - az - dz * t);
+        if (!best || d - s[i + 4] / 2 < best.d - best.w / 2) best = { d, w: s[i + 4], cl: s[i + 5], f: s[i + 6], h: s[i + 7], ax, az, bx, bz, t }; } }); return best; }
+  // útszakaszok egy körön belül (lapos tömb, 8 érték szakaszonként: ax, az, bx, bz, szélesség, osztály, jelzők, hídmagasság)
+  function segsNear(x, z, r) { const out = []; leafAround(roadOv, x, z, r, o => { const s = o.userData.segs; if (!s) return;
+      for (let i = 0; i < s.length; i += 8) { if (Math.max(s[i], s[i + 2]) < x - r || Math.min(s[i], s[i + 2]) > x + r || Math.max(s[i + 1], s[i + 3]) < z - r || Math.min(s[i + 1], s[i + 3]) > z + r) continue; for (let k = 0; k < 8; k++) out.push(s[i + k]); } }); return out; }
+  const roadLift = cl => LIFT + cl * .01;
+  return { update, root, buildingsNear, roadAt, segsNear, roadLift, set(o) { if (o.roadR) roadR = o.roadR; if (o.bldR) bldR = o.bldR; }, stats: () => ({ counties: C.size, roads: roadOv.size, bld: bldOv.size, big: [...C.values()].filter(c => c.bst === 2).length, list: [...C.values()].map(c => c.id + ':' + c.st + '/' + c.bst).join(' ') }) };
 }
