@@ -4,7 +4,7 @@
    helye a felület saját rajzkoordinátáiban van; innen számoljuk térbe. A rackek rácsra (GR) illesztve, 90°-onként
    forgatva állnak, a szabad eszközök bárhol. Képkockánként kiszámoljuk, mire mutat a célkereszt (aim); a műveleteket
    a szerver.js doClick() végzi. Lépték: K méter / rajzegység (1U = 20 egység = 4,4 cm). */
-import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611221530';
+import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611221546';
 
 const REACH = 3, EYE = 1.62, MAXP = 2500, RD = .9, RWID = .6; // RD, RWID: a rack alapterülete
 let A = null, K = .0022, cv = null, R = null, scene = null, cam = null, room = null, cabG = null, held = null, ghost = null, pts = null;
@@ -61,6 +61,12 @@ function build() { if (room) { scene.remove(room); room.traverse(o => { o.geomet
   room.updateMatrixWorld(true); gen = -1; }
 
 /* ---------- nyitott szerverház: kihúzva, felülről, az alkatrészek a foglalatokban ---------- */
+let hlBox = null, warnT = null, warnG = null;
+// egy eszköz doboza a térben: [középpont, elforgatás, [szél, mag, mély]]
+function devBox(d) { const ri = A.S.racks.findIndex(r => r.dev.includes(d)), h = dH(d); if (ri >= 0) { const f = SF.get('R' + ri), dp = Math.min(.8, A.DEV[d.t].dp || .5); if (!f) return null; return [s3(f, f.w / 2, 7 + d.u * A.U + A.DEV[d.t].u * A.U / 2, -dp / 2), f.yaw, [A.RW * K, h, dp]]; } if (d.wx === undefined) return null; const dp = dD(d); return [V(d.wx - Math.sin(d.yaw) * dp / 2, d.wy + h / 2, d.wz - Math.cos(d.yaw) * dp / 2), d.yaw, [A.RW * K, h, dp]]; }
+function marks() { const id = A.hl, all = id || (A.C.bad || []).length ? [...A.S.racks.flatMap(r => r.dev), ...A.S.loose] : [], d = id ? all.find(x => x.id === id) : null, b = d && devBox(d); hlBox.visible = !!b; if (b) { hlBox.position.copy(b[0]); hlBox.rotation.y = b[1]; hlBox.scale.set(b[2][0] + .02, b[2][1] + .02, b[2][2] + .02); }
+  const bad = A.C.bad || []; while (warnG.children.length > bad.length) { const o = warnG.children[warnG.children.length - 1]; warnG.remove(o); o.material.dispose(); } while (warnG.children.length < bad.length) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: warnT, depthTest: false, transparent: true })); sp.renderOrder = 999; sp.scale.set(.16, .16, 1); warnG.add(sp); }
+  bad.forEach((x, i) => { const q = devBox(x), sp = warnG.children[i]; sp.visible = !!q; if (q) { const n = V(Math.sin(q[1]), 0, Math.cos(q[1])); sp.position.copy(q[0]).addScaledVector(n, q[2][2] / 2 + .08); sp.position.y += Math.sin(now * 4) * .01; } }); }
 let DR = null, now = 0, mouse = { x: 0, y: 0, cx: 0, cy: 0 }, hoverBox = null;
 const TIERC = ['#7d8794', '#4cc9f0', '#5ee08a', '#ffd43b', '#ff922b', '#ff6bd6'];
 const depthOf = d => A.DEV[d.t].dp || .6, psig = d => JSON.stringify([d.mb, d.cpu, d.ram, d.hdd, d.pci, d.psu]);
@@ -118,7 +124,7 @@ function inspect(dt) { const id = A.insp, d = id ? [...A.S.racks.flatMap(r => r.
   const c = DR.g.position.clone().addScaledVector(n, -DR.dp * .46).add(V(0, dH(DR.d) / 2, 0)), tp = c.clone().addScaledVector(n, DR.dp * .3 + .1).add(V(0, .34 + DR.dp * .62, 0)), o3 = new THREE.Object3D(); o3.position.copy(tp); o3.up.copy(n).negate(); o3.lookAt(c); o3.rotateY(Math.PI);
   const fp = V(P.x, EYE, P.z), fq = new THREE.Quaternion().setFromEuler(new THREE.Euler(P.pitch, P.yaw, 0, 'YXZ')); cam.position.copy(fp).lerp(tp, e); cam.quaternion.copy(fq).slerp(o3.quaternion, e); cam.updateMatrixWorld();
   // az egér alatti foglalat
-  let hv = null; if (d && DR.t > .9 && !A.view) { RC.setFromCamera(new THREE.Vector2(mouse.x, mouse.y), cam); RC.far = 5; const hit = RC.intersectObjects(DR.slots, false)[0]; if (hit) hv = hit.object.userData; }
+  let hv = null; if (d && DR.t > .9 && mouse.on) { RC.setFromCamera(new THREE.Vector2(mouse.x, mouse.y), cam); RC.far = 5; const hit = RC.intersectObjects(DR.slots, false)[0]; if (hit) hv = hit.object.userData; }
   hoverBox.visible = !!hv; if (hv) { hv.g.getWorldPosition(hoverBox.position); if (hv.k === 'mb') hoverBox.position.y -= hv.s[1] / 2 - .004; hoverBox.position.y += hv.s[1] / 2; hoverBox.rotation.y = p.yaw; hoverBox.scale.set(hv.s[0], hv.s[1] + .004, hv.s[2]); } DR.hv = hv; A.setHov(hv ? [hv.k, hv.i] : null);
   const cx = document.querySelector('#ctx'); cx.classList.toggle('mouse', !!d); if (d) { cx.style.left = mouse.cx + 16 + 'px'; cx.style.top = mouse.cy + 14 + 'px'; } else { cx.style.left = cx.style.top = ''; } cv.style.cursor = hv ? 'pointer' : ''; return true; }
 
@@ -143,8 +149,8 @@ function flow(dt) { clock += dt; const pos = pts.geometry.attributes.position, v
 /* ---------- célzás és lerakás ---------- */
 function stackTop(d) { let top = d; for (let n = 0; n < 40; n++) { const up = A.S.loose.find(o => o !== top && Math.abs(o.wx - top.wx) < .02 && Math.abs(o.wz - top.wz) < .02 && Math.abs(o.wy - (top.wy + dH(top))) < .01); if (!up) break; top = up; } return top; }
 const inRack = (x, z, m, skip) => A.S.racks.some((r, i) => { if (i === skip) return false; const f = foot(r.x, r.z, r.rot); return x > f[0] - m && x < f[2] + m && z > f[1] - m && z < f[3] + m; });
-function looseOk(t, dev) { const [W, D] = room3(), h = dH(dev); if (t.wy + h > 2.15) return false; if (t.wall || t.stack) return true; const cx = t.wx - Math.sin(t.yaw) * .25, cz = t.wz - Math.cos(t.yaw) * .25; if (cx < .35 || cx > W - .35 || cz < .35 || cz > D - .35 || inRack(cx, cz, .25)) return false;
-  return !A.S.loose.some(o => !A.wallMount(o) && o.wy < h && Math.hypot(o.wx - Math.sin(o.yaw) * .25 - cx, o.wz - Math.cos(o.yaw) * .25 - cz) < .55); }
+function looseOk(t, dev) { const [W, D] = room3(), h = dH(dev); if (t.wy + h > 2.15 || (A.DEV[dev.t].floor && (t.wall || t.stack))) return false; if (t.wall || t.stack) return true; const cx = t.wx - Math.sin(t.yaw) * .25, cz = t.wz - Math.cos(t.yaw) * .25; if (cx < .35 || cx > W - .35 || cz < .35 || cz > D - .35 || inRack(cx, cz, .25)) return false;
+  return !A.S.loose.some(o => o !== dev && !A.wallMount(o) && o.wy < h && Math.hypot(o.wx - Math.sin(o.yaw) * .25 - cx, o.wz - Math.cos(o.yaw) * .25 - cz) < .55); }
 function rackOk(x, z, rt, skip) { const [W, D] = room3(), f = foot(x, z, rt); if (f[0] < .05 || f[1] < .05 || f[2] > W - .05 || f[3] > D - .05) return false; if (A.S.racks.some((r, i) => { if (i === skip) return false; const g = foot(r.x, r.z, r.rot); return f[0] < g[2] - .02 && g[0] < f[2] - .02 && f[1] < g[3] - .02 && g[1] < f[3] - .02; })) return false;
   return !A.S.loose.some(o => { const cx = o.wx - Math.sin(o.yaw) * .25, cz = o.wz - Math.cos(o.yaw) * .25; return !A.wallMount(o) && cx > f[0] - .2 && cx < f[2] + .2 && cz > f[1] - .2 && cz < f[3] + .2; }); }
 function pick() { const dir = V(0, 0, 0); cam.getWorldDirection(dir); const o = cam.position, [W, D, H] = room3(), pl = A.place, sel = A.sel, a = {};
@@ -166,8 +172,8 @@ function pick() { const dir = V(0, 0, 0); cam.getWorldDirection(dir); const o = 
   if (kd === 'tray') { if (dir.y > .05) { const t = (A.TRAYH - o.y) / dir.y; if (t < 5) { const x = snapG(o.x + dir.x * t), z = snapG(o.z + dir.z * t), rt = ((Math.abs(dir.x) > Math.abs(dir.z) ? 0 : 1) + rot) % 2 & 1; a.pl = { x, z, rot: rt, turn: 1, ok: x > .5 && x < W - .5 && z > .5 && z < D - .5 && !A.S.trays.some(q => q.x === x && q.z === z && q.rot === rt), box: [V(x, A.TRAYH, z), yawOf(rt), [1.2, .06, .3]] }; } } return a; }
   if (kd === 'arm') { if (a.rk != null) { const r = A.S.racks[a.rk], f = SF.get('R' + a.rk), s = Math.sin(f.yaw), c = Math.cos(f.yaw); a.pl = { arm: a.rk, ok: !r.arm, box: [V(r.x + s * .28, f.wy + f.h * K + .27, r.z + c * .28), f.yaw, [.05, .05, .72]] }; } return a; }
   const h = dH(pl), wm = A.wallMount(pl), dp = dD(pl);
-  if (a.h && kd !== 'tbl') { const f = SF.get('R' + a.h.ri); a.pl = { rack: a.h, ok: A.free(a.h.ri, a.h.u, A.DEV[pl.t].u), box: [s3(f, f.w / 2, 7 + a.h.u * A.U + A.DEV[pl.t].u * A.U / 2, .02), f.yaw, [A.RW * K, h, .03]] }; return a; }
-  if (a.d && A.S.loose.includes(a.d)) { const top = stackTop(a.d); a.pl = { wx: top.wx, wy: top.wy + dH(top), wz: top.wz, yaw: top.yaw, stack: 1 }; }
+  if (a.d === pl) { a.d = null; if (a.h) a.h.dev = null; } if (a.h && kd !== 'tbl' && !A.DEV[pl.t].floor) { const f = SF.get('R' + a.h.ri); a.pl = { rack: a.h, ok: A.free(a.h.ri, a.h.u, A.DEV[pl.t].u, pl.id), box: [s3(f, f.w / 2, 7 + a.h.u * A.U + A.DEV[pl.t].u * A.U / 2, .02), f.yaw, [A.RW * K, h, .03]] }; return a; }
+  if (a.d && a.d !== pl && A.S.loose.includes(a.d)) { const top = stackTop(a.d); a.pl = { wx: top.wx, wy: top.wy + dH(top), wz: top.wz, yaw: top.yaw, stack: 1 }; }
   else if (wm && !hit) { let bt = REACH; const tryW = (t, yaw) => { if (t > .1 && t < bt) { const q = o.clone().addScaledVector(dir, t); if (q.y > .1 && q.y < 2.1 && q.x > -.01 && q.x < W + .01 && q.z > -.01 && q.z < D + .01) { bt = t; a.pl = { wx: q.x + Math.sin(yaw) * .012, wy: Math.max(0, q.y - h / 2), wz: q.z + Math.cos(yaw) * .012, yaw, wall: 1 }; } } };
     if (dir.z < 0) tryW(o.z / -dir.z, 0); else tryW((D - o.z) / dir.z, Math.PI); if (dir.x < 0) tryW(o.x / -dir.x, Math.PI / 2); else tryW((W - o.x) / dir.x, -Math.PI / 2); }
   if (!a.pl && F && !hit) a.pl = { wx: F.x, wy: 0, wz: F.z, yaw: Math.round(Math.atan2(o.x - F.x, o.z - F.z) / (Math.PI / 12)) * (Math.PI / 12) + rot * Math.PI / 12, turn: 1 };
@@ -177,7 +183,9 @@ export function interact() { A.setAim(aim); A.doClick(); }
 /* ---------- indítás ---------- */
 export function init(canvas, api) { A = api; K = A.K; cv = canvas; R = new THREE.WebGLRenderer({ canvas, antialias: true }); R.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.15; scene = new THREE.Scene(); scene.background = new THREE.Color('#0b0e12'); cam = new THREE.PerspectiveCamera(72, 1, .03, 80); cam.rotation.order = 'YXZ'; scene.add(new THREE.HemisphereLight(0xeaf0ff, 0x50545c, 1.5)); { const dl = new THREE.DirectionalLight(0xffffff, .7); dl.position.set(.4, 1, .6); scene.add(dl); }
   held = new THREE.Group(); scene.add(held); ghost = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ transparent: true, opacity: .4, depthWrite: false })); ghost.visible = false; scene.add(ghost); hoverBox = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color: 0x4cc9f0 })); hoverBox.visible = false; scene.add(hoverBox);
-  addEventListener('mousemove', e => { mouse.x = e.clientX / innerWidth * 2 - 1; mouse.y = -(e.clientY / innerHeight) * 2 + 1; mouse.cx = e.clientX; mouse.cy = e.clientY; });
+  hlBox = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0x5ee08a, transparent: true, opacity: .5, depthTest: false, depthWrite: false })); hlBox.renderOrder = 998; hlBox.visible = false; hlBox.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color: 0xc8ffd8, depthTest: false }))); scene.add(hlBox);
+  { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#ff5a4d'; x.beginPath(); x.moveTo(32, 4); x.lineTo(61, 58); x.lineTo(3, 58); x.closePath(); x.fill(); x.fillStyle = '#fff'; x.font = '900 40px sans-serif'; x.textAlign = 'center'; x.fillText('!', 32, 53); warnT = new THREE.CanvasTexture(c); warnT.colorSpace = THREE.SRGBColorSpace; warnG = new THREE.Group(); scene.add(warnG); }
+  addEventListener('mousemove', e => { mouse.x = e.clientX / innerWidth * 2 - 1; mouse.y = -(e.clientY / innerHeight) * 2 + 1; mouse.cx = e.clientX; mouse.cy = e.clientY; mouse.on = e.target === cv; });
   { const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d'), gr = x.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, '#fff'); gr.addColorStop(.35, 'rgba(255,255,255,.7)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 32, 32);
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAXP * 3), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(MAXP * 3), 3)); g.setDrawRange(0, 0); pts = new THREE.Points(g, new THREE.PointsMaterial({ size: .035, map: new THREE.CanvasTexture(c), vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); pts.frustumCulled = false; scene.add(pts); }
   cv.addEventListener('click', e => { if (A.insp) { mouse.x = e.clientX / innerWidth * 2 - 1; mouse.y = -(e.clientY / innerHeight) * 2 + 1; if (DR && DR.hv) A.slotClick(DR.hv.k, DR.hv.i); return; } if (e.pointerType && e.pointerType !== 'mouse') return; if (document.pointerLockElement !== cv) { try { const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (_) {} return; } interact(); });
@@ -200,7 +208,7 @@ export function frame(dt) { if (!on) return; const S = A.S, [W, D] = room3(), s2
   const busy = A.busy, f = busy ? 0 : (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - stick.y, sd = busy ? 0 : (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + stick.x; if (f || sd) { const v = (keys.ShiftLeft ? 4.2 : 2.2) * dt / Math.max(1, Math.hypot(f, sd)), sn = Math.sin(P.yaw), cs = Math.cos(P.yaw), cl = (q, m) => Math.max(.3, Math.min(m - .3, q)); let nx = cl(P.x + (-sn * f + cs * sd) * v, W), nz = cl(P.z + (-cs * f - sn * sd) * v, D);
     if (inRack(nx, nz, .22) && !inRack(P.x, P.z, .2)) { if (!inRack(nx, P.z, .22)) nz = P.z; else if (!inRack(P.x, nz, .22)) nx = P.x; else { nx = P.x; nz = P.z; } } P.x = nx; P.z = nz; }
   now += dt; cam.position.set(P.x, keys.KeyC || keys.ControlLeft ? .85 : EYE, P.z); cam.rotation.set(P.pitch, P.yaw, 0); cam.updateMatrixWorld();
-  if (inspect(dt)) { document.querySelector('#xh').hidden = true; if (A.gen !== gen) { gen = A.gen; for (const k of RT.keys()) paint(k); cables(); } ghost.visible = false; for (const o of held.children.slice()) { held.remove(o); o.geometry.dispose(); o.material.dispose(); } A.setAim({}); flow(A.S.spd ? dt : 0); R.render(scene, cam); return; } document.querySelector('#xh').hidden = false;
+  if (inspect(dt)) { document.querySelector('#xh').hidden = true; if (A.gen !== gen) { gen = A.gen; for (const k of RT.keys()) paint(k); cables(); } ghost.visible = false; for (const o of held.children.slice()) { held.remove(o); o.geometry.dispose(); o.material.dispose(); } A.setAim({}); marks(); flow(A.S.spd ? dt : 0); R.render(scene, cam); return; } document.querySelector('#xh').hidden = false;
   // célzás
   const sel = A.sel, pl = A.place; if (!pl) rot = 0; aim = pick(); A.setAim(aim); document.querySelector('#xh').classList.toggle('hot', !!(aim.p || aim.d || aim.tray || aim.rk != null || (aim.pl && aim.pl.ok)));
   if (A.gen !== gen) { gen = A.gen; for (const k of RT.keys()) paint(k); cables(); }
@@ -216,4 +224,4 @@ export function frame(dt) { if (!on) return; const S = A.S, [W, D] = room3(), s2
     held.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(v, false, 'centripetal'), Math.min(200, v.length * 2), net ? .006 : .008, 6), mat())); const tip = new THREE.Mesh(new THREE.SphereGeometry(okp ? .016 : .012, 10, 8), mat()); tip.position.copy(v[v.length - 1]); held.add(tip);
     for (const q of sel.w) { const m = new THREE.Mesh(new THREE.SphereGeometry(.011, 8, 6), mat()); m.position.copy(wp3(q)); held.add(m); }
     if (!okp && aim.pt) { const m = new THREE.Mesh(new THREE.TorusGeometry(.02, .004, 6, 14), new THREE.MeshBasicMaterial({ color: 0xff8a2a })); m.position.set(...aim.pt); if (aim.pt[1] < .05 || aim.pt[1] > A.TRAYH) m.rotation.x = Math.PI / 2; held.add(m); } }
-  flow(A.S.spd ? dt : 0); R.render(scene, cam); }
+  marks(); flow(A.S.spd ? dt : 0); R.render(scene, cam); }
