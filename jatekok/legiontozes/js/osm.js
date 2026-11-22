@@ -7,9 +7,9 @@
    A megyék határán kettőzés elkerülése: minden elem csak annál a megyénél jelenik meg, amelyiknek a körvonalán belül van a közepe (256 m-es maszk).
    A réteg a terep közeli (2 km-es) csonkjaihoz épül, időkerettel, és csak ha az alatta lévő domborzati csempe már betöltődött. */
 import * as THREE from 'three';
-import { ground, megyek, onTile, tileReady, inAirport } from './geo.js?v=202611220217';
-import { SU, withWorld } from './kozos.js?v=202611220217';
-import { NEVEZETES, P } from './config.js?v=202611220217';
+import { ground, megyek, onTile, tileReady, inAirport } from './geo.js?v=202611220224';
+import { SU, withWorld } from './kozos.js?v=202611220224';
+import { NEVEZETES, P } from './config.js?v=202611220224';
 
 const BASE = '../holtvaros/terkep/', T = 2048, LEAF = 2000, MASK = 256;
 const ROADW = [5.5, 7, 9, 12, 16, 24], ROADC = [[.4, .4, .39], [.33, .33, .33], [.31, .31, .32], [.29, .29, .3], [.27, .27, .28], [.25, .25, .27]];
@@ -138,8 +138,13 @@ export function createOSM(scene, opt = {}) {
         else { const m1 = mid(a, b), m2 = mid(c2, d); tri(U(b), U(c2), R(m2), roofC); tri(U(b), R(m2), R(m1), roofC); tri(U(d), U(a), R(m1), roofC); tri(U(d), R(m1), R(m2), roofC); tri(U(a), U(b), R(m1), wall); tri(U(c2), U(d), R(m2), wall); }
         return; }
       // lapos tető
-      if (ring.length === 4) { tri(U(ring[0]), U(ring[1]), U(ring[2]), roofC); tri(U(ring[0]), U(ring[2]), U(ring[3]), roofC); return; }
-      let t2; try { t2 = THREE.ShapeUtils.triangulateShape(ring.map(p => new THREE.Vector2(p[0], p[1])), []); } catch (_) { t2 = []; } for (const [i, j, k] of t2) tri(U(ring[i]), U(ring[j]), U(ring[k]), roofC); }
+      // lapos tető: fülvágó háromszögelés; minden háromszög felfelé néz (különben a hátlapeldobás eltüntetné); ha a sokszög önmetsző és a háromszögelés hiányos, legyezőre esik vissza
+      const up = (a, b, c) => { if ((b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]) > 0) tri(a, b, c, roofC); else tri(a, c, b, roofC); };
+      let pa = 0; for (let i = 0; i < ring.length; i++) { const p = ring[i], q = ring[(i + 1) % ring.length]; pa += p[0] * q[1] - q[0] * p[1]; } pa = Math.abs(pa / 2);
+      let t2; try { t2 = THREE.ShapeUtils.triangulateShape(ring.map(p => new THREE.Vector2(p[0], p[1])), []); } catch (_) { t2 = []; }
+      let ta = 0; for (const [i, j, k] of t2) ta += Math.abs((ring[j][0] - ring[i][0]) * (ring[k][1] - ring[i][1]) - (ring[k][0] - ring[i][0]) * (ring[j][1] - ring[i][1])) / 2;
+      if (t2.length && ta > pa * .9) for (const [i, j, k] of t2) up(U(ring[i]), U(ring[j]), U(ring[k]));
+      else { let mx = 0, mz = 0; for (const p of ring) { mx += p[0]; mz += p[1]; } const C = U([mx / ring.length, mz / ring.length]); for (let i = 0; i < ring.length; i++) up(C, U(ring[i]), U(ring[(i + 1) % ring.length])); } }
     for (const c of cs) { if (c.bst !== 2) continue; const [tx0, tx1, ty0, ty1] = tileRange(c, x0, z0, LEAF), HV = c.haz;
       for (let tx = tx0; tx <= tx1; tx++) for (let ty = ty0; ty <= ty1; ty++) { const t = tx * c.TYN + ty, io = 8 + 12 * t, off = HV.getUint32(io, true); if (!off) continue; const nr = HV.getUint32(io + 4, true), pb = HV.getUint32(io + 8, true), bx = tx * T, by = ty * T;
         for (let i = 0, o = off; i < nr; i++, o += 8) { const lx = bx + HV.getUint16(o, true) / 32, ly = by + HV.getUint16(o + 2, true) / 32; if (!owns(c, lx, ly)) continue; const [X, Z] = toN(c, lx, ly); if (!inLeaf(X, Z, x0, z0) || near(X, Z)) continue;
