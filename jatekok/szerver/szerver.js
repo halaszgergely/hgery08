@@ -336,17 +336,17 @@
     rackTo: (ctx, i, k) => drawTo(ctx, k, 0, 0, RW + 28, RACK[S.racks[i].t].u * U + 14, () => drawRack(i)), wallTo: (ctx, k) => { const W = wallDim(); drawTo(ctx, k, 0, 0, W.w, W.h, drawWall); }, looseTo: (ctx, d, k) => drawTo(ctx, k, 0, 0, RW, DEV[d.t].u * U, () => drawLoose(d)) };
   function toggle3D(on) { if (on === undefined) on = !(F3 && F3.on); if (!on) { if (F3) F3.stop(); $('#c3').hidden = true; cv.hidden = false; return; }
     const go = () => { $('#c3').hidden = false; cv.hidden = true; F3.start(); }; if (F3) return go(); if (f3load) return; f3load = 1;
-    import('./fps.js?v=202611221503').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
+    import('./fps.js?v=202611221511').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
   $('#bPh').onclick = () => view ? closeP() : openP(lastApp, '');
 
   /* ---------- főciklus ---------- */
   const score = () => { try { if (window.top !== window && S.life > 0) parent.postMessage({ hgws: 'score', game: GAME, score: Math.floor(S.life) }, location.origin); } catch (_) {} };
   function resize() { const d = devicePixelRatio || 1; cv.width = innerWidth * d; cv.height = innerHeight * d; } addEventListener('resize', resize); resize();
   let last = performance.now(), acc = 0, uiT = 0, saveT = 5, scT = 60;
-  function loop(now) { const dt = Math.min(.1, (now - last) / 1000); last = now;
+  function loop(now) { requestAnimationFrame(loop); const dt = Math.min(.1, (now - last) / 1000); last = now; // az újrahívás elöl: egy hiba se állítsa meg a játékot
     if ($('#menu').hidden && S.spd) { acc += dt * S.spd; while (acc >= .25) { acc -= .25; if (dirty) calc(); tick(.25 / DAY); } }
-    if (dirty) calc(); if (F3 && F3.on) { F3.frame(dt); ctxUI(); } if ((uiT -= dt) <= 0) { uiT = .5; top(); if (insp) inspUI(); if (view === 'dev' && !slot || view === 'site') ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); } if ((scT -= dt) <= 0) { scT = 60; score(); }
-    requestAnimationFrame(loop); }
+    if (dirty) calc(); if (F3 && F3.on) { try { F3.frame(dt); ctxUI(); } catch (e) { console.error(e); if (!(loop.err > now)) { loop.err = now + 4000; toast('Hiba: ' + (e && e.message || e), 1); } sel = place = null; hint(); } } if ((uiT -= dt) <= 0) { uiT = .5; top(); if (insp) inspUI(); if (view === 'dev' && !slot || view === 'site') ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); } if ((scT -= dt) <= 0) { scT = 60; score(); }
+  }
   const had = load(); if (!had) fresh(); if (had) { $('#mPlay').textContent = '▶ Folytatás'; $('#mNew').hidden = false; } calc(); top(); keysUI(); cv.hidden = true; toggle3D(true); addEventListener('pagehide', () => { save(); score(); });
   window.__sz = () => ({ SZ: window.SZ3, doClick, get aim() { return aim; }, get F3() { return F3; }, get sel() { return sel; }, S, C, act, calc, tick, DEV, PART, mk, accept, fit, mkOffer, fillOffers, ensureOffer, TIER });
   requestAnimationFrame(loop);
