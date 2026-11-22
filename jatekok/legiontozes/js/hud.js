@@ -1,6 +1,6 @@
 /* HUD: sebesség, magasság, emelkedés, gáz/kollektív, víz, akku, mesterséges horizont + iránytű, minitérkép, szélirány,
    átesés-figyelmeztetés, küldetés-időzítő és célnyíl. Nagy térkép (M): nagyítás, mozgatás, útpontok, gyorsutazás. A DOM-írások gyorsítótárazva. */
-import { REPTEREK, VIZEK, P, FORGO, W_MAX, H_MAX } from './config.js?v=202611220300';
+import { REPTEREK, VIZEK, P, FORGO, W_MAX, H_MAX } from './config.js?v=202611220336';
 
 const $ = s => document.querySelector(s);
 const cache = new Map(); const setH = (el, k, v) => { if (cache.get(k) !== v) { cache.set(k, v); el.innerHTML = v; } };

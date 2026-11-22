@@ -1,7 +1,7 @@
 /* A gépek kódból épített low-poly modelljei (HGWS sárga–zöld–vízkék). Orr: −Z, fel: +Y, jobb: +X, méterben.
    Minden modell { g, prop[], rotor[], gear, flap[], burner, ramp, eye, spray[], hook, len } – a fizika és a kamera ezeket használja. */
 import * as THREE from 'three';
-import { SZIN } from './config.js?v=202611220300';
+import { SZIN } from './config.js?v=202611220336';
 
 const MC = new Map();
 // fényes festék (PBR), a környezeti térkép az égboltból jön (scene.environment)
