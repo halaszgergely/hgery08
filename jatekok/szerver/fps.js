@@ -4,7 +4,7 @@
    helye a felület saját rajzkoordinátáiban van; innen számoljuk térbe. A rackek rácsra (GR) illesztve, 90°-onként
    forgatva állnak, a szabad eszközök bárhol. Képkockánként kiszámoljuk, mire mutat a célkereszt (aim); a műveleteket
    a szerver.js doClick() végzi. Lépték: K méter / rajzegység (1U = 20 egység = 4,4 cm). */
-import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611221620';
+import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611221632';
 
 const REACH = 3, EYE = 1.62, MAXP = 2500, RD = .9; // RD, RWID: a rack alapterülete
 let A = null, K = .0022, cv = null, R = null, scene = null, cam = null, room = null, cabG = null, held = null, ghost = null, pts = null;
@@ -23,7 +23,11 @@ const s3 = (f, lx, ly, out = .012) => { const s = Math.sin(f.yaw), c = Math.cos(
 const port3 = (p, out) => s3(SF.get(p.sf), p.x, p.y, out), wp3 = w => V(w[0], w[1], w[2]);
 // a rack alaprajza (tengelyekkel párhuzamos téglalap): [x0, z0, x1, z1]
 const fw = r => (A.RACK[r.t || r].wide ? A.RW * 2 : A.RW) * K + .07;
-const foot = (x, z, rt, dp = RD, RWID = .6) => { const s = Math.round(Math.sin(rt * Math.PI / 2)), c = Math.round(Math.cos(rt * Math.PI / 2)), bx = x - s * dp, bz = z - c * dp, hw = RWID / 2; return [Math.min(x, bx) - Math.abs(c) * hw, Math.min(z, bz) - Math.abs(s) * hw, Math.max(x, bx) + Math.abs(c) * hw, Math.max(z, bz) + Math.abs(s) * hw]; };
+const rect = (x, z, rt, wd, dp = RD) => { const yaw = rt * Math.PI / 2; return { cx: x - Math.sin(yaw) * dp / 2, cz: z - Math.cos(yaw) * dp / 2, hw: wd / 2, hd: dp / 2, yaw }; }, rrect = r => rect(r.x, r.z, r.rot, fw(r));
+const inR = (q, x, z, m) => { const dx = x - q.cx, dz = z - q.cz, c = Math.cos(q.yaw), s = Math.sin(q.yaw); return Math.abs(dx * c - dz * s) < q.hw + m && Math.abs(dx * s + dz * c) < q.hd + m; };
+const corners = q => { const c = Math.cos(q.yaw), s = Math.sin(q.yaw); return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => [q.cx + a * q.hw * c + b * q.hd * s, q.cz - a * q.hw * s + b * q.hd * c]); };
+// két elforgatott téglalap átfedése (elválasztó tengelyek)
+function hitR(a, b) { const A1 = corners(a), B1 = corners(b); for (const q of [a, b]) for (const ax of [[Math.cos(q.yaw), -Math.sin(q.yaw)], [Math.sin(q.yaw), Math.cos(q.yaw)]]) { const pr = P0 => P0.map(p => p[0] * ax[0] + p[1] * ax[1]), pa = pr(A1), pb = pr(B1); if (Math.max(...pa) < Math.min(...pb) + .02 || Math.max(...pb) < Math.min(...pa) + .02) return false; } return true; }
 
 function tex(w, h, k) { const c = document.createElement('canvas'); c.width = Math.ceil(w * k); c.height = Math.ceil(h * k); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return { c, x: c.getContext('2d'), t, k }; }
 // eljárással rajzolt felületek: zajos beton, csempehézag, lábazat
@@ -50,13 +54,16 @@ function build() { if (room) { scene.remove(room); room.traverse(o => { o.geomet
   { const sl = o => { o.userData = { sleep: 1 }; PL.push(o); }; if (!A.S.site) { sl(add(new THREE.BoxGeometry(.95, .28, 2), std('#4a3a2c', { metalness: 0, roughness: .9 }), W - .55, .14, D - 1.15)); sl(add(new THREE.BoxGeometry(.9, .14, 1.9), std('#d9dde3', { metalness: 0, roughness: .95 }), W - .55, .35, D - 1.15)); sl(add(new THREE.BoxGeometry(.9, .1, .45), std('#f4f5f7', { metalness: 0, roughness: .95 }), W - .55, .46, D - .4)); sl(add(new THREE.BoxGeometry(.92, .08, 1.2), std('#3b5b8c', { metalness: 0, roughness: .95 }), W - .55, .44, D - 1.5)); }
     else { sl(add(new THREE.BoxGeometry(1, 2.1, .06), std('#5b4632', { metalness: .1, roughness: .7 }), 1.2, 1.05, D - .03)); add(new THREE.BoxGeometry(1.14, 2.2, .04), std('#2a2d33'), 1.2, 1.1, D - .015); add(new THREE.BoxGeometry(.04, .14, .08), std('#c9ced6', { metalness: .9, roughness: .2 }), 1.6, 1.05, D - .08); const ex = add(new THREE.BoxGeometry(.4, .16, .03), new THREE.MeshBasicMaterial({ color: '#3ddc84' }), 1.2, 2.32, D - .03); ex.userData = { sleep: 1 }; } }
   // rackek: váz oszlopokkal, bent az eszközök saját dobozai; a kicsik állványon
+  const frameM = std('#22252a', { metalness: .7, roughness: .4 }); SCR.length = 0;
   const k = A.S.racks.length > 16 ? 2 : 3; A.S.racks.forEach((r, i) => { const f = SF.get('R' + i), g = new THREE.Group(); g.position.set(r.x, 0, r.z); g.rotation.y = f.yaw; room.add(g); const rw = f.w * K, hh = f.h * K, lf = f.wy, dp = lf ? .55 : .85; shadow(r.x - Math.sin(f.yaw) * dp / 2, r.z - Math.cos(f.yaw) * dp / 2, rw + .5, dp + .5, f.yaw);
     if (lf) { add(new THREE.BoxGeometry(rw + .1, .04, .7), wood, 0, lf - .02, -.33, g); for (const q of [[-rw / 2 + .02, -.03], [rw / 2 - .02, -.03], [-rw / 2 + .02, -.63], [rw / 2 - .02, -.63]]) add(new THREE.BoxGeometry(.05, lf - .04, .05), wood2, q[0], (lf - .04) / 2, q[1], g); }
     for (const q of [[-rw / 2 + .018, -.018], [rw / 2 - .018, -.018], [-rw / 2 + .018, -dp + .018], [rw / 2 - .018, -dp + .018]]) add(new THREE.BoxGeometry(.036, hh, .036), metal, q[0], lf + hh / 2, q[1], g);
+    for (const sx of [-1, 1]) { add(new THREE.BoxGeometry(.045, hh + .03, dp + .03), frameM, sx * (rw / 2 + .0225), lf + hh / 2, -dp / 2, g); add(new THREE.BoxGeometry(.012, hh - .12, dp - .16), std('#0d0e11', { roughness: .8 }), sx * (rw / 2 + .046), lf + hh / 2, -dp / 2, g); } add(new THREE.BoxGeometry(rw + .09, .045, dp + .03), frameM, 0, lf + hh + .0225, -dp / 2, g); if (!lf) add(new THREE.BoxGeometry(rw + .09, .06, dp + .03), std('#101114'), 0, -.03 + .03, -dp / 2, g);
     for (const y of [.012, hh - .012]) add(new THREE.BoxGeometry(rw, .024, dp), metal, 0, lf + y, -dp / 2, g); for (const x of [-rw / 2 + .004, rw / 2 - .004]) add(new THREE.BoxGeometry(.006, hh - .05, dp - .08), std('#101114', { transparent: true, opacity: .82 }), x, lf + hh / 2, -dp / 2, g);
     add(new THREE.BoxGeometry(rw - .08, hh - .05, .006), std('#0c0d10', { transparent: true, opacity: .7 }), 0, lf + hh / 2, -dp + .01, g);
     for (const dv of r.dev) { if (dv.id === A.insp) continue; const dh = dH(dv) - .003, dd = Math.min(dp - .06, A.DEV[dv.t].dp || (A.DEV[dv.t].k === 'srv' ? .6 : .28)); add(new THREE.BoxGeometry(A.dw(dv) * K, dh, dd), devM, 0, lf + hh - (7 + dv.u * A.U) * K - dH(dv) / 2, -dd / 2 - .002, g); }
     const hb = add(new THREE.BoxGeometry(rw, hh, dp), metal, 0, lf + hh / 2, -dp / 2 - .004, g); hb.visible = false; hb.userData = { rk: i }; PL.push(hb); const fp = front(g, 'R' + i, f, k, { rk: i }, 1); fp.position.y = lf + hh / 2;
+    if (A.RACK[r.t].u >= 32) { const t = tex(256, 84, 2); add(new THREE.BoxGeometry(.36, .13, .03), frameM, 0, lf + hh + .11, -.02, g); add(new THREE.PlaneGeometry(.34, .11), new THREE.MeshBasicMaterial({ map: t.t }), 0, lf + hh + .11, -.004, g); SCR.push({ i, t }); }
     if (r.vcm) { const wh = std('#e8ecf0', { metalness: .2 }), og = std('#ff8a2a', { metalness: 0, roughness: .7 }); for (const sx of [-1, 1]) { const x = sx * (rw / 2 + .035), sn = []; const bar = add(new THREE.BoxGeometry(.05, hh, .02), wh, x, lf + hh / 2, .012, g); for (let y = .05; y < hh - .02; y += .089) { add(new THREE.BoxGeometry(.05, .008, .07), og, x, lf + y, .05, g); sn.push(V(x, lf + y + .02, .06)); } const hb = add(new THREE.BoxGeometry(.07, hh, .1), wh, x, lf + hh / 2, .05, g); hb.visible = false; g.updateMatrixWorld(true); hb.userData = { rk: i, snap: sn.map(v => v.applyMatrix4(g.matrixWorld)) }; PL.push(hb); bar.userData = { rk: i }; } }
     if (r.arm) { const top = lf + hh, wh = std('#e8ecf0', { metalness: .2 }), og = std('#ff8a2a', { metalness: 0, roughness: .7 }), sn = []; add(new THREE.BoxGeometry(.03, .28, .03), wh, 0, top + .14, -.06, g); const ar = add(new THREE.BoxGeometry(.03, .03, .72), wh, 0, top + .27, .28, g); for (const z of [.15, .3, .45, .6]) { add(new THREE.BoxGeometry(.05, .05, .022), og, 0, top + .3, z, g); sn.push(V(0, top + .31, z)); } g.updateMatrixWorld(true); ar.userData = { rk: i, snap: sn.map(v => v.applyMatrix4(g.matrixWorld)) }; PL.push(ar); } });
   // kábeltálcák a mennyezet alatt
@@ -136,6 +143,12 @@ function inspect(dt) { const id = A.insp, d = id ? [...A.S.racks.flatMap(r => r.
   hoverBox.visible = !!hv; if (hv) { hv.g.getWorldPosition(hoverBox.position); if (hv.k === 'mb') hoverBox.position.y -= hv.s[1] / 2 - .004; hoverBox.position.y += hv.s[1] / 2; hoverBox.rotation.y = p.yaw; hoverBox.scale.set(hv.s[0], hv.s[1] + .004, hv.s[2]); } DR.hv = hv; A.setHov(hv ? [hv.k, hv.i] : null);
   const cx = document.querySelector('#ctx'); cx.classList.toggle('mouse', !!d); if (d) { cx.style.left = mouse.cx + 16 + 'px'; cx.style.top = mouse.cy + 14 + 'px'; } else { cx.style.left = cx.style.top = ''; } cv.style.cursor = hv ? 'pointer' : ''; return true; }
 
+// a nagyobb rackek kijelzője: fogyasztás, ügyfelek, hibák
+const SCR = []; let scrT = 0;
+function screens() { for (const sc of SCR) { const r = A.S.racks[sc.i]; if (!r) continue; const x = sc.t.x, ids = new Set(r.dev.map(d => d.id)); let w = 0, off = 0; for (const d of r.dev) { const o = A.C.d[d.id] || {}, kd = A.DEV[d.t].k; if (kd === 'srv') { if (d.on && o.boot && o.psuOk && o.live) w += o.own ? o.own.w : 0; if (d.on && o.st && o.st !== 'ok') off++; } else if (o.live && A.DEV[d.t].w) w += A.DEV[d.t].w; }
+    const cs = A.S.cons.filter(c => ids.has(c.srv)), bad = (A.C.bad || []).filter(d => ids.has(d.id)).length, trouble = bad || off;
+    x.setTransform(2, 0, 0, 2, 0, 0); x.fillStyle = '#05080c'; x.fillRect(0, 0, 256, 84); x.fillStyle = trouble ? '#ff5a4d' : '#5ee08a'; x.fillRect(0, 0, 256, 4); x.font = '700 17px monospace'; x.textBaseline = 'top'; x.fillStyle = '#7fd4ff'; x.fillText((w / 1000).toFixed(2).replace('.', ',') + ' kW  ' + r.dev.length + ' eszk.', 8, 10);
+    x.font = '600 12px monospace'; x.fillStyle = '#cfd6df'; x.fillText(cs.length ? cs.length + ' ügyfél: ' + cs.slice(0, 2).map(c => c.n).join(', ').slice(0, 24) : 'nincs ügyfél', 8, 34); x.fillStyle = trouble ? '#ff5a4d' : '#5ee08a'; x.font = '700 13px monospace'; x.fillText(trouble ? '! ' + [bad && bad + ' hibás alkatrész', off && off + ' gép áll'].filter(Boolean).join(' · ') : 'MINDEN RENDBEN', 8, 58); sc.t.t.needsUpdate = true; } }
 const paint = key => { const t = RT.get(key); if (!t) return; if (key[0] === 'W') A.wallTo(t.x, t.k, key); else if (key[0] === 'R') { const i = +key.slice(1); if (!A.S.racks[i]) return; A.rackTo(t.x, i, t.k); } else { const d = A.S.loose.find(d => 'L' + d.id === key); if (!d) return; A.looseTo(t.x, d, t.k); } t.t.needsUpdate = true; };
 
 /* ---------- kábelek, csatlakozók, adatforgalom ---------- */
@@ -156,14 +169,14 @@ function flow(dt) { clock += dt; const pos = pts.geometry.attributes.position, v
 
 /* ---------- célzás és lerakás ---------- */
 function stackTop(d) { let top = d; for (let n = 0; n < 40; n++) { const up = A.S.loose.find(o => o !== top && Math.abs(o.wx - top.wx) < .02 && Math.abs(o.wz - top.wz) < .02 && Math.abs(o.wy - (top.wy + dH(top))) < .01); if (!up) break; top = up; } return top; }
-const inRack = (x, z, m, skip) => A.S.racks.some((r, i) => { if (i === skip) return false; const f = foot(r.x, r.z, r.rot, RD, fw(r)); return x > f[0] - m && x < f[2] + m && z > f[1] - m && z < f[3] + m; });
+const inRack = (x, z, m, skip) => A.S.racks.some((r, i) => i !== skip && inR(rrect(r), x, z, m));
 function looseOk(t, dev) { const [W, D] = room3(), h = dH(dev); if (t.wy + h > 2.15 || (A.DEV[dev.t].floor && (t.wall || t.stack))) return false; if (t.wall || t.stack) return true; const cx = t.wx - Math.sin(t.yaw) * .25, cz = t.wz - Math.cos(t.yaw) * .25; if (cx < .35 || cx > W - .35 || cz < .35 || cz > D - .35 || inRack(cx, cz, .25)) return false;
   return !A.S.loose.some(o => o !== dev && !A.wallMount(o) && o.wy < h && Math.hypot(o.wx - Math.sin(o.yaw) * .25 - cx, o.wz - Math.cos(o.yaw) * .25 - cz) < .55); }
-function rackOk(x, z, rt, skip, wd) { const [W, D] = room3(), f = foot(x, z, rt, RD, wd); if (f[0] < .05 || f[1] < .05 || f[2] > W - .05 || f[3] > D - .05) return false; if (A.S.racks.some((r, i) => { if (i === skip) return false; const g = foot(r.x, r.z, r.rot, RD, fw(r)); return f[0] < g[2] - .02 && g[0] < f[2] - .02 && f[1] < g[3] - .02 && g[1] < f[3] - .02; })) return false;
-  return !A.S.loose.some(o => { const cx = o.wx - Math.sin(o.yaw) * .25, cz = o.wz - Math.cos(o.yaw) * .25; return !A.wallMount(o) && cx > f[0] - .2 && cx < f[2] + .2 && cz > f[1] - .2 && cz < f[3] + .2; }); }
+function rackOk(x, z, rt, skip, wd) { const [W, D] = room3(), q = rect(x, z, rt, wd); if (corners(q).some(p => p[0] < .04 || p[1] < .04 || p[0] > W - .04 || p[1] > D - .04)) return false; if (A.S.racks.some((r, i) => i !== skip && hitR(q, rrect(r)))) return false;
+  return !A.S.loose.some(o => !A.wallMount(o) && inR(q, o.wx - Math.sin(o.yaw) * .25, o.wz - Math.cos(o.yaw) * .25, .2)); }
 function pick() { const dir = V(0, 0, 0); cam.getWorldDirection(dir); const o = cam.position, [W, D, H] = room3(), pl = A.place, sel = A.sel, a = {};
   RC.set(o, dir); RC.far = REACH; const hit = RC.intersectObjects(PL, false)[0], u = hit ? hit.object.userData : {};
-  const F = dir.y < -.02 && o.y / -dir.y < 4.5 ? { x: o.x + dir.x * o.y / -dir.y, z: o.z + dir.z * o.y / -dir.y, t: o.y / -dir.y } : null, face = Math.round(Math.atan2(o.x - (F ? F.x : o.x + dir.x), o.z - (F ? F.z : o.z + dir.z)) / (Math.PI / 2));
+  const F = dir.y < -.02 && o.y / -dir.y < 4.5 ? { x: o.x + dir.x * o.y / -dir.y, z: o.z + dir.z * o.y / -dir.y, t: o.y / -dir.y } : null, face = Math.round(Math.atan2(o.x - (F ? F.x : o.x + dir.x), o.z - (F ? F.z : o.z + dir.z)) / (Math.PI / 12)) / 6; // 15°-onként, negyedfordulat-egységben
   if (hit) { if (u.sleep) { a.sleep = 1; return a; } if (u.rk != null) a.rk = u.rk; if (u.dev) a.d = u.dev; if (u.tray) a.tray = u.tray;
     if (u.sf && hit.uv) { const f = SF.get(u.sf), lx = hit.uv.x * f.w, ly = (1 - hit.uv.y) * f.h; let bd = u.sf[0] === 'W' ? 13 : 8; for (const p of A.RP[u.sf] || []) { const dd = Math.hypot(p.x - lx, p.y - ly), lim = p.id ? 8 : 13; if (dd < bd && dd < lim) { bd = dd; a.p = p; } }
       if (u.rk != null) { const r = A.S.racks[u.rk], n = A.RACK[r.t].u, uu = Math.max(0, Math.min(n - 1, Math.floor((ly - 7) / A.U))); a.h = { ri: u.rk, u: uu, dev: r.dev.find(d => uu >= d.u && uu < d.u + A.DEV[d.t].u) }; a.d = a.h.dev; } }
@@ -176,7 +189,7 @@ function pick() { const dir = V(0, 0, 0); cam.getWorldDirection(dir); const o = 
   if (!pl) return a;
   // lerakás
   const kd = pl.rk ? 'rack' : A.DEV[pl.t].k, yawOf = r => r * Math.PI / 2;
-  if (kd === 'rack') { if (F) { const rt = ((face + rot) % 4 + 4) % 4, x = snapG(F.x), z = snapG(F.z), small = A.RACK[pl.rk].u <= 18, dp = small ? .55 : .85, hh = (A.RACK[pl.rk].u * A.U + 14) * K, lf = small ? 380 * K : 0, s = Math.sin(yawOf(rt)), c = Math.cos(yawOf(rt)); a.pl = { x, z, rot: rt, turn: 1, ok: rackOk(x, z, rt, pl.mv, fw(pl.rk)), box: [V(x - s * dp / 2, lf + hh / 2, z - c * dp / 2), yawOf(rt), [fw(pl.rk), hh, dp]] }; } return a; }
+  if (kd === 'rack') { if (F) { const rt = Math.round((((face + rot / 6) % 4 + 4) % 4) * 6) / 6, x = Math.round(F.x * 50) / 50, z = Math.round(F.z * 50) / 50, small = A.RACK[pl.rk].u <= 18, dp = small ? .55 : .85, hh = (A.RACK[pl.rk].u * A.U + 14) * K, lf = small ? 380 * K : 0, s = Math.sin(yawOf(rt)), c = Math.cos(yawOf(rt)); a.pl = { x, z, rot: rt, turn: 1, ok: rackOk(x, z, rt, pl.mv, fw(pl.rk)), box: [V(x - s * dp / 2, lf + hh / 2, z - c * dp / 2), yawOf(rt), [fw(pl.rk), hh, dp]] }; } return a; }
   if (kd === 'tray') { if (dir.y > .05) { const t = (A.TRAYH - o.y) / dir.y; if (t < 5) { const x = snapG(o.x + dir.x * t), z = snapG(o.z + dir.z * t), rt = ((Math.abs(dir.x) > Math.abs(dir.z) ? 0 : 1) + rot) % 2 & 1; a.pl = { x, z, rot: rt, turn: 1, ok: x > .5 && x < W - .5 && z > .5 && z < D - .5 && !A.S.trays.some(q => q.x === x && q.z === z && q.rot === rt), box: [V(x, A.TRAYH, z), yawOf(rt), [1.2, .06, .3]] }; } } return a; }
   if (kd === 'vcm') { if (a.rk != null) { const r = A.S.racks[a.rk], f = SF.get('R' + a.rk); a.pl = { vcm: a.rk, ok: !r.vcm, box: [s3(f, f.w / 2, f.h / 2, .05), f.yaw, [f.w * K + .14, f.h * K, .1]] }; } return a; }
   if (kd === 'arm') { if (a.rk != null) { const r = A.S.racks[a.rk], f = SF.get('R' + a.rk), s = Math.sin(f.yaw), c = Math.cos(f.yaw); a.pl = { arm: a.rk, ok: !r.arm, box: [V(r.x + s * .28, f.wy + f.h * K + .27, r.z + c * .28), f.yaw, [.05, .05, .72]] }; } return a; }
@@ -233,4 +246,5 @@ export function frame(dt) { if (!on) return; const S = A.S, [W, D] = room3(), s2
     held.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(v, false, 'centripetal'), Math.min(200, v.length * 2), net ? .006 : .008, 6), mat())); const tip = new THREE.Mesh(new THREE.SphereGeometry(okp ? .016 : .012, 10, 8), mat()); tip.position.copy(v[v.length - 1]); held.add(tip);
     for (const q of sel.w) { const m = new THREE.Mesh(new THREE.SphereGeometry(.011, 8, 6), mat()); m.position.copy(wp3(q)); held.add(m); }
     if (!okp && aim.pt) { const m = new THREE.Mesh(new THREE.TorusGeometry(.02, .004, 6, 14), new THREE.MeshBasicMaterial({ color: 0xff8a2a })); m.position.set(...aim.pt); if (aim.pt[1] < .05 || aim.pt[1] > A.TRAYH) m.rotation.x = Math.PI / 2; held.add(m); } }
+  if ((scrT -= dt) <= 0) { scrT = 1; screens(); }
   marks(); flow(A.S.spd ? dt : 0); R.render(scene, cam); }

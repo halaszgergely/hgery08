@@ -5,10 +5,10 @@ import {
 	Vector2,
 	WebGLRenderTarget
 } from 'three';
-import { CopyShader } from '../shaders/CopyShader.js?v=202611221620';
-import { ShaderPass } from './ShaderPass.js?v=202611221620';
-import { MaskPass } from './MaskPass.js?v=202611221620';
-import { ClearMaskPass } from './MaskPass.js?v=202611221620';
+import { CopyShader } from '../shaders/CopyShader.js?v=202611221632';
+import { ShaderPass } from './ShaderPass.js?v=202611221632';
+import { MaskPass } from './MaskPass.js?v=202611221632';
+import { ClearMaskPass } from './MaskPass.js?v=202611221632';
 
 class EffectComposer {
 
