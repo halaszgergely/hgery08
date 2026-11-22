@@ -1,21 +1,21 @@
 /* HGWS Légi Öntözés – főprogram: betöltés, renderelés, játékhurok, kamerák, töltés, küldetések, feloldások. */
 import * as THREE from 'three';
-import { GEPEK, GEP, REPTER, REPTEREK, KULDETESEK, FORGO, ZERO_HELY, GAME } from './config.js?v=202611220119';
-import * as GEO from './geo.js?v=202611220119';
-import { createTerrain } from './terep.js?v=202611220119';
-import { createWorld } from './vilag.js?v=202611220119';
-import { createOSM } from './osm.js?v=202611220119';
-import { buildModel, animate } from './modellek.js?v=202611220119';
-import { createBody, placeOn, step } from './fizika.js?v=202611220119';
-import { createSpray } from './permet.js?v=202611220119';
-import { createMission } from './kuldetes.js?v=202611220119';
-import { createAudio } from './hang.js?v=202611220119';
-import { createControls } from './iranyitas.js?v=202611220119';
-import { createHud, setMapImage, drawMap } from './hud.js?v=202611220119';
-import * as HUDM from './hud.js?v=202611220119';
-import { createUI } from './ui.js?v=202611220119';
-import * as RL from './ranglista.js?v=202611220119';
-import { createPost } from './utofeldolgozas.js?v=202611220119';
+import { GEPEK, GEP, REPTER, REPTEREK, KULDETESEK, FORGO, ZERO_HELY, GAME } from './config.js?v=202611220136';
+import * as GEO from './geo.js?v=202611220136';
+import { createTerrain } from './terep.js?v=202611220136';
+import { createWorld } from './vilag.js?v=202611220136';
+import { createOSM } from './osm.js?v=202611220136';
+import { buildModel, animate } from './modellek.js?v=202611220136';
+import { createBody, placeOn, step } from './fizika.js?v=202611220136';
+import { createSpray } from './permet.js?v=202611220136';
+import { createMission } from './kuldetes.js?v=202611220136';
+import { createAudio } from './hang.js?v=202611220136';
+import { createControls } from './iranyitas.js?v=202611220136';
+import { createHud, setMapImage, drawMap } from './hud.js?v=202611220136';
+import * as HUDM from './hud.js?v=202611220136';
+import { createUI } from './ui.js?v=202611220136';
+import * as RL from './ranglista.js?v=202611220136';
+import { createPost } from './utofeldolgozas.js?v=202611220136';
 
 const $ = s => document.querySelector(s);
 const LS = 'hgws_legi_v1', TOUCH = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window;
@@ -266,6 +266,7 @@ function toggleMap() { mapOpen = !mapOpen; $('#mapS').hidden = !mapOpen; if (map
 let mapTp = 0; $('#mapTp').onclick = () => { mapTp = mapTp ? 0 : 1; $('#mapTp').classList.toggle('on', !!mapTp); };
 $('#mapClr').onclick = () => { HUDM.wpClear(); $('#mapC')._redraw?.(); $('#mapClr').hidden = true; };
 $('#mapX').onclick = () => toggleMap();
+$('#mini').addEventListener('click', () => { if (state === 'fly' && !mapOpen) toggleMap(); });   // a minitérképre koppintva a nagy térkép
 
 /* útpontok a 3D-ben: függőleges fényoszlopok; a következőt elérve továbblép */
 const wpG = new THREE.Group(), wpGeo = new THREE.CylinderGeometry(9, 9, 1600, 12, 1, true).translate(0, 800, 0), wpMat = new THREE.MeshBasicMaterial({ color: 0xd36bff, transparent: true, opacity: .32, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
