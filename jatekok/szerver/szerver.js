@@ -1,0 +1,249 @@
+/* HGWS Arcade – Szerverfarm: garázsszervertől az adatközpontig.
+   Rackek elölnézetben; az eszközök portjait kattintással lehet összekábelezni (hálózat és áram külön).
+   Állapot: S (localStorage), a számolt értékek (áram, hálózat, hő, bevétel): C – a calc() állítja elő. */
+(() => {
+  'use strict';
+  const $ = s => document.querySelector(s), cv = $('#c'), g = cv.getContext('2d'), KEY = 'hgws_szerver_v1', GAME = 'szerver';
+  const DAY = 30, KWH = 70, U = 20, RW = 240, RX = 310, ROW = 8, RY = 1000; // DAY: egy játéknap másodpercben
+  const ft = v => Math.round(v).toLocaleString('hu-HU') + ' Ft', sp = v => v >= 1000 ? v / 1000 + 'G' : v + 'M', rnd = (a, b) => a + Math.random() * (b - a), esc = s => String(s).replace(/[<>&]/g, '');
+  const num = v => v >= 100 ? Math.round(v).toLocaleString('hu-HU') : (Math.round(v * 10) / 10).toLocaleString('hu-HU');
+
+  /* ---------- katalógus ---------- */
+  const RACK = { k6: { n: 'Fali rack 6U', u: 6, c: 25e3 }, k12: { n: 'Rack 12U', u: 12, c: 55e3 }, k24: { n: 'Rack 24U', u: 24, c: 12e4 }, k42: { n: 'Rack 42U', u: 42, c: 26e4 } };
+  const DEV = {
+    h1: { n: 'Házi szerver', k: 'srv', u: 2, c: 28e3, cpu: 1, ram: 2, bay: 2, pci: 1, net: [1000], d: '1 CPU · 2 RAM · 2 lemez · 1 bővítőhely' },
+    m3: { n: 'Bányászkeret', k: 'srv', u: 3, c: 45e3, cpu: 1, ram: 1, bay: 1, pci: 6, net: [1000], d: '1 CPU · 1 RAM · 1 lemez · 6 bővítőhely' },
+    r1: { n: 'Rack szerver 1U', k: 'srv', u: 1, c: 12e4, cpu: 2, ram: 8, bay: 4, pci: 1, net: [1000, 1000], d: '2 CPU · 8 RAM · 4 lemez · 1 bővítőhely' },
+    r2: { n: 'Rack szerver 2U', k: 'srv', u: 2, c: 26e4, cpu: 2, ram: 16, bay: 12, pci: 3, net: [1000, 1000], d: '2 CPU · 16 RAM · 12 lemez · 3 bővítőhely' },
+    s4: { n: 'Tárolószerver 4U', k: 'srv', u: 4, c: 52e4, cpu: 1, ram: 8, bay: 36, pci: 2, net: [10000, 10000], d: '1 CPU · 8 RAM · 36 lemez · 2 bővítőhely' },
+    g4: { n: 'GPU szerver 4U', k: 'srv', u: 4, c: 65e4, cpu: 2, ram: 16, bay: 8, pci: 8, net: [10000, 10000], d: '2 CPU · 16 RAM · 8 lemez · 8 bővítőhely' },
+    sw5: { n: 'Switch 5 port', k: 'sw', u: 1, c: 9e3, w: 8, net: Array(5).fill(1000), d: '5 × 1G' },
+    sw16: { n: 'Switch 16 port', k: 'sw', u: 1, c: 38e3, w: 20, net: Array(16).fill(1000), d: '16 × 1G' },
+    sw24: { n: 'Switch 24+4', k: 'sw', u: 1, c: 14e4, w: 45, net: [...Array(24).fill(1000), ...Array(4).fill(10000)], d: '24 × 1G · 4 × 10G' },
+    sw24x: { n: 'Switch 24×10G', k: 'sw', u: 1, c: 75e4, w: 150, net: [...Array(24).fill(10000), ...Array(4).fill(40000)], d: '24 × 10G · 4 × 40G' },
+    sw32q: { n: 'Gerinc switch', k: 'sw', u: 1, c: 32e5, w: 400, net: [...Array(24).fill(40000), ...Array(8).fill(100000)], d: '24 × 40G · 8 × 100G' },
+    st6: { n: 'Elosztó 6-os', k: 'pw', u: 1, c: 6e3, out: 6, max: 3680, d: '6 aljzat · 3,7 kW' },
+    pdu: { n: 'PDU 12-es', k: 'pw', u: 1, c: 48e3, out: 12, max: 7400, d: '12 aljzat · 7,4 kW' },
+    pdx: { n: 'PDU 3 fázis', k: 'pw', u: 2, c: 22e4, out: 24, max: 22000, d: '24 aljzat · 22 kW' },
+    up1: { n: 'UPS 1,5 kW', k: 'ups', u: 2, c: 11e4, out: 4, max: 1500, wh: 500, d: '4 aljzat · 1,5 kW · 500 Wh' },
+    up2: { n: 'UPS 6 kW', k: 'ups', u: 4, c: 65e4, out: 8, max: 6000, wh: 4000, d: '8 aljzat · 6 kW · 4 kWh' },
+    up3: { n: 'UPS 20 kW', k: 'ups', u: 6, c: 24e5, out: 16, max: 20000, wh: 20000, d: '16 aljzat · 20 kW · 20 kWh' } };
+  const PART = {
+    c4: { n: 'CPU 4 mag', k: 'cpu', c: 3e4, w: 65, v: 4 }, c8: { n: 'CPU 8 mag', k: 'cpu', c: 85e3, w: 95, v: 8 }, c16: { n: 'CPU 16 mag', k: 'cpu', c: 24e4, w: 150, v: 16 }, c32: { n: 'CPU 32 mag', k: 'cpu', c: 7e5, w: 225, v: 32 }, c64: { n: 'CPU 64 mag', k: 'cpu', c: 19e5, w: 320, v: 64 },
+    r8: { n: 'RAM 8 GB', k: 'ram', c: 8e3, w: 3, v: 8 }, r16: { n: 'RAM 16 GB', k: 'ram', c: 18e3, w: 4, v: 16 }, r32: { n: 'RAM 32 GB', k: 'ram', c: 4e4, w: 5, v: 32 }, r64: { n: 'RAM 64 GB', k: 'ram', c: 95e3, w: 7, v: 64 }, r128: { n: 'RAM 128 GB', k: 'ram', c: 22e4, w: 10, v: 128 },
+    d2: { n: 'HDD 2 TB', k: 'hdd', c: 2e4, w: 7, v: 2 }, d8: { n: 'HDD 8 TB', k: 'hdd', c: 6e4, w: 8, v: 8 }, d20: { n: 'HDD 20 TB', k: 'hdd', c: 14e4, w: 9, v: 20 }, e4: { n: 'SSD 4 TB', k: 'hdd', c: 11e4, w: 3, v: 4, ssd: 1 },
+    g1: { n: 'GPU G-10', k: 'gpu', c: 9e4, w: 120, v: 10 }, g2: { n: 'GPU G-25', k: 'gpu', c: 22e4, w: 220, v: 25 }, g3: { n: 'GPU G-60', k: 'gpu', c: 55e4, w: 350, v: 60 }, g4: { n: 'GPU G-150', k: 'gpu', c: 16e5, w: 450, v: 150 },
+    n10: { n: 'Hálókártya 2×10G', k: 'nic', c: 45e3, w: 15, v: 10000 }, n40: { n: 'Hálókártya 2×40G', k: 'nic', c: 18e4, w: 25, v: 40000 },
+    p300: { n: 'Táp 300 W', k: 'psu', c: 15e3, v: 300 }, p650: { n: 'Táp 650 W', k: 'psu', c: 3e4, v: 650 }, p1200: { n: 'Táp 1200 W', k: 'psu', c: 7e4, v: 1200 }, p2400: { n: 'Táp 2400 W', k: 'psu', c: 16e4, v: 2400 }, p4000: { n: 'Táp 4000 W', k: 'psu', c: 3e5, v: 4000 } };
+  const PK = { cpu: 'CPU', ram: 'RAM', hdd: 'Lemez', pci: 'Bővítő', psu: 'Táp' }, PU = { cpu: ' mag', ram: ' GB', hdd: ' TB', gpu: ' pont', psu: ' W' };
+  const COOL = { fan: { n: 'Ipari ventilátor', c: 12e3, v: 800, w: 60, s: 0 }, ac: { n: 'Mobilklíma', c: 15e4, v: 3000, w: 1000, s: 0 }, split: { n: 'Split klíma', c: 6e5, v: 8000, w: 2200, s: 1 }, crac: { n: 'Precíziós klíma', c: 6e6, v: 45000, w: 11000, s: 2 } };
+  const SITE = [
+    { n: 'Garázs', racks: 2, out: 2, omax: 3680, isp: 4, plan: 1, pas: 1200, k: 50, rent: 0, c: 0, bg: ['#3a3d42', '#2b2e33', '#55504a'] },
+    { n: 'Pinceiroda', racks: 6, out: 4, omax: 7400, isp: 4, plan: 2, pas: 2500, k: 120, rent: 8e3, c: 4e5, bg: ['#39424a', '#2a3138', '#4a4f55'] },
+    { n: 'Szerverterem', racks: 16, out: 8, omax: 22000, isp: 8, plan: 3, pas: 6000, k: 400, rent: 4e4, c: 3e6, bg: ['#27323d', '#1b242d', '#3b4753'] },
+    { n: 'Adatközpont-csarnok', racks: 48, out: 24, omax: 22000, isp: 16, plan: 4, pas: 18000, k: 1500, rent: 18e4, c: 25e6, bg: ['#1f2a36', '#151d26', '#33414f'] } ];
+  const PLAN = [{ n: '100 Mbit', sp: 100, c: 300 }, { n: '1 Gbit', sp: 1000, c: 900 }, { n: '10 Gbit', sp: 10000, c: 6000 }, { n: '40 Gbit', sp: 40000, c: 25000 }, { n: '100 Gbit', sp: 100000, c: 70000 }];
+  const CT = { // ügyféltípusok: az igények az m méretszorzóval nőnek
+    web: { i: '🌐', n: 'Weboldal', rep: 0, f: m => [1.5 * m, 3 * m, .08 * m, 0, 40 * m], x: 1 }, nas: { i: '💾', n: 'Hálózati tárhely', rep: 0, f: m => [.4 * m, 1 * m, 3 * m, 0, 60 * m], x: 1 },
+    game: { i: '🎮', n: 'Játékszerver', rep: 5, f: m => [3 * m, 6 * m, .1 * m, 0, 80 * m], x: 1.25 }, db: { i: '🗄️', n: 'Adatbázis', rep: 10, f: m => [2 * m, 12 * m, .5 * m, 0, 30 * m], x: 1.15 },
+    ai: { i: '🧠', n: 'MI-tanítás', rep: 15, f: m => [1 * m, 4 * m, .2 * m, 10 * m, 50 * m], x: 1.2 }, rend: { i: '🎬', n: 'Renderfarm', rep: 25, f: m => [4 * m, 4 * m, .3 * m, 6 * m, 40 * m], x: 1.1 } };
+  const NA = ['Tisza', 'Bükk', 'Pannon', 'Avas', 'Zemplén', 'Duna', 'Mátra', 'Hernád', 'Borsod', 'Alföld', 'Bakony', 'Rába', 'Kék', 'Zöld', 'Arany', 'Nova', 'Delta', 'Orion'], NB = ['Soft', 'Web', 'Média', 'Logisztika', 'Labs', 'Stúdió', 'Trade', 'Bt.', 'Kft.', 'Digital', 'Games', 'Pékség', 'Autóház', 'Könyvelő', 'Tech', 'Agro'];
+  const GOALS = [['Vegyél egy racket a boltban', () => S.racks.some(r => r), 1e4], ['Építs meg és szerelj be egy szervert', () => devs().some(d => DEV[d.t].k === 'srv' && C.d[d.id] && C.d[d.id].boot), 2e4], ['Kösd a szervert áramra és internetre', () => C.online > 0, 2e4], ['Szerezd meg az első ügyfelet', () => S.cons.length > 0, 3e4],
+    ['Érj el napi 10 000 Ft bevételt', () => C.inc >= 1e4, 4e4], ['Indíts kriptobányászatot', () => C.hash > 0, 5e4], ['Szerelj be egy switchet', () => devs().some(d => DEV[d.t].k === 'sw'), 3e4], ['Üzemeltess egyszerre 4 szervert', () => C.online >= 4, 1e5],
+    ['Költözz ki a garázsból', () => S.site >= 1, 2e5], ['Érj el napi 250 000 Ft bevételt', () => C.inc >= 25e4, 5e5], ['Költözz szerverterembe', () => S.site >= 2, 1e6], ['Érj el napi 2 000 000 Ft bevételt', () => C.inc >= 2e6, 4e6], ['Nyisd meg az adatközpont-csarnokot', () => S.site >= 3, 1e7], ['Érj el napi 20 000 000 Ft bevételt', () => C.inc >= 2e7, 5e7]];
+
+  /* ---------- állapot ---------- */
+  let S = null, C = { d: {}, inc: 0, cost: 0, online: 0, hash: 0, heat: 0, temp: 21, bw: 0, wall: [] }, PORTS = [], PM = new Map(), dirty = 1;
+  const cam = { x: 120, y: -190, s: Math.min(1.7, Math.max(.8, innerWidth / 760)) }; let sel = null, place = null, mouse = [0, 0], pan = null, view = null;
+  function fresh() { S = { v: 1, money: 2e5, life: 0, day: 0, site: 0, plan: 0, racks: [null, null], spare: [], inv: {}, cables: [], nid: 1, offers: [], cons: [], rep: 0, coin: 180, cool: {}, trip: {}, out: 0, goal: 0, spd: 1, ot: 0 }; for (let i = 0; i < 3; i++) offer(); dirty = 1; }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (_) {} };
+  function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.v === 1 && Array.isArray(s.racks)) { S = s; return true; } } catch (_) {} return false; }
+  const devs = () => { const o = []; for (const r of S.racks) if (r) for (const d of r.dev) o.push(d); return o; };
+  const findDev = id => { for (let i = 0; i < S.racks.length; i++) { const r = S.racks[i]; if (r) for (const d of r.dev) if (d.id === id) return [d, i]; } return [S.spare.find(d => d.id === id) || null, -1]; };
+  const toast = (t, bad) => { const e = document.createElement('div'); e.textContent = t; if (bad) e.className = 'bad'; $('#toast').append(e); setTimeout(() => e.remove(), 4200); while ($('#toast').children.length > 4) $('#toast').firstChild.remove(); };
+  let AX = null; const beep = (f, d = .07) => { try { AX = AX || new AudioContext(); const o = AX.createOscillator(), gn = AX.createGain(); o.frequency.value = f; o.type = 'triangle'; gn.gain.value = .05; gn.gain.exponentialRampToValueAtTime(.0001, AX.currentTime + d); o.connect(gn).connect(AX.destination); o.start(); o.stop(AX.currentTime + d); } catch (_) {} };
+  const pay = c => { if (S.money < c) { toast('Nincs rá elég pénz.', 1); beep(160, .12); return false; } S.money -= c; beep(700); return true; };
+
+  /* ---------- eszközök, portok ---------- */
+  const mk = t => { const D = DEV[t], d = { id: S.nid++, t, u: 0 }; if (D.k === 'srv') Object.assign(d, { on: 1, cpu: [], ram: [], hdd: [], pci: [], psu: null, mine: 0 }); if (D.k === 'ups') d.bat = D.wh; return d; };
+  const pv = k => PART[k.replace('!', '')], broken = k => k[0] === '!';
+  function cap(d) { const s = (a, f) => a.reduce((x, k) => x + (broken(k) || (f && !f(pv(k))) ? 0 : pv(k).v), 0); return { cores: s(d.cpu), ram: s(d.ram), tb: s(d.hdd), gpu: s(d.pci, p => p.k === 'gpu'), w: 25 + [...d.cpu, ...d.ram, ...d.hdd, ...d.pci].reduce((x, k) => x + pv(k).w, 0), psu: d.psu ? PART[d.psu].v : 0 }; }
+  function netPorts(d) { const D = DEV[d.t]; if (!D.net) return []; const a = D.net.slice(); if (D.k === 'srv') for (const k of d.pci) if (pv(k).k === 'nic') a.push(pv(k).v, pv(k).v); return a; }
+  // egy eszköz portjai a saját bal felső sarkához képest
+  function portsOf(d) { const D = DEV[d.t], o = [], h = D.u * U;
+    if (D.k === 'pw' || D.k === 'ups') { const per = D.out > 12 ? 12 : D.out; for (let i = 0; i < D.out; i++) o.push({ k: 'po', i, x: 16 + (i % per) * 15, y: D.out > 12 ? (i < 12 ? h / 2 - 7 : h / 2 + 7) : h / 2 }); o.push({ k: 'pi', i: 0, x: RW - 14, y: h / 2 }); return o; }
+    const n = netPorts(d), two = n.length > 8, pit = n.length > 24 ? 7.4 : 9.5, cols = two ? Math.ceil(n.length / 2) : n.length, x0 = RW - 30 - (D.k === 'sw' ? 0 : 0) - cols * pit;
+    n.forEach((s, i) => o.push({ k: 'n', i, sp: s, x: x0 + (two ? i >> 1 : i) * pit + pit / 2, y: two ? (i & 1 ? h / 2 + 4.5 : h / 2 - 4.5) : h / 2 })); o.push({ k: 'pi', i: 0, x: RW - 14, y: h / 2 }); return o; }
+  const rackXY = i => { const r = S.racks[i], n = r ? RACK[r.t].u : 6; return [(i % ROW) * RX, Math.floor(i / ROW) * RY - n * U - 14]; };
+  const pkey = (id, k, i) => id + ':' + k + ':' + i;
+  function wallPorts() { const st = SITE[S.site], o = []; for (let i = 0; i < st.isp; i++) o.push({ id: 0, k: 'n', i, sp: PLAN[S.plan].sp, x: -215 + (i % 4) * 26, y: -330 - Math.floor(i / 4) * 26 }); for (let i = 0; i < st.out; i++) o.push({ id: 0, k: 'po', i, x: -215 + (i % 4) * 30, y: -70 - Math.floor(i / 4) * 34 }); return o; }
+  function buildPorts() { PORTS = wallPorts(); S.racks.forEach((r, ri) => { if (!r) return; const [rx, ry] = rackXY(ri); for (const d of r.dev) for (const p of portsOf(d)) PORTS.push({ ...p, id: d.id, dev: d, x: rx + 14 + p.x, y: ry + 7 + d.u * U + p.y }); });
+    PM = new Map(PORTS.map(p => [pkey(p.id, p.k, p.i), p])); const n0 = S.cables.length; S.cables = S.cables.filter(c => PM.has(pkey(...c.a)) && PM.has(pkey(...c.b))); if (S.cables.length !== n0) dirty = 1; }
+  const other = (id, k, i) => { const key = pkey(id, k, i); for (const c of S.cables) { if (pkey(...c.a) === key) return c.b; if (pkey(...c.b) === key) return c.a; } return null; };
+
+  /* ---------- számítás: áram, hálózat, hő, bevétel ---------- */
+  function calc() { buildPorts(); const st = SITE[S.site], link = new Map(); for (const c of S.cables) { link.set(pkey(...c.a), c.b); link.set(pkey(...c.b), c.a); }
+    const D = {}, all = devs(), byId = new Map(all.map(d => [d.id, d])); for (const d of all) { const k = DEV[d.t].k, o = D[d.id] = { k }; if (k === 'srv') { o.cap = cap(d); o.boot = d.cpu.length > 0 && d.ram.length > 0 && d.hdd.some(x => !broken(x)) && !!d.psu; o.psuOk = o.cap.psu >= o.cap.w; } }
+    for (let pass = 0; pass < 6; pass++) { let again = false; const lv = new Map(), live = (d, seen) => { if (lv.has(d.id)) return lv.get(d.id); if (seen.has(d.id)) return false; seen.add(d.id); const o = link.get(pkey(d.id, 'pi', 0)); let r = false; if (o) { if (o[0] === 0) r = !S.out && !S.trip[o[2]]; else { const s = byId.get(o[0]); r = !!s && !s.trip && (live(s, seen) || (DEV[s.t].k === 'ups' && s.bat > 0)); } } lv.set(d.id, r); return r; };
+      const draw = (d, seen) => { const k = DEV[d.t].k; if (seen.has(d.id)) return 0; seen.add(d.id); if (k === 'srv') { const o = D[d.id]; return d.on && o.boot && o.psuOk ? o.cap.w : 0; } if (k === 'sw') return DEV[d.t].w; if (d.trip) return 0; let w = 5; for (let i = 0; i < DEV[d.t].out; i++) { const o = link.get(pkey(d.id, 'po', i)), c = o && byId.get(o[0]); if (c) w += draw(c, seen); } D[d.id].load = w; return w; };
+      for (const d of all) { D[d.id].live = live(d, new Set()); const k = DEV[d.t].k; if (k === 'pw' || k === 'ups') { const w = draw(d, new Set()); if (!d.trip && w > DEV[d.t].max) { d.trip = 1; again = true; toast(DEV[d.t].n + ': túlterhelés, lekapcsolt.', 1); } D[d.id].onbat = k === 'ups' && !D[d.id].live && d.bat > 0 && !d.trip; } }
+      C.wall = []; for (let i = 0; i < st.out; i++) { const o = link.get(pkey(0, 'po', i)), c = o && byId.get(o[0]), w = c ? draw(c, new Set()) : 0; C.wall[i] = w; if (!S.trip[i] && w > st.omax) { S.trip[i] = 1; again = true; toast('Fali aljzat: a biztosíték leoldott.', 1); } }
+      if (!again) break; }
+    // hálózat: legszélesebb út az internetportoktól (a szerverek nem továbbítanak)
+    const bw = new Map([[0, PLAN[S.plan].sp]]); for (let it = 0; it < 30; it++) { let ch = false; for (const c of S.cables) { if (c.a[1] !== 'n') continue; const pa = PM.get(pkey(...c.a)), pb = PM.get(pkey(...c.b)), l = Math.min(pa.sp, pb.sp); for (const [x, y] of [[c.a, c.b], [c.b, c.a]]) { const src = x[0] === 0 ? bw.get(0) : (D[x[0]].k === 'sw' && D[x[0]].live ? bw.get(x[0]) || 0 : 0), v = Math.min(src, l); if (v > (bw.get(y[0]) || 0) && y[0] !== 0) { bw.set(y[0], v); ch = true; } } } if (!ch) break; }
+    let heat = 0, online = 0, hash = 0, inc = 0, used = 0; const use = {}; for (const c of S.cons) { const u = use[c.srv] = use[c.srv] || { cores: 0, ram: 0, tb: 0, gpu: 0, bw: 0 }; u.cores += c.cores; u.ram += c.ram; u.tb += c.tb; u.gpu += c.gpu; u.bw += c.bw; }
+    for (const d of all) { const o = D[d.id]; if (o.k === 'sw') { if (o.live) heat += DEV[d.t].w; o.bw = bw.get(d.id) || 0; continue; } if (o.k !== 'srv') { if (o.live || o.onbat) heat += 5; continue; }
+      o.use = use[d.id] || { cores: 0, ram: 0, tb: 0, gpu: 0, bw: 0 }; o.bw = bw.get(d.id) || 0; o.st = !d.on ? 'off' : !o.boot ? 'parts' : !o.psuOk ? 'psu' : !o.live ? 'nopow' : !o.bw ? 'nonet' : (o.use.cores > o.cap.cores || o.use.ram > o.cap.ram || o.use.tb > o.cap.tb + 1e-6 || o.use.gpu > o.cap.gpu || o.use.bw > o.bw) ? 'deg' : 'ok';
+      if (d.on && o.boot && o.psuOk && o.live) heat += o.cap.w; if (o.st === 'ok') { online++; if (d.mine) { o.hash = o.cap.gpu - o.use.gpu; hash += o.hash; } } }
+    let cw = 0, cd = 0; for (const k in S.cool) { cw += COOL[k].v * S.cool[k]; cd += COOL[k].w * S.cool[k]; } const temp = 21 + Math.max(0, heat - st.pas - cw) / st.k, thr = temp > 38 ? .6 : 1;
+    for (const c of S.cons) { const o = D[c.srv]; c.ok = !!o && o.st === 'ok'; if (c.ok) { inc += c.pay * thr; used += c.bw; } } inc += hash * S.coin * thr;
+    Object.assign(C, { d: D, inc, online, hash, heat, temp, bw: used, thr, cost: (heat + cd) / 1000 * 24 * KWH + st.rent + PLAN[S.plan].c, cd }); dirty = 0; }
+  const ST = { ok: ['Online', 'ok'], off: ['Kikapcsolva', ''], parts: ['Hiányos', 'w'], psu: ['Gyenge táp', 'bad'], nopow: ['Nincs áram', 'bad'], nonet: ['Nincs hálózat', 'bad'], deg: ['Túlterhelt', 'bad'] };
+
+  /* ---------- ügyfelek ---------- */
+  function offer() { const ks = Object.keys(CT).filter(k => CT[k].rep <= S.rep), ty = ks[Math.random() * ks.length | 0], T = CT[ty], m = rnd(.5, 1.6) * Math.pow(1 + S.rep / 6, 1.45), f = T.f(m), maxbw = PLAN[SITE[S.site].plan].sp * .4;
+    const c = { id: S.nid++, ty, n: NA[Math.random() * NA.length | 0] + ' ' + NB[Math.random() * NB.length | 0], cores: Math.min(96, Math.max(1, Math.ceil(f[0]))), ram: Math.min(1024, Math.max(1, Math.ceil(f[1]))), tb: Math.min(500, Math.max(.1, Math.round(f[2] * 10) / 10)), gpu: Math.min(1000, Math.ceil(f[3])), bw: Math.round(Math.min(maxbw, Math.max(10, f[4])) / 10) * 10, exp: S.day + rnd(2, 5), left: rnd(25, 90), pat: 1 };
+    c.pay = Math.round((c.cores * 700 + c.ram * 120 + c.tb * 450 + c.bw * 5 + c.gpu * 420) * T.x * rnd(.9, 1.2) / 10) * 10; S.offers.push(c); if (S.offers.length > 7) S.offers.shift(); }
+  // melyik szerverre fér rá? Visszaad: { srv } vagy { why }
+  function fit(c) { let best = null, bs = 1e18; const miss = { on: 1, cores: 1, ram: 1, tb: 1, gpu: 1, bw: 1 }; if (C.bw + c.bw > PLAN[S.plan].sp) return { why: 'kevés az internet' };
+    for (const d of devs()) { const o = C.d[d.id]; if (!o || o.st !== 'ok') continue; miss.on = 0; const f = { cores: o.cap.cores - o.use.cores, ram: o.cap.ram - o.use.ram, tb: o.cap.tb - o.use.tb, gpu: o.cap.gpu - o.use.gpu, bw: o.bw - o.use.bw }; let ok = true; for (const k in f) if (f[k] + 1e-6 >= c[k]) miss[k] = 0; else ok = false; if (!ok) continue; const sl = (f.cores - c.cores) * 700 + (f.ram - c.ram) * 120 + (f.tb - c.tb) * 450 + (f.gpu - c.gpu) * 420; if (sl < bs) { bs = sl; best = d; } }
+    if (best) return { srv: best.id }; const ms = [miss.cores && 'CPU', miss.ram && 'RAM', miss.tb && 'tárhely', miss.gpu && 'GPU', miss.bw && 'sávszélesség'].filter(Boolean); return { why: miss.on ? 'nincs online szerver' : ms.length ? 'kevés: ' + ms.join(', ') : 'egyetlen szerveren sem fér el' }; }
+  function accept(id) { const i = S.offers.findIndex(c => c.id === id); if (i < 0) return; const c = S.offers[i], f = fit(c); if (!f.srv) return toast('Nem fér el: ' + f.why, 1); c.srv = f.srv; S.offers.splice(i, 1); S.cons.push(c); beep(880); dirty = 1; }
+  const dropCon = (c, why, bad) => { S.cons = S.cons.filter(x => x !== c); if (why) toast(c.n + ': ' + why, bad); dirty = 1; };
+
+  /* ---------- idő ---------- */
+  function tick(dt) { S.day += dt; S.money += (C.inc - C.cost) * dt; S.life += C.inc * dt;
+    for (const c of S.cons.slice()) { if (c.ok) { c.pat = Math.min(1, c.pat + dt * .15); c.left -= dt; S.rep = Math.min(100, S.rep + dt * .28 * (1 - S.rep / 110)); if (c.left <= 0) { if (Math.random() < .65) c.left = rnd(25, 90); else { S.rep = Math.min(100, S.rep + .5); dropCon(c, 'lejárt a szerződés, elégedetten távozott.'); } } } else { c.pat -= dt * 1.6; if (c.pat <= 0) { S.rep = Math.max(0, S.rep - 2); dropCon(c, 'felmondta a szolgáltatást a leállás miatt.', 1); } } }
+    if ((S.ot -= dt) <= 0) { S.ot = rnd(.25, .7); offer(); S.offers = S.offers.filter(c => c.exp > S.day); S.coin = Math.max(50, Math.min(520, S.coin * Math.exp(rnd(-.09, .09)) + (180 - S.coin) * .02)); if (view === 'cli') ui(); }
+    if (S.out > 0) { S.out -= dt; if (S.out <= 0) { S.out = 0; toast('Visszajött az áram.'); } dirty = 1; } else if (S.day > 6 && Math.random() < dt * .035) { S.out = rnd(.03, .1); toast('Áramszünet!', 1); beep(120, .3); dirty = 1; }
+    for (const d of devs()) { const o = C.d[d.id]; if (!o) continue; if (o.k === 'ups') { const D = DEV[d.t]; if (o.onbat) { d.bat = Math.max(0, d.bat - (o.load || 0) * dt * 24); if (d.bat <= 0) dirty = 1; } else if (o.live && d.bat < D.wh) d.bat = Math.min(D.wh, d.bat + D.wh * dt * 6); }
+      if (o.k === 'srv' && o.st !== 'off' && o.live) { const p = dt * .0035 * (C.temp > 38 ? 4 : 1); d.hdd.forEach((k, i) => { if (!broken(k) && !pv(k).ssd && Math.random() < p) { d.hdd[i] = '!' + k; toast(DEV[d.t].n + ': meghibásodott egy lemez.', 1); dirty = 1; } }); if (C.temp > 50) { d.on = 0; dirty = 1; } } }
+    if (C.temp > 50 && !tick.hot) { toast('Túlmelegedés! A szerverek vészleálltak.', 1); beep(120, .3); } tick.hot = C.temp > 50;
+    const G = GOALS[S.goal]; if (G && G[1]()) { S.money += G[2]; S.goal++; toast('🎯 Cél teljesítve: +' + ft(G[2])); beep(990, .15); } }
+
+  /* ---------- rajz ---------- */
+  const NC = ['#3d8bfd', '#39c5bb', '#f59f00', '#e64980', '#94d82d', '#ae3ec9', '#ffd43b', '#ff922b'];
+  function rr(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+  function drawDev(d, x, y, ghost) { const D = DEV[d.t], h = D.u * U - 1, o = C.d[d.id] || {}, t = performance.now() / 1000; g.globalAlpha = ghost ? .55 : 1;
+    const gr = g.createLinearGradient(0, y, 0, y + h); if (D.k === 'sw') { gr.addColorStop(0, '#2d4257'); gr.addColorStop(1, '#1b2a3a'); } else if (D.k === 'pw') { gr.addColorStop(0, '#26282c'); gr.addColorStop(1, '#17181b'); } else if (D.k === 'ups') { gr.addColorStop(0, '#3a3f46'); gr.addColorStop(1, '#22262b'); } else if (d.t === 'm3') { gr.addColorStop(0, '#2a2420'); gr.addColorStop(1, '#191512'); } else { gr.addColorStop(0, '#4a5058'); gr.addColorStop(1, '#2c3036'); }
+    rr(x, y, RW, h, 2.5); g.fillStyle = gr; g.fill(); g.strokeStyle = 'rgba(255,255,255,.14)'; g.lineWidth = .6; g.stroke(); g.fillStyle = '#15171a'; g.fillRect(x, y, 5, h); g.fillRect(x + RW - 5, y, 5, h);
+    if (D.k === 'srv') { const led = o.st === 'ok' ? '#5ee08a' : o.st === 'off' || !o.st ? '#333' : o.st === 'parts' ? '#e8b656' : '#ff5a4d'; g.fillStyle = led; g.beginPath(); g.arc(x + 11, y + h / 2, 2.2, 0, 7); g.fill();
+      const np = netPorts(d).length, bx = x + 18, bw = RW - 62 - (np > 8 ? Math.ceil(np / 2) : np) * 9.5 - 18, gp = d.pci.filter(k => pv(k).k === 'gpu').length;
+      if (d.t === 'm3' || d.t === 'g4') { const n = D.pci, fw = Math.min(h - 8, (bw - 4) / n - 3); for (let i = 0; i < n; i++) { const cx = bx + 4 + i * (fw + 3) + fw / 2, cy = y + h / 2, has = i < gp; g.fillStyle = has ? '#0d0f12' : 'rgba(0,0,0,.25)'; g.beginPath(); g.arc(cx, cy, fw / 2, 0, 7); g.fill(); if (has) { g.strokeStyle = o.st === 'ok' && d.mine ? '#5ee08a' : '#59616b'; g.lineWidth = 1.2; const a = o.st === 'ok' ? t * 9 + i : i; for (let k = 0; k < 3; k++) { g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a + k * 2.094) * fw * .42, cy + Math.sin(a + k * 2.094) * fw * .42); g.stroke(); } } } }
+      else { const rows = Math.max(1, Math.round(D.u * (D.bay > 12 ? 2.25 : D.bay > 4 ? 1.5 : 1))), cols = Math.ceil(D.bay / rows), cw = Math.min(26, bw / cols), ch = (h - 5) / rows; for (let i = 0; i < D.bay; i++) { const cx = bx + (i % cols) * cw, cy = y + 2.5 + Math.floor(i / cols) * ch, k = d.hdd[i]; g.fillStyle = k ? (broken(k) ? '#5a1f1c' : '#1c2026') : 'rgba(0,0,0,.28)'; g.fillRect(cx + .6, cy + .6, cw - 1.2, ch - 1.2); if (k) { g.fillStyle = broken(k) ? '#ff5a4d' : o.st === 'ok' && Math.sin(t * 7 + i * 1.7 + d.id) > .2 ? '#5ee08a' : '#2f6f45'; g.fillRect(cx + 2, cy + ch - 3.2, 2.5, 1.5); } } }
+      if (cam.s > .75) { g.fillStyle = 'rgba(235,239,246,.6)'; g.font = '600 5.5px Inter'; g.textAlign = 'right'; g.fillText(D.n.toUpperCase(), x + RW - 24 - (np > 8 ? Math.ceil(np / 2) : np) * 9.5 - 12, y + 7.5); g.textAlign = 'left'; } }
+    else if (D.k === 'ups') { g.fillStyle = '#0c1014'; g.fillRect(x + 150, y + h / 2 - 6, 60, 12); g.fillStyle = o.onbat ? '#f59f00' : '#5ee08a'; g.fillRect(x + 152, y + h / 2 - 4, 56 * (d.bat / D.wh), 8); if (d.trip) { g.fillStyle = '#ff5a4d'; g.fillRect(x + 216, y + h / 2 - 3, 6, 6); } }
+    else if (D.k === 'pw') { g.fillStyle = d.trip ? '#5a1f1c' : o.live ? '#ff5a4d' : '#3a1a18'; g.fillRect(x + RW - 34, y + h / 2 - 4, 8, 8); }
+    else if (cam.s > .75) { g.fillStyle = 'rgba(235,239,246,.6)'; g.font = '600 5.5px Inter'; g.fillText(D.n.toUpperCase(), x + 9, y + h / 2 + 2); }
+    g.globalAlpha = 1; }
+  function drawPort(p) { const used = !!other(p.id, p.k, p.i), hot = sel && ok2(sel, p);
+    if (p.k === 'n') { g.fillStyle = '#0a0c0f'; g.fillRect(p.x - 3.6, p.y - 3.2, 7.2, 6.4); g.fillStyle = p.sp >= 40000 ? '#b197fc' : p.sp >= 10000 ? '#f59f00' : '#c9ced6'; g.fillRect(p.x - 2.6, p.y - 2.2, 5.2, 1.2); if (used) { const o = p.id ? C.d[p.id] : { live: 1 }; g.fillStyle = o && (o.live || o.st === 'ok') && Math.sin(performance.now() / 90 + p.x) > -.3 ? '#5ee08a' : '#1d3b28'; g.fillRect(p.x + 1.2, p.y + 1.2, 1.8, 1.4); } }
+    else { g.fillStyle = p.k === 'pi' ? '#0a0c0f' : '#e9e4d8'; g.beginPath(); g.arc(p.x, p.y, p.id ? 4.6 : 9, 0, 7); g.fill(); g.fillStyle = p.k === 'pi' ? '#c9a227' : '#222'; const r = p.id ? 1 : 1.7, o = p.id ? 1.8 : 3.4; g.beginPath(); g.arc(p.x - o, p.y, r, 0, 7); g.arc(p.x + o, p.y, r, 0, 7); g.fill(); if (!p.id && S.trip[p.i]) { g.strokeStyle = '#ff5a4d'; g.lineWidth = 2; g.beginPath(); g.arc(p.x, p.y, 11.5, 0, 7); g.stroke(); } }
+    if (hot || (sel && sel === p)) { g.strokeStyle = sel === p ? '#fff' : '#4cc9f0'; g.lineWidth = 1.4; g.beginPath(); g.arc(p.x, p.y, p.id ? 6.5 : 12, 0, 7); g.stroke(); } }
+  function cable(ax, ay, bx, by, col, w) { const dx = Math.abs(bx - ax), sag = 14 + Math.min(160, dx * .22 + Math.abs(by - ay) * .1); g.beginPath(); g.moveTo(ax, ay); g.bezierCurveTo(ax + (bx - ax) * .1, ay + sag, bx - (bx - ax) * .1, by + sag, bx, by); g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = w + 1.6; g.stroke(); g.strokeStyle = col; g.lineWidth = w; g.stroke(); }
+  function draw() { const d = devicePixelRatio || 1, W = cv.width, H = cv.height, st = SITE[S.site], s = cam.s * d; g.setTransform(1, 0, 0, 1, 0, 0);
+    const rows = Math.ceil(st.racks / ROW), gw = g.createLinearGradient(0, 0, 0, H); gw.addColorStop(0, st.bg[1]); gw.addColorStop(1, st.bg[0]); g.fillStyle = gw; g.fillRect(0, 0, W, H); g.setTransform(s, 0, 0, s, W / 2 - cam.x * s, H / 2 - cam.y * s);
+    const vx0 = cam.x - W / 2 / s, vx1 = cam.x + W / 2 / s;
+    for (let r = 0; r < rows; r++) { const y = r * RY; g.fillStyle = st.bg[2]; g.fillRect(vx0, y, vx1 - vx0, 46); g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(vx0, y, vx1 - vx0, 3); if (S.site === 0) { g.strokeStyle = 'rgba(0,0,0,.14)'; g.lineWidth = 1; for (let yy = y - 40; yy > y - 900; yy -= 40) { g.beginPath(); g.moveTo(Math.max(vx0, -300), yy); g.lineTo(Math.min(vx1, 700), yy); g.stroke(); } } }
+    // fali csatlakozók
+    rr(-250, -390 - Math.floor((st.isp - 1) / 4) * 26, 130, 100 + Math.floor((st.isp - 1) / 4) * 26, 8); g.fillStyle = '#d9d4c7'; g.fill(); g.fillStyle = '#1d2835'; g.font = '800 9px Inter'; g.fillText('INTERNET · ' + PLAN[S.plan].n.toUpperCase(), -240, -300 + 2); const oh = Math.floor((st.out - 1) / 4) * 34; rr(-250, -100 - oh, 130 + (st.out > 4 ? 0 : 0), 70 + oh, 8); g.fillStyle = S.out > 0 ? '#6b6659' : '#cfc9bb'; g.fill(); g.fillStyle = '#1d2835'; g.fillText(S.out > 0 ? 'ÁRAMSZÜNET' : 'HÁLÓZATI ÁRAM', -240, -38);
+    // rackek
+    for (let i = 0; i < st.racks; i++) { const r = S.racks[i], [x, y] = rackXY(i), by = Math.floor(i / ROW) * RY; if (x + 280 < vx0 || x - 20 > vx1) continue;
+      if (!r) { g.setLineDash([6, 6]); g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = 1.5; g.strokeRect(x, by - 134, RW + 28, 134); g.setLineDash([]); g.fillStyle = 'rgba(255,255,255,.22)'; g.font = '700 11px Inter'; g.textAlign = 'center'; g.fillText('ÜRES HELY', x + RW / 2 + 14, by - 62); g.textAlign = 'left'; continue; }
+      const n = RACK[r.t].u; g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(x + 6, by, RW + 28, 5); rr(x, y, RW + 28, n * U + 14, 4); g.fillStyle = '#111317'; g.fill(); g.strokeStyle = '#2f343b'; g.lineWidth = 2; g.stroke(); g.fillStyle = '#0a0b0d'; g.fillRect(x + 14, y + 7, RW, n * U);
+      g.fillStyle = '#23272d'; for (let u = 0; u < n; u++) { g.fillRect(x + 6, y + 7 + u * U + 4, 3, 3); g.fillRect(x + 6, y + 7 + u * U + 13, 3, 3); g.fillRect(x + RW + 19, y + 7 + u * U + 4, 3, 3); g.fillRect(x + RW + 19, y + 7 + u * U + 13, 3, 3); g.fillStyle = 'rgba(255,255,255,.035)'; g.fillRect(x + 14, y + 7 + u * U + U - 1, RW, 1); g.fillStyle = '#23272d'; }
+      for (const dv of r.dev) drawDev(dv, x + 14, y + 7 + dv.u * U); }
+    if (place) { const h = hitU(mouse[0], mouse[1]); if (h && free(h.ri, h.u, DEV[place.t].u, place.id)) { const [x, y] = rackXY(h.ri); drawDev(place, x + 14, y + 7 + h.u * U, 1); } }
+    for (const p of PORTS) drawPort(p);
+    S.cables.forEach((c, i) => { const a = PM.get(pkey(...c.a)), b = PM.get(pkey(...c.b)); if (!a || !b) return; if (c.a[1] === 'n') cable(a.x, a.y, b.x, b.y, NC[c.c % NC.length], 2.2); else cable(a.x, a.y, b.x, b.y, '#16181b', 3.4); });
+    if (sel) cable(sel.x, sel.y, mouse[0], mouse[1], sel.k === 'n' ? '#4cc9f0' : '#555', sel.k === 'n' ? 2.2 : 3.4); }
+
+  /* ---------- kattintás, elhelyezés, kábelezés ---------- */
+  const toW = e => { const r = cv.getBoundingClientRect(); return [cam.x + (e.clientX - r.left - r.width / 2) / cam.s, cam.y + (e.clientY - r.top - r.height / 2) / cam.s]; };
+  const ok2 = (a, b) => a !== b && !(a.id === b.id && a.id !== 0) && !other(b.id, b.k, b.i) && ((a.k === 'n' && b.k === 'n') || (a.k === 'pi' && b.k === 'po') || (a.k === 'po' && b.k === 'pi')) && !(a.id === 0 && b.id === 0);
+  function hitPort(x, y) { let b = null, bd = 1e9; for (const p of PORTS) { const r = (p.id ? 7 : 12) + 3 / cam.s, dd = Math.hypot(p.x - x, p.y - y); if (dd < r && dd < bd) { b = p; bd = dd; } } return b; }
+  function hitU(x, y) { for (let i = 0; i < SITE[S.site].racks; i++) { const r = S.racks[i]; if (!r) continue; const [rx, ry] = rackXY(i), n = RACK[r.t].u; if (x >= rx && x <= rx + RW + 28 && y >= ry && y <= ry + n * U + 14) { const u = Math.max(0, Math.min(n - 1, Math.floor((y - ry - 7) / U))); return { ri: i, u, dev: r.dev.find(d => u >= d.u && u < d.u + DEV[d.t].u) }; } } return null; }
+  const free = (ri, u, h, skip) => { const r = S.racks[ri]; return !!r && u + h <= RACK[r.t].u && !r.dev.some(d => d.id !== skip && u < d.u + DEV[d.t].u && d.u < u + h); };
+  function click(x, y) { const p = hitPort(x, y);
+    if (place) { const h = hitU(x, y); if (h && free(h.ri, h.u, DEV[place.t].u)) { place.u = h.u; S.spare = S.spare.filter(d => d !== place); S.racks[h.ri].dev.push(place); const d = place; place = null; beep(520); dirty = 1; hint(); openDev(d.id); } else if (!h) { place = null; hint(); } return; }
+    if (sel) { if (p && ok2(sel, p)) { const net = sel.k === 'n', c = net ? (Math.min(sel.sp, p.sp) >= 10000 ? 6000 : 600) : 900; if (pay(c)) { S.cables.push({ a: [sel.id, sel.k, sel.i], b: [p.id, p.k, p.i], c: S.nid++ }); dirty = 1; } } sel = null; hint(); return; }
+    if (p) { if (!p.id && p.k === 'po' && S.trip[p.i]) { delete S.trip[p.i]; dirty = 1; beep(440); return; } const o = other(p.id, p.k, p.i); if (o) { const key = pkey(p.id, p.k, p.i); S.cables = S.cables.filter(c => pkey(...c.a) !== key && pkey(...c.b) !== key); dirty = 1; beep(300); } else { sel = p; hint(); } return; }
+    const h = hitU(x, y); if (h && h.dev) return openDev(h.dev.id); if (h) return openRack(h.ri); if (view === 'dev' || view === 'rack') closeP(); }
+  function hint() { const e = $('#hint'); if (place) { e.hidden = false; e.innerHTML = '📥 ' + esc(DEV[place.t].n) + ' <button class="b sm" data-a="cancel">Mégse</button>'; } else if (sel) { e.hidden = false; e.innerHTML = (sel.k === 'n' ? '🔌 Hálózati kábel' : '⚡ Tápkábel') + ' <button class="b sm" data-a="cancel">Mégse</button>'; } else e.hidden = true; }
+  const PT = new Map(); let moved = 0;
+  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); PT.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; pan = { x: e.clientX, y: e.clientY }; if (PT.size === 2) { const [a, b] = [...PT.values()]; pan.pin = Math.hypot(a[0] - b[0], a[1] - b[1]); pan.s0 = cam.s; } });
+  cv.addEventListener('pointermove', e => { mouse = toW(e); if (!PT.has(e.pointerId)) return; PT.set(e.pointerId, [e.clientX, e.clientY]); if (PT.size === 2 && pan && pan.pin) { const [a, b] = [...PT.values()]; cam.s = Math.max(.15, Math.min(4, pan.s0 * Math.hypot(a[0] - b[0], a[1] - b[1]) / pan.pin)); moved = 99; return; } if (!pan) return; const dx = e.clientX - pan.x, dy = e.clientY - pan.y; moved += Math.abs(dx) + Math.abs(dy); if (moved > 6) { cam.x -= dx / cam.s; cam.y -= dy / cam.s; } pan.x = e.clientX; pan.y = e.clientY; });
+  cv.addEventListener('pointerup', e => { PT.delete(e.pointerId); if (moved <= 6 && pan && !pan.pin) { mouse = toW(e); click(mouse[0], mouse[1]); } if (!PT.size) pan = null; });
+  cv.addEventListener('pointercancel', e => { PT.delete(e.pointerId); pan = null; });
+  cv.addEventListener('wheel', e => { e.preventDefault(); const w = toW(e), f = Math.exp(-Math.max(-80, Math.min(80, e.deltaY)) * .0022), s1 = Math.max(.15, Math.min(4, cam.s * f)); cam.x = w[0] - (w[0] - cam.x) * cam.s / s1; cam.y = w[1] - (w[1] - cam.y) * cam.s / s1; cam.s = s1; }, { passive: false });
+  cv.addEventListener('contextmenu', e => { e.preventDefault(); sel = place = null; hint(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape') { sel = place = null; hint(); } if (e.key === ' ' && $('#menu').hidden) { e.preventDefault(); S.spd = S.spd ? 0 : 1; } });
+
+  /* ---------- panelek ---------- */
+  let shopTab = 'rack', devId = 0, slot = null, rackI = 0;
+  const openP = (v, t) => { view = v; $('#pnl').hidden = false; $('#pt').textContent = t; ui(); }, closeP = () => { view = null; $('#pnl').hidden = true; };
+  const openDev = id => { devId = id; slot = null; openP('dev', ''); }, openRack = i => { rackI = i; openP('rack', ''); };
+  const it = (a, b, btn) => `<div class="it"><div><b>${a}</b><small>${b}</small></div>${btn || ''}</div>`, B = (a, v, t, dis, cl) => `<button class="b sm ${cl || ''}" data-a="${a}" data-v="${v}" ${dis ? 'disabled' : ''}>${t}</button>`;
+  const bar = (a, b, u) => `<small>${u}: ${num(a)} / ${num(b)}</small><div class="bar"><i class="${a > b + 1e-6 ? 'hi' : ''}" style="width:${Math.min(100, b ? a / b * 100 : 0)}%"></i></div>`;
+  const need = c => [c.cores + ' mag', c.ram + ' GB RAM', num(c.tb) + ' TB', c.gpu ? c.gpu + ' GPU-pont' : '', c.bw + ' Mbit'].filter(Boolean).join(' · ');
+  function ui() { const b = $('#pb'), sc = b.scrollTop; let h = '';
+    if (view === 'shop') { $('#pt').textContent = '🛒 Bolt'; const T = { rack: 'Rackek', srv: 'Szerverházak', part: 'Alkatrészek', sw: 'Hálózat', pw: 'Áram', cool: 'Hűtés' }; h = '<div class="tabs">' + Object.keys(T).map(k => `<button class="b sm ${shopTab === k ? 'on' : ''}" data-a="tab" data-v="${k}">${T[k]}</button>`).join('') + '</div>';
+      if (shopTab === 'rack') { const fr = S.racks.slice(0, SITE[S.site].racks).some(r => !r); for (const k in RACK) h += it(RACK[k].n, RACK[k].u + ' egység magas', B('rack', k, ft(RACK[k].c), !fr)); if (!fr) h += '<div class="h">Nincs szabad hely a telephelyen</div>'; }
+      else if (shopTab === 'part') { let lk = ''; for (const k in PART) { const P = PART[k]; if (P.k !== lk) { lk = P.k; h += `<div class="h">${{ cpu: 'Processzor', ram: 'Memória', hdd: 'Lemez', gpu: 'Videókártya', nic: 'Hálókártya', psu: 'Tápegység' }[lk]}</div>`; } h += it(P.n, (P.w ? P.w + ' W' : '') + (S.inv[k] ? ' · raktáron: ' + S.inv[k] : ''), B('part', k, ft(P.c))); } }
+      else if (shopTab === 'cool') { for (const k in COOL) { const P = COOL[k]; if (P.s > S.site) continue; h += it(P.n + (S.cool[k] ? ' × ' + S.cool[k] : ''), `${num(P.v / 1000)} kW hűtés · ${P.w} W fogyasztás`, B('cool', k, ft(P.c))); } }
+      else for (const k in DEV) { const D = DEV[k]; if ((shopTab === 'srv') !== (D.k === 'srv') || (shopTab === 'sw' && D.k !== 'sw') || (shopTab === 'pw' && D.k !== 'pw' && D.k !== 'ups')) continue; h += it(D.n, D.u + 'U · ' + D.d, B('dev', k, ft(D.c))); } }
+    else if (view === 'inv') { $('#pt').textContent = '📦 Raktár'; h = '<div class="h">Eszközök</div>' + (S.spare.map(d => it(DEV[d.t].n, DEV[d.t].u + 'U' + (DEV[d.t].k === 'srv' ? ' · ' + [...d.cpu, ...d.ram, ...d.hdd, ...d.pci].length + ' alkatrész' : ''), (DEV[d.t].k === 'srv' ? B('open', d.id, 'Szerelés') : '') + B('place', d.id, 'Beszerel', 0, 'pr') + B('selld', d.id, 'Elad ' + ft(DEV[d.t].c * .5)))).join('') || '<small>Üres.</small>') + '<div class="h">Alkatrészek</div>' + (Object.keys(S.inv).filter(k => S.inv[k] > 0).map(k => it(PART[k].n + ' × ' + S.inv[k], '', B('sellp', k, 'Elad ' + ft(PART[k].c * .5)))).join('') || '<small>Üres.</small>'); }
+    else if (view === 'cli') { $('#pt').textContent = '🤝 Ügyfelek'; h = '<div class="h">Ajánlatok</div>' + (S.offers.map(c => { const f = fit(c); return it(CT[c.ty].i + ' ' + esc(c.n) + ' – ' + ft(c.pay) + '/nap', CT[c.ty].n + ' · ' + need(c) + (f.srv ? '' : '<br><span style="color:var(--bad)">' + f.why + '</span>'), B('acc', c.id, 'Elfogad', !f.srv, 'pr')); }).join('') || '<small>Most nincs ajánlat.</small>') + '<div class="h">Aktív szerződések (' + S.cons.length + ')</div>' + S.cons.map(c => it(CT[c.ty].i + ' ' + esc(c.n) + ' – ' + ft(c.pay) + '/nap', need(c) + (c.ok ? '' : '<br><span style="color:var(--bad)">Nem elérhető – türelem: ' + Math.round(c.pat * 100) + '%</span>'), B('goto', c.srv, 'Szerver') + B('drop', c.id, '✕'))).join(''); }
+    else if (view === 'site') { $('#pt').textContent = '🏢 Telephely'; const st = SITE[S.site]; h = it(st.n, `${st.racks} rackhely · ${st.out} × ${num(st.omax / 1000)} kW aljzat · bérleti díj ${ft(st.rent)}/nap`) + '<div class="h">Költözés</div>'; SITE.forEach((x, i) => { if (i > S.site) h += it(x.n, `${x.racks} rackhely · ${x.out} × ${num(x.omax / 1000)} kW · akár ${PLAN[x.plan].n} · ${ft(x.rent)}/nap`, B('move', i, ft(x.c), i !== S.site + 1)); });
+      h += '<div class="h">Internet-előfizetés</div>'; PLAN.forEach((p, i) => { if (i <= st.plan) h += it(p.n, ft(p.c) + '/nap', i === S.plan ? '<span class="st ok">Aktív</span>' : B('plan', i, 'Váltás', C.bw > p.sp)); });
+      h += '<div class="h">Napi mérleg</div>' + it('Bevétel', 'ügyfelek és bányászat', '<b>' + ft(C.inc) + '</b>') + it('Villanyszámla', num((C.heat + C.cd) / 1000) + ' kW · ' + KWH + ' Ft/kWh', '<b>' + ft((C.heat + C.cd) / 1000 * 24 * KWH) + '</b>') + it('Bérleti díj és internet', '', '<b>' + ft(st.rent + PLAN[S.plan].c) + '</b>') + it('Hűtés', `${num(C.heat / 1000)} kW hő · ${num((st.pas + Object.keys(S.cool).reduce((a, k) => a + COOL[k].v * S.cool[k], 0)) / 1000)} kW elvezetés`, '<b>' + C.temp.toFixed(1) + ' °C</b>'); }
+    else if (view === 'rack') { const r = S.racks[rackI]; if (!r) return closeP(); $('#pt').textContent = '🗄️ ' + RACK[r.t].n; const used = r.dev.reduce((a, d) => a + DEV[d.t].u, 0); h = bar(used, RACK[r.t].u, 'Foglalt egység') + '<div class="h">Csere nagyobbra</div>'; for (const k in RACK) if (RACK[k].u > RACK[r.t].u) h += it(RACK[k].n, 'Az eszközök és a kábelek a helyükön maradnak', B('rup', k, ft(RACK[k].c - RACK[r.t].c * .5))); h += '<div class="h"></div>' + B('rdel', rackI, 'Rack eladása ' + ft(RACK[r.t].c * .5), r.dev.length > 0); }
+    else if (view === 'dev') { const [d, ri] = findDev(devId); if (!d) return closeP(); const D = DEV[d.t], o = C.d[d.id] || {}; $('#pt').textContent = D.n;
+      if (slot) { const [sk, si] = slot, cur = sk === 'psu' ? d.psu : d[sk][si], ks = Object.keys(PART).filter(k => sk === 'pci' ? PART[k].k === 'gpu' || PART[k].k === 'nic' : PART[k].k === sk); h = B('slotx', 0, '← Vissza') + '<div class="h">' + PK[sk] + (cur ? ' – ' + pv(cur).n + (broken(cur) ? ' (hibás)' : '') : '') + '</div>'; if (cur) h += it('Kiszerelés', broken(cur) ? 'A hibás alkatrész a szemétbe kerül' : 'Vissza a raktárba', B('unpart', 0, 'Kivesz'));
+        for (const k of ks) { const P = PART[k], own = S.inv[k] || 0; h += it(P.n, (P.w ? P.w + ' W' : '') + (own ? ' · raktáron: ' + own : ''), B('inst', k, own ? 'Beszerel' : ft(P.c), 0, own ? 'pr' : '')); } }
+      else if (D.k === 'srv') { const c = o.cap || cap(d), u = o.use || { cores: 0, ram: 0, tb: 0, gpu: 0, bw: 0 }, s = ST[ri < 0 ? 'off' : o.st || 'off']; h = (ri < 0 ? '<span class="st">Raktárban</span>' : `<span class="st ${s[1]}">${s[0]}</span> <span class="st">${o.bw ? sp(o.bw) + 'bit' : '–'}</span>`) + ` <span class="st ${c.psu < c.w ? 'bad' : ''}">${c.w} W / ${c.psu} W táp</span><div class="h"></div>` + bar(u.cores, c.cores, 'CPU-mag') + bar(u.ram, c.ram, 'RAM (GB)') + bar(u.tb, c.tb, 'Tárhely (TB)') + (c.gpu ? bar(u.gpu + (d.mine && o.st === 'ok' ? c.gpu - u.gpu : 0), c.gpu, 'GPU-pont') : '');
+        const sl = (k, n) => { let x = `<div class="h">${PK[k]}</div><div class="slots">`; for (let i = 0; i < n; i++) { const p = k === 'psu' ? d.psu : d[k][i]; x += `<div class="sl ${p ? 'f' : ''} ${p && broken(p) ? 'x' : ''}" data-a="slot" data-v="${k}:${i}">${p ? pv(p).n.replace(/^(CPU|RAM|HDD|SSD|GPU|Táp|Hálókártya) /, '') : '+'}</div>`; } return x + '</div>'; };
+        h += sl('cpu', D.cpu) + sl('ram', D.ram) + sl('hdd', D.bay) + sl('pci', D.pci) + sl('psu', 1) + '<div class="h"></div><div class="row">' + (ri >= 0 ? B('pwr', 0, d.on ? '⏻ Kikapcsol' : '⏻ Bekapcsol', 0, d.on ? '' : 'pr') + (c.gpu ? B('mine', 0, '₿ Bányászat', 0, d.mine ? 'on' : '') : '') + B('unmount', 0, 'Kiszerel', S.cons.some(x => x.srv === d.id)) : B('place', d.id, 'Beszerel', 0, 'pr')) + '</div>';
+        if (d.mine && o.hash) h += `<div class="h">Bányászat</div>` + it(o.hash + ' pont', ft(S.coin) + '/pont/nap', '<b>' + ft(o.hash * S.coin) + '/nap</b>'); const cs = S.cons.filter(x => x.srv === d.id); if (cs.length) h += '<div class="h">Ügyfelek</div>' + cs.map(x => it(CT[x.ty].i + ' ' + esc(x.n), need(x), '<b>' + ft(x.pay) + '</b>')).join(''); }
+      else { h = `<span class="st ${o.live || o.onbat ? 'ok' : 'bad'}">${o.onbat ? 'Akkuról' : o.live ? 'Áram alatt' : d.trip ? 'Leoldott' : 'Nincs áram'}</span>` + (D.k === 'sw' ? ` <span class="st">${o.bw ? sp(o.bw) + 'bit' : 'Nincs uplink'}</span>` : '') + '<div class="h"></div>' + (D.k !== 'sw' ? bar(o.load || 0, D.max, 'Terhelés (W)') : '') + (D.k === 'ups' ? bar(d.bat, D.wh, 'Akkumulátor (Wh)') : '') + '<small>' + D.d + '</small><div class="h"></div><div class="row">' + (d.trip ? B('untrip', 0, 'Visszakapcsol', 0, 'pr') : '') + B('unmount', 0, 'Kiszerel') + '</div>'; } }
+    b.innerHTML = h; b.scrollTop = sc; }
+  function top() { const st = SITE[S.site], net = C.inc - C.cost, tw = C.wall.reduce((a, b) => a + b, 0); $('#money').textContent = ft(S.money); $('#money').style.color = S.money < 0 ? 'var(--bad)' : ''; $('#inc').innerHTML = `<span style="color:${net >= 0 ? 'var(--ok)' : 'var(--bad)'}">${net >= 0 ? '+' : ''}${ft(net)}</span><small>/nap</small>`; $('#day').textContent = (S.day + 1 | 0) + '. nap';
+    $('#spd').innerHTML = [0, 1, 3, 8].map(v => `<span data-a="spd" data-v="${v}" style="cursor:pointer;padding:0 3px;color:${S.spd === v ? 'var(--cy)' : 'var(--mut)'}">${v ? v + '×' : '⏸'}</span>`).join(''); $('#pw').innerHTML = (S.out > 0 ? '🔌' : '⚡') + ' ' + num(C.heat / 1000) + ' kW'; $('#pw').style.color = S.out > 0 ? 'var(--bad)' : '';
+    $('#tmp').textContent = '🌡 ' + C.temp.toFixed(0) + ' °C'; $('#tmp').style.color = C.temp > 38 ? 'var(--bad)' : C.temp > 32 ? 'var(--gold2)' : ''; $('#net').innerHTML = '🌐 ' + num(C.bw) + '<small>/ ' + PLAN[S.plan].sp.toLocaleString('hu-HU') + ' Mbit</small>'; $('#coin').innerHTML = '₿ ' + Math.round(S.coin) + '<small>Ft/pont</small>'; $('#rep').textContent = '★ ' + Math.floor(S.rep);
+    const G = GOALS[S.goal]; $('#goal').hidden = !G; if (G) $('#goal').innerHTML = '🎯 ' + G[0] + ' · <b>+' + ft(G[2]) + '</b>'; }
+  function act(a, v) { const [d, ri] = view === 'dev' ? findDev(devId) : [null, -1];
+    if (a === 'cancel') { sel = place = null; hint(); } else if (a === 'tab') shopTab = v; else if (a === 'spd') S.spd = +v;
+    else if (a === 'rack') { const i = S.racks.slice(0, SITE[S.site].racks).findIndex(r => !r); if (i >= 0 && pay(RACK[v].c)) { S.racks[i] = { t: v, dev: [] }; cam.x = rackXY(i)[0] + 130; closeP(); } }
+    else if (a === 'rup') { const r = S.racks[rackI]; if (pay(RACK[v].c - RACK[r.t].c * .5)) r.t = v; } else if (a === 'rdel') { S.money += RACK[S.racks[rackI].t].c * .5; S.racks[rackI] = null; closeP(); }
+    else if (a === 'part') { if (pay(PART[v].c)) S.inv[v] = (S.inv[v] || 0) + 1; } else if (a === 'cool') { if (pay(COOL[v].c)) S.cool[v] = (S.cool[v] || 0) + 1; }
+    else if (a === 'dev') { if (pay(DEV[v].c)) { const n = mk(v); S.spare.push(n); if (DEV[v].k === 'srv') openDev(n.id); else if (S.racks.some(r => r)) { place = n; closeP(); hint(); } } }
+    else if (a === 'open') openDev(+v); else if (a === 'goto') { const [x, i] = findDev(+v); if (x && i >= 0) { const [rx, ry] = rackXY(i); cam.x = rx + 130; cam.y = ry + x.u * U; openDev(x.id); } }
+    else if (a === 'place') { place = S.spare.find(x => x.id === +v) || null; if (place) { closeP(); hint(); if (!S.racks.some(r => r)) { place = null; hint(); toast('Előbb kell egy rack.', 1); } } }
+    else if (a === 'selld') { const x = S.spare.find(x => x.id === +v); if (x) { S.spare = S.spare.filter(y => y !== x); S.money += DEV[x.t].c * .5; if (x.cpu) for (const k of [...x.cpu, ...x.ram, ...x.hdd, ...x.pci, ...(x.psu ? [x.psu] : [])]) if (!broken(k)) S.inv[k] = (S.inv[k] || 0) + 1; } }
+    else if (a === 'sellp') { if (S.inv[v] > 0) { S.inv[v]--; S.money += PART[v].c * .5; } }
+    else if (a === 'acc') accept(+v); else if (a === 'drop') { const c = S.cons.find(c => c.id === +v); if (c) { S.rep = Math.max(0, S.rep - 1); dropCon(c); } }
+    else if (a === 'move') { const x = SITE[+v]; if (+v === S.site + 1 && pay(x.c)) { S.site = +v; while (S.racks.length < x.racks) S.racks.push(null); S.trip = {}; toast('Átköltöztél: ' + x.n); cam.x = 60; } }
+    else if (a === 'plan') S.plan = +v;
+    else if (a === 'slot') { const [k, i] = v.split(':'); slot = [k, +i]; } else if (a === 'slotx') slot = null;
+    else if (a === 'unpart' && d) { const [k, i] = slot; const cur = k === 'psu' ? d.psu : d[k][i]; if (cur) { if (!broken(cur)) S.inv[cur] = (S.inv[cur] || 0) + 1; if (k === 'psu') d.psu = null; else d[k].splice(i, 1); } slot = null; }
+    else if (a === 'inst' && d) { const [k, i] = slot; if (!(S.inv[v] > 0) && !pay(PART[v].c)) return; if (S.inv[v] > 0) S.inv[v]--; else S.inv[v] = 0; const cur = k === 'psu' ? d.psu : d[k][i]; if (cur && !broken(cur)) S.inv[cur] = (S.inv[cur] || 0) + 1; if (k === 'psu') d.psu = v; else if (cur) d[k][i] = v; else d[k].push(v); slot = null; beep(600); }
+    else if (a === 'pwr' && d) d.on = d.on ? 0 : 1; else if (a === 'mine' && d) d.mine = d.mine ? 0 : 1; else if (a === 'untrip' && d) delete d.trip;
+    else if (a === 'unmount' && d && ri >= 0) { S.racks[ri].dev = S.racks[ri].dev.filter(x => x !== d); S.spare.push(d); closeP(); }
+    dirty = 1; calc(); if (view) ui(); top(); }
+  document.addEventListener('click', e => { const t = e.target.closest('[data-a]'); if (t) return act(t.dataset.a, t.dataset.v); const p = e.target.closest('[data-p]'); if (p) { const v = p.dataset.p; if (view === v) closeP(); else openP(v, ''); } });
+  $('#px').onclick = closeP; $('#bMenu').onclick = () => { save(); $('#menu').hidden = false; $('#mPlay').textContent = '▶ Folytatás'; $('#mNew').hidden = false; };
+  $('#mPlay').onclick = () => { $('#menu').hidden = true; beep(660); };
+  $('#mNew').onclick = () => { const b = $('#mNew'); if (b.dataset.sure) { localStorage.removeItem(KEY); fresh(); calc(); delete b.dataset.sure; b.textContent = 'Új játék'; $('#menu').hidden = true; closeP(); } else { b.dataset.sure = 1; b.textContent = 'Biztos? Minden elvész'; } };
+
+  /* ---------- főciklus ---------- */
+  const score = () => { try { if (window.top !== window && S.life > 0) parent.postMessage({ hgws: 'score', game: GAME, score: Math.floor(S.life) }, location.origin); } catch (_) {} };
+  function resize() { const d = devicePixelRatio || 1; cv.width = innerWidth * d; cv.height = innerHeight * d; } addEventListener('resize', resize); resize();
+  let last = performance.now(), acc = 0, uiT = 0, saveT = 5, scT = 60;
+  function loop(now) { const dt = Math.min(.1, (now - last) / 1000); last = now;
+    if ($('#menu').hidden && S.spd) { acc += dt * S.spd; while (acc >= .25) { acc -= .25; if (dirty) calc(); tick(.25 / DAY); } }
+    if (dirty) calc(); draw(); if ((uiT -= dt) <= 0) { uiT = .5; top(); if (view === 'dev' && !slot || view === 'site') ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); } if ((scT -= dt) <= 0) { scT = 60; score(); }
+    requestAnimationFrame(loop); }
+  const had = load(); if (!had) fresh(); if (had) { $('#mPlay').textContent = '▶ Folytatás'; $('#mNew').hidden = false; } calc(); top(); addEventListener('pagehide', () => { save(); score(); });
+  window.__sz = () => ({ S, C, act, click, calc, tick, PORTS, DEV, PART, mk, cam, accept, fit, offer }); Object.defineProperty(window.__sz, 'S', { get: () => S });
+  requestAnimationFrame(loop);
+})();
