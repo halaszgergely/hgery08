@@ -1,0 +1,32 @@
+<!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="robots" content="noindex,nofollow"><title>Szerverfarm – HGWS Arcade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../../img/favicon-32.png">
+<style>
+:root{--pn:#0b1119;--pn2:#121b27;--ln:rgba(140,180,230,.16);--ink:#ebeff6;--mut:#93a1b5;--gold:#e8b656;--gold2:#ffe29a;--ok:#5ee08a;--bad:#ff5a4d;--cy:#4cc9f0;--glass:rgba(7,11,17,.82)}
+*{box-sizing:border-box;margin:0}html,body{height:100%;background:#0a0d12;color:var(--ink);font:500 14px/1.45 Inter,system-ui,sans-serif;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none}
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}[hidden]{display:none!important}
+.g{background:var(--glass);border:1px solid var(--ln);border-radius:12px;backdrop-filter:blur(8px)}
+.b{border:1px solid var(--ln);background:var(--pn2);color:var(--ink);border-radius:10px;padding:8px 12px;font:700 13px Inter;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.b:hover{border-color:rgba(76,201,240,.6)}.b.pr{background:linear-gradient(180deg,#5ad4f5,#2a9fc9);color:#04121a;border:0}.b.sm{padding:5px 9px;font-size:12px;border-radius:8px}.b:disabled{opacity:.4;cursor:default}.b.on{border-color:var(--cy);color:var(--cy)}.b.bad{color:var(--bad)}
+#top{position:fixed;left:8px;right:8px;top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start;z-index:3;pointer-events:none}#top>*{pointer-events:auto}
+.chip{padding:7px 11px;font:700 13px Inter;display:flex;gap:6px;align-items:center}.chip small{font:600 11px Inter;color:var(--mut)}#money{font:800 16px Inter;color:var(--gold2)}.sp{flex:1}
+#goal{position:fixed;left:8px;bottom:8px;z-index:3;padding:8px 12px;font:600 13px Inter;max-width:min(520px,calc(100vw - 16px))}#goal b{color:var(--gold2)}
+#pnl{position:fixed;right:8px;top:56px;bottom:8px;width:min(400px,calc(100vw - 16px));z-index:4;display:flex;flex-direction:column;overflow:hidden}
+#pnl header{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--ln);font:800 15px Inter}#pnl header span{flex:1}#pb{overflow:auto;padding:10px 12px;flex:1;-webkit-user-select:none}
+.tabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}.it{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(140,180,230,.08)}.it>div:first-child{flex:1;min-width:0}.it b{display:block;font:700 13px Inter}.it small{color:var(--mut);font:500 12px/1.35 Inter;display:block}
+.h{font:800 11px Inter;letter-spacing:.08em;color:var(--mut);text-transform:uppercase;margin:12px 0 4px}.st{font:700 12px Inter;padding:3px 8px;border-radius:99px;background:#1b2836;display:inline-block}.st.ok{color:var(--ok)}.st.bad{color:var(--bad)}.st.w{color:var(--gold2)}
+.bar{height:7px;border-radius:9px;background:#1a2431;overflow:hidden;margin:3px 0 7px}.bar i{display:block;height:100%;background:var(--cy)}.bar i.hi{background:var(--bad)}
+.slots{display:flex;flex-wrap:wrap;gap:5px}.sl{border:1px dashed rgba(140,180,230,.3);border-radius:8px;padding:5px 8px;font:600 12px 'JetBrains Mono',monospace;cursor:pointer;color:var(--mut)}.sl.f{border-style:solid;color:var(--ink);background:#162231}.sl.x{border-color:var(--bad);color:var(--bad)}.sl:hover{border-color:var(--cy)}
+#toast{position:fixed;left:50%;top:60px;transform:translateX(-50%);z-index:9;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none}#toast div{padding:8px 14px;font:600 13px Inter;background:rgba(7,11,17,.92);border:1px solid var(--ln);border-radius:10px}#toast div.bad{border-color:var(--bad);color:#ffb3ac}
+#menu{position:fixed;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 30%,rgba(16,40,60,.7),rgba(2,4,8,.95));padding:14px}#menu .card{width:min(460px,100%);padding:26px}#menu h1{font:800 34px Inter;letter-spacing:-.02em}#menu h1 em{color:var(--cy);font-style:normal}#menu p{color:var(--mut);margin:6px 0 18px}.row{display:flex;gap:8px;flex-wrap:wrap}
+#hint{position:fixed;left:50%;bottom:52px;transform:translateX(-50%);z-index:3;padding:8px 14px;font:700 13px Inter;display:flex;gap:10px;align-items:center}
+@media (max-width:700px){.chip{padding:6px 8px;font-size:12px}#top .b{padding:6px 8px;font-size:12px}#pnl{top:auto;height:62vh;left:8px;width:auto}}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="top"><div class="g chip" id="money"></div><div class="g chip" id="inc"></div><div class="g chip" id="day"></div><div class="g chip" id="spd"></div><div class="g chip" id="pw"></div><div class="g chip" id="tmp"></div><div class="g chip" id="net"></div><div class="g chip" id="coin"></div><div class="g chip" id="rep"></div><span class="sp"></span>
+<button class="b" data-p="shop">🛒 Bolt</button><button class="b" data-p="inv">📦 Raktár</button><button class="b" data-p="cli">🤝 Ügyfelek</button><button class="b" data-p="site">🏢 Telephely</button><button class="b" id="bMenu">☰</button></div>
+<div id="goal" class="g" hidden></div><div id="hint" class="g" hidden></div>
+<div id="pnl" class="g" hidden><header><span id="pt"></span><button class="b sm" id="px">✕</button></header><div id="pb"></div></div>
+<div id="toast"></div>
+<div id="menu"><div class="g card"><h1>Szerver<em>farm</em></h1><p>Egy garázsból indulsz egyetlen házi szerverrel. Építs, kábelezz, szerezz ügyfeleket, bányássz – és nőj adatközponttá.</p><div class="row"><button class="b pr" id="mPlay">▶ Játék</button><button class="b" id="mNew" hidden>Új játék</button></div></div></div>
+<script src="szerver.js?v=202611220300"></script></body></html>

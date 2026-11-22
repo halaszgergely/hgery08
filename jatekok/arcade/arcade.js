@@ -20,11 +20,13 @@ const ZeroQuest = { id: 'zeroquest', name: 'ZERO QUEST', ext: 'jatekok/zeroquest
   desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében: küldetések, szintlépés, felszerelés és egy ébredő őr a romok alatt. Zárt béta.' };
 const Drift = window.HGDrift ? window.HGDrift({ G, Sfx, rr, store, hud }) : null;
 const Zombi = window.HGZombi ? window.HGZombi({ G, Sfx, rr, store, hud }) : null;
-const Vasut = { id: 'vasut', name: 'MOZDONYVEZETŐ', ext: 'jatekok/vasut/index.html', tag: 'ÚJ', lbx: 1, icon: '🚂', fmt: v => Math.floor(v).toLocaleString('hu-HU') + ' Ft',
+const Vasut = { id: 'vasut', name: 'DERAIL HUNGARY', ext: 'jatekok/vasut/index.html', tag: 'ÚJ', lbx: 1, icon: '🚂', fmt: v => Math.floor(v).toLocaleString('hu-HU') + ' Ft',
   desc: 'Teherfuvarozás Magyarország valódi, 8400 km-es vasúthálózatán: kocsik, váltók, menetrend, mozdonyok és engedélyek.' };
+const Szerver = { id: 'szerver', name: 'SZERVERFARM', ext: 'jatekok/szerver/index.html', tag: 'ÚJ', lbx: 1, icon: '🖥️', fmt: v => Math.floor(v).toLocaleString('hu-HU') + ' Ft',
+  desc: 'Garázsszervertől az adatközpontig: építs szervert alkatrészekből, kábelezd be a racket, szerezz ügyfeleket és bányássz.' };
 const LegiOntozes = { id: 'flightsim', name: 'HGWS LÉGI ÖNTÖZÉS', ext: 'jatekok/legiontozes/index.html', tag: 'ÚJ', lbx: 1, icon: '✈️', fmt: v => Math.floor(v).toLocaleString('hu-HU') + ' p',
   desc: '3D repülőszimulátor egész Magyarország felett: 17 öntözőgép, mezőöntözés, erdőtüzek, precíziós célok és vízikarikák a miskolci bázisról.' };
-const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Ugro, Torony, Birodalom, BoOnline, Aszaly, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, Atemelotelep, Vasut, LegiOntozes, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
+const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Ugro, Torony, Birodalom, BoOnline, Aszaly, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, Atemelotelep, Vasut, Szerver, LegiOntozes, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
 const NOSPON = ['locsolo', 'vizagyu', 'csepp'];
 GAMES.forEach(g => { if (NOSPON.includes(g.id)) delete g.sponsor; else g.sponsor = 'A Zerosites támogatásával'; });
 /* népszerűség: a főoldal küldi a játékonkénti indításszámot (plays), helyben is megjegyezzük a gyors sorrendhez */
@@ -81,6 +83,10 @@ const ARTS = {
     const u0 = (t * .05) % 1.3 - .15, cols = ['#3b3b3b', '#c9a24a', '#2e7d6b', '#8a5a2b', '#6d4a8f'];
     for (let k = 5; k >= 0; k--) { const u = u0 - k * .035, [a, b] = P(u), [a2, b2] = P(u + .03); x.save(); x.translate((a + a2) / 2, (b + b2) / 2); x.rotate(Math.atan2(b2 - b, a2 - a)); x.fillStyle = '#000'; x.fillRect(-Math.hypot(a2 - a, b2 - b) / 2 - 1, -5, Math.hypot(a2 - a, b2 - b) + 2, 10); x.fillStyle = k ? cols[k - 1] : '#4f7fbf'; x.fillRect(-Math.hypot(a2 - a, b2 - b) / 2, -4, Math.hypot(a2 - a, b2 - b), 8); if (!k) { x.fillStyle = '#ffe29a'; x.fillRect(Math.hypot(a2 - a, b2 - b) / 2 - 3, -4, 3, 8); } x.restore(); }
     for (const [u, n] of [[.18, 'Kelenföld'], [.62, 'Szolnok']]) { const [a, b] = P(u); x.fillStyle = '#e8b656'; x.beginPath(); x.arc(a, b, 4, 0, 6.283); x.fill(); x.font = '700 10px Inter,sans-serif'; x.fillStyle = '#e6e6e6'; x.textAlign = 'center'; x.fillText(n, a, b - 9); } },
+  szerver: (c, x, t) => { const W = c.width, H = c.height; x.fillStyle = '#10161d'; x.fillRect(0, 0, W, H); const rw = W * .34, n = 7, uh = H * .1;
+    for (const rx of [W * .12, W * .54]) { x.fillStyle = '#0a0c0f'; x.fillRect(rx - 5, H * .1, rw + 10, n * uh + 10); for (let i = 0; i < n; i++) { const y = H * .1 + 5 + i * uh; x.fillStyle = i % 3 === 2 ? '#22364a' : '#3a4048'; x.fillRect(rx, y, rw, uh - 3);
+        for (let k = 0; k < 6; k++) { x.fillStyle = Math.sin(t * 6 + i * 2.1 + k * 1.3 + rx) > .1 ? '#5ee08a' : '#1d3b28'; x.fillRect(rx + 6 + k * 7, y + uh * .45, 3, 2); } } }
+    x.lineWidth = 2; ['#3d8bfd', '#f59f00', '#e64980'].forEach((col, i) => { x.strokeStyle = col; x.beginPath(); x.moveTo(W * .12 + rw - 8, H * (.2 + i * .2)); x.bezierCurveTo(W * .5, H * (.5 + i * .2), W * .5, H * (.55 + i * .1), W * .54 + rw - 8, H * (.3 + i * .2)); x.stroke(); }); },
   flightsim: (c, x, t) => { const W = c.width, H = c.height, g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#3f86d6'); g.addColorStop(.62, '#bcd8ee'); g.addColorStop(.62, '#8a9a4c'); g.addColorStop(1, '#5d7a38'); x.fillStyle = g; x.fillRect(0, 0, W, H);
     const cols = ['#c8b26a', '#8a6a48', '#6f8f3e', '#a99a5a', '#7c9a4c']; for (let i = 0; i < 9; i++) { x.fillStyle = cols[i % 5]; x.beginPath(); const y0 = H * .62 + i * i * 1.6, y1 = H * .62 + (i + 1) * (i + 1) * 1.6; x.moveTo(0, y0); x.lineTo(W, y0 - 6); x.lineTo(W, y1 - 6); x.lineTo(0, y1); x.fill(); }
     const px = W * (.15 + ((t * .08) % 1) * .9), py = H * .34 + Math.sin(t * 1.3) * 6; x.fillStyle = 'rgba(210,235,255,.55)'; for (let i = 0; i < 26; i++) { const k = i / 26; x.fillRect(px - 8 - k * 70 + Math.sin(i * 7 + t * 9) * 3, py + 6 + k * 46, 3, 3); }
