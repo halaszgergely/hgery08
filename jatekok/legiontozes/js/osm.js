@@ -7,9 +7,9 @@
    A megyék határán kettőzés elkerülése: minden elem csak annál a megyénél jelenik meg, amelyiknek a körvonalán belül van a közepe (256 m-es maszk).
    A réteg a terep közeli (2 km-es) csonkjaihoz épül, időkerettel, és csak ha az alatta lévő domborzati csempe már betöltődött. */
 import * as THREE from 'three';
-import { ground, megyek, onTile, tileReady, inAirport } from './geo.js?v=202611222004';
-import { SU, withWorld } from './kozos.js?v=202611222004';
-import { NEVEZETES, P } from './config.js?v=202611222004';
+import { ground, megyek, onTile, tileReady, inAirport } from './geo.js?v=202611222029';
+import { SU, withWorld } from './kozos.js?v=202611222029';
+import { NEVEZETES, P } from './config.js?v=202611222029';
 
 const BASE = '../holtvaros/terkep/', T = 2048, LEAF = 2000, MASK = 256;
 const ROADW = [5.5, 7, 9, 12, 16, 24], ROADC = [[.4, .4, .39], [.33, .33, .33], [.31, .31, .32], [.29, .29, .3], [.27, .27, .28], [.25, .25, .27]];
@@ -195,5 +195,17 @@ export function createOSM(scene, opt = {}) {
   function segsNear(x, z, r) { const out = []; leafAround(roadOv, x, z, r, o => { const s = o.userData.segs; if (!s) return;
       for (let i = 0; i < s.length; i += 8) { if (Math.max(s[i], s[i + 2]) < x - r || Math.min(s[i], s[i + 2]) > x + r || Math.max(s[i + 1], s[i + 3]) < z - r || Math.min(s[i + 1], s[i + 3]) > z + r) continue; for (let k = 0; k < 8; k++) out.push(s[i + k]); } }); return out; }
   const roadLift = cl => LIFT + cl * .01;
-  return { update, root, buildingsNear, roadAt, segsNear, roadLift, set(o) { if (o.roadR) roadR = o.roadR; if (o.bldR) bldR = o.bldR; }, stats: () => ({ counties: C.size, roads: roadOv.size, bld: bldOv.size, big: [...C.values()].filter(c => c.bst === 2).length, list: [...C.values()].map(c => c.id + ':' + c.st + '/' + c.bst).join(' ') }) };
+  // útgráf egy téglalapra (útvonaltervezéshez): { x, z: csúcskoordináták, e: [a, b, osztály, jelzők, …] } – null, ha a megyei fájlok még töltődnek
+  function roadGraph(x0, z0, x1, z1) { const S = Math.max(x1 - x0, z1 - z0), cs = []; let wait = false;
+    for (const id in megyek()) { const m = megyek()[id]; if (m[3] > x1 || m[5] < x0 || m[4] > z1 || m[6] < z0) continue; const c = county(id); if (c.st === -1 || c.bst === -1) continue; if (c.st !== 1 || c.bst !== 2) { if (c.st === 1) loadBig(c); wait = true; continue; } cs.push(c); }
+    if (wait) return null; const key = new Map(), X = [], Z = [], E = [];
+    const nid = (x, z) => { const k = Math.round(x) * 1e6 + Math.round(z); let i = key.get(k); if (i === undefined) { i = X.length; key.set(k, i); X.push(x); Z.push(z); } return i; };
+    for (const c of cs) { const [tx0, tx1, ty0, ty1] = tileRange(c, x0, z0, S), DV = c.bin;
+      for (let tx = tx0; tx <= tx1; tx++) for (let ty = ty0; ty <= ty1; ty++) { const t = tx * c.TYN + ty, io = 8 + 12 * t, off = DV.getUint32(io, true); if (!off) continue; const nn = DV.getUint16(io + 4, true), ne = DV.getUint32(io + 8, true), A = nodes(c, t), nb = new Map();
+        for (let i = 0, o = off + nn * 4; i < ne; i++, o += 6) { const a = DV.getUint16(o, true), b = DV.getUint16(o + 2, true), cc = DV.getUint8(o + 4), f = DV.getUint8(o + 5); if (f & 16) continue;
+          const t2 = t + (Math.floor(cc / 3) - 1) * c.TYN + (cc % 3 - 1); let B = t2 === t ? A : nb.get(t2); if (!B) { B = nodes(c, t2); nb.set(t2, B); }
+          const [ax, az] = toN(c, A[2 * a], A[2 * a + 1]), [bx, bz] = toN(c, B[2 * b], B[2 * b + 1]); if (Math.max(ax, bx) < x0 || Math.min(ax, bx) > x1 || Math.max(az, bz) < z0 || Math.min(az, bz) > z1) continue;
+          E.push(nid(ax, az), nid(bx, bz), f & 7, f); } } }
+    return { x: X, z: Z, e: E }; }
+  return { update, root, buildingsNear, roadAt, segsNear, roadLift, roadGraph, set(o) { if (o.roadR) roadR = o.roadR; if (o.bldR) bldR = o.bldR; }, stats: () => ({ counties: C.size, roads: roadOv.size, bld: bldOv.size, big: [...C.values()].filter(c => c.bst === 2).length, list: [...C.values()].map(c => c.id + ':' + c.st + '/' + c.bst).join(' ') }) };
 }

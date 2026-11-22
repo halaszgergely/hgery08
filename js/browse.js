@@ -1,11 +1,11 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611222004';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611222004';
-import * as Player from './player.js?v=202611222004';
-import * as Party from './party.js?v=202611222004';
-import * as VP from './vplayer.js?v=202611222004';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611222004';
-import * as ArcL from './arcade-lista.js?v=202611222004';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611222029';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611222029';
+import * as Player from './player.js?v=202611222029';
+import * as Party from './party.js?v=202611222029';
+import * as VP from './vplayer.js?v=202611222029';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611222029';
+import * as ArcL from './arcade-lista.js?v=202611222029';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -270,7 +270,7 @@ const betaOk = () => { try { return !!C && !C.S.guest && (C.isAdmin() || (C.S.me
 const ZQ = { id: 'zeroquest', name: 'Zero Quest', icon: '⚔️', desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében – zárt béta.', c: '#e8b656', demo: 1, beta: 1 };
 const extras = () => betaOk() ? [...EXTRA, ZQ] : EXTRA;
 /* „A Zerosites támogatásával” – minden játék, kivéve a három klasszikust */
-const NOSPON = ['locsolo', 'vizagyu', 'csepp'];
+const NOSPON = ['locsolo', 'vizagyu', 'csepp', 'vizfuvar'];
 [...GAMES, ...EXTRA, ZQ].forEach(g => { if (!NOSPON.includes(g.id)) g.sponsor = 'A Zerosites támogatásával'; });
 /* népszerűség: játékonkénti indításszám (plays/{játék}.n), munkamenetenként játékonként egyszer nő */
 let PLAYS = (() => { try { return JSON.parse(localStorage.getItem('hgws_plays') || '{}') || {}; } catch (_) { return {}; } })(), playsAt = 0;

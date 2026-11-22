@@ -9,12 +9,13 @@ export function createHud() {
   const subtitle = (t, ms = 5000) => { el.sub.textContent = t; el.sub.classList.toggle('on', !!t); subT = ms / 1000; };
   /* ---- minitérkép: a közeli utak a betöltött OSM-csonkokból ---- */
   const mx = el.mini.getContext('2d');
-  function drawMini(p, yaw, segs, target, base, others) { const W = el.mini.width, R = 420, k = W / 2 / R; mx.setTransform(1, 0, 0, 1, 0, 0); mx.fillStyle = 'rgba(14,20,18,.92)'; mx.fillRect(0, 0, W, W);
+  function drawMini(p, yaw, segs, target, base, others, route) { const W = el.mini.width, R = 420, k = W / 2 / R; mx.setTransform(1, 0, 0, 1, 0, 0); mx.fillStyle = 'rgba(14,20,18,.92)'; mx.fillRect(0, 0, W, W);
     mx.save(); mx.translate(W / 2, W / 2); mx.rotate(yaw); mx.lineCap = 'round';
     for (let pass = 0; pass < 2; pass++) for (let i = 0; i < segs.length; i += 8) { const cl = segs[i + 5], dirt = !cl && !(segs[i + 6] & 32);
       mx.strokeStyle = pass ? (dirt ? '#8a7a5a' : cl >= 4 ? '#f0a040' : cl >= 2 ? '#f6e3a0' : '#e8e8e8') : 'rgba(0,0,0,.6)'; mx.lineWidth = Math.max(1.6, segs[i + 4] * k) + (pass ? 0 : 2);
       mx.beginPath(); mx.moveTo((segs[i] - p.x) * k, (segs[i + 1] - p.z) * k); mx.lineTo((segs[i + 2] - p.x) * k, (segs[i + 3] - p.z) * k); mx.stroke(); }
     const dot = (x, z, c, r = 6, clamp = true) => { let dx = (x - p.x) * k, dz = (z - p.z) * k; const d = Math.hypot(dx, dz), m = W / 2 - 10; if (d > m) { if (!clamp) return; dx *= m / d; dz *= m / d; } mx.fillStyle = c; mx.strokeStyle = '#000'; mx.lineWidth = 2; mx.beginPath(); mx.arc(dx, dz, r, 0, 6.3); mx.fill(); mx.stroke(); };
+    if (route && route.length > 1) { mx.lineJoin = 'round'; for (const [c, w] of [['rgba(0,0,0,.55)', 9], ['#2aa7d9', 5]]) { mx.strokeStyle = c; mx.lineWidth = w; mx.beginPath(); route.forEach((q, i) => i ? mx.lineTo((q[0] - p.x) * k, (q[1] - p.z) * k) : mx.moveTo((q[0] - p.x) * k, (q[1] - p.z) * k)); mx.stroke(); } }
     if (base) dot(base[0], base[1], '#2f9e4f', 7); for (const o of others || []) dot(o[0], o[1], o[2], 5, false); if (target) dot(target[0], target[1], '#2aa7d9', 8);
     mx.restore(); mx.fillStyle = '#f2c230'; mx.strokeStyle = '#000'; mx.lineWidth = 2; mx.beginPath(); mx.moveTo(W / 2, W / 2 - 12); mx.lineTo(W / 2 - 8, W / 2 + 9); mx.lineTo(W / 2 + 8, W / 2 + 9); mx.closePath(); mx.fill(); mx.stroke(); }
   /* ---- műszerfal (fülkenézet) ---- */

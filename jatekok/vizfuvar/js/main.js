@@ -1,19 +1,20 @@
 /* HGWS Vízfuvar – főprogram: betöltés (a Légi Öntözés domborzata, terepe, égboltja és OSM-világa), játékhurok rögzített 120 Hz-es fizikával,
    kamerák, fuvarok, töltés és lerakás, tankolás, rádió, mentés, ranglista, dev mód. */
 import * as THREE from 'three';
-import { JARMU, JARMUVEK, GAZD, DT, BALLON_KG, GAME } from './config.js?v=202611222004';
-import { epitJarmu, salAnim } from './jarmuvek.js?v=202611222004';
-import { createCar, placeCar, stepCar, setLoad, createMoped, placeMoped, stepMoped, createProp, stepProp } from './fizika.js?v=202611222004';
-import { createPlaces } from './helyszinek.js?v=202611222004';
-import { createAudio } from './hang.js?v=202611222004';
-import { createRadio } from './radio.js?v=202611222004';
-import { createHud } from './hud.js?v=202611222004';
-import { drawMap, setMapImage, setGeo } from './terkep.js?v=202611222004';
-import { createControls, ALAP_KIOSZTAS } from './iranyitas.js?v=202611222004';
-import { createUI } from './ui.js?v=202611222004';
-import { UJ_MENTES, ujPiac, elszamol, tankolasAr, vagyon } from './gazdasag.js?v=202611222004';
-import { ballon as ballonMesh } from './modellkit.js?v=202611222004';
-import * as RL from './ranglista.js?v=202611222004';
+import { JARMU, JARMUVEK, GAZD, DT, BALLON_KG, GAME } from './config.js?v=202611222029';
+import { epitJarmu, salAnim } from './jarmuvek.js?v=202611222029';
+import { createCar, placeCar, stepCar, setLoad, createMoped, placeMoped, stepMoped, createProp, stepProp } from './fizika.js?v=202611222029';
+import { createPlaces } from './helyszinek.js?v=202611222029';
+import { createAudio } from './hang.js?v=202611222029';
+import { createRadio } from './radio.js?v=202611222029';
+import { createHud } from './hud.js?v=202611222029';
+import { drawMap, setMapImage, setGeo } from './terkep.js?v=202611222029';
+import { createControls, ALAP_KIOSZTAS } from './iranyitas.js?v=202611222029';
+import { createUI } from './ui.js?v=202611222029';
+import { UJ_MENTES, ujPiac, elszamol, tankolasAr, vagyon } from './gazdasag.js?v=202611222029';
+import { ballon as ballonMesh } from './modellkit.js?v=202611222029';
+import * as RL from './ranglista.js?v=202611222029';
+import { createRouter } from './utvonal.js?v=202611222029';
 
 // a Légi Öntözés világa egyetlen, verziózott belépési ponton át (így a modulok mindig összetartoznak)
 const K = await import(new URL('../../legiontozes/js/vilagkit.js', import.meta.url).href); const GEO = K.GEO; setGeo(GEO);
@@ -47,7 +48,7 @@ addEventListener('keydown', e => { if (e.code === 'KeyK' && !e.repeat && FS_OK &
 const audio = createAudio(), hud = createHud(), ctl = createControls(SET.kiosztas || ALAP_KIOSZTAS), radio = createRadio(audio);
 ctl.bindTouch($('#tc')); radio.onSub((t, ms) => hud.subtitle(t, ms));
 let terrain, world, osm, places, D, ui, state = 'load', v = null, mdl = null, camMode = 'kulso', look = { yaw: 0, pitch: 0, drag: null }, mapOpen = false, props = [], tod = 13;
-let headL = null, previewMdl = null, previewId = null, orbit = 0, lightsOn = false, ind = 0, blinkT = 0, honk = false, jobT = 0, jobDmg0 = 0, saveT = 0, idleMsgT = 0, whistleT = 8, envT = 0, prevFallen = false;
+let router = null, headL = null, previewMdl = null, previewId = null, orbit = 0, lightsOn = false, ind = 0, blinkT = 0, honk = false, jobT = 0, jobDmg0 = 0, saveT = 0, idleMsgT = 0, whistleT = 8, envT = 0, prevFallen = false;
 
 /* ---------- környezet a fizikának: felület (terep + útfelület), normál, tapadás, épületek ---------- */
 let segCache = [], segAt = [1e9, 1e9], bldCache = [], bldAt = [1e9, 1e9];
@@ -67,7 +68,7 @@ async function boot() { const bar = $('#loadB'), txt = $('#loadT'), prog = (p, t
   try { prog(10, 'Magyarország domborzata…'); await GEO.load('../vasut/');
     prog(35, 'Térkép, fuvarcélok…'); const img = new Image(); img.src = '../vasut/taj.jpg'; await img.decode().catch(() => {}); setMapImage(img); D = await (await fetch('adat/celok.json')).json();
     prog(55, 'Táj, utak, épületek…');
-    terrain = K.createTerrain(scene, { viewR: SET.view * 1000 }); world = K.createWorld(scene, {}); osm = K.createOSM(scene, { waterMat: terrain.waterMat, lift: .1, step: 8, marks: true, roadR: 2200, bldR: 1600 });
+    terrain = K.createTerrain(scene, { viewR: SET.view * 1000 }); world = K.createWorld(scene, {}); osm = K.createOSM(scene, { waterMat: terrain.waterMat, lift: .1, step: 8, marks: true, roadR: 2200, bldR: 1600 }); router = createRouter(osm);
     places = createPlaces(scene, GEO.ground, D); GEO.onTile(bd => { world.fixGround?.(bd); places.fixGround(bd); segAt = [1e9, 1e9]; });
     world.setWind?.(2); ui = createUI(app); applySettings(); devBadge(); await radio.ready;
     radio.setNews(news);
@@ -103,7 +104,7 @@ function preview(id, x, z) { if (previewMdl) scene.remove(previewMdl.g); preview
 function startDrive() { if (!save.aktiv) return ui.uj(); ui.hideAll(); if (previewMdl) { scene.remove(previewMdl.g); previewMdl = null; }
   const p = save.poz && !DEV.on ? save.poz : null, [sx, sz] = places.pontok.start;
   spawn(save.aktiv, p ? p[0] : sx, p ? p[1] : sz, p ? p[2] : places.rot + Math.PI); state = 'drive'; $('#hud').hidden = false; $('#tc').hidden = !TOUCH; camMode = 'kulso'; snapCam();
-  if (!save.elso && !save.munka) { save.piac = ujPiac(D, save, JARMU[save.aktiv].ballon); hud.say('Üdv a HGWS-nél! Az első fuvar: egyetlen ballon víz a HGWS irodába. Vedd fel a fuvart (F a piacon, vagy a szünetmenüben), töltsd fel a ballont a telephelyen, és vidd el!', 'big', 8000); }
+  if (!save.elso && !save.munka) { save.piac = ujPiac(D, save, JARMU[save.aktiv].ballon); hud.say('Üdv a HGWS-nél! Az első fuvar: egyetlen ballon víz a HGWS irodába. Vedd fel a fuvart (álló helyzetben F, vagy a szünetmenüben), töltsd fel a ballont a telephelyen, és vidd el!', 'big', 8000); }
   audio.init(); }
 function pause() { if (state !== 'drive') return; state = 'pause'; audio.suspend(); $('#pause').hidden = false; }
 function resume() { $('#pause').hidden = true; ui.hideAll(); state = 'drive'; audio.resume(); }
@@ -111,7 +112,7 @@ function mapOpenF() { mapOpen = true; $('#mapS').hidden = false; const prev = st
 function mapClose() { if (!mapOpen) return; mapOpen = false; $('#mapS').hidden = true; if (state === 'map') state = 'drive'; }
 const mapS = { prev: null };
 function drawBigMap(follow) { const jobs = (save.piac || []).map(j => ({ ...j, sel: save.munka?.id === j.id })); if (save.munka && !jobs.some(j => j.sel)) jobs.push({ ...save.munka, sel: true });
-  drawMap($('#mapC'), { p: v ? v.pos : { x: D.telephely.x, z: D.telephely.z }, yaw: v ? yawOf() : 0, jobs, kutak: D.kutak, base: [D.telephely.x, D.telephely.z], segs: v ? osm.segsNear(v.pos.x, v.pos.z, 1500) : null, follow }, j => { if (!save.munka) ui.piac(j.id); }); }
+  drawMap($('#mapC'), { p: v ? v.pos : { x: D.telephely.x, z: D.telephely.z }, yaw: v ? yawOf() : 0, jobs, kutak: D.kutak, base: [D.telephely.x, D.telephely.z], segs: v ? osm.segsNear(v.pos.x, v.pos.z, 1500) : null, route: v ? router.route : null, follow }, j => { if (!save.munka) ui.piac(j.id); }); }
 $('#mapX').onclick = () => mapClose(); $('#mapMe').onclick = () => drawBigMap(true); $('#mini').addEventListener('click', () => { if (state === 'drive') mapOpenF(); });
 $('#pause').addEventListener('click', e => { const p = e.target.closest('[data-p]')?.dataset.p; if (!p) return; audio.fx.click();
   if (p === 'tovabb') resume(); else if (p === 'piac') ui.piac(); else if (p === 'terkep') { $('#pause').hidden = true; mapOpenF(); } else if (p === 'beall') ui.beall(() => { ui.hideAll(); $('#pause').hidden = false; });
@@ -138,6 +139,7 @@ function interaction() { if (!v) return null; const p = v.pos, near = (pt, r) =>
   const m = save.munka; if (m && near([m.px, m.pz], 7.5) && slow) { if (v.cargo < m.n) return { t: `Ide ${m.n} ballon kell, nálad ${v.cargo} van`, f: null };
     return { t: `F – Lerakás: ${m.n} ballon`, f: () => deliver() }; }
   if (near(places.pontok.garazs, 12) && slow && !m) return { t: 'F – Garázs (járművek)', f: () => { pause(); $('#pause').hidden = true; ui.ceg(() => { ui.hideAll(); $('#pause').hidden = false; }); } };
+  if (slow) return { t: m ? 'F – Fuvarpiac (aktuális fuvar)' : 'F – Fuvarpiac', f: () => { pause(); $('#pause').hidden = true; ui.piac(); } };
   return null; }
 function deliver() { const m = save.munka, el = Math.round(jobT), r = elszamol(m, el, Math.max(0, v.damage - jobDmg0)); audio.fx.water(2); setCargo(v.cargo - m.n);
   save.penz += r.dij; save.fuvarok++; save.legjobb = Math.max(save.legjobb, r.pont); save.hirnev = Math.min(100, save.hirnev + (el <= m.hatarido ? 2 : -1)); save.km += m.km;
@@ -202,14 +204,16 @@ function drive(rdt) { const J = v.J; ctlI = ctl.read(rdt); const I = { ...ctlI }
   // fuvar jelölő és célnyíl
   const m = save.munka; let tgt = null; if (m) { if (v.cargo < m.n) tgt = places.pontok.toltes; else tgt = [m.px, m.pz]; places.setMarker(m.px, m.pz, 6); } else places.setMarker(null);
   if (!m && props.length) tgt = [props[0].pos.x, props[0].pos.z];
+  router.set(tgt); const route = router.update(p, rdt); let navT = tgt, navL = 0;
+  if (route) { for (let i = 1; i < route.length; i++) navL += Math.hypot(route[i][0] - route[i - 1][0], route[i][1] - route[i - 1][1]); navT = route.find(q => Math.hypot(q[0] - p.x, q[1] - p.z) > 35) || tgt; }
   camUpdate(rdt); let arrow = null, arrowD = '', navA = null; if (tgt) { const dx2 = tgt[0] - p.x, dz2 = tgt[1] - p.z, d = Math.hypot(dx2, dz2), cy = new THREE.Euler().setFromQuaternion(cam.quaternion, 'YXZ').y, a = Math.atan2(-dx2, -dz2) - cy;
-    arrow = -a; arrowD = d > 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'; navA = -(Math.atan2(-dx2, -dz2) - yawOf()); }
+    arrow = -a; arrowD = d > 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'; if (navL) arrowD = navL > 1000 ? (navL / 1000).toFixed(1) + ' km' : Math.round(navL) + ' m'; navA = -(Math.atan2(-(navT[0] - p.x), -(navT[1] - p.z)) - yawOf()); }
   const it = interaction(); drive.it = it;
   const kmh = v.speed * 3.6 * Math.sign(v.vx || 1), gearT = v.kind === 'moped' ? 'A' : v.eng.gear === -1 ? 'R' : v.eng.gear === 0 ? 'N' : String(v.eng.gear) + (v.eng.auto ? '' : 'M');
   hud.update(rdt, { kmh: Math.abs(kmh), gearT, rpm: v.eng.rpm, rpmMax: v.kind === 'moped' ? 7500 : J.motor.piros, fuel: v.fuel / J.tank, fuelL: v.fuel, cargoT: `🫙 ${v.cargo} / ${J.ballon} ballon`, money: penz().toLocaleString('hu-HU') + ' Ft',
     job: m ? { t: m.nev, s: `${m.n} ballon · ${m.dij.toLocaleString('hu-HU')} Ft · ${v.cargo < m.n ? 'töltés a telephelyen' : 'határidő ' + fmtT(Math.max(0, m.hatarido - jobT))}` } : props.length ? { t: 'Szedd vissza a ballont!', s: props.length + ' ballon a földön' } : null,
     act: it?.t || null, arrow, arrowD });
-  if ((miniT -= rdt) <= 0) { miniT = .3; miniSegs = osm.segsNear(p.x, p.z, 480); } hud.drawMini(p, yawOf(), miniSegs, tgt, [D.telephely.x, D.telephely.z], props.map(o => [o.pos.x, o.pos.z, '#5fb7e6']));
+  if ((miniT -= rdt) <= 0) { miniT = .3; miniSegs = osm.segsNear(p.x, p.z, 480); } hud.drawMini(p, yawOf(), miniSegs, tgt, [D.telephely.x, D.telephely.z], props.map(o => [o.pos.x, o.pos.z, '#5fb7e6']), route);
   if (camMode === 'fulke') hud.drawDash({ moped: v.kind === 'moped', kmh: Math.abs(kmh), rpm: v.eng.rpm, fuel: v.fuel / J.tank, fuelL: v.fuel, gearT, cargo: v.cargo + '/' + J.ballon, navA, navD: arrowD, radio: radio.state.on ? radio.state.nev : '', radioF: radio.state.on ? radio.state.frek : '', indL: ind === 1 || ind === 3, indR: ind === 2 || ind === 3, blink, lights: lightsOn, hand: ctlI.hand });
   if (v.fuel <= 0 && !drive.noFuel) { drive.noFuel = 1; hud.say('Kifogyott az üzemanyag! (Szünetmenü: gyorsutazás a telephelyre.)', 'bad', 5000); } else if (v.fuel > 0) drive.noFuel = 0;
   saveT += rdt; if (saveT > 20) { saveT = 0; savePos(); persist(); }
@@ -249,5 +253,5 @@ const app = { get save() { return save; }, SET, DEV, JARMUVEK, JARMU, D, get v()
   devIdo() { world.setTime(((world.tod ?? 13) + 3) % 24); },
   devTeleport() { if (!v || !save.munka) return hud.say('Nincs aktív fuvar vagy jármű.'); const m = save.munka; dropProps(); spawn(save.aktiv, m.px + 8, m.pz + 8, yawOf()); setCargo(Math.max(v.cargo, m.n)); snapCam(); hud.say('DEV teleport', 'ok'); },
   fps: () => Math.round(fps) };
-window.__vf = DEBUG ? { app, get v() { return v; }, env, GEO, get osm() { return osm; }, places: () => places, cam } : undefined;
+window.__vf = DEBUG ? { app, get v() { return v; }, env, GEO, get osm() { return osm; }, places: () => places, cam, get router() { return router; } } : undefined;
 boot();

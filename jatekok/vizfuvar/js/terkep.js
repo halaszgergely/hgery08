@@ -30,6 +30,7 @@ export function drawMap(cv, s, onPick) { const W = cv.clientWidth, H = cv.client
       x.textAlign = 'center'; x.font = '600 11px Inter'; x.fillStyle = 'rgba(255,255,255,.9)'; x.strokeStyle = 'rgba(0,0,0,.6)'; x.lineWidth = 3;
       for (const c of cs) for (const [lx, lz, n, town] of c.labels) { if (!town && k * 250 < 9) continue; const px = X(lx), py = Y(lz); if (px < -40 || py < -10 || px > W + 40 || py > H + 10) continue; x.strokeText(n, px, py); x.fillText(n, px, py); }
       x.restore(); }
+    if (s.route && s.route.length > 1) { x.lineJoin = x.lineCap = 'round'; for (const [c, w] of [['rgba(0,0,0,.6)', 8], ['#2aa7d9', 4.5]]) { x.strokeStyle = c; x.lineWidth = w; x.beginPath(); s.route.forEach((q, i) => i ? x.lineTo(X(q[0]), Y(q[1])) : x.moveTo(X(q[0]), Y(q[1]))); x.stroke(); } }
     hits = [];
     const pin = (wx, wz, c, r, lab, obj) => { const px = X(wx), py = Y(wz); if (px < -20 || py < -20 || px > W + 20 || py > H + 20) return; x.fillStyle = c; x.strokeStyle = '#000'; x.lineWidth = 2; x.beginPath(); x.arc(px, py, r, 0, 6.3); x.fill(); x.stroke();
       if (lab) { x.font = '800 11px Inter'; x.textAlign = 'center'; x.fillStyle = '#fff'; x.strokeStyle = 'rgba(0,0,0,.7)'; x.lineWidth = 3; x.strokeText(lab, px, py - r - 5); x.fillText(lab, px, py - r - 5); } if (obj) hits.push([px, py, obj]); };
