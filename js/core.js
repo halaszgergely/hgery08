@@ -1,6 +1,6 @@
 // HGWS – közös Firebase-indítás és segédfüggvények
-import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611221546';
-import * as FB from './firebase.js?v=202611221546';
+import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611221550';
+import * as FB from './firebase.js?v=202611221550';
 
 export { FB, notConfigured };
 
@@ -147,7 +147,7 @@ export const errText = e => ({
 }[e?.code] || (e?.message || String(e)));
 
 /* Foglalt nevek – ugyanaz a szabály, mint a firestore.rules-ban (ott is ellenőrizve van) */
-import { badName } from './nevszuro.js?v=202611221546';
+import { badName } from './nevszuro.js?v=202611221550';
 export function reservedName(n) {
   const s = String(n || '').toLowerCase(), A = '[aáà4@]', E = '[eéè3]', sep = '[^a-z0-9áéíóöőúüű]*';
   const full = r => new RegExp('^(?:' + r + ')$').test(s);
@@ -157,7 +157,7 @@ export function reservedName(n) {
     || full('(.*[^a-z]|)h[^a-z]+[g69]' + sep + E + sep + 'r' + sep + '[g69]' + sep + E + sep + 'l' + sep + '[yií1].*')
     || full('.*h' + sep + A + sep + 'l' + sep + A + sep + 's' + sep + 'z[^a-z]+[g69]([^a-z].*|)');
 }
-export { badName, BAD_MSG, badMsg, badReason } from './nevszuro.js?v=202611221546';
+export { badName, BAD_MSG, badMsg, badReason } from './nevszuro.js?v=202611221550';
 export const RESERVED_MSG = 'Ez a név foglalt (a HGWS tulajdonosáé). Válassz másikat!';
 
 /* Bejelentkezett felhasználó profiljának létrehozása (ha még nincs) */
