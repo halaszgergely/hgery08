@@ -377,8 +377,11 @@
     if (k === 'KeyX') { if (badOf(d).length) { fixBad(d); calc(); top(); if (view) ui(); } }
     else if (k === 'KeyF') { if (D.k === 'srv') d.on = d.on ? 0 : 1; else if (ubase(d).trip) delete ubase(d).trip; dirty = 1; beep(500); } else if (k === 'KeyM' && D.k === 'srv') { d.mine = d.mine ? 0 : 1; dirty = 1; beep(500); }
     else if (k === 'KeyR') { if (D.base) return toast('Az alapmodul a szekrény része.', 1); if (findDev(d.id)[1] === -2 && onTop(d)) return toast('Előbb vedd le, ami rajta van.', 1); if (insp) closeInsp(); place = d; hint(); beep(420); } if (insp) inspUI(); });
-  const fullscreen = () => { try { if (document.fullscreenElement) document.exitFullscreen(); else { const r = document.documentElement.requestFullscreen(); if (r && r.catch) r.catch(() => toast('A böngésző nem engedi a teljes képernyőt.', 1)); } } catch (_) {} };
-  const kb = (k, t) => `<span><kbd>${k}</kbd>${t}</span>`;
+  const fullscreen = () => { try { if (document.fullscreenElement) document.exitFullscreen(); else { const r = document.documentElement.requestFullscreen(); if (r && r.then) r.then(() => { try { const o = screen.orientation; if (o && o.lock) o.lock('landscape').catch(() => {}); } catch (_) {} }, () => {}); if (r && r.catch) r.catch(() => toast('A böngésző nem engedi a teljes képernyőt.', 1)); } } catch (_) {} };
+  const kb = (k, t) => `<span data-k="${k}"><kbd>${k}</kbd>${t}</span>`;
+  // érintésnél a gyorsgomb-címkék és a jobb alsó gombok maguk a gombok: a megfelelő billentyűt nyomják le
+  const press = k => { const code = k === 'Space' ? 'Space' : k === 'Tab' ? 'Tab' : k === 'Shift' ? 'ShiftLeft' : /^[A-Z]$/.test(k) ? 'Key' + k : ''; if (k === 'ROT') { dispatchEvent(new WheelEvent('wheel', { deltaY: 100, cancelable: true })); return; } if (!code) return; for (const t of ['keydown', 'keyup']) dispatchEvent(new KeyboardEvent(t, { code, key: k.toLowerCase(), bubbles: true, cancelable: true })); };
+  document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('#ctx [data-k], #insp [data-k], #tbtn [data-k]'); if (t) { e.preventDefault(); press(t.dataset.k); } });
   function keysUI() { const e = $('#keys'); e.innerHTML = S.nokeys ? kb('H', 'Gombok') : kb('Tab', 'Telefon') + kb('B', 'Bolt') + kb('I', 'Raktár') + kb('U', 'Ügyfelek') + kb('G', 'Gépek') + kb('T', 'Telephely') + kb('WASD', 'Mozgás') + kb('Shift', 'Futás') + kb('C', 'Guggolás') + kb('Space', 'Szünet') + kb('P', 'Teljes képernyő') + kb('H', 'Elrejt'); }
   let ctxS = ''; function ctxUI() { let h = ''; if (insp) { if (hov && !view) { const d = findDev(insp)[0], cur = d && got(d, hov[0], hov[1]); h = `<b>${PK[hov[0]]}</b>` + (cur ? pv(cur).n + (broken(cur) ? ' (hibás)' : '') : 'üres'); } } else if (!view && F3 && F3.on) { const a = aimed();
       if (place) { const t = a.pl; h = (t && t.ok ? kb('E', t.rack || t.arm != null || t.vcm != null ? 'Felszerel' : 'Lerak') : '') + (t && t.turn ? kb('Görgő', 'Forgat') : '') + kb('Q', 'Mégse'); }
@@ -504,7 +507,7 @@
     rackTo: (ctx, i, k) => drawTo(ctx, k, 0, 0, rwOf(S.racks[i]) + 28, RACK[S.racks[i].t].u * U + 14, () => drawRack(i)), wallTo: (ctx, k, key) => { const W = wallDim(key); drawTo(ctx, k, 0, 0, W.w, W.h, () => drawWall(key)); }, wallKeys, dw, rwOf, fitsRack: (d, ri) => (!DEV[d.t].wide || !!RACK[S.racks[ri].t].wide) && !!DEV[d.t].bm === !!RACK[S.racks[ri].t].bat, offX, maxOf, ubase, looseTo: (ctx, d, k) => drawTo(ctx, k, 0, 0, dw(d), DEV[d.t].u * U, () => drawLoose(d)) };
   function toggle3D(on) { if (on === undefined) on = !(F3 && F3.on); if (!on) { if (F3) F3.stop(); $('#c3').hidden = true; cv.hidden = false; return; }
     const go = () => { $('#c3').hidden = false; cv.hidden = true; F3.start(); }; if (F3) return go(); if (f3load) return; f3load = 1;
-    import('./fps.js?v=202611230445').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
+    import('./fps.js?v=202611230454').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
   $('#bPh').onclick = () => view ? closeP() : openP(lastApp, '');
 
   /* ---------- főciklus ---------- */
@@ -514,7 +517,7 @@
   function loop(now) { requestAnimationFrame(loop); const dt = Math.min(.1, (now - last) / 1000); last = now; // az újrahívás elöl: egy hiba se állítsa meg a játékot
     if ($('#menu').hidden && (S.spd || S.sleepTo)) { acc += dt * (S.sleepTo ? SLEEPX : 1); let n = 0; while (acc >= .25 && n++ < 400) { acc -= .25; if (dirty) calc(); tick(.25 / DAY); if (S.sleepTo && S.day >= S.sleepTo) { S.sleepTo = 0; acc = 0; const dm = S.money - sleepM; toast('Aludtál 8 órát · ' + (dm >= 0 ? '+' : '') + ft(dm)); beep(880, .2); } } }
     { const e = $('#sleep'); e.classList.toggle('on', !!S.sleepTo); if (S.sleepTo) { const m = Math.floor((S.day % 1) * 1440 + 360) % 1440; e.firstChild.textContent = '💤 ' + String(m / 60 | 0).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); } }
-    if (dirty) calc(); if (F3 && F3.on) { try { F3.frame(dt); ctxUI(); } catch (e) { console.error(e); if (!(loop.err > now)) { loop.err = now + 4000; toast('Hiba: ' + (e && e.message || e), 1); } sel = place = null; hint(); } } if ((uiT -= dt) <= 0) { uiT = .5; top(); if (insp) inspUI(); if (view === 'dev' && !slot || view === 'site' || view === 'srv') ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); cloudPush('auto'); } if ((scT -= dt) <= 0) { scT = 60; score(); }
+    if (dirty) calc(); if (F3 && F3.on) { try { document.body.classList.toggle('busy', window.SZ3.busy); F3.frame(dt); ctxUI(); } catch (e) { console.error(e); if (!(loop.err > now)) { loop.err = now + 4000; toast('Hiba: ' + (e && e.message || e), 1); } sel = place = null; hint(); } } if ((uiT -= dt) <= 0) { uiT = .5; top(); if (insp) inspUI(); if (view === 'dev' && !slot || view === 'site' || view === 'srv') ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); cloudPush('auto'); } if ((scT -= dt) <= 0) { scT = 60; score(); }
   }
   /* felhőmentés (bejelentkezve, az Arcade keretoldalán át): mentési helyenként külön; automatikusan 30 percenként és kilépéskor, kézzel csak admin.
      Betöltéskor helyenként az a mentés marad meg, amelyikben nagyobb az összbevétel (a pontszám). */
