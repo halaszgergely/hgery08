@@ -1,11 +1,11 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611230608';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611230608';
-import * as Player from './player.js?v=202611230608';
-import * as Party from './party.js?v=202611230608';
-import * as VP from './vplayer.js?v=202611230608';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611230608';
-import * as ArcL from './arcade-lista.js?v=202611230608';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611230612';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611230612';
+import * as Player from './player.js?v=202611230612';
+import * as Party from './party.js?v=202611230612';
+import * as VP from './vplayer.js?v=202611230612';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611230612';
+import * as ArcL from './arcade-lista.js?v=202611230612';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -319,6 +319,12 @@ function arcadeRow() { return ArcL.homeRow(arcCtx); }
 /* ha a tagek vagy a saját fiók megváltozik, a zárt béta jogosultságot újraküldjük az Arcade-nak */
 export function tagsChanged() { const f = $('.arcframe'); if (f) sendBoards(f.contentWindow); }
 export const watchGuestNames = () => watchForced();
+/* moderátor (és afölött): vendég átnevezése. Vissza: { ok } | { err, free? } – free: a legközelebbi szabad név, ha a kért foglalt */
+export async function modRenameGuest(uid, raw) { if (!C.isMod() || typeof uid !== 'string' || !/^[\w-]{6,128}$/.test(uid)) return { err: 'Nincs jogosultság.' };
+  const n = String(raw || '').trim().replace(/\s+/g, ' '), m = nickError(n); if (m) return { err: m };
+  if (await nickTaken(n, uid)) { const f = await freeNick(n, uid); return { err: 'Ez a név már foglalt – szabad: ' + f, free: f }; }
+  try { const old = await FB.getDocs(FB.query(FB.collection(db, 'guestnames'), FB.where('uid', '==', uid))); await FB.setDoc(gnRef(n), { uid, nick: n, at: FB.serverTimestamp(), lock: true }); await Promise.all(old.docs.filter(d => d.id !== n.toLowerCase()).map(d => FB.deleteDoc(d.ref).catch(() => {}))); toast('Vendég átnevezve: ' + n); return { ok: true }; }
+  catch (e) { return { err: 'Nem sikerült: ' + errText(e) }; } }
 export function arcade(id) {
   cleanup(); watchForced();
   document.title = 'Arcade · HGWS';
@@ -481,10 +487,8 @@ export async function lbProfile(uid, nick) {
   const el = modal({ title: 'Ranglista-profil', body: `<div style="display:flex;align-items:center;gap:.9rem;margin-bottom:1rem">${u ? avatar(u, 56) : '<span style="width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--bg3);font-size:1.6rem">🎮</span>'}
       <div><b style="font-size:1.15rem">${esc(name)}</b> ${u ? C.tagPills(u, 4) : '<span class="utag" style="--tc:#8f8a7e">Vendég</span>'}</div></div>${modRen ? `<div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem"><input class="inp" data-gn maxlength="20" value="${esc(name)}" style="flex:1" autocomplete="off"><button class="btn plain" data-gnok>Átnevezés</button></div><p data-gnerr style="color:#ff8080;font-size:.85rem;min-height:1.2em;margin-bottom:.6rem"></p>` : ''}<div data-rec><div class="empty">Betöltés…</div></div>`,
     foot: `${u ? `<a class="btn plain" href="#/profil/${esc(uid)}" data-x><i class="ic ic-user"></i> Teljes profil</a>` : ''}<button class="btn goldb" data-x>Bezárás</button>` });
-  if (modRen) el.querySelector('[data-gnok]').onclick = async () => { const inp = el.querySelector('[data-gn]'), er = el.querySelector('[data-gnerr]'), n = inp.value.trim().replace(/\s+/g, ' '), m = nickError(n); if (m) { er.textContent = m; return; }
-    if (await nickTaken(n, uid)) { const f = await freeNick(n, uid); er.textContent = 'Ez a név már foglalt – szabad: ' + f; inp.value = f; return; }
-    try { const old = await FB.getDocs(FB.query(FB.collection(db, 'guestnames'), FB.where('uid', '==', uid))); await FB.setDoc(gnRef(n), { uid, nick: n, at: FB.serverTimestamp(), lock: true }); await Promise.all(old.docs.filter(d => d.id !== n.toLowerCase()).map(d => FB.deleteDoc(d.ref).catch(() => {})));
-      er.style.color = 'var(--green)'; er.textContent = 'Átnevezve. A vendég a nevét ezután nem tudja módosítani.'; toast('Vendég átnevezve: ' + n); } catch (e) { er.textContent = 'Nem sikerült: ' + errText(e); } };
+  if (modRen) el.querySelector('[data-gnok]').onclick = async () => { const inp = el.querySelector('[data-gn]'), er = el.querySelector('[data-gnerr]'), r = await modRenameGuest(uid, inp.value);
+    if (r.free) inp.value = r.free; er.style.color = r.ok ? 'var(--green)' : '#ff8080'; er.textContent = r.ok ? 'Átnevezve. A vendég a nevét ezután nem tudja módosítani.' : r.err; };
   const get = async lb => { try { return (await FB.getDoc(FB.doc(db, 'leaderboards', lb, 'scores', uid))).data() || null; } catch (_) { return null; } };
   const rows = await Promise.all(GAMES.map(async g => { const [a, w] = await Promise.all([get(g.id), get(g.id + '_' + wk)]); return { g, a, w }; })), has = rows.filter(r => r.a || r.w);
   const box = el.querySelector('[data-rec]'); if (!box) return; const num = (d, g) => d ? (g.fmt ? g.fmt(lbDec(d.best)) : bigNum(lbDec(d.best)) + (g.unit ? ' ' + g.unit : '')) : '–';
