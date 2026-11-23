@@ -1,13 +1,13 @@
 /* HGWS Arcade – Nyomás (klasszikus szkript, az arcade.html tölti be; a közös keret a jatekok/arcade/mag.js) */
 'use strict';
 const Nyomas = {
-  id: 'nyomas', name: 'NYOMÁSMESTER', lives: 3, overTitle: 'CSŐTÖRÉS!',
-  desc: 'A PLC rád bízta a szivattyút. Állítsd meg a mutatót a zöld zónában! Minden sikeres beállítás után gyorsabb és szűkebb lesz. Középre lőve PERFEKT bónusz, és a zöld sáv sem szűkül.',
+  id: 'nyomas', name: 'NYOMÁSMESTER', lives: 3, wr: 'TE VAGY A PLC!', overTitle: 'CSŐTÖRÉS!',
+  desc: 'A PLC rád bízta a szivattyút. Állítsd meg a mutatót a zöld zónában! Minden sikeres beállítás után gyorsabb és szűkebb lesz. Középre lőve PERFEKT bónusz, és a zöld sáv sem szűkül; három PERFEKT egymás után +1 élet.',
   how: 'KOPPINTÁS / SZÓKÖZ · 3 ÉLET',
   ranks: [[0, 'Gyakornok'], [300, 'Szivattyúkezelő'], [900, 'Nyomásfelelős'], [2000, 'PLC-programozó'], [4000, 'Főgépész-legenda']],
   /* választható műszer-külsők – valódi nyomásmérő-típusok alapján */
   designs: ['HGWS vezérlőpult', 'Bourdon-csöves ipari', 'Glicerines rozsdamentes', 'Sárgaréz gőzmanométer', 'Digitális manométer'],
-  init(G) { this.ds = Math.min(this.designs.length - 1, store.get('nyomas_design') | 0); this.a = 0; this.dir = 1; this.sp = .65; this.lvl = 1; this.zl = 1; this.newZone(); this.flash = 0; this.lock = 0; this.burst = 0; this.combo = 0; this.cpop = 0; this.n = 0; this.drops = []; this.puddle = 0;
+  init(G) { this.ds = Math.min(this.designs.length - 1, store.get('nyomas_design') | 0); this.a = 0; this.dir = 1; this.sp = .65; this.lvl = 1; this.zl = 1; this.pf = 0; this.plc = 0; this.newZone(); this.flash = 0; this.lock = 0; this.burst = 0; this.combo = 0; this.cpop = 0; this.n = 0; this.drops = []; this.puddle = 0;
     // a háttér üzemrésze: két alapcső, minden sikeres beállítás után egy újabb elem épül
     let h = (Date.now() & 0xffff) + 7; this.rnd = () => { h = (h * 16807) % 2147483647; return h / 2147483647; }; this.els = []; this.addPipe('h', .16); this.addPipe('v', .07); },
   mult() { return 1 + Math.min(20, this.combo) * .1; },
@@ -38,8 +38,10 @@ const Nyomas = {
       this.combo++; this.cpop = 1; const perfect = dp < Math.min(this.zw * .3, Math.max(this.zw * .12, this.sp * .006)), m = this.mult(), pts = Math.round((perfect ? 50 : 20) * (1 + this.lvl * .25) * m);
       G.add(pts, cx, cy - G.H * .2, (perfect ? 'PERFEKT! +' : '+') + pts + (m > 1 ? '  ×' + m.toFixed(1) : '')); this.n++; this.addEl(); perfect ? Sfx.perfect() : Sfx.coin();
       G.splash(cx, cy - G.H * .1, perfect ? '255,215,120' : '150,215,255', perfect ? 40 : 22, 7);
+      this.pf = perfect ? (this.pf || 0) + 1 : 0; if (this.pf >= 3) { this.pf = 0; if (G.lives < 5) { G.lives++; hud(); G.float(cx, cy - G.H * .3, '💧 +1 ÉLET'); } }
+      const w = G.wr(); if (!this.plc && w != null && G.score > w) { this.plc = 1; G.float(cx, cy - G.H * .38, 'TE VAGY A PLC!'); }
       this.lvl++; if (!perfect) this.zl = (this.zl || this.lvl - 1) + 1; this.sp = Math.min(3.4, .55 + this.lvl * .14); this.flash = 1; this.lock = .25; this.newZone();
-    } else { this.combo = 0; this.burst = 1; this.lock = .5; G.float(cx, cy - G.H * .2, d < this.zw ? 'MAJDNEM!' : 'CSŐTÖRÉS!', true); G.lose(); }
+    } else { this.combo = 0; this.pf = 0; this.burst = 1; this.lock = .5; G.float(cx, cy - G.H * .2, d < this.zw ? 'MAJDNEM!' : 'CSŐTÖRÉS!', true); G.lose(); }
   },
   drawBack(g, G, t) { const d = G.d, S = Math.min(G.W, G.H), lost = (this.lives || 3) - G.lives; g.save(); g.globalAlpha = .62;
     for (const e of this.els) { if (e.k !== 'h' && e.k !== 'v') continue; const w = e.w * S, sh = (lost > 1 ? Math.sin(t * 30 + e.ph) * 1.2 * d : 0), [x0, y0] = this.pos(G, e, e.s0), [x1, y1] = this.pos(G, e, e.s0 + (e.s1 - e.s0) * e.b), hz = e.k === 'h';

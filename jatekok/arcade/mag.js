@@ -239,6 +239,7 @@ const G = { W: 0, H: 0, d: 1, t: 0, score: 0, lives: 3, running: false, shake: 0
   splash(x, y, col = '150,215,255', n = 20, sp = 6) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, s = (1 + Math.random() * sp) * this.d;
     this.fx.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 2 * this.d, l: 1, r: (1.5 + Math.random() * 3) * this.d, col }); } },
   lose() { this.lives--; this.shake = 14 * this.d; Sfx.hit(); hud(); if (navigator.vibrate) navigator.vibrate(60); if (this.lives <= 0) over(); },
+  wr() { try { const b = typeof LB !== 'undefined' && LB && LB.boards && LB.boards[this.game.id]; return b && b.all && b.all.length ? +b.all[0].score || 0 : null; } catch (_) { return null; } },
   end() { over(); }
 };
 /* nagy számok rövidítve (idle-játékos jelölés): 1,5 M · 12,3 B (milliárd) · 4 T · 2 Qa … */
@@ -270,7 +271,7 @@ function over() {
   if (!G.running) return; G.running = false; Sfx.boom();
   const id = 'best_' + G.game.id, prev = store.get(id), nb = G.score > prev; if (nb) store.set(id, G.score);
   if (G.win) store.set('wins_' + G.game.id, store.get('wins_' + G.game.id) + 1);
-  $('#oTitle').textContent = G.game.overTitle || 'VÉGE';
+  const wr = G.game.wr ? G.wr() : null; $('#oTitle').textContent = wr != null && G.score > wr ? G.game.wr : G.game.overTitle || 'VÉGE';
   $('#oScore').textContent = (G.game.sfmt ? G.game.sfmt(G.score) : bigNum(G.score)) + (G.game.unit || '');
   $('#oRank').textContent = (G.game.ranks.filter(r => G.score >= r[0]).pop() || [0, ''])[1].toUpperCase();
   $('#oBest').textContent = (nb ? '🏆 ÚJ REKORD!' : 'Rekord: ' + bigNum(prev) + (G.game.unit || '')) + (G.win || store.get('wins_' + G.game.id) ? ' · 🏆 ×' + store.get('wins_' + G.game.id) : '');
