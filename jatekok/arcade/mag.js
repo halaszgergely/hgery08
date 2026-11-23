@@ -249,7 +249,7 @@ const bigNum = n => { n = Math.floor(n || 0); if (!isFinite(n)) return '∞'; if
   return k >= 100 ? num + ' × 10^' + 3 * (k + 1) : num + ' ' + (k < 10 ? F[k] : U[k % 10] + T[Math.floor(k / 10)]); };
 function hud() {
   UI.score.textContent = (G.game.sfmt ? G.game.sfmt(G.score) : bigNum(G.score)) + (G.game.unit || ' PONT');
-  UI.best.textContent = 'REKORD ' + bigNum(store.get('best_' + G.game.id)) + (G.game.unit || '');
+  UI.best.textContent = 'REKORD ' + (G.game.sfmt ? G.game.sfmt(store.get('best_' + G.game.id)) : bigNum(store.get('best_' + G.game.id))) + (G.game.unit || '');
   UI.lives.textContent = G.game.lives ? '💧'.repeat(Math.max(0, G.lives)) + '🥀'.repeat(Math.max(0, G.game.lives - G.lives)) : '';
   UI.lives.style.display = G.game.lives ? '' : 'none';
 }
@@ -268,13 +268,13 @@ function openGame(game) {
 }
 function start() { UI.pStart.hidden = true; UI.pOver.hidden = true; G.score = 0; G.win = 0; G.lives = G.game.lives || 0; G.fx = []; G.fl = []; G.t = 0; G.game.init(G); G.running = true; hud(); Sfx.blip(660, .1, 'square', .06); }
 function over() {
-  if (!G.running) return; G.running = false; Sfx.boom();
+  if (!G.running) return; G.running = false; G.overAt = performance.now(); Sfx.boom();
   const id = 'best_' + G.game.id, prev = store.get(id), nb = G.score > prev; if (nb) store.set(id, G.score);
   if (G.win) store.set('wins_' + G.game.id, store.get('wins_' + G.game.id) + 1);
   const wr = G.game.wr ? G.wr() : null; $('#oTitle').textContent = wr != null && G.score > wr ? G.game.wr : G.game.overTitle || 'VÉGE';
   $('#oScore').textContent = (G.game.sfmt ? G.game.sfmt(G.score) : bigNum(G.score)) + (G.game.unit || '');
   $('#oRank').textContent = (G.game.ranks.filter(r => G.score >= r[0]).pop() || [0, ''])[1].toUpperCase();
-  $('#oBest').textContent = (nb ? '🏆 ÚJ REKORD!' : 'Rekord: ' + bigNum(prev) + (G.game.unit || '')) + (G.win || store.get('wins_' + G.game.id) ? ' · 🏆 ×' + store.get('wins_' + G.game.id) : '');
+  $('#oBest').textContent = (nb ? '🏆 ÚJ REKORD!' : 'Rekord: ' + (G.game.sfmt ? G.game.sfmt(prev) : bigNum(prev)) + (G.game.unit || '')) + (G.win || store.get('wins_' + G.game.id) ? ' · 🏆 ×' + store.get('wins_' + G.game.id) : '');
   setTimeout(() => { UI.pOver.hidden = false; }, 450); hud(); renderCards();
   if (window.top !== window && G.score > 0) parent.postMessage({ hgws: 'score', game: G.game.id, score: G.score, win: !!G.win }, location.origin);
 }
@@ -285,7 +285,8 @@ addEventListener('pagehide', () => { try { if (G.running && G.game && !G.game.ex
 $('#pGo').onclick = start; $('#oAgain').onclick = start; $('#oExit').onclick = close; $('#gClose').onclick = close;
 addEventListener('keydown', e => { if (!gEl.classList.contains('open')) return; if (e.key === 'Escape') close();
   // R: teljes újrakezdés (a rövid ügyességi játékoknál); halál után vagy a kezdőképernyőn bármelyik akciógomb indít
-  if (!e.repeat && (e.key === 'r' || e.key === 'R') && G.game && ['locsolo', 'nyomas', 'vizagyu', 'csepp', 'ugro'].includes(G.game.id)) { e.preventDefault(); return start(); }
+  if (!e.repeat && (e.key === 'r' || e.key === 'R') && G.game && ['locsolo', 'nyomas', 'anya', 'vizagyu', 'csepp', 'ugro'].includes(G.game.id)) { e.preventDefault(); return start(); }
+  if (G.game && G.game.norep && (e.key === ' ' || e.key === 'ArrowUp') && (e.repeat || (!G.running && performance.now() - (G.overAt || 0) < 1500))) { e.preventDefault(); return; }
   if (!e.repeat && !G.running && G.game && (!UI.pOver.hidden || !UI.pStart.hidden) && [' ', 'Enter', 'ArrowUp', 'w', 'W'].includes(e.key)) { e.preventDefault(); return start(); }
   if ((e.key === ' ' || e.key === 'ArrowUp') && G.running && G.game.down) { e.preventDefault(); G.game.down(G, G.W / 2, G.H / 2, true); } });
 const P = e => [e.clientX * G.d, e.clientY * G.d];
