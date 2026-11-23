@@ -2,12 +2,12 @@
 'use strict';
 const Nyomas = {
   id: 'nyomas', name: 'NYOMÁSMESTER', lives: 3, overTitle: 'CSŐTÖRÉS!',
-  desc: 'A PLC rád bízta a szivattyút. Állítsd meg a mutatót a zöld zónában! Minden sikeres beállítás után gyorsabb és szűkebb lesz. Középre lőve PERFEKT bónusz.',
+  desc: 'A PLC rád bízta a szivattyút. Állítsd meg a mutatót a zöld zónában! Minden sikeres beállítás után gyorsabb és szűkebb lesz. Középre lőve PERFEKT bónusz, és a zöld sáv sem szűkül.',
   how: 'KOPPINTÁS / SZÓKÖZ · 3 ÉLET',
   ranks: [[0, 'Gyakornok'], [300, 'Szivattyúkezelő'], [900, 'Nyomásfelelős'], [2000, 'PLC-programozó'], [4000, 'Főgépész-legenda']],
   /* választható műszer-külsők – valódi nyomásmérő-típusok alapján */
   designs: ['HGWS vezérlőpult', 'Bourdon-csöves ipari', 'Glicerines rozsdamentes', 'Sárgaréz gőzmanométer', 'Digitális manométer'],
-  init(G) { this.ds = Math.min(this.designs.length - 1, store.get('nyomas_design') | 0); this.a = 0; this.dir = 1; this.sp = .65; this.lvl = 1; this.newZone(); this.flash = 0; this.lock = 0; this.burst = 0; this.combo = 0; this.cpop = 0; this.n = 0; this.drops = []; this.puddle = 0;
+  init(G) { this.ds = Math.min(this.designs.length - 1, store.get('nyomas_design') | 0); this.a = 0; this.dir = 1; this.sp = .65; this.lvl = 1; this.zl = 1; this.newZone(); this.flash = 0; this.lock = 0; this.burst = 0; this.combo = 0; this.cpop = 0; this.n = 0; this.drops = []; this.puddle = 0;
     // a háttér üzemrésze: két alapcső, minden sikeres beállítás után egy újabb elem épül
     let h = (Date.now() & 0xffff) + 7; this.rnd = () => { h = (h * 16807) % 2147483647; return h / 2147483647; }; this.els = []; this.addPipe('h', .16); this.addPipe('v', .07); },
   mult() { return 1 + Math.min(20, this.combo) * .1; },
@@ -20,7 +20,7 @@ const Nyomas = {
     const p = pipes[Math.floor(R() * pipes.length)], t = p.s0 + (p.s1 - p.s0) * (.1 + R() * .8);
     this.els.push({ k: n % 3 === 1 ? 'gauge' : 'valve', p, t, b: 0, ph: R() * 10, sp: (R() < .5 ? -1 : 1) * (.6 + R() * 1.6) }); },
   pos(G, p, t) { return p.k === 'h' ? [t * G.W, p.a * G.H] : [p.a * G.W, t * G.H]; },
-  newZone() { this.zw = Math.max(.045, .25 - this.lvl * .013); this.zc = .15 + Math.random() * .7; },
+  newZone() { this.zw = Math.max(.045, .25 - (this.zl || this.lvl) * .013); this.zc = .15 + Math.random() * .7; },
   update(G, dt) {
     this.cpop = Math.max(0, this.cpop - dt * 2.5); for (const e of this.els) e.b = Math.min(1, e.b + dt * 2.2);
     const lost = (this.lives || 3) - G.lives; if (lost > 0 && this.els.length) for (const p of this.els) { if (p.k !== 'h' && p.k !== 'v') continue; for (const c of p.cr) if (Math.random() < dt * (lost === 1 ? .9 : 5)) { const [x, y] = this.pos(G, p, c); this.drops.push({ x: x + (Math.random() - .5) * 4 * G.d, y, vx: lost > 1 ? (Math.random() - .5) * 60 * G.d : 0, vy: 0, big: lost > 1 }); } }
@@ -37,7 +37,7 @@ const Nyomas = {
       this.combo++; this.cpop = 1; const perfect = d < this.zw * .12, m = this.mult(), pts = Math.round((perfect ? 50 : 20) * (1 + this.lvl * .25) * m);
       G.add(pts, cx, cy - G.H * .2, (perfect ? 'PERFEKT! +' : '+') + pts + (m > 1 ? '  ×' + m.toFixed(1) : '')); this.n++; this.addEl(); perfect ? Sfx.perfect() : Sfx.coin();
       G.splash(cx, cy - G.H * .1, perfect ? '255,215,120' : '150,215,255', perfect ? 40 : 22, 7);
-      this.lvl++; this.sp = Math.min(3.4, .55 + this.lvl * .14); this.flash = 1; this.lock = .25; this.newZone();
+      this.lvl++; if (!perfect) this.zl = (this.zl || this.lvl - 1) + 1; this.sp = Math.min(3.4, .55 + this.lvl * .14); this.flash = 1; this.lock = .25; this.newZone();
     } else { this.combo = 0; this.burst = 1; this.lock = .5; G.float(cx, cy - G.H * .2, d < this.zw ? 'MAJDNEM!' : 'CSŐTÖRÉS!', true); G.lose(); }
   },
   drawBack(g, G, t) { const d = G.d, S = Math.min(G.W, G.H), lost = (this.lives || 3) - G.lives; g.save(); g.globalAlpha = .62;
