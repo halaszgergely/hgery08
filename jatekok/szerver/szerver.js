@@ -3,7 +3,10 @@
    Állapot: S (localStorage), a számolt értékek (áram, hálózat, hő, bevétel): C – a calc() állítja elő. */
 (() => {
   'use strict';
-  const $ = s => document.querySelector(s), cv = $('#c'), g2 = cv.getContext('2d'), KEY = 'hgws_szerver_v1', GAME = 'szerver';
+  const $ = s => document.querySelector(s), cv = $('#c'), g2 = cv.getContext('2d'), GAME = 'szerver';
+  // három mentési hely: mindegyiknek saját helyi kulcsa és saját felhőmentése van (az első a régi mentés)
+  const KEYS = ['hgws_szerver_v1', 'hgws_szerver_v1_s2', 'hgws_szerver_v1_s3'], CGS = ['szerver', 'szerver2', 'szerver3'], SLK = 'hgws_szerver_slot';
+  let SLOT = (() => { try { const n = +localStorage.getItem(SLK); return n >= 0 && n < 3 ? Math.floor(n) : 0; } catch (_) { return 0; } })(), KEY = KEYS[SLOT];
   const DAY = 1440, SLEEPX = 120, KWH = 70, U = 20, RW = 240, RW2 = RW * 2; // SLEEPX: alvás közben ennyiszeres idő // DAY: egy játéknap másodpercben
   let g = g2, TEX = 0, GEN = 0;
   const ft = v => Math.round(v).toLocaleString('hu-HU') + ' Ft', sp = v => v >= 1000 ? v / 1000 + 'G' : v + 'M', rnd = (a, b) => a + Math.random() * (b - a), esc = s => String(s).replace(/[<>&]/g, '');
@@ -489,9 +492,9 @@
   document.addEventListener('click', e => { const t = e.target.closest('[data-a]'); if (t) return act(t.dataset.a, t.dataset.v); const p = e.target.closest('[data-p]'); if (p) { const v = p.dataset.p; if (view === v) closeP(); else openP(v, ''); } });
   document.addEventListener('contextmenu', e => { const t = e.target.closest && e.target.closest('[data-a="slot"]'); if (t) { e.preventDefault(); act('rmpart', t.dataset.v); } });
   document.addEventListener('mouseover', e => { const t = e.target.closest && e.target.closest('[data-hl]'); hlId = t ? +t.dataset.hl : 0; });
-  $('#px').onclick = closeP; $('#bMenu').onclick = () => { save(); cloudPush('exit'); $('#menu').hidden = false; $('#mPlay').textContent = '▶ Folytatás'; $('#mNew').hidden = false; };
+  $('#px').onclick = closeP; $('#bMenu').onclick = () => { save(); cloudPush('exit'); slotsUI(); $('#menu').hidden = false; $('#mPlay').textContent = '▶ Folytatás'; $('#mNew').hidden = false; };
   $('#mPlay').onclick = () => { $('#menu').hidden = true; beep(660); relock(); };
-  $('#mNew').onclick = () => { const b = $('#mNew'); if (b.dataset.sure) { localStorage.removeItem(KEY); if (CL.on) { parent.postMessage({ hgws: 'csdel', game: GAME }, location.origin); CL.life = 0; } fresh(); calc(); delete b.dataset.sure; b.textContent = 'Új játék'; $('#menu').hidden = true; closeP(); } else { b.dataset.sure = 1; b.textContent = 'Biztos? Minden elvész'; } };
+  $('#mNew').onclick = () => { const b = $('#mNew'); if (b.dataset.sure) { localStorage.removeItem(KEY); if (CLS[SLOT].on) { parent.postMessage({ hgws: 'csdel', game: CGS[SLOT] }, location.origin); CLS[SLOT].life = 0; } fresh(); calc(); delete b.dataset.sure; b.textContent = 'Új játék'; $('#menu').hidden = true; closeP(); slotsUI(); } else { b.dataset.sure = 1; b.textContent = 'Biztos? Minden elvész'; } };
 
   /* ---------- 3D (belső nézet): fps.js ---------- */
   let F3 = null, f3load = 0;
@@ -501,7 +504,7 @@
     rackTo: (ctx, i, k) => drawTo(ctx, k, 0, 0, rwOf(S.racks[i]) + 28, RACK[S.racks[i].t].u * U + 14, () => drawRack(i)), wallTo: (ctx, k, key) => { const W = wallDim(key); drawTo(ctx, k, 0, 0, W.w, W.h, () => drawWall(key)); }, wallKeys, dw, rwOf, fitsRack: (d, ri) => (!DEV[d.t].wide || !!RACK[S.racks[ri].t].wide) && !!DEV[d.t].bm === !!RACK[S.racks[ri].t].bat, offX, maxOf, ubase, looseTo: (ctx, d, k) => drawTo(ctx, k, 0, 0, dw(d), DEV[d.t].u * U, () => drawLoose(d)) };
   function toggle3D(on) { if (on === undefined) on = !(F3 && F3.on); if (!on) { if (F3) F3.stop(); $('#c3').hidden = true; cv.hidden = false; return; }
     const go = () => { $('#c3').hidden = false; cv.hidden = true; F3.start(); }; if (F3) return go(); if (f3load) return; f3load = 1;
-    import('./fps.js?v=202611230056').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
+    import('./fps.js?v=202611230433').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
   $('#bPh').onclick = () => view ? closeP() : openP(lastApp, '');
 
   /* ---------- főciklus ---------- */
@@ -513,17 +516,27 @@
     { const e = $('#sleep'); e.classList.toggle('on', !!S.sleepTo); if (S.sleepTo) { const m = Math.floor((S.day % 1) * 1440 + 360) % 1440; e.firstChild.textContent = '💤 ' + String(m / 60 | 0).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); } }
     if (dirty) calc(); if (F3 && F3.on) { try { F3.frame(dt); ctxUI(); } catch (e) { console.error(e); if (!(loop.err > now)) { loop.err = now + 4000; toast('Hiba: ' + (e && e.message || e), 1); } sel = place = null; hint(); } } if ((uiT -= dt) <= 0) { uiT = .5; top(); if (insp) inspUI(); if (view === 'dev' && !slot || view === 'site' || view === 'srv') ui(); } if ((saveT -= dt) <= 0) { saveT = 5; save(); cloudPush('auto'); } if ((scT -= dt) <= 0) { scT = 60; score(); }
   }
-  /* felhőmentés (bejelentkezve, az Arcade keretoldalán át): automatikusan 30 percenként és kilépéskor; kézzel csak admin. Betöltéskor a nagyobb összbevételű mentés marad meg. */
-  const inFrame = () => { try { return window.top !== window; } catch (_) { return false; } }, CL = { on: 0, admin: 0, life: 0, at: Date.now(), ex: 0, man: 0 };
-  function cloudPush(kind) { if (!CL.on || !S) return; const now = Date.now(); if ((kind === 'auto' && now - CL.at < 30 * 60e3) || (kind === 'exit' && now - CL.ex < 60e3) || (kind === 'man' && !CL.admin)) return; if (Math.floor(S.life) < CL.life) { if (kind === 'man') toast('☁️ A felhőben nagyobb mentés van – az marad meg', 1); return; }
+  /* felhőmentés (bejelentkezve, az Arcade keretoldalán át): mentési helyenként külön; automatikusan 30 percenként és kilépéskor, kézzel csak admin.
+     Betöltéskor helyenként az a mentés marad meg, amelyikben nagyobb az összbevétel (a pontszám). */
+  const inFrame = () => { try { return window.top !== window; } catch (_) { return false; } }, CLS = CGS.map(() => ({ on: 0, life: 0, err: '' })), CL = { admin: 0, at: Date.now(), ex: 0, man: 0, sent: 0 };
+  const slotInfo = i => { if (i === SLOT && S) return S; try { const o = JSON.parse(localStorage.getItem(KEYS[i])); return o && o.v === 1 && Array.isArray(o.racks) ? o : null; } catch (_) { return null; } };
+  function slotsUI() { const el = $('#slots'); if (!el) return; el.innerHTML = KEYS.map((_, i) => { const o = slotInfo(i), c = CLS[i], has = o && (i !== SLOT || localStorage.getItem(KEYS[i]) || o.life > 0 || o.day > 0);
+    const cl = !inFrame() || !c.on ? 'csak ezen az eszközön' : c.err ? '☁️ nem sikerült: ' + c.err : has && c.life > 0 && c.life >= Math.floor(o.life) - 1 ? '☁️ a felhőben is megvan' : has ? '☁️ feltöltésre vár' : '☁️';
+    return `<button class="sl${i === SLOT ? ' on' : ''}" data-sl="${i}"><b>${i + 1}. mentés</b><small>${has ? `${Math.floor(o.day) + 1}. nap · ${SITE[o.site] ? SITE[o.site].n : ''} · ${ft(o.life)} összbevétel` : 'Üres'}</small><i>${cl}</i></button>`; }).join(''); }
+  function switchSlot(i) { if (i === SLOT || !(i >= 0 && i < 3)) return; save(); cloudPush('exit'); SLOT = i; KEY = KEYS[i]; try { localStorage.setItem(SLK, i); } catch (_) {} const had = load(); if (!had) fresh(); cancel(); closeP(); dirty = 1; calc(); top(); keysUI(); $('#mPlay').textContent = had ? '▶ Folytatás' : '▶ Játék'; $('#mNew').hidden = !had; delete $('#mNew').dataset.sure; $('#mNew').textContent = 'Új játék'; CL.ex = 0; slotsUI(); }
+  $('#slots').addEventListener('click', e => { const b = e.target.closest('[data-sl]'); if (b) switchSlot(+b.dataset.sl); });
+  function cloudPush(kind) { const c = CLS[SLOT]; if (!c.on || !S) return; const now = Date.now(); if ((kind === 'auto' && now - CL.at < 30 * 60e3) || (kind === 'exit' && now - CL.ex < 60e3) || (kind === 'man' && !CL.admin)) return; if (Math.floor(S.life) < c.life) { if (kind === 'man') toast('☁️ A felhőben nagyobb mentés van – az marad meg', 1); return; }
     save(); const st = JSON.stringify(S); if (st.length > 900000) { if (kind !== 'exit') toast('☁️ A mentés túl nagy a felhőhöz, csak helyben marad meg.', 1); CL.at = now; return; } CL.at = now; CL.ex = now; CL.man = kind === 'man' ? 1 : 0; CL.sent = Math.floor(S.life);
-    try { parent.postMessage({ hgws: 'cssave', game: GAME, life: CL.sent, lg: CL.sent, st, ack: 1, man: CL.man, exit: kind === 'exit' ? 1 : 0 }, location.origin); } catch (_) {} }
-  addEventListener('message', e => { if (e.origin !== location.origin || e.source !== parent || !e.data || e.data.hgws !== 'cs' || e.data.game !== GAME) return; const d = e.data;
-    if (d.ack) { if (d.ok) CL.life = CL.sent || CL.life; if (CL.man) toast(d.ok ? '☁️ Felhőbe mentve' : '☁️ Nem sikerült menteni' + (d.err ? ' (' + d.err + ')' : ''), !d.ok); CL.man = 0; return; }
-    if (d.none) { CL.on = 0; return; } CL.on = 1; CL.admin = d.admin ? 1 : 0; CL.life = typeof d.lg === 'number' ? d.lg : +d.life || 0; $('#mCloud').hidden = !CL.admin;
-    if (d.st && CL.life > Math.floor(S.life) + 1) { const old = localStorage.getItem(KEY); try { JSON.parse(d.st); localStorage.setItem(KEY, d.st); if (load()) { cancel(); dirty = 1; calc(); top(); keysUI(); $('#mPlay').textContent = '▶ Folytatás'; $('#mNew').hidden = false; toast('☁️ Felhőmentés betöltve'); } else if (old) { localStorage.setItem(KEY, old); load(); } } catch (_) { if (old) localStorage.setItem(KEY, old); } } });
+    try { parent.postMessage({ hgws: 'cssave', game: CGS[SLOT], life: CL.sent, lg: CL.sent, st, ack: 1, man: CL.man, exit: kind === 'exit' ? 1 : 0 }, location.origin); } catch (_) {} }
+  addEventListener('message', e => { if (e.origin !== location.origin || e.source !== parent || !e.data || e.data.hgws !== 'cs') return; const d = e.data, gi = CGS.indexOf(d.game); if (gi < 0) return; const c = CLS[gi];
+    if (d.ack) { if (d.ok) { c.life = CL.sent || c.life; c.err = ''; } else if (d.err && !/30 percenként/.test(d.err)) c.err = d.err; if (CL.man) toast(d.ok ? '☁️ Felhőbe mentve' : '☁️ Nem sikerült menteni' + (d.err ? ' (' + d.err + ')' : ''), !d.ok); CL.man = 0; slotsUI(); return; }
+    if (d.none) { c.on = 0; slotsUI(); return; } c.on = 1; CL.admin = d.admin ? 1 : 0; c.life = typeof d.lg === 'number' ? d.lg : +d.life || 0; $('#mCloud').hidden = !CL.admin;
+    const lo = slotInfo(gi), ll = lo ? Math.floor(lo.life) : -1;
+    if (d.st && c.life > ll + 1) { const old = localStorage.getItem(KEYS[gi]); try { JSON.parse(d.st); localStorage.setItem(KEYS[gi], d.st); if (gi === SLOT) { if (load()) { cancel(); dirty = 1; calc(); top(); keysUI(); $('#mPlay').textContent = '▶ Folytatás'; $('#mNew').hidden = false; toast('☁️ Felhőmentés betöltve'); } else if (old) { localStorage.setItem(KEYS[gi], old); load(); } } } catch (_) { if (old) localStorage.setItem(KEYS[gi], old); } }
+    else if (gi === SLOT && ll > c.life && localStorage.getItem(KEY)) { CL.ex = 0; cloudPush('exit'); }
+    slotsUI(); });
   $('#mCloud').onclick = () => cloudPush('man');
   const had = load(); if (!had) fresh(); if (had) { $('#mPlay').textContent = '▶ Folytatás'; $('#mNew').hidden = false; } calc(); top(); keysUI(); cv.hidden = true; toggle3D(true); addEventListener('pagehide', () => { save(); score(); cloudPush('exit'); }); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') cloudPush('exit'); });
   window.__sz = () => ({ SZ: window.SZ3, doClick, get aim() { return aim; }, get F3() { return F3; }, get sel() { return sel; }, S, C, act, calc, tick, DEV, PART, mk, accept, fit, mkOffer, fillOffers, ensureOffer, TIER });
-  requestAnimationFrame(loop); if (inFrame()) try { parent.postMessage({ hgws: 'csreq', game: GAME }, location.origin); } catch (_) {}
+  requestAnimationFrame(loop); slotsUI(); if (inFrame()) try { for (const g of CGS) parent.postMessage({ hgws: 'csreq', game: g }, location.origin); } catch (_) {}
 })();
