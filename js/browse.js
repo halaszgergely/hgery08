@@ -1,11 +1,11 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611232259';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611232259';
-import * as Player from './player.js?v=202611232259';
-import * as Party from './party.js?v=202611232259';
-import * as VP from './vplayer.js?v=202611232259';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611232259';
-import * as ArcL from './arcade-lista.js?v=202611232259';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611232352';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611232352';
+import * as Player from './player.js?v=202611232352';
+import * as Party from './party.js?v=202611232352';
+import * as VP from './vplayer.js?v=202611232352';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611232352';
+import * as ArcL from './arcade-lista.js?v=202611232352';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -268,7 +268,7 @@ export const GAMES = [
 const EXTRA = [{ id: 'boonline', name: 'Öntöző Birodalom Online', icon: '🌍', desc: 'Közös világ 13 régióval: telkek, piac, vezetékek, szövetkezetek, heti ostrom.', c: '#e8b656', tag: 'CLOSED BETA', href: '#/birodalom' }, { id: 'aranylocsolofej', name: 'Az Arany Locsolófej', icon: '🏆', desc: 'Filmes kalandjáték: szerezd vissza az Arany Locsolófejet Szikkadt Szilárdtól!', c: '#e8b656', demo: 1, tag: 'ÚJ' }, { id: 'locsolohaboru', name: 'Locsolóháború', icon: '💦', desc: 'Első személyű vízipisztoly-aréna 2–8 játékosnak – barátokkal vagy botok ellen.', c: '#4aa8ff', demo: 1, tag: 'ONLINE' }, { id: 'vizagyuio', name: 'Vízágyú.io', icon: '🔫', desc: 'Valós idejű locsolóaréna 2–8 játékosnak – barátokkal vagy botok ellen.', c: '#6cc6ff', demo: 1, tag: 'ONLINE' }, { id: 'zerochip', name: 'Zero Chip', icon: '🔌', desc: 'Építs áramköröket a tranzisztortól a processzorig – 61 küldetés.', c: '#3ecf8e', demo: 1 }, { id: 'zerospace', name: 'Zero Space Demo', icon: '🚀', desc: 'Építs űrhajót modulról modulra és vezesd csatába – korai demó, egyjátékos sandbox.', c: '#b2382a', demo: 1 }];
 /* Zero Quest – zárt béta: adminok és a „Béta-tesztelő” taggel rendelkezők */
 const betaOk = () => { try { return !!C && !C.S.guest && (C.isAdmin() || (C.S.me?.tags || []).some(id => /b[eé]ta/i.test(C.S.tags.find(t => t.id === id)?.name || ''))); } catch (_) { return false; } };
-const ZQ = { id: 'zeroquest', name: 'Zero Quest', icon: '⚔️', desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében – zárt béta.', c: '#e8b656', demo: 1, beta: 1 };
+const ZQ = { id: 'zeroquest', name: 'Zero Quest', icon: '⚔️', desc: 'A Szikkadt Korona – komor akció-szerepjáték a kiszáradt Ázottföldön – zárt béta.', c: '#e8b656', demo: 1, beta: 1 };
 const extras = () => betaOk() ? [...EXTRA, ZQ] : EXTRA;
 /* „A Zerosites támogatásával” – minden játék, kivéve a három klasszikust */
 const NOSPON = ['locsolo', 'vizagyu', 'csepp', 'vizfuvar'];
