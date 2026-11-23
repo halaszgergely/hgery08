@@ -28,7 +28,7 @@ const LegiOntozes = { id: 'flightsim', name: 'HGWS LÉGI ÖNTÖZÉS', ext: 'jate
   desc: '3D repülőszimulátor egész Magyarország felett: 17 öntözőgép, mezőöntözés, erdőtüzek, precíziós célok és vízikarikák a miskolci bázisról.' };
 const Vizfuvar = { id: 'vizfuvar', name: 'HGWS VÍZFUVAR', ext: 'jatekok/vizfuvar/index.html', tag: 'ÚJ', lbx: 1, icon: '🚚', fmt: v => Math.floor(v).toLocaleString('hu-HU') + ' Ft',
   desc: 'Vízszállító-szimulátor Miskolc valódi utcáin: Babettóval egyetlen ballonnal kezded, aztán Trabóval, később tartálykocsival és kamionnal építed a HGWS flottáját.' };
-const GAMES = [Locsolo, Nyomas, Vizagyu, Csepp, Ugro, Torony, Birodalom, BoOnline, Aszaly, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, Atemelotelep, Vasut, Szerver, LegiOntozes, Vizfuvar, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
+const GAMES = [Locsolo, Nyomas, Anya, Vizagyu, Csepp, Ugro, Torony, Birodalom, BoOnline, Aszaly, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, Atemelotelep, Vasut, Szerver, LegiOntozes, Vizfuvar, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
 const NOSPON = ['locsolo', 'vizagyu', 'csepp', 'vizfuvar'];
 GAMES.forEach(g => { if (NOSPON.includes(g.id)) delete g.sponsor; else g.sponsor = 'A Zerosites támogatásával'; });
 /* népszerűség: a főoldal küldi a játékonkénti indításszámot (plays), helyben is megjegyezzük a gyors sorrendhez */
@@ -136,6 +136,8 @@ const ARTS = {
     for (let i = 0; i < 4; i++) { const px = W * (.14 + i * .24), py = H * .62, w = (Math.sin(t + i) + 1) / 2; x.fillStyle = '#7a4325'; x.fillRect(px - 14, py, 28, 22); x.strokeStyle = `hsl(${30 + 90 * w},60%,40%)`; x.lineWidth = 3; x.beginPath(); x.moveTo(px, py); x.lineTo(px + (1 - w) * 10, py - 30); x.stroke();
       x.fillStyle = w > .4 ? '#ffd23f' : '#9a7a3a'; x.beginPath(); x.arc(px + (1 - w) * 10, py - 32, 7, 0, 6.283); x.fill(); }
     for (let i = 0; i < 14; i++) { const k = (t * 1.5 + i / 14) % 1; x.fillStyle = `rgba(150,215,255,${1 - k})`; x.beginPath(); x.arc(W * .5 + Math.sin(i * 7) * W * .3 * k, H * .1 + k * H * .5, 2, 0, 6.283); x.fill(); } },
+  anya: (c, x, t) => { const W = c.width, H = c.height, cy = H / 2; x.fillStyle = '#121820'; x.fillRect(0, 0, W, H); x.fillStyle = '#aab4c0'; x.fillRect(0, cy - 9, W, 18); x.strokeStyle = 'rgba(20,26,34,.6)'; x.lineWidth = 1.5; x.beginPath(); for (let i = -20; i < W; i += 9) { x.moveTo(i, cy - 9); x.lineTo(i + 6, cy + 9); } x.stroke();
+    const nx = W * (.25 + .5 * ((t * .25) % 1)), a = t * 6; x.fillStyle = '#e8c46a'; x.fillRect(nx - 13, cy - 24, 26, 48); x.strokeStyle = 'rgba(60,40,10,.7)'; x.beginPath(); for (let k = 0; k < 6; k++) { const q = a + k * Math.PI / 3; if (Math.cos(q) <= 0) continue; x.moveTo(nx - 13, cy + Math.sin(q) * 24); x.lineTo(nx + 13, cy + Math.sin(q) * 24); } x.stroke(); x.fillStyle = '#dfe5ec'; x.fillRect(nx - 4, cy - 24 - 34 * Math.abs(Math.sin(a)), 8, 34 * Math.abs(Math.sin(a))); },
   nyomas: (c, x, t) => { const W = c.width, H = c.height; x.fillStyle = '#0b1424'; x.fillRect(0, 0, W, H); const cx = W / 2, cy = H * .85, R = H * .65;
     x.lineWidth = 12; x.strokeStyle = '#1e2b40'; x.beginPath(); x.arc(cx, cy, R, Math.PI * 1.1, Math.PI * 1.9); x.stroke();
     x.strokeStyle = '#5ee08a'; x.beginPath(); x.arc(cx, cy, R, Math.PI * 1.45, Math.PI * 1.55); x.stroke();

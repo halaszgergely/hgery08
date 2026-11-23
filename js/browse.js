@@ -1,11 +1,11 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611231650';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611231650';
-import * as Player from './player.js?v=202611231650';
-import * as Party from './party.js?v=202611231650';
-import * as VP from './vplayer.js?v=202611231650';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611231650';
-import * as ArcL from './arcade-lista.js?v=202611231650';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611231715';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611231715';
+import * as Player from './player.js?v=202611231715';
+import * as Party from './party.js?v=202611231715';
+import * as VP from './vplayer.js?v=202611231715';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611231715';
+import * as ArcL from './arcade-lista.js?v=202611231715';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -249,6 +249,7 @@ function tickerHtml() {
 }
 export const GAMES = [
   { id: 'locsolo', name: 'Locsoló Mester', icon: '🌻', desc: 'Locsold meg a hervadó virágokat, mielőtt Szikkadt Szilárd kiszárítja a kertet!', c: '#5ee08a' },
+  { id: 'anya', name: 'Anyahajtó', icon: '🔧', unit: 'cm', fmt: v => ((+v || 0) / 10).toLocaleString('hu-HU', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' cm', desc: 'Hajtsd az anyát a végtelen menetes száron – hány centit bírsz egy perc alatt?', c: '#e8c46a' },
   { id: 'nyomas', name: 'Nyomásmester', icon: '🎛️', desc: 'Állítsd meg a mutatót a zöld zónában – a PLC rád bízta a szivattyút.', c: '#6cc6ff' },
   { id: 'vizagyu', name: 'Vízágyú', icon: '💦', desc: 'Kaktuszok és tűzgolyók zúdulnak a kertre. Célozz a vízágyúval!', c: '#ff7a6e' },
   { id: 'csepp', name: 'Csepp Futam', icon: '💧', desc: 'Repülj át a csövek között egy bátor vízcseppel – egy ütközés és vége!', c: '#e8b656' },
