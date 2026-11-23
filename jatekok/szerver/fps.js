@@ -4,7 +4,7 @@
    helye a felület saját rajzkoordinátáiban van; innen számoljuk térbe. A rackek rácsra (GR) illesztve, 90°-onként
    forgatva állnak, a szabad eszközök bárhol. Képkockánként kiszámoljuk, mire mutat a célkereszt (aim); a műveleteket
    a szerver.js doClick() végzi. Lépték: K méter / rajzegység (1U = 20 egység = 4,4 cm). */
-import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611231306';
+import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611231328';
 
 const REACH = 3, EYE = 1.62, MAXP = 2500, RD = .9; // RD, RWID: a rack alapterülete
 let A = null, K = .0022, cv = null, R = null, scene = null, cam = null, room = null, cabG = null, held = null, ghost = null, pts = null;
@@ -63,6 +63,9 @@ function build() { if (room) { scene.remove(room); room.traverse(o => { o.geomet
   // alvás: a garázsban ágy, máshol ajtó az elülső falon
   { const sl = o => { o.userData = { sleep: 1 }; PL.push(o); }; if (!A.S.site) { sl(add(new THREE.BoxGeometry(.95, .28, 2), std('#4a3a2c', { metalness: 0, roughness: .9 }), W - .55, .14, D - 1.15)); sl(add(new THREE.BoxGeometry(.9, .14, 1.9), std('#d9dde3', { metalness: 0, roughness: .95 }), W - .55, .35, D - 1.15)); sl(add(new THREE.BoxGeometry(.9, .1, .45), std('#f4f5f7', { metalness: 0, roughness: .95 }), W - .55, .46, D - .4)); sl(add(new THREE.BoxGeometry(.92, .08, 1.2), std('#3b5b8c', { metalness: 0, roughness: .95 }), W - .55, .44, D - 1.5)); }
     else { sl(add(new THREE.BoxGeometry(1, 2.1, .06), std('#5b4632', { metalness: .1, roughness: .7 }), 1.2, 1.05, D - .03)); add(new THREE.BoxGeometry(1.14, 2.2, .04), std('#2a2d33'), 1.2, 1.1, D - .015); add(new THREE.BoxGeometry(.04, .14, .08), std('#c9ced6', { metalness: .9, roughness: .2 }), 1.6, 1.05, D - .08); const ex = add(new THREE.BoxGeometry(.4, .16, .03), new THREE.MeshBasicMaterial({ color: '#3ddc84' }), 1.2, 2.32, D - .03); ex.userData = { sleep: 1 }; } }
+  // munkatábla: a garázsban az ágy mellett a falon, máshol az ajtó mellett
+  { const jt = ctex(256, 176, (x, w, h) => { x.fillStyle = '#8a6a42'; x.fillRect(0, 0, w, h); x.fillStyle = '#b08a58'; x.fillRect(8, 8, w - 16, h - 16); x.fillStyle = '#20242b'; x.font = '900 26px Inter, sans-serif'; x.textAlign = 'center'; x.fillText('MUNKÁK', w / 2, 40); const cs = ['#fff7c9', '#d8f0ff', '#ffe0e0', '#e3ffd9', '#fff', '#ffe9c2']; for (let i = 0; i < 6; i++) { const px = 22 + (i % 3) * 74, py = 54 + (i / 3 | 0) * 58; x.save(); x.translate(px + 30, py + 24); x.rotate((i * 37 % 9 - 4) * .02); x.fillStyle = cs[i]; x.fillRect(-30, -24, 60, 48); x.fillStyle = 'rgba(0,0,0,.55)'; for (let l = 0; l < 4; l++) x.fillRect(-24, -14 + l * 9, 30 + (i * 13 + l * 7) % 18, 3); x.fillStyle = '#d33'; x.beginPath(); x.arc(0, -20, 3.5, 0, 7); x.fill(); x.restore(); } }), jm = [0, 0, 0, 0, 0, 0].map((_, i) => new THREE.MeshStandardMaterial(i === (A.S.site ? 5 : 1) ? { map: jt, roughness: .9 } : { color: '#6b4f2e', roughness: .9 }));
+    const jb = A.S.site ? add(new THREE.BoxGeometry(.9, .62, .04), jm, 2.35, 1.5, D - .03) : add(new THREE.BoxGeometry(.04, .62, .9), jm, W - .03, 1.5, D - 2.75); jb.userData = { jobs: 1 }; PL.push(jb); }
   // rackek: váz oszlopokkal, bent az eszközök saját dobozai; a kicsik állványon
   const frameM = std('#22252a', { metalness: .7, roughness: .4 }); SCR.length = 0;
   const k = A.S.racks.length > 16 ? 2 : 3; A.S.racks.forEach((r, i) => { const f = SF.get('R' + i), g = new THREE.Group(); g.position.set(r.x, 0, r.z); g.rotation.y = f.yaw; room.add(g); const rw = f.w * K, hh = f.h * K, lf = f.wy, dp = lf ? .55 : .85; shadow(r.x - Math.sin(f.yaw) * dp / 2, r.z - Math.cos(f.yaw) * dp / 2, rw + .5, dp + .5, f.yaw);
@@ -212,7 +215,7 @@ function rackOk(x, z, rt, skip, wd) { const [W, D] = room3(), q = rect(x, z, rt,
 function pick() { const dir = V(0, 0, 0); cam.getWorldDirection(dir); const o = cam.position, [W, D, H] = room3(), pl = A.place, sel = A.sel, a = {};
   RC.set(o, dir); RC.far = REACH; const hit = RC.intersectObjects(PL, false).find(h => !(h.object.userData.deck && (pl || P.lvl))), u = hit ? hit.object.userData : {};
   const F = dir.y < -.02 && o.y / -dir.y < 4.5 ? { x: o.x + dir.x * o.y / -dir.y, z: o.z + dir.z * o.y / -dir.y, t: o.y / -dir.y } : null, face = Math.round(Math.atan2(o.x - (F ? F.x : o.x + dir.x), o.z - (F ? F.z : o.z + dir.z)) / (Math.PI / 12)) / 6; // 15°-onként, negyedfordulat-egységben
-  if (hit) { if (u.climb) { a.climb = 1; return a; } if (u.sleep) { a.sleep = 1; return a; } if (u.rk != null) a.rk = u.rk; if (u.dev) a.d = u.dev; if (u.tray) a.tray = u.tray;
+  if (hit) { if (u.climb) { a.climb = 1; return a; } if (u.jobs) { a.jobs = 1; return a; } if (u.sleep) { a.sleep = 1; return a; } if (u.rk != null) a.rk = u.rk; if (u.dev) a.d = u.dev; if (u.tray) a.tray = u.tray;
     if (u.sf && hit.uv) { const f = SF.get(u.sf), lx = hit.uv.x * f.w, ly = (1 - hit.uv.y) * f.h; let bd = u.sf[0] === 'W' ? 13 : 8; for (const p of A.RP[u.sf] || []) { const dd = Math.hypot(p.x - lx, p.y - ly), lim = p.id ? 8 : 13; if (dd < bd && dd < lim) { bd = dd; a.p = p; } }
       if (u.rk != null) { const r = A.S.racks[u.rk], n = A.RACK[r.t].u, uu = Math.max(0, Math.min(n - 1, Math.floor((ly - 7) / A.U))); const wr = !!A.RACK[r.t].wide, sx = wr && lx > 14 + A.RW ? 1 : 0; a.h = { ri: u.rk, u: uu, sx, dev: r.dev.find(d => uu >= d.u && uu < d.u + A.DEV[d.t].u && (!wr || A.DEV[d.t].wide || (d.sx | 0) === sx)) }; a.d = a.h.dev; } }
     const nrm = hit.face ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld) : V(0, 1, 0); a.pt = hit.point.clone().addScaledVector(nrm, .012).toArray();
