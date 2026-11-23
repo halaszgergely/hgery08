@@ -1,11 +1,11 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611230436';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611230436';
-import * as Player from './player.js?v=202611230436';
-import * as Party from './party.js?v=202611230436';
-import * as VP from './vplayer.js?v=202611230436';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611230436';
-import * as ArcL from './arcade-lista.js?v=202611230436';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611230439';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611230439';
+import * as Player from './player.js?v=202611230439';
+import * as Party from './party.js?v=202611230439';
+import * as VP from './vplayer.js?v=202611230439';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611230439';
+import * as ArcL from './arcade-lista.js?v=202611230439';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -284,15 +284,16 @@ async function loadPlays() {
 /* felhőmentés idle játékokhoz: cloudsaves/{uid}/g/{játék} = { life, st, updatedAt } – a szabály csak nagyobb vagy egyenlő life-ot enged */
 const CS_GAMES = ['birodalom', 'szerver', 'szerver2', 'szerver3'], CS_GAP = 30 * 60e3; // automatikus mentés legfeljebb 30 percenként + kilépéskor; kézi mentést csak admin indíthat (minden felhőmentéses játékra)
 const csLast = g => { try { return +localStorage.getItem('hgws_cs_' + g) || 0; } catch (_) { return 0; } };
+const csMan = () => C.isOwner() || (!guest() && ((ROLES[S().me?.role] || ROLES.user).rank || 0) >= ((ROLES.moderator && ROLES.moderator.rank) || 40)); // kézi felhőmentés: csak rang alapján (moderátor és afölött), tagtől és külön engedélytől függetlenül
 async function cloudGet(win, game) {
   if (!CS_GAMES.includes(game) || guest() || !C.uid()) return win.postMessage({ hgws: 'cs', game, none: 1 }, location.origin);
-  try { const d = (await FB.getDoc(FB.doc(db, 'cloudsaves', C.uid(), 'g', game))).data(); win.postMessage({ hgws: 'cs', game, life: d ? +d.life || 0 : 0, lg: d && typeof d.lg === 'number' ? d.lg : undefined, st: d ? d.st : null, admin: C.isAdmin() }, location.origin); }
-  catch (e) { win.postMessage({ hgws: 'cs', game, none: 1, err: (e && e.code) || 'hiba', admin: C.isAdmin() }, location.origin); } // pl. ha a szabály még nincs kitéve: a játék így ki tudja írni az okát
+  try { const d = (await FB.getDoc(FB.doc(db, 'cloudsaves', C.uid(), 'g', game))).data(); win.postMessage({ hgws: 'cs', game, life: d ? +d.life || 0 : 0, lg: d && typeof d.lg === 'number' ? d.lg : undefined, st: d ? d.st : null, admin: csMan() }, location.origin); }
+  catch (e) { win.postMessage({ hgws: 'cs', game, none: 1, err: (e && e.code) || 'hiba', admin: csMan() }, location.origin); } // pl. ha a szabály még nincs kitéve: a játék így ki tudja írni az okát
 }
 function cloudPut(m, win) {
   const ack = (ok, err) => { if (m.ack) win?.postMessage({ hgws: 'cs', game: m.game, ack: 1, ok, err }, location.origin); };
   if (!CS_GAMES.includes(m.game) || guest() || !C.uid() || typeof m.st !== 'string' || m.st.length > 900000 || !(m.life >= 0)) return ack(false, 'nincs bejelentkezve');
-  if (m.man && !C.isAdmin()) return ack(false, 'kézi mentést csak admin indíthat');
+  if (m.man && !csMan()) return ack(false, 'kézi mentést csak moderátor vagy magasabb rang indíthat');
   if (!m.man && !m.exit && Date.now() - csLast(m.game) < CS_GAP) return ack(false, 'automatikus mentés 30 percenként egyszer');
   FB.setDoc(FB.doc(db, 'cloudsaves', C.uid(), 'g', m.game), { life: Math.min(9e15, +m.life || 0), lg: typeof m.lg === 'number' && isFinite(m.lg) ? m.lg : 0, st: m.st, updatedAt: FB.serverTimestamp() }).then(() => { try { localStorage.setItem('hgws_cs_' + m.game, Date.now()); } catch (_) {} ack(true); }, er => ack(false, er?.code === 'permission-denied' ? 'elutasítva – kisebb mentés, túl gyakori írás vagy nincs kint a szabály' : 'hálózati hiba'));
 }
