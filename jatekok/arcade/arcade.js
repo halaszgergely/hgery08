@@ -41,6 +41,10 @@ const EXT = $('#ext'), EXF = $('#extf');
 addEventListener('message', e => { if (e.origin !== location.origin || e.source !== EXF.contentWindow || !e.data || e.data.hgws !== 'score') return; const g = GAMES.find(x => x.id === e.data.game && x.lbx); if (!g || !(e.data.score > 0)) return;
   if (e.data.score > store.get('best_' + g.id)) store.set('best_' + g.id, e.data.score); if (window.top !== window) parent.postMessage({ hgws: 'score', game: g.id, score: e.data.score }, location.origin); });
 let zqWait = false;
+// a külön oldalon futó játék felhőmentés-üzeneteit továbbadjuk a főoldalnak (ott van a bejelentkezés), a választ pedig vissza a játéknak
+addEventListener('message', e => { if (e.origin !== location.origin || !e.data) return; const h = e.data.hgws;
+  if (e.source === EXF.contentWindow && (h === 'csreq' || h === 'cssave' || h === 'csdel')) { if (window.top !== window) parent.postMessage(e.data, location.origin); else if (h === 'csreq') EXF.contentWindow.postMessage({ hgws: 'cs', game: e.data.game, none: 1 }, location.origin); return; }
+  if (window.top !== window && e.source === parent && h === 'cs' && !EXT.hidden && EXF.contentWindow && !GAMES.some(x => !x.ext && x.id === e.data.game)) EXF.contentWindow.postMessage(e.data, location.origin); });
 function openExt(gm) { if (gm.go) { if (window.top !== window) parent.postMessage({ hgws: 'nav', to: gm.go }, location.origin); else location.href = './' + gm.go; return; } if (gm.lock && !window.HGZQ_OK) { zqWait = !window.HGZQ_SEEN; return; } EXF.src = gm.ext + '?v=' + Date.now().toString(36).slice(0, 5) + (gm.room ? '&room=' + encodeURIComponent(gm.room) : ''); gm.room = ''; EXT.hidden = false; document.body.classList.add('locked'); setTimeout(() => { try { EXF.focus(); } catch (_) {} }, 300); }
 function closeExt() { EXT.hidden = true; EXF.src = 'about:blank'; document.body.classList.remove('locked'); }
 $('#extX').onclick = closeExt;
