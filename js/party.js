@@ -1,8 +1,8 @@
 // HGWS – közös nézés (watch party): a házigazda irányítja a lejátszást, mindenki más szinkronban nézi, mellette csevegés
-import { FB, db, $, $$, esc, avatar, timeLabel, toast, errText, notify, isOnline } from './core.js?v=202611232004';
-import { modal } from './ui.js?v=202611232004';
-import * as VP from './vplayer.js?v=202611232004';
-import { ambilight, applyTint } from './fx.js?v=202611232004';
+import { FB, db, $, $$, esc, avatar, timeLabel, toast, errText, notify, isOnline } from './core.js?v=202611232216';
+import { modal } from './ui.js?v=202611232216';
+import * as VP from './vplayer.js?v=202611232216';
+import { ambilight, applyTint } from './fx.js?v=202611232216';
 
 let C = null, gen = 0, cleanup = [];
 export function init(ctx) { C = ctx; }
