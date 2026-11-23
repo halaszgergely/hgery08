@@ -1,7 +1,7 @@
 // HGWS – kezelőfelület: tagok és rangok, tagek, filmek, zenék, csatornák, jóváhagyások, rangok szerkesztése
-import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611230608';
-import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611230608';
-import { githubRepo } from '../firebase-config.js?v=202611230608';
+import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611230612';
+import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611230612';
+import { githubRepo } from '../firebase-config.js?v=202611230612';
 
 let C = null, current = null;
 /* e-mail címek: csak adminok és a tulaj olvashatják (emails/{uid}); a lista megnyitásakor egyszer töltjük be */
@@ -32,6 +32,7 @@ export function render(sub, again) {
   const v = $('#page');
   const ok = {
     tagok: C.can('moderate') || C.can('assignRoles') || C.isOwner(),
+    vendegek: C.isMod(),
     cimkek: C.can('manageTags'),
     filmek: C.can('publishMedia') || C.can('submitMedia'),
     zene: C.can('publishMedia') || C.can('submitMedia'),
@@ -41,14 +42,14 @@ export function render(sub, again) {
     naplo: C.isOwner() || C.can('assignRoles'),
     stat: C.isOwner() || C.can('publishMedia')
   };
-  if (ok[sub]) return ({ tagok: members, cimkek: tagsPage, filmek: films, zene: music, csatornak: channels, jovahagyas: approvals, rangok: rolesPage, naplo: auditPage, stat: statsPage })[sub](v, again);
+  if (ok[sub]) return ({ vendegek: guestsPage, tagok: members, cimkek: tagsPage, filmek: films, zene: music, csatornak: channels, jovahagyas: approvals, rangok: rolesPage, naplo: auditPage, stat: statsPage })[sub](v, again);
   C.setTitle('<i class="ic ic-lock"></i>', 'Nincs jogosultság');
   v.innerHTML = '<div class="full"><div><div class="big"><i class="ic ic-lock"></i></div><h2>Ehhez nincs jogosultságod</h2></div></div>';
 }
 
 function tabList() {
   const n = pendingCount();
-  return [['tagok', '<i class="ic ic-shield"></i> Tagok és rangok', C.can('moderate') || C.can('assignRoles') || C.isOwner()], ['cimkek', '<i class="ic ic-tag"></i> Tagek', C.can('manageTags')],
+  return [['tagok', '<i class="ic ic-shield"></i> Tagok és rangok', C.can('moderate') || C.can('assignRoles') || C.isOwner()], ['vendegek', '<i class="ic ic-user"></i> Vendégek', C.isMod()], ['cimkek', '<i class="ic ic-tag"></i> Tagek', C.can('manageTags')],
     ['filmek', '<i class="ic ic-film"></i> Filmek', C.can('publishMedia') || C.can('submitMedia')], ['zene', '<i class="ic ic-music"></i> Zenék', C.can('publishMedia') || C.can('submitMedia')],
     ['csatornak', '<i class="ic ic-settings"></i> Csatornák', C.can('manageChannels')],
     ['jovahagyas', `<i class="ic ic-circle-check"></i> Jóváhagyások${n ? ` <span class="cnt">${n}</span>` : ''}`, C.can('publishMedia') || C.isOwner() || C.can('submitMedia') || C.can('assignRoles')],
@@ -64,6 +65,25 @@ export function firstTab() { return tabList()[0]?.[0] || 'tagok'; }
 
 /* ================= TAGOK ÉS RANGOK ================= */
 let mq = '';
+/* vendégfiókok: a jelenlétüket (guests) és a lefoglalt/moderátor által adott nevüket (guestnames) mutatja; innen át is nevezhetők */
+const GST = { list: [], at: 0, q: '' };
+async function loadGuests() { const [g, n] = await Promise.all([FB.getDocs(FB.query(FB.collection(db, 'guests'), FB.orderBy('lastSeen', 'desc'), FB.limit(300))).catch(() => null), FB.getDocs(FB.collection(db, 'guestnames')).catch(() => null)]);
+  const m = new Map(); if (g) g.docs.forEach(d => m.set(d.id, { id: d.id, nick: d.data().nick || 'Vendég', seen: d.data().lastSeen }));
+  if (n) n.docs.forEach(d => { const x = d.data(); if (!x.uid) return; const o = m.get(x.uid) || { id: x.uid, nick: x.nick, seen: x.at }; if (x.lock) { o.nick = x.nick; o.lock = true; } else if (!o.lock && !m.has(x.uid)) o.nick = x.nick; m.set(x.uid, o); });
+  GST.list = [...m.values()].sort((a, b) => (toDate(b.seen)?.getTime() || 0) - (toDate(a.seen)?.getTime() || 0)); GST.at = Date.now(); GST.fail = !g && !n; }
+function guestsPage(v, again) {
+  C.setTitle('<i class="ic ic-user"></i>', 'Vendégek', 'Vendégfiókok és nevük');
+  if (!again || Date.now() - GST.at > 30e3) loadGuests().then(() => { if (current === 'vendegek') guestsPage(v, true); });
+  const focus = again && document.activeElement?.id === 'gq', l = GST.list.filter(x => !GST.q || x.nick.toLowerCase().includes(GST.q));
+  v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div>${tabs()}<h1 class="gold">Vendégek</h1><div style="display:flex;gap:.6rem;align-items:center;margin:.8rem 0"><input class="inp" id="gq" placeholder="Keresés név szerint" value="${esc(GST.q)}" style="max-width:320px"><small class="hint">${GST.list.length} vendég</small></div>
+    ${l.length ? l.map(x => `<div class="arow"><span class="avw"><span style="width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--bg3);font-size:1.2rem">🎮</span></span>
+      <div class="who"><b>${esc(x.nick)}</b><small>${x.seen ? 'utoljára ' + esc(timeLabel(x.seen)) : ''} · <span style="user-select:all;opacity:.7">${esc(x.id.slice(0, 10))}…</span></small><div>${x.lock ? '<span class="tg b"><i class="ic ic-lock"></i> MODERÁTOR ADTA</span>' : ''}${badName(x.nick) ? `<span class="tg red"><i class="ic ic-triangle-alert"></i> NEM MEGFELELŐ NÉV</span>` : ''}</div></div>
+      <div class="ac"><input class="inp" data-gn="${esc(x.id)}" maxlength="20" value="${esc(x.nick)}" style="width:190px" autocomplete="off"><button class="btn plain sm" data-gnok="${esc(x.id)}">Átnevezés</button></div>
+      <small data-gnerr="${esc(x.id)}" style="flex-basis:100%;text-align:right;color:#ff8080"></small></div>`).join('') : `<div class="empty">${GST.at ? (GST.fail ? 'A vendéglista most nem érhető el.' : 'Nincs találat.') : 'Betöltés…'}</div>`}</div>`;
+  const q = $('#gq'); q.oninput = () => { GST.q = q.value.toLowerCase(); guestsPage(v, true); }; if (focus) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+  $$('[data-gnok]', v).forEach(b => b.onclick = async () => { const id = b.dataset.gnok, inp = v.querySelector(`[data-gn="${id}"]`), er = v.querySelector(`[data-gnerr="${id}"]`); b.disabled = true; const r = await C.renameGuest(id, inp.value); b.disabled = false;
+    if (r.ok) { GST.at = 0; guestsPage(v, true); return; } if (r.free) inp.value = r.free; er.textContent = r.err || ''; });
+}
 function members(v, again) {
   C.setTitle('<i class="ic ic-shield"></i>', 'Tagok és rangok', C.isOwner() ? 'Rangok kiosztása, moderálás' : 'Moderálás');
   const me = C.uid();
@@ -744,7 +764,7 @@ async function statsPage(v) {
     const st = { nyitott: ['Nyitott', '#6cc6ff'], folyamatban: ['Folyamatban', '#ffa94d'], kesz: ['Kész', '#5ee08a'], elutasitva: ['Elutasítva', '#ff7a6e'] };
     $('#stIdea').innerHTML = s.size ? hbars(Object.entries(st).map(([k, [l, c]]) => [l, s.docs.filter(d => d.data().status === k).length, c]), ' db') : '<div class="estate"><i class="ic ic-lightbulb"></i><b>Még nincs beküldött ötlet</b></div>';
   }).catch(() => { $('#stIdea').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
-  import('./browse.js?v=202611230608').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
+  import('./browse.js?v=202611230612').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
     .then(l => { $('#stArc').innerHTML = hbars(l, ' játékos'); });
 }
 const lbScores = g => FB.collection(db, 'leaderboards', g, 'scores');
