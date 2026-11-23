@@ -26,15 +26,16 @@ const Nyomas = {
     const lost = (this.lives || 3) - G.lives; if (lost > 0 && this.els.length) for (const p of this.els) { if (p.k !== 'h' && p.k !== 'v') continue; for (const c of p.cr) if (Math.random() < dt * (lost === 1 ? .9 : 5)) { const [x, y] = this.pos(G, p, c); this.drops.push({ x: x + (Math.random() - .5) * 4 * G.d, y, vx: lost > 1 ? (Math.random() - .5) * 60 * G.d : 0, vy: 0, big: lost > 1 }); } }
     for (const q of this.drops) { q.vy += 900 * G.d * dt; q.x += q.vx * dt; q.y += q.vy * dt; if (q.y > G.H * .985) { q.dead = 1; this.puddle = Math.min(1, this.puddle + (q.big ? .0025 : .001)); } } this.drops = this.drops.filter(q => !q.dead).slice(-400);
     if (this.lock > 0) { this.lock -= dt; return; }
-    this.a += this.dir * this.sp * dt; if (this.a > 1) { this.a = 1; this.dir = -1; } if (this.a < 0) { this.a = 0; this.dir = 1; }
+    this.pa = this.a; this.tu = performance.now(); this.a += this.dir * this.sp * dt; if (this.a > 1) { this.a = 1; this.dir = -1; } if (this.a < 0) { this.a = 0; this.dir = 1; }
     this.flash = Math.max(0, this.flash - dt * 2); this.burst = Math.max(0, this.burst - dt * 1.5);
   },
   down(G, x, y, e) {
     const b = this.sel; if (b && e !== true && x != null && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) { const n = this.designs.length; this.ds = (this.ds + (x < b.x + b.w / 2 ? n - 1 : 1)) % n; store.set('nyomas_design', this.ds); Sfx.blip(660, .05, 'triangle', .05); return; }
     if (this.lock > 0) return;
-    const d = Math.abs(this.a - this.zc), cx = G.W / 2, cy = G.H * .58;
+    const el = Math.min(.05, Math.max(0, (performance.now() - (this.tu || 0)) / 1000)), an = Math.max(0, Math.min(1, this.a + this.dir * this.sp * el)), pa = this.pa == null ? this.a : this.pa, lo = Math.min(pa, this.a, an), hi = Math.max(pa, this.a, an);
+    const d = this.zc < lo ? lo - this.zc : this.zc > hi ? this.zc - hi : 0, dp = Math.abs(an - this.zc), cx = G.W / 2, cy = G.H * .58;
     if (d <= this.zw / 2) {
-      this.combo++; this.cpop = 1; const perfect = d < this.zw * .12, m = this.mult(), pts = Math.round((perfect ? 50 : 20) * (1 + this.lvl * .25) * m);
+      this.combo++; this.cpop = 1; const perfect = dp < Math.min(this.zw * .3, Math.max(this.zw * .12, this.sp * .006)), m = this.mult(), pts = Math.round((perfect ? 50 : 20) * (1 + this.lvl * .25) * m);
       G.add(pts, cx, cy - G.H * .2, (perfect ? 'PERFEKT! +' : '+') + pts + (m > 1 ? '  ×' + m.toFixed(1) : '')); this.n++; this.addEl(); perfect ? Sfx.perfect() : Sfx.coin();
       G.splash(cx, cy - G.H * .1, perfect ? '255,215,120' : '150,215,255', perfect ? 40 : 22, 7);
       this.lvl++; if (!perfect) this.zl = (this.zl || this.lvl - 1) + 1; this.sp = Math.min(3.4, .55 + this.lvl * .14); this.flash = 1; this.lock = .25; this.newZone();
