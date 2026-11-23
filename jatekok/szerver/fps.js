@@ -4,7 +4,7 @@
    helye a felület saját rajzkoordinátáiban van; innen számoljuk térbe. A rackek rácsra (GR) illesztve, 90°-onként
    forgatva állnak, a szabad eszközök bárhol. Képkockánként kiszámoljuk, mire mutat a célkereszt (aim); a műveleteket
    a szerver.js doClick() végzi. Lépték: K méter / rajzegység (1U = 20 egység = 4,4 cm). */
-import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611230506';
+import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611230541';
 
 const REACH = 3, EYE = 1.62, MAXP = 2500, RD = .9; // RD, RWID: a rack alapterülete
 let A = null, K = .0022, cv = null, R = null, scene = null, cam = null, room = null, cabG = null, held = null, ghost = null, pts = null;
@@ -50,7 +50,7 @@ function build() { if (room) { scene.remove(room); room.traverse(o => { o.geomet
   { const fx = []; for (let z = 1.5; z < D; z += 3) for (let x = 1.4; x < W; x += 2.8) fx.push([x, z]); const lampG = new THREE.BoxGeometry(1.25, .05, .2), lampM = std('#c9ced4'), glowG = new THREE.BoxGeometry(1.15, .012, .13), glowM = new THREE.MeshBasicMaterial({ color: '#fbfcff' }); for (const [x, z] of fx) { add(lampG, lampM, x, H - .025, z); add(glowG, glowM, x, H - .055, z); }
     // a fényforrások száma a teljesítmény miatt korlátos: nagy teremben néhány erősebb lámpa világít a sok kicsi helyett
     if (fx.length <= 6) for (const [x, z] of fx) { const pl = new THREE.PointLight(0xe6edff, 14, 10, 1.7); pl.position.set(x, H - .3, z); room.add(pl); }
-    else { const nx = W > 20 ? 3 : 2, nz = 2, I = 14 * Math.pow(fx.length / (nx * nz), .7) * (H > 4 ? 1.15 : 1); for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) { const pl = new THREE.PointLight(0xe6edff, I, Math.max(W, D) * 1.2, 1.5); pl.position.set(W * (i + .5) / nx, H - .4, D * (j + .5) / nz); room.add(pl); } } }
+    else { const nx = W > 20 ? 3 : 2, nz = 2, I = 14 * (fx.length / (nx * nz)) * .92 * (H > 4 ? 1.1 : 1); for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) { const pl = new THREE.PointLight(0xe6edff, I, Math.max(W, D) * 1.2, 1.5); pl.position.set(W * (i + .5) / nx, H - .4, D * (j + .5) / nz); room.add(pl); } } }
   const front = (g, key, f, k, extra, alpha) => { const t = tex(f.w, f.h, k), m = add(new THREE.PlaneGeometry(f.w * K, f.h * K), new THREE.MeshBasicMaterial({ map: t.t, transparent: !!alpha, alphaTest: alpha ? .35 : 0 }), 0, f.h * K / 2, .003, g); m.userData = { sf: key, ...extra }; PL.push(m); RT.set(key, t); return m; };
   for (const key of A.wallKeys()) { const f = SF.get(key), g = new THREE.Group(); g.position.set(f.wx, f.wy, f.wz); g.rotation.y = f.yaw; room.add(g); front(g, key, f, 4, {}); add(new THREE.BoxGeometry(f.w * K + .05, f.h * K + .05, .03), std('#70757c', { metalness: .2 }), 0, f.h * K / 2, -.014, g); }
   // galéria a magas csarnokokban: körbefutó járószint korláttal, létrával; az alja alá kábelrögzítő is mehet
