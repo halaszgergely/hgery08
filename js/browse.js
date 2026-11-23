@@ -1,11 +1,11 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611230433';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611230433';
-import * as Player from './player.js?v=202611230433';
-import * as Party from './party.js?v=202611230433';
-import * as VP from './vplayer.js?v=202611230433';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611230433';
-import * as ArcL from './arcade-lista.js?v=202611230433';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611230436';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611230436';
+import * as Player from './player.js?v=202611230436';
+import * as Party from './party.js?v=202611230436';
+import * as VP from './vplayer.js?v=202611230436';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611230436';
+import * as ArcL from './arcade-lista.js?v=202611230436';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -287,7 +287,7 @@ const csLast = g => { try { return +localStorage.getItem('hgws_cs_' + g) || 0; }
 async function cloudGet(win, game) {
   if (!CS_GAMES.includes(game) || guest() || !C.uid()) return win.postMessage({ hgws: 'cs', game, none: 1 }, location.origin);
   try { const d = (await FB.getDoc(FB.doc(db, 'cloudsaves', C.uid(), 'g', game))).data(); win.postMessage({ hgws: 'cs', game, life: d ? +d.life || 0 : 0, lg: d && typeof d.lg === 'number' ? d.lg : undefined, st: d ? d.st : null, admin: C.isAdmin() }, location.origin); }
-  catch (_) { win.postMessage({ hgws: 'cs', game, none: 1 }, location.origin); }
+  catch (e) { win.postMessage({ hgws: 'cs', game, none: 1, err: (e && e.code) || 'hiba', admin: C.isAdmin() }, location.origin); } // pl. ha a szabály még nincs kitéve: a játék így ki tudja írni az okát
 }
 function cloudPut(m, win) {
   const ack = (ok, err) => { if (m.ack) win?.postMessage({ hgws: 'cs', game: m.game, ack: 1, ok, err }, location.origin); };
