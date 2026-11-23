@@ -7,7 +7,7 @@ const Nyomas = {
   ranks: [[0, 'Gyakornok'], [300, 'Szivattyúkezelő'], [900, 'Nyomásfelelős'], [2000, 'PLC-programozó'], [4000, 'Főgépész-legenda']],
   /* választható műszer-külsők – valódi nyomásmérő-típusok alapján */
   designs: ['HGWS vezérlőpult', 'Bourdon-csöves ipari', 'Glicerines rozsdamentes', 'Sárgaréz gőzmanométer', 'Digitális manométer'],
-  init(G) { this.ds = Math.min(this.designs.length - 1, store.get('nyomas_design') | 0); this.a = 0; this.dir = 1; this.sp = .65; this.lvl = 1; this.zl = 1; this.pf = 0; this.plc = 0; this.newZone(); this.flash = 0; this.lock = 0; this.burst = 0; this.combo = 0; this.cpop = 0; this.n = 0; this.drops = []; this.puddle = 0;
+  init(G) { this.ds = Math.min(this.designs.length - 1, store.get('nyomas_design') | 0); this.a = 0; this.dir = 1; this.sp = .65; this.lvl = 1; this.zl = 1; this.pf = 0; this.plc = 0; this.pt = 0; this.beat = 0; this.newZone(); this.flash = 0; this.lock = 0; this.burst = 0; this.combo = 0; this.cpop = 0; this.n = 0; this.drops = []; this.puddle = 0;
     // a háttér üzemrésze: két alapcső, minden sikeres beállítás után egy újabb elem épül
     let h = (Date.now() & 0xffff) + 7; this.rnd = () => { h = (h * 16807) % 2147483647; return h / 2147483647; }; this.els = []; this.addPipe('h', .16); this.addPipe('v', .07); },
   mult() { return 1 + Math.min(20, this.combo) * .1; },
@@ -25,14 +25,15 @@ const Nyomas = {
     this.cpop = Math.max(0, this.cpop - dt * 2.5); for (const e of this.els) e.b = Math.min(1, e.b + dt * 2.2);
     const lost = (this.lives || 3) - G.lives; if (lost > 0 && this.els.length) for (const p of this.els) { if (p.k !== 'h' && p.k !== 'v') continue; for (const c of p.cr) if (Math.random() < dt * (lost === 1 ? .9 : 5)) { const [x, y] = this.pos(G, p, c); this.drops.push({ x: x + (Math.random() - .5) * 4 * G.d, y, vx: lost > 1 ? (Math.random() - .5) * 60 * G.d : 0, vy: 0, big: lost > 1 }); } }
     for (const q of this.drops) { q.vy += 900 * G.d * dt; q.x += q.vx * dt; q.y += q.vy * dt; if (q.y > G.H * .985) { q.dead = 1; this.puddle = Math.min(1, this.puddle + (q.big ? .0025 : .001)); } } this.drops = this.drops.filter(q => !q.dead).slice(-400);
+    this.beat = Math.max(0, (this.beat || 0) - dt * 3.5); this.pt = (this.pt || 0) + dt; if (this.pt > 14 && this.els.length < 70) { this.pt = 0; this.addPipe(this.rnd() < .6 ? 'h' : 'v'); }
     if (this.lock > 0) { this.lock -= dt; return; }
-    this.pa = this.a; this.tu = performance.now(); this.a += this.dir * this.sp * dt; if (this.a > 1) { this.a = 1; this.dir = -1; } if (this.a < 0) { this.a = 0; this.dir = 1; }
+    this.pa = this.a; this.tu = performance.now(); this.a += this.dir * this.sp * dt; if (this.a > 1) { this.a = 1; this.dir = -1; this.beat = 1; Sfx.blip(392, .035, 'triangle', .04); } if (this.a < 0) { this.a = 0; this.dir = 1; this.beat = 1; Sfx.blip(294, .035, 'triangle', .04); }
     this.flash = Math.max(0, this.flash - dt * 2); this.burst = Math.max(0, this.burst - dt * 1.5);
   },
   down(G, x, y, e) {
     const b = this.sel; if (b && e !== true && x != null && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) { const n = this.designs.length; this.ds = (this.ds + (x < b.x + b.w / 2 ? n - 1 : 1)) % n; store.set('nyomas_design', this.ds); Sfx.blip(660, .05, 'triangle', .05); return; }
     if (this.lock > 0) return;
-    const el = Math.min(.05, Math.max(0, (performance.now() - (this.tu || 0)) / 1000)), an = Math.max(0, Math.min(1, this.a + this.dir * this.sp * el)), pa = this.pa == null ? this.a : this.pa, lo = Math.min(pa, this.a, an), hi = Math.max(pa, this.a, an);
+    const now = e && e.timeStamp > 0 ? e.timeStamp : performance.now(), el = Math.min(.05, Math.max(-.03, (now - (this.tu || now)) / 1000)), cl = v => Math.max(0, Math.min(1, v)), an = cl(this.a + this.dir * this.sp * el), bk = cl(an - this.dir * this.sp * .03), pa = this.pa == null ? this.a : this.pa, lo = Math.min(pa, this.a, an, bk), hi = Math.max(pa, this.a, an, bk);
     const d = this.zc < lo ? lo - this.zc : this.zc > hi ? this.zc - hi : 0, dp = Math.abs(an - this.zc), cx = G.W / 2, cy = G.H * .58;
     if (d <= this.zw / 2) {
       this.combo++; this.cpop = 1; const perfect = dp < Math.min(this.zw * .3, Math.max(this.zw * .12, this.sp * .006)), m = this.mult(), pts = Math.round((perfect ? 50 : 20) * (1 + this.lvl * .25) * m);
@@ -61,7 +62,8 @@ const Nyomas = {
       else if (e.k === 'pist') { const x = e.x * G.W, y = e.y * G.H, w = S * .05 * sc, h = S * .13 * sc; if (w < 2) continue; const k = (Math.sin(t * 3 + e.ph) + 1) / 2; g.fillStyle = '#3b4a5e'; g.fillRect(x - w / 2, y - h / 2, w, h * .55); g.fillStyle = '#aab6c4'; g.fillRect(x - w * .12, y - h / 2 + h * .55 - h * .1, w * .24, h * .45 * k + h * .1); g.fillStyle = '#e8b656'; g.fillRect(x - w * .4, y - h / 2 + h * .55 + h * .45 * k, w * .8, h * .08); } }
     for (const q of this.drops) { g.fillStyle = 'rgba(150,215,255,.9)'; g.beginPath(); g.ellipse(q.x, q.y, (q.big ? 2.6 : 1.8) * d, (q.big ? 4.5 : 3.2) * d, 0, 0, 6.283); g.fill(); }
     if (this.puddle > 0) { g.fillStyle = 'rgba(80,160,230,.45)'; const ph = this.puddle * G.H * .05; g.fillRect(0, G.H - ph, G.W, ph); g.fillStyle = 'rgba(200,235,255,.35)'; for (let x = (t * 40 * d) % (60 * d); x < G.W; x += 60 * d) g.fillRect(x, G.H - ph, 24 * d, 1.5 * d); }
-    g.restore(); },
+    g.restore();
+    if (this.beat > 0) { const b = this.beat, R = this.ds ? Math.min(G.W * .4, G.H * .33) : Math.min(G.W * .42, G.H * .4); g.save(); g.strokeStyle = `rgba(255,215,122,${b * .38})`; g.lineWidth = (2 + b * 5) * d; g.beginPath(); g.arc(G.W / 2, G.H * (this.ds ? .47 : .58), R * (1.1 + (1 - b) * .14), 0, 6.283); g.stroke(); g.restore(); } },
   comboText(g, G) { const d = G.d; if (this.combo > 1) { const m = this.mult(), k = 1 + this.cpop * .35; g.save(); g.translate(G.W / 2, this.sel.y - 22 * d); g.scale(k, k); g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `900 ${18 * d}px Inter, sans-serif`; g.fillStyle = m >= 2.5 ? '#ff9a4d' : m >= 1.8 ? '#ffd77a' : '#7fd8ff'; g.fillText('KOMBÓ ' + this.combo + '  ×' + m.toFixed(1), 0, 0); g.restore(); } },
   draw(g, G, t) {
     bg('#0b1424', '#050a12'); this.drawBack(g, G, t);
