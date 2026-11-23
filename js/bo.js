@@ -6,8 +6,8 @@
 //   bo/{szezon}/deals, coops, votes · bohall/{szezon}
 // Elszámolás (sync): az időarányos termelés jóváírása – a szabályok a szint és az eltelt idő alapján korlátozzák.
 // Művelet (act): az „at” időbélyeg nem változik, ezért ott nincs időarányos jóváírás, csak költés / kötött ügylet.
-import { FB, db, toast, errText, notify, OWNER_UID } from './core.js?v=202611231833';
-import * as D from './bo-data.js?v=202611231833';
+import { FB, db, toast, errText, notify, OWNER_UID } from './core.js?v=202611231850';
+import * as D from './bo-data.js?v=202611231850';
 
 let C = null;
 export const st = { sid: '', P: null, base: 0, t0: 0, W: null, coop: null, regs: {}, ready: false, busy: false, err: '', hall: null, watching: '' };

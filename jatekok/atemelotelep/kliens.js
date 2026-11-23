@@ -1,11 +1,11 @@
 // Az Átemelőtelep – fő program: mozgás, interakció, fejezetek, hangulat (fények, eső, hangok), HUD, mentés, beállítások, mobil.
 // A megjelenítést a latvany.js (Three.js) végzi, a szimulációt a jatek.js, a paneleket az ui.js.
-import { createWorld, QUAL } from './latvany.js?v=202611231833';
-import { createAudio } from './hang.js?v=202611231833';
-import { buildLevel, move, pick, itVisible, WELL, EYE } from './palya.js?v=202611231833';
-import * as PAL from './palya.js?v=202611231833';
-import { freshState, step as simStep, clone, CHAPTERS, OVER, cabPow, plcRun, lightPow, supply } from './jatek.js?v=202611231833';
-import * as UI from './ui.js?v=202611231833';
+import { createWorld, QUAL } from './latvany.js?v=202611231850';
+import { createAudio } from './hang.js?v=202611231850';
+import { buildLevel, move, pick, itVisible, WELL, EYE } from './palya.js?v=202611231850';
+import * as PAL from './palya.js?v=202611231850';
+import { freshState, step as simStep, clone, CHAPTERS, OVER, cabPow, plcRun, lightPow, supply } from './jatek.js?v=202611231850';
+import * as UI from './ui.js?v=202611231850';
 
 const $ = s => document.querySelector(s), TOUCH = matchMedia('(pointer: coarse)').matches, SAVE = 'hgws_atemelo_v1', GAME = 'atemelotelep', DEBUG = /[?&]debug\b/.test(location.search);
 let SET = { sens: 1, fov: 78, vol: .8, mus: .55, sfx: 1, q: 3, res: 0, inv: 0, scary: 0, lvl: 1, wp: 1, cap: 1 };
@@ -284,5 +284,5 @@ function frame(now) { requestAnimationFrame(frame); const real = now - last, rdt
 
 /* ---------- indulás ---------- */
 $('#load').hidden = true; requestAnimationFrame(frame); menu();
-(async () => { try { core = await import('../../js/core.js?v=202611231833'); if (!core || core.notConfigured || !core.auth) return; core.FB.onAuthStateChanged(core.auth, u => { user = u && !u.isAnonymous ? u : null; if (user) cloudLoad(); }); } catch (e) { console.info(e); } })();
+(async () => { try { core = await import('../../js/core.js?v=202611231850'); if (!core || core.notConfigured || !core.auth) return; core.FB.onAuthStateChanged(core.auth, u => { user = u && !u.isAnonymous ? u : null; if (user) cloudLoad(); }); } catch (e) { console.info(e); } })();
 window.__at = () => ({ S, P, L, V, UI, PAL, act, check, setCh, CP, target, holdA, start, SET, useDown, useUp, goal, objectives });
