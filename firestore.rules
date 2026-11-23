@@ -128,6 +128,21 @@ service cloud.firestore {
       allow delete: if request.auth.uid == uid || perm('publishMedia');
     }
 
+    // ---------- vendégnevek egyedisége: guestnames/{kisbetűs név} = { uid, nick, at, lock } ----------
+    // A vendég a saját nevét foglalja le (más friss foglalását nem írhatja felül, 60 napnál régebbit átvehet);
+    // a moderátor bármelyik vendégnek adhat nevet (lock: true) – azt a vendég már nem módosíthatja.
+    match /guestnames/{key} {
+      allow read: if signedIn();
+      function gnOk() { return request.resource.data.keys().hasOnly(['uid', 'nick', 'at', 'lock']) && request.resource.data.uid is string
+        && request.resource.data.nick is string && request.resource.data.nick.size() >= 2 && request.resource.data.nick.size() <= 20 && request.resource.data.nick.matches('^[^<>&"/]+$')
+        && request.resource.data.nick.lower() == key && request.resource.data.at == request.time; }
+      function gnMine() { return signedIn() && request.auth.token.firebase.sign_in_provider == 'anonymous' && request.resource.data.uid == request.auth.uid && request.resource.data.get('lock', false) == false; }
+      allow create: if gnOk() && (gnMine() || perm('moderate'));
+      allow update: if gnOk() && (perm('moderate') || (gnMine() && resource.data.get('lock', false) == false
+        && (resource.data.uid == request.auth.uid || resource.data.at < request.time - duration.value(1440, 'h'))));
+      allow delete: if perm('moderate') || (signedIn() && resource.data.uid == request.auth.uid && resource.data.get('lock', false) == false);
+    }
+
     // ---------- e-mail címek: CSAK az adminok és a tulaj olvashatják ----------
     // A tag kizárólag a saját, a belépési tokenjében szereplő címét írhatja be – más nevében vagy hamis címmel nem.
     match /emails/{uid} {

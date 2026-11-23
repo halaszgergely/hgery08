@@ -1,19 +1,19 @@
 // HGWS Közösség – csatornák, privát üzenetek, csoportok, filmtár
 import { FB, auth, db, notConfigured, $, $$, esc, ROLES, roleOf, applyRoles, OWNER_UID, notify, audit, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
-  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611230541';
-import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611230541';
-import * as Admin from './admin.js?v=202611230541';
-import * as Browse from './browse.js?v=202611230541';
-import * as Notif from './notif.js?v=202611230541';
-import * as Profile from './profile.js?v=202611230541';
-import * as Party from './party.js?v=202611230541';
-import * as Ideas from './ideas.js?v=202611230541';
-import * as Player from './player.js?v=202611230541';
-import * as Cmdk from './cmdk.js?v=202611230541';
-import * as Stk from './stickers.js?v=202611230541';
-import * as Friends from './friends.js?v=202611230541';
-import * as Bo from './bo-ui.js?v=202611230541';
-import { bootOut, pageIn, I } from './fx.js?v=202611230541';
+  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611230608';
+import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611230608';
+import * as Admin from './admin.js?v=202611230608';
+import * as Browse from './browse.js?v=202611230608';
+import * as Notif from './notif.js?v=202611230608';
+import * as Profile from './profile.js?v=202611230608';
+import * as Party from './party.js?v=202611230608';
+import * as Ideas from './ideas.js?v=202611230608';
+import * as Player from './player.js?v=202611230608';
+import * as Cmdk from './cmdk.js?v=202611230608';
+import * as Stk from './stickers.js?v=202611230608';
+import * as Friends from './friends.js?v=202611230608';
+import * as Bo from './bo-ui.js?v=202611230608';
+import { bootOut, pageIn, I } from './fx.js?v=202611230608';
 
 const S = {
   user: null, me: null, users: new Map(), channels: [], convs: [], convsLoaded: false, videos: [], reads: { ch: {} },
@@ -427,7 +427,7 @@ function watchGuests() {
     s.docs.forEach(d => S.guests.set(d.id, { id: d.id, ...d.data() })); s.docChanges().forEach(c => c.type === 'removed' && S.guests.delete(c.doc.id)); soon('guests', renderOnline); }, e => console.warn('vendégek', e));
   setInterval(renderOnline, 60e3);
 }
-function guestPing() { const ref = FB.doc(db, 'guests', S.user.uid), ping = () => { if (!document.hidden) FB.setDoc(ref, { nick: Browse.getNick(), lastSeen: FB.serverTimestamp() }).catch(e => console.warn('vendég-jelenlét', e)); }; ping(); setInterval(ping, 60e3); document.addEventListener('visibilitychange', () => { if (!document.hidden) ping(); }); }
+function guestPing() { Browse.guestNames(); const ref = FB.doc(db, 'guests', S.user.uid), ping = () => { if (!document.hidden) FB.setDoc(ref, { nick: Browse.getNick(), lastSeen: FB.serverTimestamp() }).catch(e => console.warn('vendég-jelenlét', e)); }; ping(); setInterval(ping, 60e3); document.addEventListener('visibilitychange', () => { if (!document.hidden) ping(); }); }
 function renderOnline() {
   const on = [...S.users.values()].filter(u => isOnline(u) && !u.banned).sort((a, b) => rankOfUser(b) - rankOfUser(a) || a.name.localeCompare(b.name, 'hu'));
   const gs = [...(S.guests?.values() || [])].filter(g => isOnline(g) && typeof g.nick === 'string').sort((a, b) => a.nick.localeCompare(b.nick, 'hu'));
