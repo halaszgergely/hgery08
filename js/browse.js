@@ -1,11 +1,11 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611230056';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611230056';
-import * as Player from './player.js?v=202611230056';
-import * as Party from './party.js?v=202611230056';
-import * as VP from './vplayer.js?v=202611230056';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611230056';
-import * as ArcL from './arcade-lista.js?v=202611230056';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611230433';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611230433';
+import * as Player from './player.js?v=202611230433';
+import * as Party from './party.js?v=202611230433';
+import * as VP from './vplayer.js?v=202611230433';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611230433';
+import * as ArcL from './arcade-lista.js?v=202611230433';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -282,7 +282,7 @@ async function loadPlays() {
   return PLAYS;
 }
 /* felhőmentés idle játékokhoz: cloudsaves/{uid}/g/{játék} = { life, st, updatedAt } – a szabály csak nagyobb vagy egyenlő life-ot enged */
-const CS_GAMES = ['birodalom', 'szerver'], CS_GAP = 30 * 60e3; // automatikus mentés legfeljebb 30 percenként + kilépéskor; kézi mentést csak admin indíthat (minden felhőmentéses játékra)
+const CS_GAMES = ['birodalom', 'szerver', 'szerver2', 'szerver3'], CS_GAP = 30 * 60e3; // automatikus mentés legfeljebb 30 percenként + kilépéskor; kézi mentést csak admin indíthat (minden felhőmentéses játékra)
 const csLast = g => { try { return +localStorage.getItem('hgws_cs_' + g) || 0; } catch (_) { return 0; } };
 async function cloudGet(win, game) {
   if (!CS_GAMES.includes(game) || guest() || !C.uid()) return win.postMessage({ hgws: 'cs', game, none: 1 }, location.origin);
