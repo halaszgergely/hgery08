@@ -1,6 +1,6 @@
 /* Menük: főmenü, hangár (3D előnézet a bázison), küldetések, ranglista, beállítások, irányítás-súgó, szünet, küldetés vége. */
-import { GEPEK, GEP, KULDETESEK, MODOK, REPTEREK, FORGO } from './config.js?v=202611232216';
-import * as RL from './ranglista.js?v=202611232216';
+import { GEPEK, GEP, KULDETESEK, MODOK, REPTEREK, FORGO } from './config.js?v=202611232259';
+import * as RL from './ranglista.js?v=202611232259';
 
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const KONNYU = { permetezo: .92, ancsa: .85, vadasz: .38, concorde: .28, jumbo: .22, herkules: .42, ketelt: .55, hidro: .8, vitorlazo: .6, kopter: .5, kamov: .72, chinook: .45, giro: .88, dron: .96, leghajo: .7, slag: .04, zero: .82 };
