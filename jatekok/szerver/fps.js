@@ -4,7 +4,7 @@
    helye a felület saját rajzkoordinátáiban van; innen számoljuk térbe. A rackek rácsra (GR) illesztve, 90°-onként
    forgatva állnak, a szabad eszközök bárhol. Képkockánként kiszámoljuk, mire mutat a célkereszt (aim); a műveleteket
    a szerver.js doClick() végzi. Lépték: K méter / rajzegység (1U = 20 egység = 4,4 cm). */
-import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611231328';
+import * as THREE from '../atemelotelep/lib/three.module.min.js?v=202611231332';
 
 const REACH = 3, EYE = 1.62, MAXP = 2500, RD = .9; // RD, RWID: a rack alapterülete
 let A = null, K = .0022, cv = null, R = null, scene = null, cam = null, room = null, cabG = null, held = null, ghost = null, pts = null;
@@ -35,7 +35,7 @@ function ctex(w, h, f, rx = 1, ry = 1) { const c = document.createElement('canva
 const noise = (x, w, h, n, a) => { for (let i = 0; i < n; i++) { x.fillStyle = `rgba(${Math.random() < .5 ? '0,0,0' : '255,255,255'},${Math.random() * a})`; const s = 1 + Math.random() * 3; x.fillRect(Math.random() * w, Math.random() * h, s, s); } };
 const std = (c, o) => new THREE.MeshStandardMaterial({ color: c, roughness: .55, metalness: .45, ...o });
 let shTex = null;
-function build() { if (room) { scene.remove(room); room.traverse(o => { o.geometry?.dispose(); if (o.material?.map && o.material.map !== shTex) o.material.map.dispose(); o.material?.dispose?.(); }); } RT.clear(); PL.length = 0; surfaces(); room = new THREE.Group(); scene.add(room);
+function build() { if (room) { scene.remove(room); room.traverse(o => { o.geometry?.dispose(); for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : []) { if (m.map && m.map !== shTex && m.map.dispose) m.map.dispose(); m.dispose?.(); } }); } RT.clear(); PL.length = 0; surfaces(); room = new THREE.Group(); scene.add(room);
   const [W, D, H] = room3(), st = A.SITE[A.S.site], add = (geo, m, x, y, z, par) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); (par || room).add(o); return o; }, metal = std('#1b1d21'), devM = std('#2b2e34', { metalness: .6, roughness: .4 }), wood = new THREE.MeshStandardMaterial({ color: '#7a5533', roughness: .8 }), wood2 = new THREE.MeshStandardMaterial({ color: '#57391f', roughness: .85 });
   shTex = shTex || ctex(64, 64, (x, w) => { const g = x.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(.6, 'rgba(0,0,0,.3)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, w, w); });
   const shadow = (x, z, w, d, yaw) => { const m = add(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ map: shTex, transparent: true, depthWrite: false }), x, .006, z); m.rotation.set(-Math.PI / 2, 0, yaw || 0); };
