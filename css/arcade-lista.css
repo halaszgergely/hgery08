@@ -73,3 +73,20 @@ body.arcl-lock{overflow:hidden}
 .al-favm{font-style:normal;color:#ffd24a}
 .al-chips .al-zs{font-size:.62rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;padding:.16rem .5rem;border-radius:999px;white-space:nowrap;color:#1a1004;background:linear-gradient(180deg,#ffe29a,#e8b656)}
 .al-chips .al-now{font-size:.62rem;font-weight:800;letter-spacing:.06em;padding:.16rem .45rem;border-radius:999px;white-space:nowrap;background:rgba(94,224,138,.16);color:#7ef0a4}
+/* telefonon: alkalmazásikon-szerű kis csempék (ikon + név); a részletek és a Játék gomb a csempére koppintva nyíló lapon vannak */
+@media (max-width:640px){
+.arow .acd,.agridx .acd{padding:0;gap:.3rem;background:none;border:0;border-radius:0;align-items:center;text-align:center;transform:none!important}
+.arow{gap:.75rem;padding-bottom:.6rem}.arow .acd{width:76px}
+.agridx{grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:.9rem .6rem}
+.arow .acd .al-cov,.agridx .acd .al-cov{width:100%;aspect-ratio:1;border-radius:18px;box-shadow:0 4px 14px rgba(0,0,0,.4);border:1px solid rgba(140,180,230,.16)}
+.arow .acd .al-cov .al-gen span,.agridx .acd .al-cov .al-gen span{font-size:2.1rem}
+.arow .acd small,.agridx .acd small,.arow .acd .al-af,.agridx .acd .al-af,.arow .acd .al-kat,.agridx .acd .al-kat,.arow .acd .al-st,.agridx .acd .al-st{display:none}
+.arow .acd b,.agridx .acd b{font-size:.68rem;font-weight:700;line-height:1.2;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;height:2.4em;width:100%;font-family:inherit}
+.arow .acd .al-chips,.agridx .acd .al-chips{position:absolute;left:0;right:0;top:0;aspect-ratio:1;display:block;pointer-events:none}
+.arow .acd .al-zs,.agridx .acd .al-zs{position:absolute;left:-4px;top:-4px;width:19px;height:19px;padding:0;font-size:0;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+.arow .acd .al-zs::before,.agridx .acd .al-zs::before{content:"⚡";font-size:.66rem}
+.arow .acd .al-now,.agridx .acd .al-now{position:absolute;left:50%;bottom:3px;transform:translateX(-50%);font-size:.52rem;letter-spacing:0;padding:.1rem .34rem;background:rgba(6,20,12,.88)}
+.arow .acd .al-fav,.agridx .acd .al-fav{top:-5px;right:-5px;width:1.35rem;height:1.35rem;font-size:.72rem;opacity:0}
+.arow .acd .al-fav.on,.agridx .acd .al-fav.on{opacity:1}
+.rowh h2{font-size:1rem}
+}
