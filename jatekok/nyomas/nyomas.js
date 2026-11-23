@@ -7,7 +7,7 @@ const Nyomas = {
   ranks: [[0, 'Gyakornok'], [300, 'Szivattyúkezelő'], [900, 'Nyomásfelelős'], [2000, 'PLC-programozó'], [4000, 'Főgépész-legenda']],
   /* választható műszer-külsők – valódi nyomásmérő-típusok alapján */
   designs: ['HGWS vezérlőpult', 'Bourdon-csöves ipari', 'Glicerines rozsdamentes', 'Sárgaréz gőzmanométer', 'Digitális manométer'],
-  init(G) { this.ds = Math.min(this.designs.length - 1, store.get('nyomas_design') | 0); this.a = 0; this.dir = 1; this.sp = .65; this.lvl = 1; this.zl = 1; this.pf = 0; this.plc = 0; this.pt = 0; this.beat = 0; this.newZone(); this.flash = 0; this.lock = 0; this.burst = 0; this.combo = 0; this.cpop = 0; this.n = 0; this.drops = []; this.puddle = 0;
+  init(G) { this.rt = store.get('nyomas_ritmus') ? 1 : 0; this.ds = Math.min(this.designs.length - 1, store.get('nyomas_design') | 0); this.a = 0; this.dir = 1; this.sp = .65; this.lvl = 1; this.zl = 1; this.pf = 0; this.plc = 0; this.pt = 0; this.beat = 0; this.newZone(); this.flash = 0; this.lock = 0; this.burst = 0; this.combo = 0; this.cpop = 0; this.n = 0; this.drops = []; this.puddle = 0;
     // a háttér üzemrésze: két alapcső, minden sikeres beállítás után egy újabb elem épül
     let h = (Date.now() & 0xffff) + 7; this.rnd = () => { h = (h * 16807) % 2147483647; return h / 2147483647; }; this.els = []; this.addPipe('h', .16); this.addPipe('v', .07); },
   mult() { return 1 + Math.min(20, this.combo) * .1; },
@@ -27,11 +27,12 @@ const Nyomas = {
     for (const q of this.drops) { q.vy += 900 * G.d * dt; q.x += q.vx * dt; q.y += q.vy * dt; if (q.y > G.H * .985) { q.dead = 1; this.puddle = Math.min(1, this.puddle + (q.big ? .0025 : .001)); } } this.drops = this.drops.filter(q => !q.dead).slice(-400);
     this.beat = Math.max(0, (this.beat || 0) - dt * 3.5); this.pt = (this.pt || 0) + dt; if (this.pt > 14 && this.els.length < 70) { this.pt = 0; this.addPipe(this.rnd() < .6 ? 'h' : 'v'); }
     if (this.lock > 0) { this.lock -= dt; return; }
-    this.pa = this.a; this.tu = performance.now(); this.a += this.dir * this.sp * dt; if (this.a > 1) { this.a = 1; this.dir = -1; this.beat = 1; Sfx.blip(392, .035, 'triangle', .04); } if (this.a < 0) { this.a = 0; this.dir = 1; this.beat = 1; Sfx.blip(294, .035, 'triangle', .04); }
+    this.pa = this.a; this.tu = performance.now(); this.a += this.dir * this.sp * dt; if (this.a > 1) { this.a = 1; this.dir = -1; if (this.rt) { this.beat = 1; Sfx.blip(392, .035, 'triangle', .04); } } if (this.a < 0) { this.a = 0; this.dir = 1; if (this.rt) { this.beat = 1; Sfx.blip(294, .035, 'triangle', .04); } }
     this.flash = Math.max(0, this.flash - dt * 2); this.burst = Math.max(0, this.burst - dt * 1.5);
   },
   down(G, x, y, e) {
     const b = this.sel; if (b && e !== true && x != null && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) { const n = this.designs.length; this.ds = (this.ds + (x < b.x + b.w / 2 ? n - 1 : 1)) % n; store.set('nyomas_design', this.ds); Sfx.blip(660, .05, 'triangle', .05); return; }
+    const rb = this.rb; if (rb && e !== true && x != null && x >= rb.x && x <= rb.x + rb.w && y >= rb.y && y <= rb.y + rb.h) { this.rt = this.rt ? 0 : 1; this.beat = 0; store.set('nyomas_ritmus', this.rt); Sfx.blip(this.rt ? 660 : 330, .05, 'triangle', .05); return; }
     if (this.lock > 0) return;
     const now = e && e.timeStamp > 0 ? e.timeStamp : performance.now(), el = Math.min(.05, Math.max(-.03, (now - (this.tu || now)) / 1000)), cl = v => Math.max(0, Math.min(1, v)), an = cl(this.a + this.dir * this.sp * el), bk = cl(an - this.dir * this.sp * .03), pa = this.pa == null ? this.a : this.pa, lo = Math.min(pa, this.a, an, bk), hi = Math.max(pa, this.a, an, bk);
     const d = this.zc < lo ? lo - this.zc : this.zc > hi ? this.zc - hi : 0, dp = Math.abs(an - this.zc), cx = G.W / 2, cy = G.H * .58;
@@ -98,7 +99,9 @@ const Nyomas = {
   },
   selector(g, G) { const d = G.d, w = Math.min(G.W - 24 * d, 330 * d), h = 38 * d, x = G.W / 2 - w / 2, y = G.H - h - 14 * d; this.sel = { x, y, w, h };
     g.fillStyle = 'rgba(10,16,28,.85)'; rr(x, y, w, h, h / 2); g.fill(); g.strokeStyle = 'rgba(232,182,86,.45)'; g.lineWidth = 1.5 * d; g.stroke();
-    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffe29a'; g.font = `700 ${13 * d}px Inter, sans-serif`; g.fillText(this.designs[this.ds], G.W / 2, y + h / 2 + d); g.font = `700 ${15 * d}px Inter, sans-serif`; g.fillStyle = '#e8b656'; g.fillText('◀', x + 20 * d, y + h / 2); g.fillText('▶', x + w - 20 * d, y + h / 2); this.comboText(g, G); },
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffe29a'; g.font = `700 ${13 * d}px Inter, sans-serif`; g.fillText(this.designs[this.ds], G.W / 2, y + h / 2 + d); g.font = `700 ${15 * d}px Inter, sans-serif`; g.fillStyle = '#e8b656'; g.fillText('◀', x + 20 * d, y + h / 2); g.fillText('▶', x + w - 20 * d, y + h / 2);
+    const bw = 92 * d, bh = 30 * d, bx = x + w - bw, by = y - bh - 10 * d; this.rb = { x: bx, y: by, w: bw, h: bh }; g.fillStyle = this.rt ? 'rgba(232,182,86,.22)' : 'rgba(10,16,28,.85)'; rr(bx, by, bw, bh, bh / 2); g.fill(); g.strokeStyle = this.rt ? '#e8b656' : 'rgba(140,160,190,.4)'; g.lineWidth = 1.5 * d; g.stroke(); g.font = `700 ${11 * d}px Inter, sans-serif`; g.fillStyle = this.rt ? '#ffe29a' : '#7f8fa6'; g.fillText('♪ RITMUS', bx + bw / 2, by + bh / 2 + d);
+    this.comboText(g, G); },
   drawReal(g, G, t) { const D = this.ds, d = G.d, cx = G.W / 2, cy = G.H * .47, R = Math.min(G.W * .4, G.H * .33), A0 = Math.PI * .75, A1 = Math.PI * 2.25, ang = v => A0 + (A1 - A0) * v, P = (a, r) => [cx + Math.cos(a) * r, cy + Math.sin(a) * r];
     const z0 = Math.max(0, this.zc - this.zw / 2), z1 = Math.min(1, this.zc + this.zw / 2), pulse = .75 + .25 * Math.sin(t * 8), brass = D === 3, dig = D === 4;
     /* csővezeték és csatlakozó csonk */
