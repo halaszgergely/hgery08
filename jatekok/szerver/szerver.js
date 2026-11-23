@@ -372,7 +372,7 @@
   const aimed = () => aim;
   addEventListener('keydown', e => { if (!$('#menu').hidden || e.ctrlKey || e.metaKey || e.altKey) return; if (e.target.tagName === 'INPUT') { if (e.code === 'Escape') e.target.blur(); return; } const k = e.code, app = { KeyB: 'shop', KeyI: 'inv', KeyU: 'cli', KeyG: 'srv', KeyT: 'site' }[k];
     if (insp && (k === 'KeyQ' || k === 'Escape')) return closeInsp(); if (k === 'Tab') { e.preventDefault(); return view ? closeP() : openP(lastApp, ''); } if (app) return view === app ? closeP() : openP(app, ''); if (k === 'Escape') return view ? closeP() : insp ? closeInsp() : cancel();
-    if (k === 'Space') { e.preventDefault(); S.spd = S.spd ? 0 : 1; return top(); } if (k === 'KeyH') { S.nokeys = S.nokeys ? 0 : 1; return keysUI(); } if (k === 'KeyP') return fullscreen(); if (insp && (k === 'KeyQ' || k === 'KeyE')) return closeInsp(); if (view) return;
+    if (k === 'Space') { e.preventDefault(); S.spd = S.spd ? 0 : 1; return top(); } if (k === 'KeyH') { S.nokeys = S.nokeys ? 0 : 1; return keysUI(); } if (k === 'KeyP') return fullscreen(); if (insp && (k === 'KeyQ' || k === 'KeyE')) return closeInsp(); if (view) { if (k === 'KeyQ' || k === 'KeyE') closeP(); return; }
     if (k === 'KeyE') { if (F3 && F3.on) F3.interact(); return; } if (k === 'KeyQ') return cancel(); if (k === 'KeyR' && !place && !sel && !aim.d) { if (aim.tray) { const t = aim.tray; S.trays = S.trays.filter(x => x !== t); const n = { id: t.id, t: t.t, u: 0 }; S.spare.push(n); place = n; dirty = 1; hint(); return beep(420); } if (aim.rk != null) { place = { rk: S.racks[aim.rk].t, mv: aim.rk }; hint(); return beep(420); } } const d = insp ? findDev(insp)[0] : aimed().d; if (!d || place || sel) return; const D = DEV[d.t];
     if (k === 'KeyX') { if (badOf(d).length) { fixBad(d); calc(); top(); if (view) ui(); } }
     else if (k === 'KeyF') { if (D.k === 'srv') d.on = d.on ? 0 : 1; else if (ubase(d).trip) delete ubase(d).trip; dirty = 1; beep(500); } else if (k === 'KeyM' && D.k === 'srv') { d.mine = d.mine ? 0 : 1; dirty = 1; beep(500); }
@@ -507,7 +507,7 @@
     rackTo: (ctx, i, k) => drawTo(ctx, k, 0, 0, rwOf(S.racks[i]) + 28, RACK[S.racks[i].t].u * U + 14, () => drawRack(i)), wallTo: (ctx, k, key) => { const W = wallDim(key); drawTo(ctx, k, 0, 0, W.w, W.h, () => drawWall(key)); }, wallKeys, dw, rwOf, fitsRack: (d, ri) => (!DEV[d.t].wide || !!RACK[S.racks[ri].t].wide) && !!DEV[d.t].bm === !!RACK[S.racks[ri].t].bat, offX, maxOf, ubase, looseTo: (ctx, d, k) => drawTo(ctx, k, 0, 0, dw(d), DEV[d.t].u * U, () => drawLoose(d)) };
   function toggle3D(on) { if (on === undefined) on = !(F3 && F3.on); if (!on) { if (F3) F3.stop(); $('#c3').hidden = true; cv.hidden = false; return; }
     const go = () => { $('#c3').hidden = false; cv.hidden = true; F3.start(); }; if (F3) return go(); if (f3load) return; f3load = 1;
-    import('./fps.js?v=202611231232').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
+    import('./fps.js?v=202611231306').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
   $('#bPh').onclick = () => view ? closeP() : openP(lastApp, '');
 
   /* ---------- főciklus ---------- */
