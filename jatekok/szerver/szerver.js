@@ -417,7 +417,8 @@
   /* ---------- panelek ---------- */
   let hlId = 0, srvTab = 'kis', scrKey = '', partTab = 'mb', srvSel = 0, mvCon = 0, cliTab = 0, shopTab = 'rack', devId = 0, slot = null, rackI = 0;
   const APPS = ['shop', 'inv', 'cli', 'srv', 'site']; let lastApp = 'shop';
-  const relock = () => { if (F3 && F3.on && matchMedia('(pointer:fine)').matches) try { const r = $('#c3').requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (_) {} };
+  document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement && !$('#mg').hidden) document.exitPointerLock(); });
+  const relock = () => { if (!$('#mg').hidden) return; if (F3 && F3.on && matchMedia('(pointer:fine)').matches) try { const r = $('#c3').requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (_) {} };
   const openP = (v, t) => { if (document.pointerLockElement) document.exitPointerLock(); view = v; if (APPS.includes(v)) lastApp = v; $('#pnl').hidden = false; $('#pt').textContent = t; for (const b of document.querySelectorAll('#nav [data-p]')) b.classList.toggle('on', b.dataset.p === v); ui(); }, closeP = () => { const was = view; if (scrKey) SCR[scrKey] = $('#pb').scrollTop; scrKey = ''; view = null; $('#pnl').hidden = true; if (was && !insp) relock(); };
   // insp: a kihúzott, nyitott szerverház azonosítója (3D-ben szerelhető); hov: az egér alatti foglalat
   let insp = 0, hov = null;
@@ -532,7 +533,7 @@
     rackTo: (ctx, i, k) => drawTo(ctx, k, 0, 0, rwOf(S.racks[i]) + 28, RACK[S.racks[i].t].u * U + 14, () => drawRack(i)), wallTo: (ctx, k, key) => { const W = wallDim(key); drawTo(ctx, k, 0, 0, W.w, W.h, () => drawWall(key)); }, wallKeys, dw, rwOf, fitsRack: (d, ri) => (!DEV[d.t].wide || !!RACK[S.racks[ri].t].wide) && !!DEV[d.t].bm === !!RACK[S.racks[ri].t].bat, offX, maxOf, ubase, looseTo: (ctx, d, k) => drawTo(ctx, k, 0, 0, dw(d), DEV[d.t].u * U, () => drawLoose(d)) };
   function toggle3D(on) { if (on === undefined) on = !(F3 && F3.on); if (!on) { if (F3) F3.stop(); $('#c3').hidden = true; cv.hidden = false; return; }
     const go = () => { $('#c3').hidden = false; cv.hidden = true; F3.start(); }; if (F3) return go(); if (f3load) return; f3load = 1;
-    import('./fps.js?v=202611231715').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
+    import('./fps.js?v=202611231833').then(m => { F3 = m; m.init($('#c3'), window.SZ3); go(); }).catch(e => { console.error(e); f3load = 0; toast('A 3D nézet nem indult el (WebGL kell hozzá).', 1); }); }
   $('#bPh').onclick = () => view ? closeP() : openP(lastApp, '');
 
   /* ---------- főciklus ---------- */
