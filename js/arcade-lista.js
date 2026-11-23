@@ -1,6 +1,6 @@
 /* HGWS Arcade – listaoldal: kiemeltek, szűrők, kategóriasorok, részletező panel.
    Az adatok a js/arcade-manifest.js-ből jönnek; a ranglistát és a játékszámokat csak olvassa (a ctx függvényein át). */
-import { JATEKOK, KATEGORIAK, UJ_NAPOK } from './arcade-manifest.js?v=202611230938';
+import { JATEKOK, KATEGORIAK, UJ_NAPOK } from './arcade-manifest.js?v=202611230950';
 
 const V = new URL(import.meta.url).search, RK = 'hgws_arc_recent';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -57,7 +57,8 @@ export function render(page, ctx) {
     const q = fold(S.q), l = favFirst(sorted(gs.filter(g => (!S.kat || g.kat === S.kat) && (!q || fold(g.cim).includes(q) || (g.cimkek || []).some(c => fold(c).includes(q)) || fold(KN[g.kat]?.n).includes(q)))));
     body.innerHTML = `<section class="row"><div class="rowh"><h2>${esc(S.kat ? KN[S.kat].t : S.q ? 'Találatok' : 'Minden játék')}</h2><span class="al-cnt">${l.length} játék</span></div>${l.length ? `<div class="agridx">${l.map(g => card(g, ctx)).join('')}</div>` : '<p class="al-none">Nincs a szűrésnek megfelelő játék.</p>'}</section>`; showNow(); }
   // éppen játszók: a főoldal adja (percenként frissítjük, amíg a lista látszik)
-  let act = {}; function showNow() { document.querySelectorAll('[data-now]').forEach(e => { const n = act[e.dataset.now] || 0; e.hidden = !n; e.textContent = n ? '● ' + n + ' játszik' : ''; }); }
+  let act = {}; function showNow() { document.querySelectorAll('[data-now]').forEach(e => { const n = act[e.dataset.now] || 0, w = n && ctx.who ? ctx.who(e.dataset.now) : []; e.hidden = !n; e.textContent = n ? '● ' + n + ' játszik' : ''; if (w.length) e.title = w.join(', '); else e.removeAttribute('title'); });
+    document.querySelectorAll('[data-who]').forEach(e => { const w = ctx.who ? ctx.who(e.dataset.who) : []; e.hidden = !w.length; e.textContent = w.length ? 'Most játszik: ' + w.join(', ') : ''; }); }
   const loadNow = () => { if (!ctx.active) return; ctx.active().then(a => { act = a || {}; showNow(); }).catch(() => {}); }; const nowT = setInterval(() => { if (!document.contains(root)) return clearInterval(nowT); if (!document.hidden) loadNow(); }, 60e3);
   draw(); loadNow();
   ctx.plays().then(p => { if (!document.contains(page.querySelector('.arcl'))) return; plays = p || plays; if (S.rend === 'nepszeru') draw(); }).catch(() => {});
@@ -65,7 +66,7 @@ export function render(page, ctx) {
   function detail(id) { const g = all().find(x => x.id === id); if (!g) return;
     pnl.innerHTML = `<div class="apc" role="dialog" aria-label="${esc(g.cim)}" style="--c:${esc(g.szin)}"><button class="al-ax" aria-label="Bezárás">✕</button>${cover(g, 1)}
       <div class="apb"><span class="al-chips"><span class="al-kat">${esc(KN[g.kat]?.n || '')}</span>${ST[g.statusz] ? `<span class="al-st al-st-${esc(g.statusz)}">${ST[g.statusz]}</span>` : ''}${zsChip(g)}${nowChip(g)}${(g.cimkek || []).map(c => `<span class="al-tg">${esc(c)}</span>`).join('')}</span>
-        <h2>${esc(g.cim)} ${favBtn(g)}</h2><p>${esc(g.hosszu)}</p><span class="al-hbtn"><a class="al-pl al-big" href="${esc(linkOf(g))}">▸ Játék</a><em>${esc(statLine(g, ctx))}</em></span>
+        <h2>${esc(g.cim)} ${favBtn(g)}</h2><p class="al-who" data-who="${esc(g.id)}" hidden></p><p>${esc(g.hosszu)}</p><span class="al-hbtn"><a class="al-pl al-big" href="${esc(linkOf(g))}">▸ Játék</a><em>${esc(statLine(g, ctx))}</em></span>
         <div class="acols"><div><h3>Irányítás</h3><ul>${(g.iranyitas || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>${g.ranglista ? '<div><h3>Top 10</h3><ol class="al-top"><li class="al-ld">Betöltés…</li></ol></div>' : ''}</div>
         <p class="al-spon">${SPON}</p></div></div>`;
     pnl.hidden = false; showNow(); document.body.classList.add('arcl-lock'); pnl.querySelector('.al-ax').focus();
