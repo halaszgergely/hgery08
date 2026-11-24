@@ -47,7 +47,7 @@ function setTrA(o, tr, rel) { const [x, y, a, s, z0, rx, rz, sx, sy, sz] = trN(t
   const hg = (q.h || (o.t === 'tree' ? 260 : 90)) * s * sy; o.nz = zr > 70 || zr + hg < 10 ? 1 : 0; o.zb = z; o.zt = o.zb + hg;
   if (o.t === 'fire' && o.i != null && FIRES[o.i]) { FIRES[o.i][0] = x; FIRES[o.i][1] = y; }
   if (o.t === 'door' && o.z && ZK[o.z]) { const zz = ZK[o.z]; if (!o.out) zz.at = [x, y]; else if (zz.cu) zz.in = [x + 140, y]; }
-  o.ri = o.t === 'henger' && o.pat === 'tegla' && o.r >= 70 ? o.r - (o.th || 40) : 0; if (o.ri) o.wk = null;
+  o.ri = o.t === 'henger' && o.pat === 'tegla' && o.r >= 70 ? o.r - (o.th || 40) : 0; if (o.ri) o.wk = o.pt ? 'flat' : null;
   if (!o.sc) gridAdd(o); edDyn(o); if (o.t === 'kocka' || o.t === 'henger' || o.inw) rehost(o, ox, oy); const m = Math.max(o.w || 0, o.d || 0, o.r || 0, 120) * Math.max(s * sx, s * sz, s * sy, 1) + 300; edDirty(Math.min(ox, x) - m, Math.min(oy, y) - m, Math.max(ox, x) + m, Math.max(oy, y) + m); }
 function delObj(o) { if (o.inw) setTimeout(() => rehost(o), 0); if (o.sc) { SDEL.add(o.uid); SCM.forEach(l => { const i = l.indexOf(o); if (i >= 0) l.splice(i, 1); }); } else { gridDel(o); o.del = 1; if (isGroup(o)) for (const c of OBJ) if (c.b === o.id && c !== o) { gridDel(c); c.del = 1; edDyn(c); } } edDyn(o); edDirty(o.x - 300, o.y - 300, o.x + 300, o.y + 300); }
 function undelObj(o) { if (o.inw) setTimeout(() => rehost(o), 0); if (o.sc) { SDEL.delete(o.uid); SCM.clear(); } else { o.del = 0; gridAdd(o); if (isGroup(o)) for (const c of OBJ) if (c.b === o.id && c !== o) { c.del = 0; gridAdd(c); } } edDirty(o.x - 300, o.y - 300, o.x + 300, o.y + 300); }
@@ -76,7 +76,7 @@ function rehost(o, ox, oy) { const pts = [[o.x, o.y]]; if (ox != null) pts.push(
   for (const [px, py] of pts) near(px, py, o.t === 'kocka' || o.t === 'henger' ? 10 : 900, w => { if (!(WALLT(w) || CYLT(w)) || seen.has(w)) return; seen.add(w); const prev = JSON.stringify(w.hl || []); w.hl = CYLT(w) ? cylHoles(w) : wallHoles(w); if (JSON.stringify(w.hl) !== prev && o.t !== 'kocka' && o.t !== 'henger') { const m = Math.hypot(w.w, w.d) / 2 + 100; edDirty(w.x - m, w.y - m, w.x + m, w.y + m); } });
   if (o.t === 'kocka' && WALLT(o)) o.hl = wallHoles(o); if (CYLT(o)) o.hl = cylHoles(o); }
 /* alap ütközési sugár a lerakható kellékekhez */
-const EDR = { kocka: 0, henger: 50, kup: 50, lepcso: 0, kapu: 0, pillar: 22, statue: 28, brazier: 14, lamp: 8, crate: 15, barrel: 12, altar: 24, anvil: 16, forge: 34, tent: 40, stall: 26, ctower: 70, obelisk: 24, chest: 18, fire: 22, cart: 30, sarc: 0, well: 30 };
+const EDR = { torm: 0, szek: 12, agy: 45, szonyeg: 0, vaza: 10, konyv: 0, kosar: 12, zsak: 12, tal: 0, kancso: 0, szekreny: 30, kerekasztal: 34, gyertyatarto: 8, kocka: 0, henger: 50, kup: 50, lepcso: 0, kapu: 0, pillar: 22, statue: 28, brazier: 14, lamp: 8, crate: 15, barrel: 12, altar: 24, anvil: 16, forge: 34, tent: 40, stall: 26, ctower: 70, obelisk: 24, chest: 18, fire: 22, cart: 30, sarc: 0, well: 30 };
 function applyMapEdits(m) { SPAWN.forEach((s, i) => { if (s.si == null) s.si = i; }); if (!m || m.v !== 1) return; try {
   if (m.pre) MED.pre.push(...m.pre);
   if (m.npc) for (const id in m.npc) { const n = NPCS.find(q => q.id === id), v = m.npc[id]; if (!n) continue; n.x = v[0]; n.y = v[1]; if (v[2] != null) n.a = v[2]; MED.npc.set(id, v); }
