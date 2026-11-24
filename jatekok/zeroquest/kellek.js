@@ -1,5 +1,5 @@
 /* ZERO QUEST – tereptárgyak és épületek geometriája (világkoordinátában, darabonként összefűzve) */
-import { GB, M, mm, MAT, hex, statueBody, treeProto, rockProto, bushProto } from './modell.js?v=202611240738';
+import { GB, M, mm, MAT, hex, statueBody, treeProto, rockProto, bushProto } from './modell.js?v=202611240836';
 const TAU = Math.PI * 2;
 const mat = k => MAT[k] || MAT.ko, mulc = (a, k) => [a[0] * k, a[1] * k, a[2] * k], mixc = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const R = (a, b, c) => rnd(a | 0, b | 0, c | 0);
@@ -73,6 +73,22 @@ export function propInto(B, o, g) { const x = o.x, z = o.y, t = o.t, sd = (x * 1
     case 'gatehouse': { const a = o.a || 0, ca = Math.cos(a), sa = Math.sin(a), W = (o.w || 260) / 2 + 40; for (const s of [-1, 1]) { B.cyl(M(x + ca * s * W, g - 20, z + sa * s * W), 70, 76, 360, 10, c[0]); for (let i = 0; i < 10; i += 2) B.box(M(x + ca * s * W + Math.cos(i / 10 * TAU) * 66, g + 340, z + sa * s * W + Math.sin(i / 10 * TAU) * 66, -i / 10 * TAU), 26, 30, 20, c[1]); }
       B.box(M(x, g + 230, z, -a), W * 2, 90, 80, c[1]); B.box(M(x, g + 216, z, -a), W * 2 - 100, 14, 84, hex('#2a2420')); break; }
     /* ---------- a Csillagmélyi Város megastruktúrái ---------- */
+    /* ---------- mesterségek jelei az NPC-k körül ---------- */
+    case 'forge': { const st = hex('#5e5952'), dk = hex('#2a2622'); B.box(M(x, g, z, o.a || 0), 90, 50, 70, st); B.box(M(x, g + 50, z, o.a || 0), 96, 8, 76, dk); B.glow = .9; B.box(M(x, g + 50, z, o.a || 0), 60, 6, 44, hex('#ff6a1a')); B.ico(M(x - 8, g + 58, z + 4), 9, 0, hex('#ffb040'), .4); B.ico(M(x + 12, g + 56, z - 6), 7, 0, hex('#ff8a20'), .4); B.glow = 0;
+      B.box(M(x - 30, g + 50, z - 24, o.a || 0), 30, 150, 26, st); B.box(M(x - 30, g + 200, z - 24, o.a || 0), 36, 8, 32, dk); B.box(M(x + 58, g + 30, z + 10, (o.a || 0) + .3, 0, .2), 36, 10, 24, hex('#6a4a2a')); B.box(M(x + 76, g + 30, z + 10, (o.a || 0) + .3), 14, 4, 4, hex('#3a2a1c')); break; }
+    case 'dummy': { const wd = hex('#6a4a2a'); B.cyl(M(x, g, z), 4, 4, 70, 6, wd); B.box(M(x, g + 52, z), 56, 5, 5, wd); B.cyl(M(x, g + 34, z), 13, 11, 30, 8, hex('#b89a5a')); B.ico(M(x, g + 74, z), 10, 0, hex('#b89a5a'), .3); break; }
+    case 'sign': { const wd = hex('#4e3622'), k = o.k || 'kard', bc = hex('#d8c8a0'), ic = hex('#2a1a0c'), a = o.a || 0, ca = Math.cos(a), sa = Math.sin(a), P2 = (dx, dy, w, h, c2, rz = 0) => B.box(M(x + ca * 18 + sa * 0, g + 104 + dy, z + sa * 18, -a + Math.PI / 2 * 0, 0, rz), w, h, 3, c2);
+      B.cyl(M(x, g, z), 3.5, 4, 150, 6, wd); B.box(M(x + ca * 20, g + 146, z + sa * 20, -a), 46, 5, 5, wd); B.box(M(x + ca * 30, g + 96, z + sa * 30, -a), 44, 34, 3, bc); B.box(M(x + ca * 30, g + 94, z + sa * 30, -a), 48, 2, 4, wd);
+      const ix = x + ca * 30, iz = z + sa * 30, Q = (dx, dy, w, h, c2, rz = 0) => B.box(M(ix + ca * dx, g + 104 + dy, iz + sa * dx, -a, 0, rz), w, h, 4, c2);
+      if (k === 'kard') { Q(0, -6, 3, 20, hex('#8a8e96')); Q(0, -8, 12, 2, ic); Q(0, -14, 3, 6, hex('#6a4a2a')); }
+      else if (k === 'erme') { B.cyl(M(ix, g + 104, iz, -a, Math.PI / 2, 0), 9, 9, 4, 10, hex('#e8b656')); }
+      else if (k === 'csepp') { B.ico(M(ix, g + 102, iz), 8, 1, hex('#4a8ac8')); Q(0, 2, 4, 8, hex('#4a8ac8'), .78); }
+      else if (k === 'konyv') { Q(-5, -12, 10, 16, hex('#7a2a2a')); Q(5, -12, 10, 16, hex('#6a2424')); }
+      else if (k === 'kereszt') { Q(0, -14, 3, 22, ic); Q(0, -6, 14, 3, ic); }
+      else if (k === 'horgony') { Q(0, -14, 3, 20, ic); Q(0, -14, 16, 3, ic); Q(0, -1, 8, 3, ic); }
+      else if (k === 'kanna') { Q(0, -14, 14, 12, hex('#7a8a96')); Q(10, -6, 10, 3, hex('#7a8a96'), -.5); }
+      else if (k === 'kard2') { Q(-4, -14, 3, 22, ic, .6); Q(4, -14, 3, 22, ic, -.6); }
+      break; }
     case 'lamp': { const ir = hex('#1e2026'); B.cyl(M(x, g, z), 3, 4.5, 150, 6, ir); B.box(M(x, g + 150, z), 18, 3, 18, ir); B.glow = 1; B.box(M(x, g + 128, z), 12, 20, 12, hex('#ffd890')); B.glow = 0; B.cyl(M(x, g + 148, z), 0, 11, 10, 4, ir); break; }
     case 'aqmega': { /* többszintes vízvezeték-híd: a mélyből induló pillérek, három árkádsor, a tetején oszlopsor */ const a = o.a || 0, L = o.L || 1000, ca = Math.cos(a), sa = Math.sin(a), top = o.top || 0, base = o.base || -1400, cc = mixc(c[0], hex('#4a5468'), .5), cd = mixc(c[1], hex('#2a3040'), .5), W = o.bw || 150, at = t => [x + ca * t, z + sa * t];
       const H = top - base, tiers = [base, base + H * .42, base + H * .74, top - 20], sp = 210;
