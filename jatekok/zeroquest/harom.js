@@ -1,7 +1,7 @@
 /* ZERO QUEST – 3D megjelenítés (three.js): terep, ég, tenger, fények, kamera, szereplők, effektek, zónák */
-import * as THREE from './lib/three.module.min.js?v=202611241934';
-import { GB, M, mm, MAT, hex, makeMan, setGear, poseMan, makeBeast, poseBeast, weaponMesh, shieldMesh, smat, grassProto, treeProto, statueBody } from './modell.js?v=202611241934';
-import { propInto, bldInto } from './kellek.js?v=202611241934';
+import * as THREE from './lib/three.module.min.js?v=202611242044';
+import { GB, M, mm, MAT, hex, makeMan, setGear, poseMan, makeBeast, poseBeast, weaponMesh, shieldMesh, smat, grassProto, treeProto, statueBody } from './modell.js?v=202611242044';
+import { propInto, bldInto } from './kellek.js?v=202611242044';
 
 const glc = document.getElementById('g');
 const RD = new THREE.WebGLRenderer({ canvas: glc, antialias: true, powerPreference: 'high-performance' });
@@ -74,25 +74,29 @@ const isDyn = t => t === 'fire' || t === 'chest' || t === 'page' || t === 'dew' 
 function gAt(o) { if (o.b != null && BLDS[o.b]) return BLDS[o.b].base + (o.fz ? FH : 0); const z = zoneAt(o.x, o.y); return z ? zoneH(z, o.x, o.y) : GH(o.x, o.y); }
 /* ---------- szerkesztett tárgyak: helyi másolat + 3D transzformáció (eltolás, forgatás három tengely körül, nyújtás) ---------- */
 const _q = new THREE.Quaternion(), _e = new THREE.Euler(0, 0, 0, 'YXZ'), _v = new THREE.Vector3(), _s = new THREE.Vector3(), _n3 = new THREE.Matrix3();
-function edMat(o, g) { const X = o.X, k = X.s || 1; _e.set(X.rx || 0, -(X.a || 0), X.rz || 0, 'YXZ'); _q.setFromEuler(_e); return new THREE.Matrix4().compose(_v.set(o.x, g + (X.z || 0), o.y), _q, _s.set(k * (X.sx || 1), k * (X.sy || 1), k * (X.sz || 1))); }
+function edMat(o, g, bk) { const X = o.X, k = X.s || 1, b = bk || [1, 1, 1]; _e.set(X.rx || 0, -(X.a || 0), X.rz || 0, 'YXZ'); _q.setFromEuler(_e); return new THREE.Matrix4().compose(_v.set(o.x, g + (X.z || 0), o.y), _q, _s.set(k * (X.sx || 1) / b[0], k * (X.sy || 1) / b[1], k * (X.sz || 1) / b[2])); }
 function bldMat(b) { return new THREE.Matrix4().makeTranslation(b.x, 0, b.y).multiply(new THREE.Matrix4().makeRotationY(-(b.ea || 0))).multiply(new THREE.Matrix4().makeTranslation(-b.x, 0, -b.y)); }
-function edCopy(o) { const q = o.o0 || o; return { ...o, x: 0, y: 0, w: q.w, d: q.d, h: q.h, r: o.t === 'rock' ? q.r / (q.s || 1) : q.r, s: 1, rot: 0, ea: 0, es: 1, X: null }; }
+/* alakzatoknál a méretezés a méretekbe kerül (a minta nem nyúlik, hanem újra kitölt); bk: a beégetett nagyítás */
+const PRIMS = { kocka: 1, henger: 1, kup: 1 };
+function edCopy(o) { const q = o.o0 || o, X = o.X; if (X && PRIMS[o.t]) { const k = X.s || 1, sx = X.sx || 1, sy = X.sy || 1, sz = X.sz || 1; if (o.t === 'kocka') return { ...o, x: 0, y: 0, w: (q.w || 100) * k * sx, h: (q.h || 100) * k * sy, d: (q.d || 100) * k * sz, X: null, bk: [k * sx, k * sy, k * sz] }; const m = Math.min(sx, sz); return { ...o, x: 0, y: 0, r: (q.r || 50) * k * m, h: (q.h || 100) * k * sy, X: null, bk: [k * m, k * sy, k * m] }; }
+  return { ...o, x: 0, y: 0, w: q.w, d: q.d, h: q.h, r: o.t === 'rock' ? q.r / (q.s || 1) : q.r, s: 1, rot: 0, ea: 0, es: 1, X: null }; }
 function unrot(c, b) { const q = toLoc(b, c.x, c.y); return { ...c, x: q[0], y: q[1] }; }
 function xfInto(D, S, m) { const P = S.p, N = S.n, C = S.c, e = m.elements; _n3.getNormalMatrix(m); const ne = _n3.elements, n0 = D.p.length / 3;
   for (let i = 0; i < P.length; i += 3) { const x = P[i], y = P[i + 1], z = P[i + 2]; D.p.push(e[0] * x + e[4] * y + e[8] * z + e[12], e[1] * x + e[5] * y + e[9] * z + e[13], e[2] * x + e[6] * y + e[10] * z + e[14]);
     let nx = ne[0] * N[i] + ne[3] * N[i + 1] + ne[6] * N[i + 2], ny = ne[1] * N[i] + ne[4] * N[i + 1] + ne[7] * N[i + 2], nz = ne[2] * N[i] + ne[5] * N[i + 1] + ne[8] * N[i + 2]; const l = Math.hypot(nx, ny, nz) || 1; D.n.push(nx / l, ny / l, nz / l); D.c.push(C[i], C[i + 1], C[i + 2]); }
   if (S.e || D.e) { if (!D.e) D.e = new Array(n0).fill(0); if (S.e) for (const v of S.e) D.e.push(v); else for (let i = 0; i < P.length / 3; i++) D.e.push(0); } }
 /* egy tárgy geometriája a helyi keretben + a világba vivő mátrix (rajzoláshoz és a szerkesztő befoglaló dobozához) */
-function objGeo(o, Bu) { const B = new GB(); let m = null;
+function objGeo(o, Bu) { const B = new GB(); let m = null, bk = null;
   if (o.t === 'bld') { bldInto(B, Bu || new GB(), o); if (o.ea) m = bldMat(o); }
   else if (o.b != null && BLDS[o.b] && BLDS[o.b].ea && o.t !== 'bld') { propInto(B, unrot(o, BLDS[o.b]), gAt(o)); m = bldMat(BLDS[o.b]); }
-  else if (o.X) { propInto(B, edCopy(o), 0); m = edMat(o, gAt(o)); }
+  else if (o.X) { const c = edCopy(o); propInto(B, c, 0); m = edMat(o, gAt(o), c.bk); bk = c.bk; }
   else propInto(B, o, gAt(o));
-  return [B, m]; }
-function edBox(o, X) { const Bu = new GB(), [B, m0] = objGeo(o.t === 'bld' ? o : X ? { ...o, X: X } : o, Bu), mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
+  return [B, m, bk]; }
+function edBox(o, X) { const Bu = new GB(), [B, m0, bk] = objGeo(o.t === 'bld' ? o : X ? { ...o, X: X } : o, Bu), mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
   for (const P of [B.p, Bu.p]) for (let i = 0; i < P.length; i += 3) for (let k = 0; k < 3; k++) { if (P[i + k] < mn[k]) mn[k] = P[i + k]; if (P[i + k] > mx[k]) mx[k] = P[i + k]; }
   if (o.t === 'bld') for (const c of OBJ) if (c.b === o.id && c !== o && !c.del && c.t !== 'bld') { const [Bc] = objGeo({ ...unrot(c, o), b: null, X: null }); const P = Bc.p; for (let i = 0; i < P.length; i += 3) for (let k = 0; k < 3; k++) { if (P[i + k] < mn[k]) mn[k] = P[i + k]; if (P[i + k] > mx[k]) mx[k] = P[i + k]; } }
   if (mn[0] > mx[0]) { const r = o.w ? Math.max(o.w, o.d) / 2 : Math.max(o.r || 20, 20), g = o.X || X ? 0 : gAt(o); mn[0] = (o.X || X ? 0 : o.x) - r; mx[0] = (o.X || X ? 0 : o.x) + r; mn[2] = (o.X || X ? 0 : o.y) - r; mx[2] = (o.X || X ? 0 : o.y) + r; mn[1] = g; mx[1] = g + 60; }
+  if (bk) for (let k = 0; k < 3; k++) { mn[k] /= bk[k]; mx[k] /= bk[k]; }
   return { mn, mx, m: m0 }; }
 function objsIn(x0, y0, x1, y1) { const out = [], seen = new Set(); for (let gx = Math.floor(x0 / GC); gx <= Math.floor((x1 - 1) / GC); gx++) for (let gy = Math.floor(y0 / GC); gy <= Math.floor((y1 - 1) / GC); gy++) { const l = GRID.get(gk(gx, gy)); if (l) for (const o of l) if (!seen.has(o) && o.x >= x0 && o.x < x1 && o.y >= y0 && o.y < y1) { seen.add(o); out.push(o); } } return out; }
 const DYN = new Map(); /* tárgy → mozgó/állapotos háló */
@@ -302,6 +306,17 @@ function render() { const now = performance.now(), dt = Math.min(.05, (now - las
   lostOrb.visible = !!(inGame && P.lost && zoneAt(P.lost.x, P.lost.y) === z); if (lostOrb.visible) { lostOrb.position.set(P.lost.x, groundAt(P.lost.x, P.lost.y) + 40 + Math.sin(TT * 3) * 6, P.lost.y); lostOrb.scale.setScalar(80 + Math.sin(TT * 4) * 10); }
   RD.render(scene, cam); }
 function fixFlat(g) { const p = g.attributes.position; const a = new Float32Array(p.count * 3); for (let i = 0; i < p.count; i++) { a[i * 3] = p.getX(i); a[i * 3 + 1] = p.getZ(i); a[i * 3 + 2] = -p.getY(i); } g.setAttribute('position', new THREE.BufferAttribute(a, 3)); }
-GL3 = { render, cam, scene, chunks: CH, ready: true, T: THREE, box: edBox,
+/* ---------- szerkesztő: lerakás előtti 3D előnézet a kurzor alatt, és kis képek a választóhoz ---------- */
+function specGeo(sp) { const B = new GB(); if (sp.t === '@rom' || sp.t === '@en') return B; const P = sp.t === '@pre' ? MED.pre.find(p => p.id === sp.p) : null, items = P ? P.items : [{ ...sp, lx: 0, ly: 0, lh: 0 }];
+  for (const it of items) { const r0 = it.r != null ? it.r : it.t === 'tree' ? 14 : EDR[it.t] != null ? EDR[it.t] : 0, o = { ...it, x: it.lx || 0, y: it.ly || 0, o0: { w: it.w, d: it.d, h: it.h, r: r0, s: 1 }, X: { a: it.a || 0, s: it.s || 1, z: it.lh || 0, rx: it.rx || 0, rz: it.rz || 0, sx: it.sx || 1, sy: it.sy || 1, sz: it.sz || 1 } };
+    const Bt = new GB(), c = edCopy(o); try { propInto(Bt, c, 0); } catch (e) { continue; } if (!Bt.empty) xfInto(B, Bt, edMat(o, 0, c.bk)); } return B; }
+function specObj(sp) { if (sp.t === '@en') { try { const m = modelFor({ t: sp.e, x: 0, y: 0, a: 0 }); return m; } catch (e) { return null; } } const B = specGeo(sp); return B.empty ? null : new THREE.Mesh(B.geo(), propMat); }
+const ghostMat = propMat.clone(); ghostMat.transparent = true; ghostMat.opacity = .6; ghostMat.depthWrite = false; let ghost = null, ghostK = null;
+function setGhost(sp, x, y, a, s) { if (sp !== ghostK) { if (ghost) { scene.remove(ghost); ghost.traverse(o => { if (o.geometry && o.isMesh && o.material === ghostMat) o.geometry.dispose(); }); } ghost = null; ghostK = sp; if (sp) { ghost = specObj(sp); if (ghost) { ghost.traverse(o => { if (o.isMesh) { if (o.material === propMat) o.material = ghostMat; else { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = .6; } o.castShadow = false; } }); scene.add(ghost); } } }
+  if (!ghost) return; const z = zoneAt(x, y); ghost.position.set(x, z ? zoneH(z, x, y) : GH(x, y), y); ghost.rotation.set(0, -(a || 0), 0); ghost.scale.setScalar(sp.t === '@en' ? 1 : s || 1); }
+let TR = null, TS = null, TC = null; const THC = new Map();
+function thumb(sp) { const k = JSON.stringify(sp); if (THC.has(k)) return THC.get(k); let url = null; try { if (!TR) { TR = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); TR.setPixelRatio(1); TR.setSize(120, 84); TS = new THREE.Scene(); TS.add(new THREE.HemisphereLight(0xfff4e0, 0x404050, 1.7)); const dl = new THREE.DirectionalLight(0xffffff, 1.6); dl.position.set(.6, 1, .8); TS.add(dl); TC = new THREE.PerspectiveCamera(32, 120 / 84, 1, 50000); }
+    const o = specObj(sp); if (o) { TS.add(o); const bx = new THREE.Box3().setFromObject(o), c = bx.getCenter(new THREE.Vector3()), r = Math.max(10, bx.getSize(new THREE.Vector3()).length() / 2); TC.position.set(c.x + r * 1.7, c.y + r * 1.25, c.z + r * 2.1); TC.lookAt(c); TC.updateProjectionMatrix(); TR.render(TS, TC); url = TR.domElement.toDataURL(); TS.remove(o); if (sp.t !== '@en') o.geometry.dispose(); } } catch (e) { url = null; } THC.set(k, url); return url; }
+GL3 = { render, cam, scene, chunks: CH, ready: true, T: THREE, box: edBox, ghost: setGhost, thumb, thumbClear() { THC.clear(); },
   /* szerkesztő: terület újraépítése, állapotos tárgy újrarajzolása, kamera-dőlés */
   rebuild(x0, y0, x1, y1) { for (const [zz, g] of ZG) if (zz.x < x1 && zz.x + zz.w > x0 && zz.y < y1 && zz.y + zz.h > y0) { scene.remove(g); g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); ZG.delete(zz); } for (const [k, c] of CH) { const cx0 = c.cx * CK, cy0 = c.cy * CK; if (cx0 > x1 || cx0 + CK < x0 || cy0 > y1 || cy0 + CK < y0) continue; dropChunk(c); CH.delete(k); } }, dropDyn(o) { const g = DYN.get(o); if (g) { dynG.remove(g); DYN.delete(o); } }, setPitch(v) { pitch = v; }, get pitch() { return pitch; }, get dist() { return dist; }, zoom(v) { zoomT = v; dist = v; zoomS = Math.max(120, v); }, info() { const t = []; let t0 = performance.now(); const c = buildChunk(30, 3); t.push(['terrain', (performance.now() - t0).toFixed(1)]); t0 = performance.now(); JOBS.pop()(); t.push(['props', (performance.now() - t0).toFixed(1)]); dropChunk(c); t0 = performance.now(); RD.render(scene, cam); t.push(['render', (performance.now() - t0).toFixed(1), RD.info.render.calls, RD.info.render.triangles]); return t; } };
