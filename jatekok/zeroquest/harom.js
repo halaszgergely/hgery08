@@ -1,7 +1,7 @@
 /* ZERO QUEST – 3D megjelenítés (three.js): terep, ég, tenger, fények, kamera, szereplők, effektek, zónák */
-import * as THREE from './lib/three.module.min.js?v=202611242348';
-import { GB, M, mm, MAT, hex, makeMan, setGear, poseMan, makeBeast, poseBeast, weaponMesh, shieldMesh, smat, grassProto, treeProto, statueBody } from './modell.js?v=202611242348';
-import { propInto, bldInto } from './kellek.js?v=202611242348';
+import * as THREE from './lib/three.module.min.js?v=202611250001';
+import { GB, M, mm, MAT, hex, makeMan, setGear, poseMan, makeBeast, poseBeast, weaponMesh, shieldMesh, smat, grassProto, treeProto, statueBody } from './modell.js?v=202611250001';
+import { propInto, bldInto } from './kellek.js?v=202611250001';
 
 const glc = document.getElementById('g');
 const RD = new THREE.WebGLRenderer({ canvas: glc, antialias: true, powerPreference: 'high-performance' });
@@ -142,7 +142,7 @@ function dynFor(o) { if (DYN.has(o)) return; const g = zoneAt(o.x, o.y) ? zoneH(
         else if (o.fill === 'uveg') { const P = [hex('#3a6ab8'), hex('#a83a3a'), hex('#c8a040'), hex('#3a8a5a')], cw = Math.max(12, gw / 5), nw = Math.round(gw / cw), lead = hex('#1e1c1a'); B.glow = .35; for (let i = 0; i < nw; i++) { const x = -gw / 2 + (i + .5) * gw / nw, ht = top(x), nh = Math.max(2, Math.round(ht / 26)); for (let j = 0; j < nh; j++) B.box(M(x, j * ht / nh + 1, 0), gw / nw - 2.5, ht / nh - 2.5, 2, P[(i * 3 + j) % 4]); } B.glow = 0; for (let i = 0; i <= nw; i++) { const x = -gw / 2 + i * gw / nw; B.box(M(x, 0, 0), 2, top(clamp(x, -gw / 2 + 1, gw / 2 - 1)), 3, lead); } } }
       if (o.fr) { const c = MAT[o.mat || 'ko'] || MAT.ko; for (const sx of [-1, 1]) B.box(M(sx * (gw / 2 + 14), 0, 0), 28, gh + 24, 34, c[0]); B.box(M(0, gh, 0), gw + 56, 26, 36, c[2]); }
       for (let k = 0; k < n; k++) { const sgn = n === 1 ? 1 : k ? -1 : 1, piv = new THREE.Group(), L = new GB(); piv.position.set(-sgn * gw / 2, 0, 0); const np = Math.max(2, Math.round(lw / 22));
-        for (let i = 0; i < np; i++) L.box(M(sgn * (i + .5) * lw / np, 1, 0), lw / np - 1.5, gh - 3, 9, mixA(wood, dark, (i * 37 % 10) / 14)); for (const yy of [.18, .5, .82]) L.box(M(sgn * lw / 2, gh * yy, 5), lw - 6, 9, 2, iron); L.box(M(sgn * lw * .82, gh * .45, 7), 8, 8, 5, iron);
+        for (let i = 0; i < np; i++) L.box(M(sgn * (i + .5) * lw / np, 1, 0), lw / np - 1.5, gh - 3, 9, mixA(wood, dark, (i * 37 % 10) / 14)); for (const fz of [5.5, -5.5]) { for (const yy of [.18, .5, .82]) L.box(M(sgn * lw / 2, gh * yy, fz), lw - 6, 9, 2, iron); L.box(M(sgn * lw * .82, gh * .45, fz * 1.4), 8, 8, 4, iron); }
         const lm = new THREE.Mesh(L.geo(), propMat); lm.castShadow = true; piv.add(lm); grp.add(piv); u.leaves.push(piv); } break; }
     case 'portc': { const R0 = new GB(), wd = Math.max(o.w, o.d); for (let i = -wd / 2 + 10; i <= wd / 2 - 10; i += 22) R0.cyl(M(o.a ? 0 : i, 0, o.a ? i : 0), 2.6, 2.6, 250, 5, hex('#2e2a28')); for (let k = 0; k < 6; k++) R0.box(M(0, 20 + k * 42, 0, o.a || 0), wd - 8, 5, 6, hex('#2e2a28')); for (let i = -wd / 2 + 10; i <= wd / 2 - 10; i += 22) R0.cyl(M(o.a ? 0 : i, -14, o.a ? i : 0), 0, 3, 14, 4, hex('#3a3634'), false); const pm = new THREE.Mesh(R0.geo(), propMat); pm.castShadow = true; grp.add(pm); u.portc = pm; break; }
     case 'msg': B.box(M(0, 0, 0, o.x % 3), 50, 20, 30, hex('#5a5650')); B.box(M(0, 0, -6, o.x % 3, .4), 40, 56, 10, hex('#6e6a62')); B.glow = .25; B.box(M(0, 30, -.5, o.x % 3, .4), 30, 2, 11, hex('#ffd98a')); B.glow = 0; break;
@@ -271,7 +271,7 @@ function render() { const now = performance.now(), dt = Math.min(.05, (now - las
       if (b === pb && P.fz) { u.visible = true; u.material.opacity = lerp(u.material.opacity, 1, .2); u.material.transparent = false; if (b.roof) { u.material.opacity = .25; u.material.transparent = true; } } else { u.material.opacity = lerp(u.material.opacity, o, 1 - Math.pow(.001, dt)); u.material.transparent = u.material.opacity < .99; u.material.depthWrite = u.material.opacity > .5; u.visible = u.material.opacity > .03; } }
   /* állapotos tárgyak */
   const lights = []; for (const [o, g] of DYN) { const near = hyp(o.x - fx, o.y - fy) < (o.t === 'fire' || o.t === 'kut' || o.t === 'heart' ? 5500 : 2600), u = g.userData; g.visible = near && (zoneAt(o.x, o.y) === z); if (!g.visible) continue;
-    if (u.leaves) { u.op = lerp(u.op, o.open ? 1 : 0, 1 - Math.pow(.06, dt)); u.leaves.forEach((p, k) => p.rotation.y = (k ? 1 : -1) * u.op * 1.5); }
+    if (u.leaves) { u.op = lerp(u.op, o.open ? 1 : 0, 1 - Math.pow(.06, dt)); u.leaves.forEach((p, k) => p.rotation.y = (k ? 1 : -1) * u.op * 1.5 * (o.sw || 1)); }
     if (u.portc) u.portc.position.y = lerp(u.portc.position.y, o.off ? 230 : 0, 1 - Math.pow(.2, dt));
     if (o.t === 'chest' && u.lid) u.lid.rotation.x = P && P.chest[o.id] ? lerp(u.lid.rotation.x, -1.9, .1) : 0;
     if (o.t === 'page' || o.t === 'dew' || o.t === 'flower') g.visible = !(P && (o.t === 'page' ? P.pg[o.i] : o.t === 'flower' ? P.f.virag : 0)); if (u.dew && P && P.dw[o.i]) g.children.forEach(c => c.material && (c.material = propMat));
