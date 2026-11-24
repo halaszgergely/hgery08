@@ -1,5 +1,5 @@
 /* ZERO QUEST – tereptárgyak és épületek geometriája (világkoordinátában, darabonként összefűzve) */
-import { GB, M, mm, MAT, hex, statueBody, treeProto, rockProto, bushProto } from './modell.js?v=202611242139';
+import { GB, M, mm, MAT, hex, statueBody, treeProto, rockProto, bushProto } from './modell.js?v=202611242208';
 const TAU = Math.PI * 2;
 const mat = k => MAT[k] || MAT.ko, mulc = (a, k) => [a[0] * k, a[1] * k, a[2] * k], mixc = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const R = (a, b, c) => rnd(a | 0, b | 0, c | 0);
@@ -28,6 +28,7 @@ export function propInto(B, o, g) { const x = o.x, z = o.y, t = o.t, sd = (x * 1
     case 'kocka': if (o.pat) { patBox(B, x, g, z, o.w || 100, o.h || 100, o.d || 100, o.pat, mk); break; } B.box(M(x, g, z), o.w || 100, o.h || 100, o.d || 100, c[0], c[2]); break;
     case 'henger': if (o.pat) { patCyl(B, x, g, z, o.r || 50, o.h || 100, clamp(o.n | 0 || 8, 3, 48), o.pat, mk); break; } B.cyl(M(x, g, z, Math.PI / 2 - Math.PI / (o.n || 8)), o.r || 50, o.r || 50, o.h || 100, clamp(o.n | 0 || 8, 3, 48), c[0], true, c[2]); break;
     case 'kup': if (o.pat) { patCone(B, x, g, z, o.r || 50, o.h || 100, clamp(o.n | 0 || 8, 3, 48), o.pat, mk); break; } B.cyl(M(x, g, z, Math.PI / 2 - Math.PI / (o.n || 8)), 0, o.r || 50, o.h || 100, clamp(o.n | 0 || 8, 3, 48), c[0]); break;
+    case 'partazat': partazat(B, x, g, z, o.w || 300, o.h || 70, o.d || 40, o.v | 0, o.pat || '', mk); break;
     case 'lepcso': { const L = o.w || 300, H = o.h || 150, W = o.d || 120, n = Math.max(2, Math.round(H / 20)), sl = L / n, sh = H / n; for (let i = 0; i < n; i++) B.box(M(x - L / 2 + (i + .5) * sl, g, z), sl + .5, (i + 1) * sh, W, i % 2 ? c[0] : mixc(c[0], c[2], .4), c[2]); break; }
     case 'menhir': B.box(M(x, g - 5, z, o.a || 0, (R(sd, 1, 2) - .5) * .2, (R(sd, 2, 2) - .5) * .2), 26, o.h || 120, 16, c[1]); break;
     case 'totem': { const h = o.h || 120; B.cyl(M(x, g, z), 9, 11, h, 7, hex('#5a4030')); for (let i = 0; i < 3; i++) B.box(M(x, g + h * (.3 + i * .25), z, o.a || 0), 26, 14, 20, hex(['#7a4a2a', '#4a6a3a', '#8a7a4a'][i])); B.ico(M(x, g + h + 6, z), 10, 0, hex('#d8d0c0'), .3); break; }
@@ -163,6 +164,23 @@ function patBox(B, x, g, z, w, h, d, pat, mk) { B.box(M(x, g, z), w - 4, h - (pa
   const est = (w + d) * 2 * h / (54 * 26) + w * d / 1600; if (est > PMAX) { B.box(M(x, g, z), w, h, d, pcol(pat, mk, 0, 0), pcol(pat, mk, 1, 1)); return; }
   if (pat === 'tegla' || pat === 'gerenda') { const X0 = x - w / 2, X1 = x + w / 2, Z0 = z - d / 2, Z1 = z + d / 2; faceFill(B, X0, Z1, X1, Z1, 0, 1, g, g + h, pat, mk, 0); faceFill(B, X1, Z0, X0, Z0, 0, -1, g, g + h, pat, mk, 50); faceFill(B, X1, Z1, X1, Z0, 1, 0, g, g + h, pat, mk, 100); faceFill(B, X0, Z0, X0, Z1, -1, 0, g, g + h, pat, mk, 150); }
   topFill(B, x, g + h, z, w - (pat === 'tegla' || pat === 'gerenda' ? 0 : 0), d, pat, mk); }
+/* pártázat (várfal-korona): v = 0 sima, 1 lőréses, 2 mellvéd, 3 fecskefarkú, 4 lépcsős, 5 kerek, 6 csúcsos, 7 gyámköves; a fogak száma a hosszhoz igazodik */
+function partazat(B, x, g, z, w, h, d, v, pat, mk) { const c = mat(mk), dark = hex('#14110e'), PI = Math.PI;
+  const blk = (cx, y, cz, bw, bh, bd) => { if (bw < 2 || bh < 2) return; if (pat) patBox(B, cx, y, cz, bw, bh, bd, pat, mk); else B.box(M(cx, y, cz), bw, bh, bd, c[0], c[2]); };
+  const deco = v >= 3, gy = v === 7, base = gy ? h * .3 : 0, hb = v === 2 ? h - 8 : (h - base) * (deco ? .3 : .33), y1 = g + base + hb, hm = g + h - y1, D = gy ? d * 1.45 : d, zo = gy ? (D - d) / 2 : 0;
+  if (gy) { const n = Math.max(2, Math.round(w / 44)), sp = w / n; for (let i = 0; i < n; i++) { const cx = x - w / 2 + (i + .5) * sp; for (let k = 0; k < 3; k++) B.box(M(cx, g + base * (k / 3), z + (D - d) * (k + 1) / 6, 0), sp * .42, base / 3 + .5, d + (D - d) * (k + 1) / 3, mixc(c[0], c[2], k * .25)); }
+    blk(x, g, z, w, base * .35, d); }
+  blk(x, g + base, z + zo, w, hb, D);
+  if (v === 2) { B.box(M(x, g + h - 8, z + zo), w + 6, 8, D + 8, c[2]); return; }
+  if (deco || gy) { B.box(M(x, y1 - 5, z + zo), w + 6, 6, D + 8, c[2]); B.box(M(x, y1 - 9, z + zo), w + 2, 4, D + 4, mixc(c[0], c[2], .5)); }
+  const MW = 46, GP = 32, n = Math.max(1, Math.round((w + GP) / (MW + GP))), k = w / (n * MW + (n - 1) * GP), mw = n === 1 ? w : MW * k, gp = GP * k;
+  for (let i = 0; i < n; i++) { const cx = x - w / 2 + mw / 2 + i * (mw + gp), zz = z + zo;
+    if (v === 0 || v === 1 || v === 7) blk(cx, y1, zz, mw, hm, D);
+    else if (v === 3) { blk(cx, y1, zz, mw, hm * .68, D); for (const sd of [-1, 1]) B.box(M(cx + sd * mw * .29, y1 + hm * .66, zz, 0, 0, -sd * .32), mw * .4, hm * .4, D - 2, i % 2 ? c[0] : mixc(c[0], c[2], .3), c[2]); }
+    else if (v === 4) { blk(cx, y1, zz, mw, hm * .55, D); blk(cx, y1 + hm * .55, zz, mw * .7, hm * .27, D * .9); blk(cx, y1 + hm * .82, zz, mw * .38, hm * .18, D * .8); }
+    else if (v === 5) { const r = mw / 2; blk(cx, y1, zz, mw, Math.max(4, hm - r), D); B.cyl(M(cx, y1 + Math.max(4, hm - r), zz - D / 2, 0, PI / 2), r, r, D, 12, mixc(c[0], c[2], .2), true, c[2]); }
+    else if (v === 6) { const bh = hm * .6; blk(cx, y1, zz, mw, bh, D); B.cyl(M(cx, y1 + bh, zz, PI / 4), 0, Math.hypot(mw, D) / 2 * .98, hm - bh + 10, 4, mixc(c[0], c[2], .35)); B.ico(M(cx, y1 + hm + 10, zz), 3.5, 0, c[2], .2); }
+    if (v === 1 || v === 7) { const sw = Math.min(8, mw * .16), sh = hm * .62, sy = y1 + hm * .18; for (const sd of [-1, 1]) { const fz = zz + sd * (D / 2 + .6); B.box(M(cx, sy, fz), sw, sh, 1.6, dark); if (v === 7) B.box(M(cx, sy + sh * .5, fz), mw * .45, sw * .8, 1.6, dark); } } } }
 function polyV(x, z, r, n, ry) { const V = []; for (let i = 0; i < n; i++) { const a = i / n * TAU, px = Math.cos(a) * r, pz = Math.sin(a) * r; V.push([x + px * Math.cos(ry) + pz * Math.sin(ry), z - px * Math.sin(ry) + pz * Math.cos(ry)]); } return V; }
 function patCyl(B, x, g, z, r, h, n, pat, mk) { const ry = Math.PI / 2 - Math.PI / n; B.cyl(M(x, g, z, ry), r - 3, r - 3, h - 2, n, mortar(pat, mk), true, mortar(pat, mk)); const V = polyV(x, z, r, n, ry);
   if (2 * Math.PI * r * h / (54 * 26) > PMAX) return;

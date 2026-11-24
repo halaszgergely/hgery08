@@ -1,7 +1,7 @@
 /* ZERO QUEST – 3D megjelenítés (three.js): terep, ég, tenger, fények, kamera, szereplők, effektek, zónák */
-import * as THREE from './lib/three.module.min.js?v=202611242139';
-import { GB, M, mm, MAT, hex, makeMan, setGear, poseMan, makeBeast, poseBeast, weaponMesh, shieldMesh, smat, grassProto, treeProto, statueBody } from './modell.js?v=202611242139';
-import { propInto, bldInto } from './kellek.js?v=202611242139';
+import * as THREE from './lib/three.module.min.js?v=202611242208';
+import { GB, M, mm, MAT, hex, makeMan, setGear, poseMan, makeBeast, poseBeast, weaponMesh, shieldMesh, smat, grassProto, treeProto, statueBody } from './modell.js?v=202611242208';
+import { propInto, bldInto } from './kellek.js?v=202611242208';
 
 const glc = document.getElementById('g');
 const RD = new THREE.WebGLRenderer({ canvas: glc, antialias: true, powerPreference: 'high-performance' });
@@ -77,8 +77,8 @@ const _q = new THREE.Quaternion(), _e = new THREE.Euler(0, 0, 0, 'YXZ'), _v = ne
 function edMat(o, g, bk) { const X = o.X, k = X.s || 1, b = bk || [1, 1, 1]; _e.set(X.rx || 0, -(X.a || 0), X.rz || 0, 'YXZ'); _q.setFromEuler(_e); return new THREE.Matrix4().compose(_v.set(o.x, g + (X.z || 0), o.y), _q, _s.set(k * (X.sx || 1) / b[0], k * (X.sy || 1) / b[1], k * (X.sz || 1) / b[2])); }
 function bldMat(b) { return new THREE.Matrix4().makeTranslation(b.x, 0, b.y).multiply(new THREE.Matrix4().makeRotationY(-(b.ea || 0))).multiply(new THREE.Matrix4().makeTranslation(-b.x, 0, -b.y)); }
 /* alakzatoknál a méretezés a méretekbe kerül (a minta nem nyúlik, hanem újra kitölt); bk: a beégetett nagyítás */
-const PRIMS = { kocka: 1, henger: 1, kup: 1, lepcso: 1 };
-function edCopy(o) { const q = o.o0 || o, X = o.X; if (X && PRIMS[o.t]) { const k = X.s || 1, sx = X.sx || 1, sy = X.sy || 1, sz = X.sz || 1; if (o.t === 'kocka' || o.t === 'lepcso') return { ...o, x: 0, y: 0, w: (q.w || 100) * k * sx, h: (q.h || 100) * k * sy, d: (q.d || 100) * k * sz, X: null, bk: [k * sx, k * sy, k * sz] }; const m = Math.min(sx, sz); return { ...o, x: 0, y: 0, r: (q.r || 50) * k * m, h: (q.h || 100) * k * sy, X: null, bk: [k * m, k * sy, k * m] }; }
+const PRIMS = { kocka: 1, henger: 1, kup: 1, lepcso: 1, partazat: 1 };
+function edCopy(o) { const q = o.o0 || o, X = o.X; if (X && PRIMS[o.t]) { const k = X.s || 1, sx = X.sx || 1, sy = X.sy || 1, sz = X.sz || 1; if (o.t === 'kocka' || o.t === 'lepcso' || o.t === 'partazat') return { ...o, x: 0, y: 0, w: (q.w || 100) * k * sx, h: (q.h || 100) * k * sy, d: (q.d || 100) * k * sz, X: null, bk: [k * sx, k * sy, k * sz] }; const m = Math.min(sx, sz); return { ...o, x: 0, y: 0, r: (q.r || 50) * k * m, h: (q.h || 100) * k * sy, X: null, bk: [k * m, k * sy, k * m] }; }
   return { ...o, x: 0, y: 0, w: q.w, d: q.d, h: q.h, r: o.t === 'rock' ? q.r / (q.s || 1) : q.r, s: 1, rot: 0, ea: 0, es: 1, X: null }; }
 function unrot(c, b) { const q = toLoc(b, c.x, c.y); return { ...c, x: q[0], y: q[1] }; }
 function xfInto(D, S, m) { const P = S.p, N = S.n, C = S.c, e = m.elements; _n3.getNormalMatrix(m); const ne = _n3.elements, n0 = D.p.length / 3;
@@ -206,7 +206,7 @@ const pickG = new Map(); const PKC = { gold: 0x6cc0ff, ore: 0xcfe6f6, pot: 0xff6
 
 /* ---------- kamera, célzás, vetítés ---------- */
 let pitch = .95, dist = 700, zoomT = 700, tgt = new THREE.Vector3(), midDrag = null; const ray = new THREE.Raycaster(), pl = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), ndc = new THREE.Vector2();
-let zoomS = 340, distS = 340; addEventListener('wheel', e => { if (ST === 'map' || ST === 'inv' || ST === 'shop' || ST === 'menu') return; if (ST === 'edit') { if (e.altKey) CAM.eh = clamp((CAM.eh || 0) - e.deltaY * .8, -3000, 6000); else zoomT = clamp(zoomT * (e.deltaY > 0 ? 1.12 : .89), 150, 5200); return; } if (CMODE === 'souls') zoomS = clamp(zoomS * (e.deltaY > 0 ? 1.1 : .9), 170, 760); else zoomT = clamp(zoomT * (e.deltaY > 0 ? 1.12 : .89), 380, 1900); }, { passive: true });
+let zoomS = 340, distS = 340; addEventListener('wheel', e => { if (!e.target || e.target.tagName !== 'CANVAS') return; if (ST === 'map' || ST === 'inv' || ST === 'shop' || ST === 'menu') return; if (ST === 'edit') { if (e.altKey) CAM.eh = clamp((CAM.eh || 0) - e.deltaY * .8, -3000, 6000); else zoomT = clamp(zoomT * (e.deltaY > 0 ? 1.12 : .89), 150, 5200); return; } if (CMODE === 'souls') zoomS = clamp(zoomS * (e.deltaY > 0 ? 1.1 : .9), 170, 760); else zoomT = clamp(zoomT * (e.deltaY > 0 ? 1.12 : .89), 380, 1900); }, { passive: true });
 /* vállkamera: a kamera és a hős közé kerülő talaj vagy fal elé húzza a kamerát */
 function clipCam(tx, ty, tz, px, py, pz) { for (let k = 1; k <= 14; k++) { const t = k / 14, x = tx + (px - tx) * t, y = ty + (py - ty) * t, z = tz + (pz - tz) * t; if (y < groundAt(x, z) + 16) return Math.max(.12, (k - 1.2) / 14); let hit = false; near(x, z, 18, o => { if (hit || o.t !== 'wall' || !o.solid || o.off || o.rail) return; if (Math.abs(x - o.x) < o.w / 2 + 10 && Math.abs(z - o.y) < o.d / 2 + 10) { const zz = zoneAt(o.x, o.y), base = zz ? zoneH(zz, o.x, o.y) : o.b != null ? BLDS[o.b].base + (o.fz ? FH : 0) : GH(o.x, o.y); if (y < base + (o.h || 120) + 8 && y > base - 10) hit = true; } }); if (hit) return Math.max(.12, (k - 1.2) / 14); } return 1; }
 addEventListener('pointerdown', e => { if (e.button === 1 || (e.button === 0 && e.altKey)) { midDrag = [e.clientX, e.clientY]; e.preventDefault(); } });
