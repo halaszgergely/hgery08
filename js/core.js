@@ -1,6 +1,6 @@
 // HGWS – közös Firebase-indítás és segédfüggvények
-import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611242139';
-import * as FB from './firebase.js?v=202611242139';
+import { firebaseConfig, notConfigured, useEmulator } from '../firebase-config.js?v=202611242231';
+import * as FB from './firebase.js?v=202611242231';
 
 export { FB, notConfigured };
 
@@ -14,6 +14,16 @@ if (!notConfigured) {
     FB.connectFirestoreEmulator(db, '127.0.0.1', 8080);
   }
 }
+
+/* ---------- vendégfiók megőrzése ezen az eszközön ----------
+   A vendég (névtelen) fiókot egy külön, csak erre szolgáló Auth-példány is őrzi; kilépés után ugyanazt kapja vissza. */
+let gAuth = null;
+export function guestAuth() { if (!gAuth && !notConfigured) { gAuth = FB.getAuth(FB.initializeApp(firebaseConfig, 'vendeg')); if (useEmulator) FB.connectAuthEmulator(gAuth, 'http://127.0.0.1:9099', { disableWarnings: true }); } return gAuth; }
+/* vendégként belépés: a megőrzött vendégfiók, vagy ha még nincs, egy új */
+export async function signInGuest() { const ga = guestAuth(); await ga.authStateReady(); let u = ga.currentUser; if (u && u.isAnonymous) { try { await u.getIdToken(); await auth.updateCurrentUser(u); return u; } catch (_) { try { await FB.signOut(ga); } catch (e) {} } }
+  u = (await FB.signInAnonymously(ga)).user; await auth.updateCurrentUser(u); return u; }
+/* kijelentkezés: vendégnél előbb elteszi a fiókot, hogy legközelebb ugyanaz legyen */
+export async function signOutKeep() { const u = auth.currentUser; if (u && u.isAnonymous) { try { const ga = guestAuth(); await ga.authStateReady(); if (!ga.currentUser || ga.currentUser.uid !== u.uid) await ga.updateCurrentUser(u); } catch (_) {} } return FB.signOut(auth); }
 
 /* ---------- apróságok ---------- */
 export const $ = (s, el = document) => el.querySelector(s);
@@ -147,7 +157,7 @@ export const errText = e => ({
 }[e?.code] || (e?.message || String(e)));
 
 /* Foglalt nevek – ugyanaz a szabály, mint a firestore.rules-ban (ott is ellenőrizve van) */
-import { badName } from './nevszuro.js?v=202611242139';
+import { badName } from './nevszuro.js?v=202611242231';
 export function reservedName(n) {
   const s = String(n || '').toLowerCase(), A = '[aáà4@]', E = '[eéè3]', sep = '[^a-z0-9áéíóöőúüű]*';
   const full = r => new RegExp('^(?:' + r + ')$').test(s);
@@ -157,7 +167,7 @@ export function reservedName(n) {
     || full('(.*[^a-z]|)h[^a-z]+[g69]' + sep + E + sep + 'r' + sep + '[g69]' + sep + E + sep + 'l' + sep + '[yií1].*')
     || full('.*h' + sep + A + sep + 'l' + sep + A + sep + 's' + sep + 'z[^a-z]+[g69]([^a-z].*|)');
 }
-export { badName, BAD_MSG, badMsg, badReason } from './nevszuro.js?v=202611242139';
+export { badName, BAD_MSG, badMsg, badReason } from './nevszuro.js?v=202611242231';
 export const RESERVED_MSG = 'Ez a név foglalt (a HGWS tulajdonosáé). Válassz másikat!';
 
 /* Bejelentkezett felhasználó profiljának létrehozása (ha még nincs) */
