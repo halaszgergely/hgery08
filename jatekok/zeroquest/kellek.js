@@ -1,5 +1,5 @@
 /* ZERO QUEST – tereptárgyak és épületek geometriája (világkoordinátában, darabonként összefűzve) */
-import { GB, M, mm, MAT, hex, statueBody, treeProto, rockProto, bushProto } from './modell.js?v=202611241832';
+import { GB, M, mm, MAT, hex, statueBody, treeProto, rockProto, bushProto } from './modell.js?v=202611241921';
 const TAU = Math.PI * 2;
 const mat = k => MAT[k] || MAT.ko, mulc = (a, k) => [a[0] * k, a[1] * k, a[2] * k], mixc = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const R = (a, b, c) => rnd(a | 0, b | 0, c | 0);
@@ -25,6 +25,9 @@ export function propInto(B, o, g) { const x = o.x, z = o.y, t = o.t, sd = (x * 1
     case 'pillar': pillar(B, x, g, z, o.r || 20, o.h || 150, o.dg ? (o.mat || 'ko') : mk, o.broken, sd); break;
     case 'wall': { const hh = o.h || 120, a = o.w >= o.d, L = a ? o.w : o.d, th = a ? o.d : o.w; if (o.nr || o.rail) return; const x0 = a ? x - L / 2 : x, x1 = a ? x + L / 2 : x, z0 = a ? z : z - L / 2, z1 = a ? z : z + L / 2;
       stoneWall(B, x0, z0, x1, z1, g - 6, hh + 6, th, o.dg ? (o.dg === 'rez' ? 'sar' : o.dg === 'gy' ? 'fa' : o.dg === 'mely' ? 'sotet' : o.dg) : mk, { cren: o.cren, big: o.city, jag: !o.city && !o.zw && !o.cren ? q => hh * (.55 + .45 * Math.abs(Math.sin(q * 7 + sd))) : null }); break; }
+    case 'kocka': B.box(M(x, g, z), o.w || 100, o.h || 100, o.d || 100, c[0], c[2]); break;
+    case 'henger': B.cyl(M(x, g, z, Math.PI / 2 - Math.PI / (o.n || 8)), o.r || 50, o.r || 50, o.h || 100, clamp(o.n | 0 || 8, 3, 48), c[0], true, c[2]); break;
+    case 'kup': B.cyl(M(x, g, z, Math.PI / 2 - Math.PI / (o.n || 8)), 0, o.r || 50, o.h || 100, clamp(o.n | 0 || 8, 3, 48), c[0]); break;
     case 'menhir': B.box(M(x, g - 5, z, o.a || 0, (R(sd, 1, 2) - .5) * .2, (R(sd, 2, 2) - .5) * .2), 26, o.h || 120, 16, c[1]); break;
     case 'totem': { const h = o.h || 120; B.cyl(M(x, g, z), 9, 11, h, 7, hex('#5a4030')); for (let i = 0; i < 3; i++) B.box(M(x, g + h * (.3 + i * .25), z, o.a || 0), 26, 14, 20, hex(['#7a4a2a', '#4a6a3a', '#8a7a4a'][i])); B.ico(M(x, g + h + 6, z), 10, 0, hex('#d8d0c0'), .3); break; }
     case 'statue': { const s = o.dust ? .95 : 1.25, m = M(x, g, z, o.a || 0, 0, 0, s), cc = o.dust ? hex('#8a7e68') : c[0]; if (o.broken) { statueBody(B, mm(m, M(0, -50, 0)), cc, o.v || 0); B.ico(M(x + 30, g + 8, z + 10), 12, 0, cc, .3); } else statueBody(B, m, cc, o.v || 0); if (!o.dust) B.box(M(x, g - 8, z), 56, 14, 56, c[1]); break; }

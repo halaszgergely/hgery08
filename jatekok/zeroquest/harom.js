@@ -1,7 +1,7 @@
 /* ZERO QUEST – 3D megjelenítés (three.js): terep, ég, tenger, fények, kamera, szereplők, effektek, zónák */
-import * as THREE from './lib/three.module.min.js?v=202611241832';
-import { GB, M, mm, MAT, hex, makeMan, setGear, poseMan, makeBeast, poseBeast, weaponMesh, shieldMesh, smat, grassProto, treeProto, statueBody } from './modell.js?v=202611241832';
-import { propInto, bldInto } from './kellek.js?v=202611241832';
+import * as THREE from './lib/three.module.min.js?v=202611241921';
+import { GB, M, mm, MAT, hex, makeMan, setGear, poseMan, makeBeast, poseBeast, weaponMesh, shieldMesh, smat, grassProto, treeProto, statueBody } from './modell.js?v=202611241921';
+import { propInto, bldInto } from './kellek.js?v=202611241921';
 
 const glc = document.getElementById('g');
 const RD = new THREE.WebGLRenderer({ canvas: glc, antialias: true, powerPreference: 'high-performance' });
@@ -72,6 +72,28 @@ const CK = 1024, CN = CK / HG, CH = new Map(), world = new THREE.Group(), JOBS =
 function pump(ms) { const t0 = performance.now(); while (JOBS.length && performance.now() - t0 < ms) JOBS.shift()(); }
 const isDyn = t => t === 'fire' || t === 'chest' || t === 'page' || t === 'dew' || t === 'heart' || t === 'flower' || t === 'kut' || t === 'msg' || t === 'bld' || t === 'portc';
 function gAt(o) { if (o.b != null && BLDS[o.b]) return BLDS[o.b].base + (o.fz ? FH : 0); return GH(o.x, o.y); }
+/* ---------- szerkesztett tárgyak: helyi másolat + 3D transzformáció (eltolás, forgatás három tengely körül, nyújtás) ---------- */
+const _q = new THREE.Quaternion(), _e = new THREE.Euler(0, 0, 0, 'YXZ'), _v = new THREE.Vector3(), _s = new THREE.Vector3(), _n3 = new THREE.Matrix3();
+function edMat(o, g) { const X = o.X, k = X.s || 1; _e.set(X.rx || 0, -(X.a || 0), X.rz || 0, 'YXZ'); _q.setFromEuler(_e); return new THREE.Matrix4().compose(_v.set(o.x, g + (X.z || 0), o.y), _q, _s.set(k * (X.sx || 1), k * (X.sy || 1), k * (X.sz || 1))); }
+function bldMat(b) { return new THREE.Matrix4().makeTranslation(b.x, 0, b.y).multiply(new THREE.Matrix4().makeRotationY(-(b.ea || 0))).multiply(new THREE.Matrix4().makeTranslation(-b.x, 0, -b.y)); }
+function edCopy(o) { const q = o.o0 || o; return { ...o, x: 0, y: 0, w: q.w, d: q.d, h: q.h, r: o.t === 'rock' ? q.r / (q.s || 1) : q.r, s: 1, rot: 0, ea: 0, es: 1, X: null }; }
+function unrot(c, b) { const q = toLoc(b, c.x, c.y); return { ...c, x: q[0], y: q[1] }; }
+function xfInto(D, S, m) { const P = S.p, N = S.n, C = S.c, e = m.elements; _n3.getNormalMatrix(m); const ne = _n3.elements, n0 = D.p.length / 3;
+  for (let i = 0; i < P.length; i += 3) { const x = P[i], y = P[i + 1], z = P[i + 2]; D.p.push(e[0] * x + e[4] * y + e[8] * z + e[12], e[1] * x + e[5] * y + e[9] * z + e[13], e[2] * x + e[6] * y + e[10] * z + e[14]);
+    let nx = ne[0] * N[i] + ne[3] * N[i + 1] + ne[6] * N[i + 2], ny = ne[1] * N[i] + ne[4] * N[i + 1] + ne[7] * N[i + 2], nz = ne[2] * N[i] + ne[5] * N[i + 1] + ne[8] * N[i + 2]; const l = Math.hypot(nx, ny, nz) || 1; D.n.push(nx / l, ny / l, nz / l); D.c.push(C[i], C[i + 1], C[i + 2]); }
+  if (S.e || D.e) { if (!D.e) D.e = new Array(n0).fill(0); if (S.e) for (const v of S.e) D.e.push(v); else for (let i = 0; i < P.length / 3; i++) D.e.push(0); } }
+/* egy tárgy geometriája a helyi keretben + a világba vivő mátrix (rajzoláshoz és a szerkesztő befoglaló dobozához) */
+function objGeo(o, Bu) { const B = new GB(); let m = null;
+  if (o.t === 'bld') { bldInto(B, Bu || new GB(), o); if (o.ea) m = bldMat(o); }
+  else if (o.b != null && BLDS[o.b] && BLDS[o.b].ea && o.t !== 'bld') { propInto(B, unrot(o, BLDS[o.b]), gAt(o)); m = bldMat(BLDS[o.b]); }
+  else if (o.X) { propInto(B, edCopy(o), 0); m = edMat(o, gAt(o)); }
+  else propInto(B, o, gAt(o));
+  return [B, m]; }
+function edBox(o, X) { const Bu = new GB(), [B, m0] = objGeo(o.t === 'bld' ? o : X ? { ...o, X: X } : o, Bu), mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
+  for (const P of [B.p, Bu.p]) for (let i = 0; i < P.length; i += 3) for (let k = 0; k < 3; k++) { if (P[i + k] < mn[k]) mn[k] = P[i + k]; if (P[i + k] > mx[k]) mx[k] = P[i + k]; }
+  if (o.t === 'bld') for (const c of OBJ) if (c.b === o.id && c !== o && !c.del && c.t !== 'bld') { const [Bc] = objGeo({ ...unrot(c, o), b: null, X: null }); const P = Bc.p; for (let i = 0; i < P.length; i += 3) for (let k = 0; k < 3; k++) { if (P[i + k] < mn[k]) mn[k] = P[i + k]; if (P[i + k] > mx[k]) mx[k] = P[i + k]; } }
+  if (mn[0] > mx[0]) { const r = o.w ? Math.max(o.w, o.d) / 2 : Math.max(o.r || 20, 20), g = o.X || X ? 0 : gAt(o); mn[0] = (o.X || X ? 0 : o.x) - r; mx[0] = (o.X || X ? 0 : o.x) + r; mn[2] = (o.X || X ? 0 : o.y) - r; mx[2] = (o.X || X ? 0 : o.y) + r; mn[1] = g; mx[1] = g + 60; }
+  return { mn, mx, m: m0 }; }
 function objsIn(x0, y0, x1, y1) { const out = [], seen = new Set(); for (let gx = Math.floor(x0 / GC); gx <= Math.floor((x1 - 1) / GC); gx++) for (let gy = Math.floor(y0 / GC); gy <= Math.floor((y1 - 1) / GC); gy++) { const l = GRID.get(gk(gx, gy)); if (l) for (const o of l) if (!seen.has(o) && o.x >= x0 && o.x < x1 && o.y >= y0 && o.y < y1) { seen.add(o); out.push(o); } } return out; }
 const DYN = new Map(); /* tárgy → mozgó/állapotos háló */
 function buildChunk(cx, cy) { const x0 = cx * CK, y0 = cy * CK, n = CN + 1, pos = new Float32Array(n * n * 3), nor = new Float32Array(n * n * 3), col = new Float32Array(n * n * 3), uv = new Float32Array(n * n * 2), em = new Float32Array(n * n), idx = [], cc = [0, 0, 0];
@@ -84,7 +106,7 @@ function buildChunk(cx, cy) { const x0 = cx * CK, y0 = cy * CK, n = CN + 1, pos 
 /* tárgyak, épületek, fű egy darabon: külön lépésben, hogy a séta ne akadjon */
 function chunkProps(ch) { const { grp, cx, cy, ups } = ch, x0 = cx * CK, y0 = cy * CK, B = new GB();
   for (let sx = cx * 2; sx < cx * 2 + 2; sx++) for (let sy = cy * 2; sy < cy * 2 + 2; sy++) for (const o of scatterOf(sx, sy)) propInto(B, o, GH(o.x, o.y));
-  for (const o of objsIn(x0, y0, x0 + CK, y0 + CK)) { if (o.del) continue; if (o.t === 'bld') { const Bu = new GB(); bldInto(B, Bu, o); if (!Bu.empty) { const um = new THREE.Mesh(Bu.geo(), upMat.clone()); um.castShadow = um.receiveShadow = true; um.userData.b = o; grp.add(um); ups.push(um); } continue; } if (isDyn(o.t)) { dynFor(o); continue; } if (o.t !== 'wall' && o.t !== 'tree' && o.t !== 'rock' && o.t !== 'bush' && (o.ea || (o.es && o.es !== 1))) { const Bt = new GB(); propInto(Bt, { ...o, x: 0, y: 0 }, 0); if (!Bt.empty) B.stamp(Bt, o.x, gAt(o), o.y, -o.ea || 0, o.es || 1); continue; } propInto(B, o, gAt(o)); }
+  for (const o of objsIn(x0, y0, x0 + CK, y0 + CK)) { if (o.del) continue; if (o.t === 'bld') { const Bu = new GB(); if (o.ea) { const Bl = new GB(), Bv = new GB(), m = bldMat(o); bldInto(Bl, Bv, o); if (!Bl.empty) xfInto(B, Bl, m); if (!Bv.empty) xfInto(Bu, Bv, m); } else bldInto(B, Bu, o); if (!Bu.empty) { const um = new THREE.Mesh(Bu.geo(), upMat.clone()); um.castShadow = um.receiveShadow = true; um.userData.b = o; grp.add(um); ups.push(um); } continue; } if (isDyn(o.t)) { dynFor(o); continue; } if (o.X || (o.b != null && BLDS[o.b] && BLDS[o.b].ea)) { const [Bt, m] = objGeo(o); if (!Bt.empty) xfInto(B, Bt, m); continue; } if (o.t !== 'wall' && o.t !== 'tree' && o.t !== 'rock' && o.t !== 'bush' && (o.ea || (o.es && o.es !== 1))) { const Bt = new GB(); propInto(Bt, { ...o, x: 0, y: 0 }, 0); if (!Bt.empty) B.stamp(Bt, o.x, gAt(o), o.y, -o.ea || 0, o.es || 1); continue; } propInto(B, o, gAt(o)); }
   if (!B.empty) { const pm = new THREE.Mesh(B.geo(), propMat); pm.castShadow = pm.receiveShadow = true; grp.add(pm); }
   /* fű és apró növényzet a közeli darabokon */
   const gr = []; for (let i = 0; i < (LOWQ ? 160 : 420); i++) { const x = x0 + rnd(cx, cy, i * 2 + 501) * CK, y = y0 + rnd(cx, cy, i * 2 + 502) * CK; if (land(x, y) < .05 || roadD(x, y) < 70 || inPad(x, y, 30)) continue; const w = biomeW(x, y), k = { mez: 0, lap: 1, nap: 2, var: 5, cso: 2, kak: 1, jeg: 3, so: 4, mely: 4 }[w.k]; if ((w.k === 'cso' || w.k === 'so' || w.k === 'nap') && rnd(cx, cy, i + 900) < .7) continue; gr.push([x, GH(x, y), y, k, rnd(cx, cy, i + 700) * 6, .8 + rnd(cx, cy, i + 701) * .8]); }
@@ -92,7 +114,7 @@ function chunkProps(ch) { const { grp, cx, cy, ups } = ch, x0 = cx * CK, y0 = cy
 }
 function dropChunk(c) { c.dead = true; world.remove(c.grp); c.grp.traverse(o => { if (o.geometry && !o.userData.keep) o.geometry.dispose(); }); for (const u of c.ups) u.material.dispose(); }
 /* ---------- állapotos tárgyak (tűz, láda, lap, harmatgyűjtő, kút, szív, épületek felső szintje) ---------- */
-function dynFor(o) { if (DYN.has(o)) return; const g = zoneAt(o.x, o.y) ? zoneH(zoneAt(o.x, o.y), o.x, o.y) : gAt(o), grp = new THREE.Group(); grp.position.set(o.x, g, o.y); const B = new GB(), u = {}; grp.userData = u;
+function dynFor(o) { if (DYN.has(o)) return; const g = zoneAt(o.x, o.y) ? zoneH(zoneAt(o.x, o.y), o.x, o.y) : gAt(o), grp = new THREE.Group(); grp.position.set(o.x, g, o.y); if (o.X) { const X = o.X, k = X.s || 1; grp.position.y += X.z || 0; grp.rotation.set(X.rx || 0, -(X.a || 0), X.rz || 0, 'YXZ'); grp.scale.set(k * (X.sx || 1), k * (X.sy || 1), k * (X.sz || 1)); } else if (o.b != null && BLDS[o.b] && BLDS[o.b].ea) grp.rotation.y = -BLDS[o.b].ea; const B = new GB(), u = {}; grp.userData = u;
   switch (o.t) {
     case 'fire': if (o.hub) { B.cyl(M(0, -4, 0), 64, 70, 34, 18, hex('#6a6660')); B.cyl(M(0, 30, 0), 66, 66, 8, 18, hex('#8a8680')); for (let i = 0; i < 4; i++) B.box(M(Math.cos(i * 1.57 + .78) * 60, 0, Math.sin(i * 1.57 + .78) * 60), 14, 170, 14, hex('#4e3a28')); B.cyl(M(0, 170, 0, .785), 0, 110, 70, 4, hex('#3e3228')); hubPool.position.set(o.x, g + 26, o.y); }
       else { const st = hex('#5a5650'); for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; B.ico(M(Math.cos(a) * 26, 2, Math.sin(a) * 26), 7, 0, st, .4); } for (let i = 0; i < 4; i++) B.cyl(M(0, 4, 0, i * .8, Math.PI / 2 - .3, 0), 3, 3.8, 34, 5, hex('#3e2a1a')); B.ico(M(0, 2, 0, 0, 0, 0, 1, .25, 1), 14, 0, hex('#2a2422'));
@@ -167,7 +189,7 @@ const AMB = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMateria
 const slash = new THREE.Mesh(new THREE.RingGeometry(40, 82, 24, 1, 0, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .6, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); slash.rotation.x = -Math.PI / 2; scene.add(slash);
 const ringPool = [], discs = new Map(); function ringMesh() { const m = new THREE.Mesh(new THREE.RingGeometry(.9, 1, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })); m.rotation.x = -Math.PI / 2; fxG.add(m); return m; }
 function conform(geo, cx, cy, lift) { const p = geo.attributes.position; for (let i = 0; i < p.count; i++) { const x = cx + p.getX(i), y = cy - p.getY(i); p.setZ(i, (P ? groundAt(x, y) : GH(x, y)) + lift); } p.needsUpdate = true; }
-function groundAt(x, y) { const z = zoneAt(x, y); if (z) return zoneH(z, x, y); if (P && P.fz && P.bld) { const b = P.bld; if (Math.abs(x - b.x) < b.w / 2 && Math.abs(y - b.y) < b.d / 2) return b.base + FH; } const b = bldAt(x, y); if (b && b.kind !== 'aqua') return b.base; return GH(x, y); }
+function groundAt(x, y) { const z = zoneAt(x, y); if (z) return zoneH(z, x, y); if (P && P.fz && P.bld) { const b = P.bld, q = toLoc(b, x, y); if (Math.abs(q[0] - b.x) < b.w / 2 && Math.abs(q[1] - b.y) < b.d / 2) return b.base + FH; } const b = bldAt(x, y); if (b && b.kind !== 'aqua') return b.base; return GH(x, y); }
 const BEAMS = [0, 1].map(() => { const m = new THREE.Mesh(new THREE.BoxGeometry(600, 10, 14).translate(300, 0, 0), new THREE.MeshBasicMaterial({ color: 0xfff0a0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); m.visible = false; scene.add(m); return m; });
 const ARENA = new THREE.Mesh(new THREE.TorusGeometry(1, .012, 4, 90), new THREE.MeshBasicMaterial({ color: 0xd6ba80, transparent: true, opacity: .55 })); ARENA.rotation.x = -Math.PI / 2; scene.add(ARENA);
 const lostOrb = spr(0x7fd0ff, 90); scene.add(lostOrb);
@@ -280,6 +302,6 @@ function render() { const now = performance.now(), dt = Math.min(.05, (now - las
   lostOrb.visible = !!(inGame && P.lost && zoneAt(P.lost.x, P.lost.y) === z); if (lostOrb.visible) { lostOrb.position.set(P.lost.x, groundAt(P.lost.x, P.lost.y) + 40 + Math.sin(TT * 3) * 6, P.lost.y); lostOrb.scale.setScalar(80 + Math.sin(TT * 4) * 10); }
   RD.render(scene, cam); }
 function fixFlat(g) { const p = g.attributes.position; const a = new Float32Array(p.count * 3); for (let i = 0; i < p.count; i++) { a[i * 3] = p.getX(i); a[i * 3 + 1] = p.getZ(i); a[i * 3 + 2] = -p.getY(i); } g.setAttribute('position', new THREE.BufferAttribute(a, 3)); }
-GL3 = { render, cam, scene, chunks: CH, ready: true,
+GL3 = { render, cam, scene, chunks: CH, ready: true, T: THREE, box: edBox,
   /* szerkesztő: terület újraépítése, állapotos tárgy újrarajzolása, kamera-dőlés */
   rebuild(x0, y0, x1, y1) { for (const [k, c] of CH) { const cx0 = c.cx * CK, cy0 = c.cy * CK; if (cx0 > x1 || cx0 + CK < x0 || cy0 > y1 || cy0 + CK < y0) continue; dropChunk(c); CH.delete(k); } }, dropDyn(o) { const g = DYN.get(o); if (g) { dynG.remove(g); DYN.delete(o); } }, setPitch(v) { pitch = v; }, get pitch() { return pitch; }, get dist() { return dist; }, zoom(v) { zoomT = v; dist = v; zoomS = Math.max(120, v); }, info() { const t = []; let t0 = performance.now(); const c = buildChunk(30, 3); t.push(['terrain', (performance.now() - t0).toFixed(1)]); t0 = performance.now(); JOBS.pop()(); t.push(['props', (performance.now() - t0).toFixed(1)]); dropChunk(c); t0 = performance.now(); RD.render(scene, cam); t.push(['render', (performance.now() - t0).toFixed(1), RD.info.render.calls, RD.info.render.triangles]); return t; } };
