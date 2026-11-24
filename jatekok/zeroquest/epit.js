@@ -82,8 +82,20 @@ function ruin(x, y, k, n, ro = {}) { const r0 = rnd(n, 1, 61), sd = n * 31 + 7, 
 
 /* ---------- várak: körfal, saroktornyok, kapuház leeresztett rácsostorral; a kapu a kapuőrök halálakor nyílik ---------- */
 const CASTLES = [];
-function castle(id, cx, cy, R, mat, side = 1, o = {}) { addPad(cx, cy, R + 120, 260); const GW = 240, T = 64, Hh = 330, wl = (x, y, w, d) => WALL(x, y, w, d, { h: Hh, mat, cren: 1, city: 1, cas: id });
+function castle(id, cx, cy, R, mat, side = 1, o = {}) { addPad(cx, cy, R + 120, 260, Hraw(cx, cy)); const GW = 240, T = 64, Hh = 330, wl = (x, y, w, d) => WALL(x, y, w, d, { h: Hh, mat, cren: 1, city: 1, cas: id });
   const C = { id, x: cx, y: cy, R, mat, side, gate: null }; CASTLES.push(C);
+  /* Viharvár-szerű, többszintes elrendezés: a kapu felől széles lépcsők visznek fel a felső udvarra (itt áll az úr), onnan rámpa a lakótorony teraszára; a falak belső oldalán magas gyilokjáró, fölöttük karcsú tornyok és légihidak */
+  const back0 = side === 1 ? -1 : 1, hb = Hraw(cx, cy), ay = cy + (o.ay || 0), S1 = Math.max((o.ar || 380) + 60, R * .46), U1 = 190, U2 = 380, kx0 = cx + R * .4, ky0 = cy + back0 * R * .66;
+  addPad(cx, ay, S1, 300, hb + U1); addPad(kx0, ky0, 290, 330, hb + U2); C.lv = [hb, hb + U1, hb + U2];
+  const rw = (x, y, w, d, h) => WALL(x, y, w, d, { h, mat, cren: 1, zw: 1, cas: id }), SG = 300, ex = S1 + 26;
+  /* a felső udvar támfala: elöl széles díszlépcső, két oldalt egy-egy feljáró, hátul a lakótorony rámpája */
+  for (const s of [-1, 1]) { const yy = ay + s * ex, gapC = s === -back0 ? cx : kx0 - 40; rw((cx - ex + gapC - SG / 2) / 2, yy, gapC - SG / 2 - (cx - ex), 44, 250); rw((gapC + SG / 2 + cx + ex) / 2, yy, cx + ex - gapC - SG / 2, 44, 250); }
+  for (const s of [-1, 1]) { const xx = cx + s * ex; rw(xx, (ay - ex + ay - SG / 2) / 2, 44, ex - SG / 2, 250); rw(xx, (ay + SG / 2 + ay + ex) / 2, 44, ex - SG / 2, 250); }
+  for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) PW('ctower', cx + sx * ex, ay + sy * ex, 64, { mat, r: 64, h: 700 + rnd(sx + 3, sy + 5, 17) * 260, spire: 1 });
+  for (const s of [-1, 1]) { PW('brazier', cx + s * 190, ay - back0 * (ex + 40), 14, { lit: 1, mat }); PW('statue', cx + s * 300, ay - back0 * (ex + 70), 30, { mat, v: s > 0 ? 1 : 2 }); }
+  /* a lakótorony terasza: támfal körben, elöl a rámpa */
+  { const e2 = 310; for (const s of [-1, 1]) { const xx = kx0 + s * e2; rw(xx, ky0, 44, 2 * e2, 300); } rw(kx0, ky0 + back0 * e2, 2 * e2 + 44, 44, 300); const fy = ky0 - back0 * e2; rw(kx0 - e2 + 70, fy, 140, 44, 300); rw(kx0 + e2 - 70, fy, 140, 44, 300);
+    PW('ctower', kx0 + e2, ky0 + back0 * e2, 90, { mat, r: 90, h: 1250, spire: 1 }); PW('ctower', kx0 - e2, ky0 + back0 * e2, 76, { mat, r: 76, h: 980, spire: 1 }); }
   for (let s = 0; s < 4; s++) { const hor = s < 2, c0 = hor ? (s === 0 ? cy - R : cy + R) : (s === 2 ? cx - R : cx + R);
     if (s === side) { const g = hor ? cx : cy; if (hor) { wl((cx - R + g - GW / 2) / 2, c0, g - GW / 2 - (cx - R), T); wl((g + GW / 2 + cx + R) / 2, c0, cx + R - g - GW / 2, T); } else { wl(c0, (cy - R + g - GW / 2) / 2, T, g - GW / 2 - (cy - R)); wl(c0, (g + GW / 2 + cy + R) / 2, T, cy + R - g - GW / 2); }
       const gx = hor ? g : c0, gy = hor ? c0 : g; PW('gatehouse', gx, gy, 0, { a: hor ? 0 : Math.PI / 2, w: GW, mat }); C.gate = addO({ t: 'portc', x: gx, y: gy, w: hor ? GW + 8 : 26, d: hor ? 26 : GW + 8, solid: 1, h: 250, gate: id, a: hor ? 0 : Math.PI / 2 }); C.gx = gx; C.gy = gy; C.out = [gx + (hor ? 0 : (s === 2 ? -1 : 1) * 260), gy + (hor ? (s === 0 ? -1 : 1) * 260 : 0)]; }
@@ -91,7 +103,7 @@ function castle(id, cx, cy, R, mat, side = 1, o = {}) { addPad(cx, cy, R + 120, 
   for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) PW('ctower', cx + sx * R, cy + sy * R, 96, { mat, r: 96, h: 520, spire: 1 });
   for (const t of [-.5, .5]) for (let s = 0; s < 4; s++) { if (s === side) continue; const hor = s < 2; PW('ctower', hor ? cx + t * R : (s === 2 ? cx - R : cx + R), hor ? (s === 0 ? cy - R : cy + R) : cy + t * R, 70, { mat, r: 70, h: 430, spire: 1 }); }
   /* udvar: tornyos lakóépület a kapuval szemközti sarokban, benne a tömlöc lejárata */
-  const back = side === 1 ? -1 : 1, kx = cx + (o.kx || R * .55), ky = cy + back * R * .62; const keep = bld(kx, ky, 400, 280, { fl: 2, dmg: .35, mat, kind: 'keep', doors: [back < 0 ? 1 : 0], seed: id.length * 31 }); furnish(keep); C.keep = keep;
+  const back = side === 1 ? -1 : 1, kx = kx0, ky = ky0; const keep = bld(kx, ky, 400, 280, { fl: 2, dmg: .35, mat, kind: 'keep', doors: [back < 0 ? 1 : 0], seed: id.length * 31 }); furnish(keep); C.keep = keep;
   const bar = bld(cx - R * .55, ky, 360, 240, { fl: 2, dmg: .5, mat, kind: 'house', doors: [back < 0 ? 1 : 0], seed: id.length * 37 }); furnish(bar);
   /* felső termek: a lakótorony emeletéről vezet fel ajtó */
   if (o.uz) { const z = ZK[o.uz], dx = keep.x + 60, dy = keep.y + 40; for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { const ti = Math.floor((dx + i * 40 - keep.x + keep.w / 2) / keep.ts), tj = Math.floor((dy + j * 40 - keep.y + keep.d / 2) / keep.ts); if (ti >= 0 && tj >= 0 && ti < keep.tw && tj < keep.th && keep.tiles[ti + tj * keep.tw] !== 2) keep.tiles[ti + tj * keep.tw] = 1; } z.at = [dx, dy]; z.atfz = 1; PW('door', dx, dy, 0, { z: z.id, dk: 'up', b: keep.id, fz: 1 }); z.rg = o.rg; }
@@ -101,11 +113,15 @@ function castle(id, cx, cy, R, mat, side = 1, o = {}) { addPad(cx, cy, R + 120, 
     PW('ctower', chx - 120, chy - 330, 64, { mat, r: 64, h: 560, spire: 1 }); }
   if (o.dz) { const z = ZK[o.dz]; z.at = [keep.x - keep.w / 4, keep.y]; PW('door', z.at[0], z.at[1], 0, { z: z.id, dk: 'hatch', b: keep.id }); z.rg = o.rg; }
   for (let k = 0; k < 6; k++) PW(k % 2 ? 'banner' : 'brazier', C.out[0] + (k - 2.5) * 70 * (side < 2 ? 1 : 0), C.out[1] + (k - 2.5) * 70 * (side < 2 ? 0 : 1) + (side < 2 ? -back * 60 : 0), k % 2 ? 0 : 14, { lit: 1, mat });
+  /* gyilokjáró a keleti fal belső oldalán, rámpával – a tetején íjászok és láda */
+  { const aq = aqueduct(cx + R - 125, cy - back0 * R * .34, R * 1.1, false, 900 + CASTLES.length * 3, { fh: 250, g0: hb }); if (aq) C.walk = aq; }
+  /* légihidak a tornyok között: a magasban, elérhetetlenül, csak a látvány kedvéért */
+  PW('skybr', cx + R, cy + back0 * R, 0, { x2: kx0 + 310, y2: ky0 + back0 * 310, hh: 820, mat }); PW('skybr', cx - R, cy + back0 * R, 0, { x2: cx - S1 - 26, y2: ay + back0 * (S1 + 26), hh: 600, mat });
   RUINS.push([kx, ky, o.rg || 'var', { b: keep, up: 1, tp: 'keep', cas: id }]); return C; }
 /* ---------- magas vízvezeték-romok a hegyek között: rámpán fel a tetejére, ahol ritka zsákmány vár ---------- */
-function aqueduct(x, y, L, horiz, n) { const W = 120, ts = 40, x0 = horiz ? x - L / 2 : x, y0 = horiz ? y : y - L / 2, at = t => horiz ? [x0 + t, y] : [x, y0 + t];
-  let hmax = -1e9; for (let t = 0; t <= L; t += 60) { const p = at(t); hmax = Math.max(hmax, Hraw(p[0], p[1])); } const g0 = Hraw(...at(40)), top = hmax + 210 + rnd(n, 1, 9) * 130, fh = top - g0, Ls = clamp(fh / .58, 220, L * .45);
-  if (fh > 560 || Ls > L * .44) return null; const pad = addPad(...at(60), 150, 140, g0);
+function aqueduct(x, y, L, horiz, n, ao = {}) { const W = 120, ts = 40, x0 = horiz ? x - L / 2 : x, y0 = horiz ? y : y - L / 2, at = t => horiz ? [x0 + t, y] : [x, y0 + t];
+  let hmax = -1e9; for (let t = 0; t <= L; t += 60) { const p = at(t); hmax = Math.max(hmax, Hraw(p[0], p[1])); } const g0 = ao.g0 != null ? ao.g0 : Hraw(...at(40)), top = ao.fh ? g0 + ao.fh : hmax + 210 + rnd(n, 1, 9) * 130, fh = top - g0, Ls = clamp(fh / .58, 220, L * .45);
+  if (!ao.fh && (fh > 560 || Ls > L * .44)) return null; const pad = addPad(...at(60), 150, 140, g0);
   const w = horiz ? L : W, d = horiz ? W : L, id = BLDS.length, b = addO({ t: 'bld', id, x, y, w, d, fl: 2, kind: 'aqua', mat: 'ko', dmg: .3, segs: [], ts, tw: w / ts, th: d / ts, fh, pad, base: g0, roof: 0, horiz, Ls }); BLDS.push(b);
   b.stairs = horiz ? { x: x0 + Ls / 2, y, w: Ls, d: W - 24, dir: 0 } : { x, y: y0 + Ls / 2, w: W - 24, d: Ls, dir: 2 };
   b.tiles = new Uint8Array(b.tw * b.th); const gapAt = L * (.55 + rnd(n, 2, 9) * .3); for (let j = 0; j < b.th; j++) for (let i = 0; i < b.tw; i++) { const along = horiz ? i * ts : j * ts, lat = horiz ? j : i; b.tiles[i + j * b.tw] = along < Ls ? 2 : Math.abs(along - gapAt) < 40 && lat !== 0 ? 0 : 1; }
@@ -253,8 +269,8 @@ function buildWorld() {
   FIRES.forEach((f, i) => { if (f[0] < OW) poi(f[0], f[1], 170); });
   for (const k in LORD) { const l = LORD[k]; if (l[0] < OW) addPad(l[0], l[1], l[2] + 80, 260); }
   const city = buildCity();
-  castle('c_gaspar', LORD.gaspar[0], LORD.gaspar[1] - 120, 960, 'ko', 1, { dz: 'k_gaspar', uz: 'u_gaspar', rg: 'mez' }); castle('c_denes', LORD.denes[0], LORD.denes[1] - 80, 920, 'feher', 1, { dz: 'k_denes', uz: 'u_denes', rg: 'nap' });
-  castle('c_klara', LORD.klara[0], LORD.klara[1] - 80, 920, 'jeg', 1, { dz: 'k_klara', uz: 'u_klara', rg: 'jeg' }); castle('c_lorinc', LORD.lorinc[0], LORD.lorinc[1] - 60, 960, 'so', 1, { dz: 'k_lorinc', uz: 'u_lorinc', rg: 'so' });
+  castle('c_gaspar', LORD.gaspar[0], LORD.gaspar[1] - 120, 960, 'ko', 1, { ay: 120, ar: LORD.gaspar[2], dz: 'k_gaspar', uz: 'u_gaspar', rg: 'mez' }); castle('c_denes', LORD.denes[0], LORD.denes[1] - 80, 920, 'feher', 1, { ay: 80, ar: LORD.denes[2], dz: 'k_denes', uz: 'u_denes', rg: 'nap' });
+  castle('c_klara', LORD.klara[0], LORD.klara[1] - 80, 920, 'jeg', 1, { ay: 80, ar: LORD.klara[2], dz: 'k_klara', uz: 'u_klara', rg: 'jeg' }); castle('c_lorinc', LORD.lorinc[0], LORD.lorinc[1] - 60, 960, 'so', 1, { ay: 60, ar: LORD.lorinc[2], dz: 'k_lorinc', uz: 'u_lorinc', rg: 'so' });
   /* Szikkadt Mezők: Kalászvég, malmok, Varjúdomb, Gáspár udvarháza */
   const V = (x, y, w, d, o) => { const p = sc([x, y]), b = bld(p[0], p[1], w, d, { roof: 1, dmg: .05, ...o }); furnish(b); return b; };
   V(8100, 3640, 260, 180, { mat: 'fa' }); V(8480, 3650, 240, 170, { mat: 'fa', doors: [1] }); V(8110, 3900, 240, 170, { mat: 'fa', doors: [0] }); V(8500, 3920, 260, 180, { mat: 'fa', doors: [0] }); KCH = V(8300, 3560, 400, 220, { kind: 'church', mat: 'ko', doors: [2], dmg: .25 });
@@ -296,7 +312,7 @@ function buildWorld() {
     var: [['keep', 'house2'], ['house2', 'tower', 'gate', 'statues', 'house', 'wall']], cso: [['buried', 'house2'], ['wreck', 'ribs', 'obelisk', 'house', 'buried']], kak: [['chapel', 'house2'], ['shrine', 'totem', 'house', 'tower', 'house']], jeg: [['keep', 'chapel'], ['house2', 'tower', 'statues', 'house', 'graves']],
     so: [['temple', 'keep'], ['tower', 'wall', 'house2', 'obelisk', 'house']], mely: [['keep', 'crypt'], ['house2', 'graves', 'colon', 'tower', 'crypt']] };
   const big = ['keep', 'temple', 'house2', 'chapel', 'obs', 'buried', 'crypt'], street = (ax, ay, bx2, by2, mat, cdm, sd) => { const L = hyp(bx2 - ax, by2 - ay), ux = (bx2 - ax) / L, uy = (by2 - ay) / L, a = Math.atan2(uy, ux); stampRoad(Array.from({ length: Math.ceil(L / 60) + 1 }, (_, i) => [ax + ux * Math.min(L, i * 60), ay + uy * Math.min(L, i * 60)]), 40);
-      for (let t = 200; t < L - 200; t += 130) for (const s of [-1, 1]) { const q = rnd(sd, t | 0, s + 3); if (q < .25 + cdm * .35) continue; const h = 60 + (1 - cdm) * 110 * (.6 + .4 * fbm(ax / 300 + t / 300, s, 1)), wx = ax + ux * t - uy * s * 110, wy = ay + uy * t + ux * s * 110; let hit = !!bldAt(wx, wy); near(wx, wy, 110, o => { if (o.t === 'bld' || o.t === 'wall' || o.r > 25) hit = true; }); if (hit) continue; WALL(wx, wy, Math.abs(ux) > Math.abs(uy) ? 120 : 26, Math.abs(ux) > Math.abs(uy) ? 26 : 120, { h, mat, cren: 0 }); }
+      for (let t = 200; t < L - 200; t += 130) for (const s of [-1, 1]) { const q = rnd(sd, t | 0, s + 3); if (q < .4 + cdm * .35) continue; const h = 60 + (1 - cdm) * 110 * (.6 + .4 * fbm(ax / 300 + t / 300, s, 1)), wx = ax + ux * t - uy * s * 200, wy = ay + uy * t + ux * s * 200; let hit = !!bldAt(wx, wy); near(wx, wy, 110, o => { if (o.t === 'bld' || o.t === 'wall' || o.r > 25) hit = true; }); if (hit) continue; WALL(wx, wy, Math.abs(ux) > Math.abs(uy) ? 120 : 26, Math.abs(ux) > Math.abs(uy) ? 26 : 120, { h, mat, cren: 0 }); }
       if (L > 520 && rnd(sd, 7, 9) < .7) PW('arch', ax + ux * L * .5, ay + uy * L * .5, 0, { a: a + Math.PI / 2, mat, h: 220 + (1 - cdm) * 80 }); };
   for (let k = 0, n = 0, c = 0; k < 7000 && c < 48; k++) { const x = 900 + rnd(k, 1, 71) * (OW - 1800), y = 900 + rnd(k, 2, 71) * (OH - 1800); if (!okR(x, y, 440, 2300)) continue;
     const bk = biomeW(x, y).k, T = TH[bk] || TH.mez, cdm = clamp(.22 + rnd(c, 1, 81) * .55, .15, .85), cd = rnd(c, 2, 81) * TAU, mat = MATS[bk] || 'ko'; c++;
