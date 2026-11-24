@@ -1,6 +1,6 @@
 /* ZERO QUEST – modellek: kódból épített, lapos árnyalású geometria (tereptárgyak, épületek, szereplők) */
-import * as THREE from './lib/three.module.min.js?v=202611240531';
-const TAU = Math.PI * 2;
+import * as THREE from './lib/three.module.min.js?v=202611240622';
+const TAU = Math.PI * 2; const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 export const hex = (h, k = 1) => { const n = typeof h === 'string' ? parseInt(h.slice(1), 16) : h; return [((n >> 16) & 255) / 255 * k, ((n >> 8) & 255) / 255 * k, (n & 255) / 255 * k]; };
 export const rgb = (r, g, b) => [r / 255, g / 255, b / 255];
 const mixc = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
@@ -111,7 +111,11 @@ export function makeMan(L) { const root = new THREE.Group(), body = new THREE.Gr
     b.cyl(M(0, -9, 0, 0, 0, 0, 1, 1, .85), 8.6 * g, 11.8 * g, 10, 10, mulc(tu, .9), false); b.cyl(M(0, 3.6, 0, 0, 0, 0, 1, 1, .8), 8.4 * g, 8.4 * g, 2.8, 10, tr); b.box(M(0, 3.4, 6.6 * g), 3.4, 3.2, 1.2, hex('#c8a050'));
     if (pl) { b.cyl(M(0, 7, 0, 0, 0, 0, 1, 1, .8), 11.4 * g, 8.4 * g, 14, 8, mulc(tu, 1.12)); b.box(M(0, 9, 7.4 * g), 2, 12, 1, mulc(tu, .7)); } else b.box(M(0, -8, 7.8 * g, 0, -.12), 7.5, 20, 1.2, tr);
     b.box(M(-6 * g, 1, 6.8 * g, .3), 4, 4.4, 3, hex('#5a4026'));
-    if (L.pauld) for (const s of [-1, 1]) b.ico(M(s * 11.6 * g, 22.5, 0, 0, 0, s * -.3, 1, .62, 1), 5.8, 1, lift(L.pauld, 1.05));
+    if (L.pauld) { const pc = lift(L.pauld, 1.05), bk = L.bulky ? 1.3 : 1; for (const s of [-1, 1]) { b.ico(M(s * 11.6 * g, 22.5, 0, 0, 0, s * -.3, 1, .62, 1), 5.8 * bk, 1, pc); if (L.bulky) { b.ico(M(s * 13.4 * g, 19.5, 0, 0, 0, s * -.5, 1, .5, 1), 6 * bk, 1, mulc(pc, .86)); b.box(M(s * 12 * g, 27, 0, 0, 0, s * -.35), 2, 3.2, 12, mulc(pc, 1.1)); } } }
+    if (pl) { const pc = mulc(tu, 1.18); b.cyl(M(0, 22.5, 0, 0, 0, 0, 1, 1, .8), 6.8 * g, 9.2 * g, 4, 10, pc); for (const y of [12, 16]) b.cyl(M(0, y, .6, 0, 0, 0, 1, 1, .78), 11.2 * g, 11.6 * g, 1.2, 10, mulc(pc, .82)); b.box(M(0, 15, 8.9 * g, -.12), 1.3, 13, 1.4, mulc(pc, 1.15)); }
+    if (L.tabard) { const tc = lift(L.tabard); b.box(M(0, 3, 8.4 * g, -.06), 10, 30, 1, tc); b.box(M(0, 3, -8.3 * g, .06), 10, 30, 1, mulc(tc, .85)); b.box(M(0, 17.5, 8.9 * g, -.06), 10.4, 1.6, 1.2, hex('#c8a050')); b.box(M(0, 10, 9 * g), 4, 4, .6, hex('#c8a050')); }
+    if (L.robe) { const rc = mulc(tu, .92); b.cyl(M(0, -14, 0, 0, 0, 0, 1, 1, .86), 9.6 * g, 13.4 * g, 22, 11, rc, false); b.cyl(M(0, -24.6, 0, 0, 0, 0, 1, 1, .86), 13.4 * g, 13.6 * g, 1.6, 11, L.tabard ? lift(L.tabard) : tr); }
+    if (L.feathers) for (let k = 0; k < 14; k++) { const a = (k / 13 - .5) * 3.6, r = 10.5 * g; b.box(M(Math.sin(a) * r, 21 - Math.abs(Math.sin(a)) * 2, Math.cos(a) * r * -.75, -.5 + .35 * Math.abs(Math.cos(a)), a, 0), 3, 10, .8, mulc(tu, .55 + (k % 3) * .08)); }
     if (L.hood && !pl) b.cyl(M(0, 17, -.5, 0, 0, 0, 1, 1, .82), 5.6, 12.4 * g, 8, 10, lift(L.hood), false);
     if (L.kak) { for (const [x, y, h] of L.kak === 2 ? [[-7, 20, 16], [7, 22, 20], [0, 22, 12]] : [[-6, 20, 12], [7, 19, 9]]) { b.cyl(M(x, y, -5), 2.4, 3, h, 6, hex('#3f5a36')); b.glow = .6; b.ico(M(x, y + h, -5), 1.6, 0, hex('#e06a7a')); b.glow = 0; } }
     hips.add(bm(b)); }
@@ -119,19 +123,27 @@ export function makeMan(L) { const root = new THREE.Group(), body = new THREE.Gr
   { const b = new GB(); b.jit = .04; b.cyl(M(0, 0, 0), 2.8 * g, 3.4, 5, 6, mulc(sk, .9)); b.ico(M(0, 9, .4, 0, 0, 0, 1, 1.12, 1.04), 6.8 * (L.gaunt ? .92 : 1), 1, sk); b.box(M(0, 7.4, 6.6), 1.8, 3, 1.8, mulc(sk, .92)); b.box(M(0, 4.6, 5.4), 4.4, 1, 1.2, mulc(sk, .7));
     const ey = L.eye, glowE = ey && /^#(f|e|c|b)/i.test(ey); if (glowE) { b.glow = 1; for (const s of [-1, 1]) b.ico(M(s * 2.5, 9.2, 6.2), 1.25, 0, hex(ey)); b.glow = 0; } else for (const s of [-1, 1]) b.box(M(s * 2.4, 8.8, 6.2), 1.6, 1.2, .6, hex('#1c1410'));
     if (L.hood) { const hc = lift(L.hood); b.ico(M(0, 11.4, -1.2, 0, 0, 0, 1.06, 1.05, 1.1), 7.6, 1, hc); b.cyl(M(0, 15, -5, 0, -.9, 0), .5, 4.4, 10, 6, hc); b.box(M(0, 9, 7.2), 12, 10, 1, mulc(hc, .5)); b.ico(M(0, 9.2, .8, 0, 0, 0, 1, 1.12, 1.04), 6.82, 1, sk); }
-    else if (L.helm) { const hc = lift(L.helm, 1.1); b.cyl(M(0, 8.4, 0), 7.3, 7.5, 6, 10, hc); b.ico(M(0, 13.6, 0, 0, 0, 0, 1, .75, 1), 7.4, 1, hc); b.box(M(0, 5.6, 7.1), 1.6, 8, 1.4, mulc(hc, .85)); b.cyl(M(0, 17, 0), .4, 1.6, 6, 5, hex('#8a2a22')); }
+    else if (L.helm) { const hc = lift(L.helm, 1.1), st = L.helmStyle, dk = hex('#0c0a0a');
+      if (st === 'great') { b.cyl(M(0, 9.6, 0), 7.9, 8.1, 13, 12, hc); b.cyl(M(0, 16.4, 0), 6, 7.9, 2.4, 12, mulc(hc, 1.08)); b.box(M(0, 10.6, 8), 11, 1.2, .6, dk); b.box(M(0, 7, 8), 1.2, 6, .6, dk); for (const y of [4, 13.4]) b.cyl(M(0, y, 0), 8.3, 8.3, 1, 12, mulc(hc, .8)); b.box(M(0, 9.6, 8.2), 1.4, 13, 1, mulc(hc, 1.15)); }
+      else if (st === 'kettle') { b.cyl(M(0, 8.4, 0), 7.3, 7.5, 6, 10, hc); b.ico(M(0, 13.2, 0, 0, 0, 0, 1, .7, 1), 7.4, 1, hc); b.cyl(M(0, 10.6, 0), 12.4, 12.8, 1.2, 14, mulc(hc, .9)); b.cyl(M(0, 17.4, 0), .5, 1.4, 2, 6, mulc(hc, .8)); }
+      else if (st === 'beak') { b.ico(M(0, 10, 0, 0, 0, 0, 1, 1.05, 1.1), 7.8, 1, hc); b.cyl(M(0, 7.4, 9.4, 1.35, 0, 0), .4, 3, 11, 6, mulc(hc, .85)); b.box(M(0, 9.6, 7.4), 9, 1.4, .6, hex('#a02a30')); for (let k = 0; k < 5; k++) b.box(M((k - 2) * 2.2, 17 + Math.abs(k - 2) * -.6, -3 - Math.abs(k - 2) * .6, -.7, 0, (k - 2) * .18), 1.6, 9, .6, mulc(hc, .7)); }
+      else if (st === 'hat') { b.cyl(M(0, 11.8, 0), 12.6, 12.8, 1, 14, hc); b.cyl(M(-.6, 19, -1, -.12, 0, .06), .6, 7.4, 15, 10, hc); b.cyl(M(0, 13, 0), 7.5, 7.6, 2, 10, hex('#c8a050')); b.ico(M(0, 11.6, -1.4, 0, 0, 0, 1.04, .78, 1.02), 7.1, 1, lift(L.hair || '#3a2a1c')); }
+      else if (st === 'sun') { b.glow = .25; for (let k = 0; k < 12; k++) { const a = k / 12 * TAU; b.box(M(Math.cos(a) * 9.4, 9 + Math.sin(a) * 9.4, 4.6, 0, 0, a + Math.PI / 2), 1.6, 5 + (k % 2) * 3, .8, hex('#e8c050')); } b.glow = 0; b.cyl(M(0, 9, 6.2, Math.PI / 2, 0, 0), 7.6, 7.6, 1.2, 14, hc); b.ico(M(0, 11.6, -1.4, 0, 0, 0, 1.04, .78, 1.02), 7.1, 1, lift(L.hair || '#3a2a1c')); }
+      else { b.cyl(M(0, 8.4, 0), 7.3, 7.5, 6, 10, hc); b.ico(M(0, 13.6, 0, 0, 0, 0, 1, .75, 1), 7.4, 1, hc); b.box(M(0, 5.6, 7.1), 1.6, 8, 1.4, mulc(hc, .85)); }
+      if (L.plume) { const pc = lift(L.plume); for (let k = 0; k < 6; k++) b.box(M(0, 19 + Math.sin(k * .5) * 2, 4 - k * 2.6, -.3 + k * .18), 1.8, 4.6, 3, mulc(pc, 1 - k * .05)); }
+      else if (st === 'plume' || !st) b.cyl(M(0, 17, 0), .4, 1.6, 6, 5, hex('#8a2a22')); }
     else { const hc = lift(L.hair || '#3a2a1c'); b.ico(M(0, 11.6, -1.4, 0, 0, 0, 1.04, .78, 1.02), 7.1, 1, hc); b.box(M(0, 7, -5.4), 11, 8, 3, hc); }
     if (L.mask) b.box(M(0, 5.6, 6.4), 9.6, 4.6, 1.6, lift(L.mask));
     if (L.crown) { b.glow = .35; for (let k = 0; k < 8; k++) { const a = k / 8 * TAU; b.cyl(M(Math.cos(a) * 6.4, 15, Math.sin(a) * 6.4), 0, 1.8, 5 + (k % 2) * 3, 4, hex(L.crown)); } b.cyl(M(0, 14, 0), 6.8, 6.8, 2, 10, hex(L.crown), false); b.glow = 0; }
     head.add(bm(b)); }
   if (L.halo) { const c = part(geo('halo', () => new THREE.TorusGeometry(14, 1.2, 4, 24)), L.halo, { e: L.halo, ei: 2.4 }); c.position.set(0, 10, -7); head.add(c); }
-  const arm = s => { const sh = new THREE.Group(); sh.position.set(s * 11.2 * g, 21, 0); hips.add(sh); { const b = new GB(); b.cyl(M(0, -12, 0), 2.7 * g, 3.4 * g, 12.5, 7, sl); if (pl) b.ico(M(0, -1, 0, 0, 0, 0, 1, .7, 1), 4.6, 0, mulc(sl, 1.1)); sh.add(bm(b)); }
-    const el = new THREE.Group(); el.position.y = -12; sh.add(el); { const b = new GB(); b.cyl(M(0, -10.5, 0), 2.2 * g, 2.8 * g, 10.5, 7, gl); if (L.glove) b.cyl(M(0, -4, 0), 3.2, 3.4, 4, 7, mulc(gl, .85)); b.ico(M(0, -12, .6, 0, 0, 0, 1, 1.15, .8), 2.6, 0, L.glove ? gl : sk); el.add(bm(b)); }
+  const arm = s => { const sh = new THREE.Group(); sh.position.set(s * 11.2 * g, 21, 0); hips.add(sh); { const b = new GB(); b.cyl(M(0, -12, 0), 2.7 * g, 3.4 * g, 12.5, 7, sl); if (pl) { b.ico(M(0, -1, 0, 0, 0, 0, 1, .7, 1), 4.6, 0, mulc(sl, 1.1)); for (const y of [-5, -8.5]) b.cyl(M(0, y, 0), 3.6 * g, 3.7 * g, 1, 8, mulc(sl, .85)); } sh.add(bm(b)); }
+    const el = new THREE.Group(); el.position.y = -12; sh.add(el); { const b = new GB(); b.cyl(M(0, -10.5, 0), 2.2 * g, 2.8 * g, 10.5, 7, gl); if (L.glove) b.cyl(M(0, -4, 0), 3.2, 3.4, 4, 7, mulc(gl, .85)); if (L.glovePlate) { const bk = L.bulky ? 1.25 : 1; b.ico(M(0, .2, -1, 0, 0, 0, 1, .8, 1), 3.6 * bk, 0, mulc(gl, 1.12)); b.cyl(M(0, -6.5, 0), 3.4 * bk, 4.4 * bk, 4.5, 8, mulc(gl, 1.08)); b.box(M(0, -12.4, 2.2), 4.4, 3, 1.6, mulc(gl, 1.15)); } b.ico(M(0, -12, .6, 0, 0, 0, 1, 1.15, .8), 2.6, 0, L.glove ? gl : sk); el.add(bm(b)); }
     const hand = new THREE.Group(); hand.position.y = -12; el.add(hand); return { sh, el, hand }; };
-  const leg = s => { const hp = new THREE.Group(); hp.position.set(s * 4.4 * g, -2, 0); hips.add(hp); { const b = new GB(); b.cyl(M(0, -12, 0), 3.2 * g, 4 * g, 12.5, 7, lg); hp.add(bm(b)); }
-    const kn = new THREE.Group(); kn.position.y = -12; hp.add(kn); { const b = new GB(); b.cyl(M(0, -10, 0), 2.9 * g, 3.4 * g, 10, 7, bo); b.cyl(M(0, -4, 0), 3.8 * g, 3.6 * g, 4, 7, mulc(bo, 1.1)); b.box(M(0, -12.2, 2.2), 5.8, 3.4, 10, mulc(bo, .85)); kn.add(bm(b)); } return { hp, kn }; };
+  const leg = s => { const hp = new THREE.Group(); hp.position.set(s * 4.4 * g, -2, 0); hips.add(hp); { const b = new GB(); b.cyl(M(0, -12, 0), 3.2 * g, 4 * g, 12.5, 7, lg); if (L.legPlate) { b.box(M(0, -6, 3.8 * g, -.06), 6 * g, 10, 1.2, mulc(lg, 1.12)); b.cyl(M(0, -1.6, 0), 4.6 * g, 4.8 * g, 3, 8, mulc(lg, .9)); } hp.add(bm(b)); }
+    const kn = new THREE.Group(); kn.position.y = -12; hp.add(kn); { const b = new GB(); b.cyl(M(0, -10, 0), 2.9 * g, 3.4 * g, 10, 7, bo); b.cyl(M(0, -4, 0), 3.8 * g, 3.6 * g, 4, 7, mulc(bo, 1.1)); b.box(M(0, -12.2, 2.2), 5.8, 3.4, 10, mulc(bo, .85)); if (L.legPlate) { const bk = L.bulky ? 1.2 : 1, pc = mulc(bo, 1.15); b.ico(M(0, .4, 2.6, 0, 0, 0, 1, .9, .8), 3.8 * bk, 0, pc); b.box(M(0, -6, 3.2, -.05), 5.4 * bk, 9, 1.4, pc); b.box(M(0, -2, 3.9), 1, 3, 1, mulc(pc, 1.2)); } kn.add(bm(b)); } return { hp, kn }; };
   const A = { r: arm(-1), l: arm(1) }, Lg = { r: leg(-1), l: leg(1) }; let cape = null;
-  if (L.cape) { cape = new THREE.Group(); cape.position.set(0, 21, -7); hips.add(cape); const b = new GB(); const cc = lift(L.cape); for (let k = 0; k < 4; k++) { const y0 = -k * 9, y1 = -(k + 1) * 9, w0 = 10 + k * 1.6, w1 = 10 + (k + 1) * 1.6, z0 = -k * 1.3, z1 = -(k + 1) * 1.3; b.shape([[-w0, y0, z0], [w0, y0, z0], [w1, y1, z1], [-w1, y1, z1]], [0, 2, 1, 0, 3, 2, 0, 1, 2, 0, 2, 3], M(), mulc(cc, 1 - k * .05)); } cape.add(bm(b)); }
+  if (L.cape) { cape = new THREE.Group(); cape.position.set(0, 21, -7); hips.add(cape); const b = new GB(); const cc = lift(L.cape); const cn = L.longCape ? 5 : 4; for (let k = 0; k < cn; k++) { const y0 = -k * 9, y1 = -(k + 1) * 9, w0 = 10 + k * 1.6, w1 = 10 + (k + 1) * 1.6, z0 = -k * 1.3, z1 = -(k + 1) * 1.3; b.shape([[-w0, y0, z0], [w0, y0, z0], [w1, y1, z1], [-w1, y1, z1]], [0, 2, 1, 0, 3, 2, 0, 1, 2, 0, 2, 3], M(), mulc(cc, 1 - k * .05)); } cape.add(bm(b)); }
   const s = L.s || 1; root.scale.setScalar(s); root.userData = { body, hips, head, neck, A, L: Lg, cape, wep: null, sh: null };
   root.traverse(o => { if (o.isMesh) o.castShadow = true; }); return root; }
 export function setGear(m, wep, sh) { const u = m.userData; if (u.wep) u.A.r.hand.remove(u.wep); if (u.sh) u.A.l.hand.remove(u.sh); u.wep = wep; u.sh = sh; if (wep) { wep.rotation.set(Math.PI / 2, 0, 0); u.A.r.hand.add(wep); } if (sh) { sh.position.set(2, 0, 4); sh.rotation.set(0, Math.PI / 2 * 0, 0); u.A.l.hand.add(sh); } }
@@ -144,7 +156,11 @@ export function poseMan(m, o) { const u = m.userData, w = o.walk || 0, k = o.mv 
   if (o.cast) { u.A.r.sh.rotation.set(-1.5, 0, 0); u.A.l.sh.rotation.set(-1.5, 0, 0); u.A.r.el.rotation.x = 0; u.A.l.el.rotation.x = 0; }
   if (o.block) { u.A.l.sh.rotation.set(-1.35, 0, -.55); u.A.l.el.rotation.x = -1.1; }
   if (o.bow) { u.A.l.sh.rotation.set(-1.55, 0, .1); u.A.r.sh.rotation.set(-1.5, 0, -.4); u.A.r.el.rotation.x = -1.3 * (o.draw || .3); }
-  u.body.rotation.set(o.roll || 0, 0, o.tilt || 0); if (o.dead) { u.body.rotation.x = -Math.min(1.5, o.dead * 4); u.body.position.y = -Math.min(1, o.dead * 3) * 10; }
+  u.neck.rotation.x = 0; u.body.position.z = 0;
+  if (o.roll) { const r = o.roll, e = r * r * (3 - 2 * r), th = e * TAU, tk = clamp(Math.sin(Math.PI * Math.min(1, r * 1.15)) * 1.7, 0, 1), c0 = 25 - 3 * tk;
+    for (const s of ['r', 'l']) { u.L[s].hp.rotation.x = -1.7 * tk; u.L[s].kn.rotation.x = 2.3 * tk; u.A[s].sh.rotation.set(-1.1 * tk, 0, (s === 'r' ? -.2 : .2)); u.A[s].el.rotation.x = -1.5 * tk; } u.neck.rotation.x = .7 * tk; u.hips.rotation.y = 0;
+    u.body.rotation.set(th, 0, 0); u.body.position.y = c0 - c0 * Math.cos(th) - 5 * tk; u.body.position.z = -c0 * Math.sin(th) + 10 * Math.sin(Math.PI * r); if (u.cape) u.cape.rotation.x = .15 + .45 * tk; return; }
+  u.body.rotation.set(0, 0, o.tilt || 0); if (o.dead) { u.body.rotation.x = -Math.min(1.5, o.dead * 4); u.body.position.y = -Math.min(1, o.dead * 3) * 10; }
   if (u.cape) u.cape.rotation.x = .1 + k * .5 + Math.sin(w * 2) * .06 * k; }
 
 /* ---------- lények ---------- */
