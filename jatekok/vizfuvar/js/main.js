@@ -1,22 +1,22 @@
 /* HGWS Vízfuvar – főprogram: betöltés (a Légi Öntözés domborzata, terepe, égboltja és OSM-világa), játékhurok rögzített 120 Hz-es fizikával,
    kamerák, fuvarok, töltés és lerakás, tankolás, rádió, mentés, ranglista, dev mód. */
 import * as THREE from 'three';
-import { JARMU, JARMUVEK, GAZD, DT, BALLON_KG, GAME } from './config.js?v=202611240716';
-import { epitJarmu, salAnim } from './jarmuvek.js?v=202611240716';
-import { createCar, placeCar, stepCar, setLoad, createMoped, placeMoped, stepMoped, createProp, stepProp } from './fizika.js?v=202611240716';
-import { createPlaces } from './helyszinek.js?v=202611240716';
-import { createAudio } from './hang.js?v=202611240716';
-import { createRadio } from './radio.js?v=202611240716';
-import { createHud } from './hud.js?v=202611240716';
-import { drawMap, setMapImage, setGeo } from './terkep.js?v=202611240716';
-import { createControls, ALAP_KIOSZTAS } from './iranyitas.js?v=202611240716';
-import { createUI } from './ui.js?v=202611240716';
-import { UJ_MENTES, ujPiac, elszamol, tankolasAr, vagyon } from './gazdasag.js?v=202611240716';
-import { ballon as ballonMesh } from './modellkit.js?v=202611240716';
-import * as RL from './ranglista.js?v=202611240716';
-import { createStreetLights } from './kozvilagitas.js?v=202611240716';
-import * as DG from './dolgozok.js?v=202611240716';
-import { createRouter } from './utvonal.js?v=202611240716';
+import { JARMU, JARMUVEK, GAZD, DT, BALLON_KG, GAME } from './config.js?v=202611240738';
+import { epitJarmu, salAnim } from './jarmuvek.js?v=202611240738';
+import { createCar, placeCar, stepCar, setLoad, createMoped, placeMoped, stepMoped, createProp, stepProp } from './fizika.js?v=202611240738';
+import { createPlaces } from './helyszinek.js?v=202611240738';
+import { createAudio } from './hang.js?v=202611240738';
+import { createRadio } from './radio.js?v=202611240738';
+import { createHud } from './hud.js?v=202611240738';
+import { drawMap, setMapImage, setGeo } from './terkep.js?v=202611240738';
+import { createControls, ALAP_KIOSZTAS } from './iranyitas.js?v=202611240738';
+import { createUI } from './ui.js?v=202611240738';
+import { UJ_MENTES, ujPiac, elszamol, tankolasAr, vagyon } from './gazdasag.js?v=202611240738';
+import { ballon as ballonMesh } from './modellkit.js?v=202611240738';
+import * as RL from './ranglista.js?v=202611240738';
+import { createStreetLights } from './kozvilagitas.js?v=202611240738';
+import * as DG from './dolgozok.js?v=202611240738';
+import { createRouter } from './utvonal.js?v=202611240738';
 
 // a Légi Öntözés világa egyetlen, verziózott belépési ponton át (így a modulok mindig összetartoznak)
 const K = await import(new URL('../../legiontozes/js/vilagkit.js', import.meta.url).href); const GEO = K.GEO; setGeo(GEO);
