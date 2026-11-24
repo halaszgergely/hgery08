@@ -1,6 +1,6 @@
 /* HGWS Arcade – listaoldal: kiemeltek, szűrők, kategóriasorok, részletező panel.
    Az adatok a js/arcade-manifest.js-ből jönnek; a ranglistát és a játékszámokat csak olvassa (a ctx függvényein át). */
-import { JATEKOK, KATEGORIAK, UJ_NAPOK } from './arcade-manifest.js?v=202611241018';
+import { JATEKOK, KATEGORIAK, UJ_NAPOK } from './arcade-manifest.js?v=202611241055';
 
 const V = new URL(import.meta.url).search, RK = 'hgws_arc_recent';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
