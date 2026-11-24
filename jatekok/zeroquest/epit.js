@@ -20,14 +20,18 @@ function buildRoads() { const N = [...FIRES.slice(0, 11), ...Object.values(LORD)
 
 /* ---------- épületek: alaprajz, falszakaszok, emelet, lépcső, tető ---------- */
 const MATS = { mez: 'ko', lap: 'sar', nap: 'feher', var: 'ko', cso: 'homok', kak: 'voros', jeg: 'jeg', so: 'so', mely: 'sotet' };
+let RCD = null;
 function bld(x, y, w, d, o = {}) { const ts = 40; w = Math.max(160, Math.round(w / ts) * ts); d = Math.max(120, Math.round(d / ts) * ts); const id = BLDS.length, sd = o.seed != null ? o.seed : id * 7 + 3;
   const fl = o.fl === 2 && w >= 280 ? 2 : 1, dmg = o.dmg || 0, b = addO({ t: 'bld', id, x, y, w, d, fl, roof: o.roof == null ? (dmg < .2 ? 1 : dmg < .5 ? 2 : 0) : o.roof, kind: o.kind || 'house', mat: o.mat || 'ko', dmg, segs: [], ts, tw: w / ts, th: d / ts, can: o.can, snow: o.snow, sunk: o.sunk });
   BLDS.push(b); b.pad = addPad(x, y, hyp(w, d) / 2 + 30, 170); b.base = b.pad[4];
   const doors = o.doors || [1]; const T = 16;
+  /* egységes rongálódás: az épület egy irányba omlott össze – az egyik sarka áll, a másik oldala leomlott; nincs véletlenszerű foghíj mindenütt */
+  const cd = o.cdir != null ? o.cdir : RCD != null ? RCD + (rnd(sd, 1, 7) - .5) * .9 : rnd(sd, 2, 7) * TAU, cca = Math.cos(cd), csa = Math.sin(cd), Rr = hyp(w, d) / 2;
+  const DM = (px, py) => { const f = clamp((((px - x) * cca + (py - y) * csa) / Rr + 1) / 2, 0, 1); return dmg * (.12 + 1.45 * f * f) + (fbm(px / 170 + sd, py / 170, 2) - .5) * .2 * dmg; }; b.DM = DM;
   for (let side = 0; side < 4; side++) { const hor = side < 2, L = hor ? w : d, n = L / ts, cx = hor ? x - w / 2 : side === 2 ? x - w / 2 : x + w / 2, cy = hor ? (side === 0 ? y - d / 2 : y + d / 2) : y - d / 2, di = doors.includes(side) ? Math.floor(n / 2) - 1 : -9;
     for (let lv = 0; lv < fl; lv++) { let run = null; const flush = () => { if (!run) return; const a = run[0] * ts, bb = (run[1] + 1) * ts; if (hor) WALL(cx + (a + bb) / 2, cy, bb - a + T, T, { fz: lv, b: id, nr: 1 }); else WALL(cx, cy + (a + bb) / 2, T, bb - a + T, { fz: lv, b: id, nr: 1 }); run = null; };
-      for (let i = 0; i < n; i++) { const r = rnd(sd, side * 100 + i, lv + 11); let h = FH, st = 'full';
-        if (lv === 0 && (i === di || i === di + 1)) st = 'door'; else if (r < dmg * .42 && !(lv === 0 && (i === 0 || i === n - 1))) st = 'gap'; else if (r < dmg * .95) { h = FH * (lv ? .2 + .6 * rnd(sd, i, side + 40) : .35 + .55 * rnd(sd, i, side + 40)); st = 'broken'; }
+      for (let i = 0; i < n; i++) { const mx = hor ? cx + (i + .5) * ts : cx, my = hor ? cy : cy + (i + .5) * ts, D = DM(mx, my), cor = i === 0 || i === n - 1; let h = FH, st = 'full';
+        if (lv === 0 && (i === di || i === di + 1)) st = 'door'; else if (lv === 0 ? D > .7 && !cor : D > .5) st = 'gap'; else if (D > (lv ? .16 : .3)) { h = FH * (lv ? clamp(1.05 - D * 1.5, .15, .9) : clamp(1.2 - D * 1.05, .2, .92)); st = 'broken'; }
         const win = st === 'full' && i % 3 === 1 && rnd(sd, i, side + 70) < .7 && !(lv === 0 && i === di + 2);
         b.segs.push({ side, i, lv, st, h, win, x0: hor ? cx + i * ts : cx, y0: hor ? cy : cy + i * ts, x1: hor ? cx + (i + 1) * ts : cx, y1: hor ? cy : cy + (i + 1) * ts });
         if (st === 'gap' || st === 'door') flush(); else if (run) run[1] = i; else run = [i, i]; } flush(); } }
@@ -35,7 +39,7 @@ function bld(x, y, w, d, o = {}) { const ts = 40; w = Math.max(160, Math.round(w
   if (fl === 2) { const L = Math.min(240, w - 160); b.stairs = { x: x + w / 2 - 70 - L / 2 - 30, y: y - d / 2 + 8 + 34, w: L, d: 60, dir: 1 }; const s = b.stairs, x0 = s.x - L / 2, x1 = s.x + L / 2;
     WALL(s.x, s.y + 34, L, 8, { fz: 0, b: id, rail: 1, h: 30 }); WALL(s.x, s.y + 34, L, 8, { fz: 1, b: id, rail: 1, h: 30 }); WALL(x0 - 6, s.y, 8, 68, { fz: 0, b: id, rail: 1, h: FH }); WALL(x1 + 6, s.y, 8, 68, { fz: 1, b: id, rail: 1, h: 30 });
     b.tiles = new Uint8Array(b.tw * b.th); for (let j = 0; j < b.th; j++) for (let i = 0; i < b.tw; i++) { const tx = x - w / 2 + (i + .5) * ts, ty = y - d / 2 + (j + .5) * ts; const inSt = Math.abs(tx - s.x) < L / 2 + 20 && Math.abs(ty - s.y) < 50; const land0 = tx < x0 && tx > x0 - 120 && Math.abs(ty - s.y) < 90;
-      const hole = !land0 && fbm(tx / 90 + sd, ty / 90, 2) < dmg * .62 - .05; b.tiles[i + j * b.tw] = inSt ? 2 : hole ? 0 : 1; } }
+      const hole = !land0 && DM(tx, ty) + (fbm(tx / 90 + sd, ty / 90, 2) - .5) * .12 > .48; b.tiles[i + j * b.tw] = inSt ? 2 : hole ? 0 : 1; } }
   return b; }
 /* bútorok és lim-lom egy épületben (földszint/emelet) */
 function furnish(b, opt = {}) { const sd = b.id * 13 + 5, k = b.kind, F = (t, dx, dy, r, o = {}) => PW(t, b.x + dx, b.y + dy, r, { b: b.id, ...o });
@@ -49,17 +53,17 @@ function furnish(b, opt = {}) { const sd = b.id * 13 + 5, k = b.kind, F = (t, dx
   if (b.fl === 2) for (let i = 0; i < 2; i++) { const dx = (rnd(sd, i, 7) - .5) * 2 * iw, dy = (rnd(sd, i, 8) - .2) * id; if (floorAt(b, b.x + dx, b.y + dy)) F(rnd(sd, i, 9) < .5 ? 'crate' : 'bones', dx, dy, 0, { fz: 1 }); } }
 
 /* ---------- romtípusok ---------- */
-function ruin(x, y, k, n) { const r0 = rnd(n, 1, 61), sd = n * 31 + 7, mat = MATS[k] || 'ko', dm = .35 + rnd(n, 2, 61) * .55;
+function ruin(x, y, k, n, ro = {}) { const r0 = rnd(n, 1, 61), sd = n * 31 + 7, mat = MATS[k] || 'ko', dm = ro.dm != null ? ro.dm : .35 + rnd(n, 2, 61) * .55; RCD = ro.cd != null ? ro.cd : null;
   const pick = { mez: ['house', 'house2', 'mill', 'chapel', 'circle', 'aqua', 'graves', 'house2'], lap: ['sunk', 'house', 'chapel', 'tower', 'stilt', 'graves'], nap: ['colon', 'temple', 'tower', 'obs', 'house2', 'colon'], var: ['house2', 'tower', 'gate', 'keep', 'statues', 'wall'],
     cso: ['wreck', 'ribs', 'buried', 'obelisk', 'house', 'buried'], kak: ['shrine', 'chapel', 'totem', 'house', 'tower'], jeg: ['house2', 'tower', 'statues', 'keep', 'chapel'], so: ['temple', 'tower', 'wall', 'house2', 'obelisk'], mely: ['house2', 'crypt', 'colon', 'keep', 'graves', 'tower'] }[k] || ['house'];
-  const tp = pick[rnd(n, 3, 61) * pick.length | 0], info = { x, y, k, tp, b: null, up: 0 };
+  const tp = ro.tp || pick[rnd(n, 3, 61) * pick.length | 0], info = { x, y, k, tp, b: null, up: 0, cl: ro.cl };
   const chestAt = (dx, dy, o) => { if (rnd(n, 9, 61) < .62) PW('chest', x + dx, y + dy, 18, { id: 'r' + n, ...o }); };
   switch (tp) {
-    case 'house': case 'sunk': case 'stilt': { const b = bld(x, y, 200 + r0 * 160, 160 + rnd(n, 4, 61) * 100, { dmg: dm, mat, sunk: tp === 'sunk', doors: [rnd(n, 5, 61) * 4 | 0], seed: sd }); furnish(b); info.b = b; chestAt(0, -20, { b: b.id }); break; }
-    case 'house2': case 'keep': { const big = tp === 'keep', b = bld(x, y, big ? 520 + r0 * 120 : 360 + r0 * 120, big ? 360 + r0 * 80 : 240 + rnd(n, 4, 61) * 80, { fl: 2, dmg: dm * .8, mat, kind: big ? 'keep' : 'house', doors: big ? [1, 2] : [1], seed: sd }); furnish(b); info.b = b; info.up = 1;
+    case 'house': case 'sunk': case 'stilt': { const b = bld(x, y, 200 + r0 * 160, 160 + rnd(n, 4, 61) * 100, { dmg: dm, mat, sunk: tp === 'sunk', doors: [ro.door != null ? ro.door : rnd(n, 5, 61) * 4 | 0], seed: sd }); furnish(b); info.b = b; chestAt(0, -20, { b: b.id }); break; }
+    case 'house2': case 'keep': { const big = tp === 'keep', b = bld(x, y, big ? 520 + r0 * 120 : 360 + r0 * 120, big ? 360 + r0 * 80 : 240 + rnd(n, 4, 61) * 80, { fl: 2, dmg: dm * .8, mat, kind: big ? 'keep' : 'house', doors: big ? [1, 2, ...(ro.door != null ? [ro.door] : [])] : [ro.door != null ? ro.door : 1], seed: sd }); furnish(b); info.b = b; info.up = 1;
       if (b.tiles) { for (let t = 0; t < 30; t++) { const dx = (rnd(n, t, 70) - .5) * (b.w - 120), dy = (rnd(n, t, 71) - .5) * (b.d - 120); if (floorAt(b, x + dx, y + dy)) { PW('chest', x + dx, y + dy, 0, { id: 'r' + n, fz: 1, b: b.id }); break; } } } else chestAt(0, 0, { b: b.id }); break; }
-    case 'tower': case 'obs': { const b = bld(x, y, 280, 280, { fl: 2, dmg: dm * .7, mat, kind: 'tower', doors: [1], seed: sd, roof: tp === 'obs' ? 0 : undefined }); furnish(b); info.b = b; info.up = 1; chestAt(-40, 40, { b: b.id }); break; }
-    case 'chapel': case 'temple': { const b = bld(x, y, 440 + r0 * 160, 220 + rnd(n, 4, 61) * 60, { dmg: dm, mat, kind: 'church', doors: [2], seed: sd }); furnish(b); info.b = b; chestAt(b.w / 2 - 90, 40, { b: b.id }); break; }
+    case 'tower': case 'obs': { const b = bld(x, y, 280, 280, { fl: 2, dmg: dm * .7, mat, kind: 'tower', doors: [ro.door != null ? ro.door : 1], seed: sd, roof: tp === 'obs' ? 0 : undefined }); furnish(b); info.b = b; info.up = 1; chestAt(-40, 40, { b: b.id }); break; }
+    case 'chapel': case 'temple': { const b = bld(x, y, 440 + r0 * 160, 220 + rnd(n, 4, 61) * 60, { dmg: dm, mat, kind: 'church', doors: [2, ...(ro.door != null ? [ro.door] : [])], seed: sd }); furnish(b); info.b = b; chestAt(b.w / 2 - 90, 40, { b: b.id }); break; }
     case 'crypt': { const b = bld(x, y, 240, 200, { dmg: dm * .5, mat, kind: 'crypt', doors: [1], seed: sd, roof: 1 }); furnish(b); info.b = b; break; }
     case 'mill': { PW('mill', x, y, 50, { broken: 1 }); bld(x + 220, y + 60, 200, 160, { dmg: dm, mat, seed: sd }); chestAt(80, 120); break; }
     case 'circle': case 'totem': case 'shrine': { const m = tp === 'circle' ? 11 : 8, R = 180 + r0 * 80; for (let j = 0; j < m; j++) { const a = j / m * TAU; if (rnd(n, j, 62) < .25) continue; PW(tp === 'totem' ? 'totem' : 'menhir', x + Math.cos(a) * R, y + Math.sin(a) * R, 20, { h: 90 + rnd(n, j, 63) * 90, a, mat }); } PW(tp === 'shrine' ? 'altar' : 'statue', x, y, 24, { v: rnd(n, 7, 61), mat }); addPad(x, y, R + 40, 150); chestAt(40, 50); break; }
@@ -74,7 +78,7 @@ function ruin(x, y, k, n) { const r0 = rnd(n, 1, 61), sd = n * 31 + 7, mat = MAT
     case 'buried': { const b = bld(x, y, 320 + r0 * 120, 220, { dmg: .85, mat, kind: 'church', seed: sd, roof: 0, sunk: 1 }); info.b = b; PW('obelisk', x - b.w / 2 - 60, y, 26, { mat }); chestAt(0, 0, { b: b.id }); break; }
     case 'obelisk': { PW('obelisk', x, y, 30, { mat, h: 300 + r0 * 200 }); for (let j = 0; j < 4; j++) PW('rubble', x + Math.cos(j * 1.6) * 140, y + Math.sin(j * 1.6) * 140, 0, { mat }); addPad(x, y, 200, 120); chestAt(70, 70); break; }
   }
-  RUINS.push([x, y, k, info]); return info; }
+  RCD = null; RUINS.push([x, y, k, info]); return info; }
 
 /* ---------- várak: körfal, saroktornyok, kapuház leeresztett rácsostorral; a kapu a kapuőrök halálakor nyílik ---------- */
 const CASTLES = [];
@@ -234,9 +238,17 @@ function buildMely(z, zi) { buildBar(z, zi, 1); const hc = z.hc, I = (x, y) => M
 function buildWorld() {
   buildRoads();
   /* az Utolsó Kút: a kráter közepén, beomlott kolostorudvar */
-  addPad(HUB[0], HUB[1], 700, 300); for (let k = 0; k < 24; k++) { const a = k / 24 * TAU; if (Math.abs(Math.atan2(Math.sin(a - 1.57), Math.cos(a - 1.57))) < .2) continue; PW('pillar', HUB[0] + Math.cos(a) * 720, HUB[1] + Math.sin(a) * 640, 24, { h: FH * (k % 2 ? 2.4 : 1.6), broken: rnd(k, 2, 7) > .45, mat: 'ko' }); }
+  /* az Utolsó Kút bazilikája: a kút a főhajó közepén áll; a falak, oszlopsorok és a mellékhajók teteje nagyrészt épen maradt, csak a főhajó teteje szakadt be – fölötte a gerendák */
+  addPad(HUB[0], HUB[1], 1250, 300); { const [hx, hy] = HUB, WH = 340, XW = 840, YN = -640, YS = 640, m = 'ko', wl = (x0, y0, x1, y1) => { const hor = y0 === y1, L = hor ? x1 - x0 : y1 - y0; if (L > 0) WALL(hx + (x0 + x1) / 2, hy + (y0 + y1) / 2, hor ? L : 40, hor ? 40 : L, { h: WH, mat: m, cren: 0, zw: 1 }); };
+    wl(-XW, YS, -380, YS); wl(-260, YS, -180, YS); wl(180, YS, 260, YS); wl(380, YS, XW, YS); /* homlokzat: középen nagy kapu, két oldalt kisebbek */
+    for (const sx of [-1, 1]) { wl(sx < 0 ? -XW : XW, YN, sx < 0 ? -XW : XW, -410); wl(sx < 0 ? -XW : XW, -190, sx < 0 ? -XW : XW, 190); wl(sx < 0 ? -XW : XW, 410, sx < 0 ? -XW : XW, YS); }
+    wl(-XW, YN, -420, YN); wl(420, YN, XW, YN); wl(-420, YN - 380, -420, YN); wl(420, YN - 380, 420, YN); wl(-420, YN - 380, 420, YN - 380); /* szentély */
+    for (let k = 0; k < 7; k++) for (const sx of [-1, 1]) PW('pillar', hx + sx * 600, hy - 540 + k * 180, 26, { h: FH * 2.75, broken: k === 6 && sx > 0, mat: m });
+    for (let k = 0; k < 6; k++) PW('truss', hx, hy - 450 + k * 180, 0, { tw: 1200, h: WH - 10 });
+    for (const sx of [-1, 1]) PW('aroof', hx + sx * 600, hy, 0, { L: 1280, aw: 240, h: WH, s: sx, miss: sx > 0 ? .18 : .06 });
+    for (const sx of [-1, 1]) { for (const y of [-520, -300, 300, 520]) PW('gwin', hx + sx * (XW + 22), hy + y, 0, { a: Math.PI / 2, h: 190 }); for (let y = -520; y <= 520; y += 260) WALL(hx + sx * (XW + 40), hy + y + 120, 40, 70, { h: WH - 40, mat: m, cren: 0, zw: 1 }); }
+    for (const x of [-250, 0, 250]) PW('gwin', hx + x, hy + YN - 402, 0, { h: 230 }); PW('altar', hx, hy + YN - 280, 30, { mat: m }); PW('statue', hx, hy + YN - 340, 34, { v: 3, mat: m }); for (const sx of [-1, 1]) { PW('candles', hx + sx * 90, hy + YN - 260, 0); PW('ctower', hx + sx * (XW - 40), hy + YS + 60, 100, { mat: m, r: 100, h: 640, spire: 1 }); PW('banner', hx + sx * 300, hy + YN - 360, 0, { mat: m }); } }
   PW('anvil', HUB[0] + 400, HUB[1] - 170, 16); PW('cart', HUB[0] - 430, HUB[1] - 150, 40); PW('crate', HUB[0] - 540, HUB[1] - 20, 16); PW('spire', HUB[0], HUB[1] - 260, 40);
-  for (const [dx, dy, w, d] of [[-560, -560, 420, 30], [520, -560, 360, 30], [-760, 300, 30, 380]]) WALL(HUB[0] + dx, HUB[1] + dy, w, d, { h: 140, mat: 'ko', cren: 0 });
   /* tábortüzek, arénák */
   FIRES.forEach((f, i) => { if (f[0] < OW) poi(f[0], f[1], 170); });
   for (const k in LORD) { const l = LORD[k]; if (l[0] < OW) addPad(l[0], l[1], l[2] + 80, 260); }
@@ -277,9 +289,20 @@ function buildWorld() {
     else if (z.kind === 'bar') { PW('cave', x, y - 140, 0, {}); PW('door', x, y - 30, 0, { z: z.id, dk: 'cave' }); addPad(x, y, 200, 200); }
     else { const b = bld(x, y - 40, 300, 240, { kind: 'crypt', dmg: .3, mat: MATS[biomeW(x, y).k] || 'ko', roof: 1, doors: [1], seed: z.id.length * 97 }); PW('door', x, y - 80, 0, { z: z.id, dk: 'hatch', b: b.id }); } }
   /* romok szerte a szigeten */
-  const okR = (x, y, m) => { if (land(x, y) < .1) return false; const w = biomeW(x, y); if (w.ku > 0 || w.bk > 0) return false; if (x > city.X0 - 600 && x < city.X1 + 600 && y > city.Y0 - 600 && y < city.Y1 + 600) return false;
-    if (roadD(x, y) < m * .6) return false; if (inPad(x, y, m)) return false; for (const r of RUINS) if (hyp(x - r[0], y - r[1]) < 950) return false; let lo = 1e9, hi = -1e9; for (const [dx, dy] of [[0, 0], [-m, 0], [m, 0], [0, -m], [0, m]]) { const h = Hraw(x + dx, y + dy); lo = Math.min(lo, h); hi = Math.max(hi, h); } return hi - lo < m * .45; };
-  for (let k = 0, n = 0; k < 4000 && n < 250; k++) { const x = 600 + rnd(k, 1, 71) * (OW - 1200), y = 600 + rnd(k, 2, 71) * (OH - 1200); if (!okR(x, y, 340)) continue; n++; ruin(x, y, biomeW(x, y).k, n); }
+  const okR = (x, y, m, sp = 950) => { if (land(x, y) < .1) return false; const w = biomeW(x, y); if (w.ku > 0 || w.bk > 0) return false; if (x > city.X0 - 600 && x < city.X1 + 600 && y > city.Y0 - 600 && y < city.Y1 + 600) return false;
+    if (roadD(x, y) < m * .6) return false; if (inPad(x, y, m)) return false; for (const r of RUINS) if (hyp(x - r[0], y - r[1]) < sp) return false; let lo = 1e9, hi = -1e9; for (const [dx, dy] of [[0, 0], [-m, 0], [m, 0], [0, -m], [0, m]]) { const h = Hraw(x + dx, y + dy); lo = Math.min(lo, h); hi = Math.max(hi, h); } return hi - lo < m * .45; };
+  /* romcsoportok: egy központi nagy rom, körülötte 3–7 kisebb, burkolt utcákkal, falsorokkal és boltívekkel összekötve; egy csoporton belül egyforma a pusztulás mértéke és iránya */
+  const TH = { mez: [['house2', 'chapel', 'keep'], ['house', 'house', 'house2', 'graves', 'mill', 'circle', 'tower']], lap: [['house2', 'chapel'], ['sunk', 'house', 'stilt', 'tower', 'graves', 'sunk']], nap: [['temple', 'obs', 'temple'], ['colon', 'tower', 'house2', 'statues', 'obelisk', 'colon']],
+    var: [['keep', 'house2'], ['house2', 'tower', 'gate', 'statues', 'house', 'wall']], cso: [['buried', 'house2'], ['wreck', 'ribs', 'obelisk', 'house', 'buried']], kak: [['chapel', 'house2'], ['shrine', 'totem', 'house', 'tower', 'house']], jeg: [['keep', 'chapel'], ['house2', 'tower', 'statues', 'house', 'graves']],
+    so: [['temple', 'keep'], ['tower', 'wall', 'house2', 'obelisk', 'house']], mely: [['keep', 'crypt'], ['house2', 'graves', 'colon', 'tower', 'crypt']] };
+  const big = ['keep', 'temple', 'house2', 'chapel', 'obs', 'buried', 'crypt'], street = (ax, ay, bx2, by2, mat, cdm, sd) => { const L = hyp(bx2 - ax, by2 - ay), ux = (bx2 - ax) / L, uy = (by2 - ay) / L, a = Math.atan2(uy, ux); stampRoad(Array.from({ length: Math.ceil(L / 60) + 1 }, (_, i) => [ax + ux * Math.min(L, i * 60), ay + uy * Math.min(L, i * 60)]), 40);
+      for (let t = 200; t < L - 200; t += 130) for (const s of [-1, 1]) { const q = rnd(sd, t | 0, s + 3); if (q < .25 + cdm * .35) continue; const h = 60 + (1 - cdm) * 110 * (.6 + .4 * fbm(ax / 300 + t / 300, s, 1)), wx = ax + ux * t - uy * s * 110, wy = ay + uy * t + ux * s * 110; let hit = !!bldAt(wx, wy); near(wx, wy, 110, o => { if (o.t === 'bld' || o.t === 'wall' || o.r > 25) hit = true; }); if (hit) continue; WALL(wx, wy, Math.abs(ux) > Math.abs(uy) ? 120 : 26, Math.abs(ux) > Math.abs(uy) ? 26 : 120, { h, mat, cren: 0 }); }
+      if (L > 520 && rnd(sd, 7, 9) < .7) PW('arch', ax + ux * L * .5, ay + uy * L * .5, 0, { a: a + Math.PI / 2, mat, h: 220 + (1 - cdm) * 80 }); };
+  for (let k = 0, n = 0, c = 0; k < 7000 && c < 48; k++) { const x = 900 + rnd(k, 1, 71) * (OW - 1800), y = 900 + rnd(k, 2, 71) * (OH - 1800); if (!okR(x, y, 440, 2300)) continue;
+    const bk = biomeW(x, y).k, T = TH[bk] || TH.mez, cdm = clamp(.22 + rnd(c, 1, 81) * .55, .15, .85), cd = rnd(c, 2, 81) * TAU, mat = MATS[bk] || 'ko'; c++;
+    ruin(x, y, bk, ++n, { dm: cdm * .85, cd, tp: T[0][rnd(c, 3, 81) * T[0].length | 0], cl: c }); poi(x, y + 60, 120);
+    const m = 3 + (rnd(c, 4, 81) * 5 | 0); for (let j = 0, tr = 0; j < m && tr < 60; tr++) { const a = rnd(c, tr, 82) * TAU, r = 560 + rnd(c, tr, 83) * 520, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r; if (!okR(px, py, 280, 470)) continue; j++;
+      const tp = T[1][rnd(c, tr, 84) * T[1].length | 0]; const ddx = x - px, ddy = y - py, door = Math.abs(ddx) > Math.abs(ddy) ? (ddx > 0 ? 3 : 2) : (ddy > 0 ? 1 : 0); ruin(px, py, bk, ++n, { dm: clamp(cdm + (rnd(c, tr, 85) - .5) * .14, .1, .95), cd, tp, cl: c, door }); street(x, y, px, py, mat, cdm, c * 100 + j); } }
   /* magas vízvezeték-romok a hegyvidékeken */
   { let n = 0; for (let k = 0; k < 900 && n < 11; k++) { const rg = ['jeg', 'kak', 'so', 'mely', 'nap', 'mez', 'jeg', 'kak'][k % 8], c0 = RK[rg].c, a = rnd(k, 3, 41) * TAU, dd = 1500 + rnd(k, 4, 41) * 3800, x = c0[0] + Math.cos(a) * dd, y = c0[1] + Math.sin(a) * dd, L = 1300 + rnd(k, 5, 41) * 900, hz = rnd(k, 6, 41) < .5;
       if (biomeW(x, y).k !== rg || land(x, y) < .15) continue; const ok = [0, .25, .5, .75, 1].every(t => { const px = hz ? x - L / 2 + t * L : x, py = hz ? y : y - L / 2 + t * L; return land(px, py) > .1 && !inPad(px, py, 200) && roadD(px, py) > 120 && !RUINS.some(r => hyp(r[0] - px, r[1] - py) < 500); }); if (!ok) continue; if (aqueduct(x, y, L, hz, n)) n++; } }
