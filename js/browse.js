@@ -1,11 +1,11 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611241759';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611241759';
-import * as Player from './player.js?v=202611241759';
-import * as Party from './party.js?v=202611241759';
-import * as VP from './vplayer.js?v=202611241759';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611241759';
-import * as ArcL from './arcade-lista.js?v=202611241759';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611241832';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611241832';
+import * as Player from './player.js?v=202611241832';
+import * as Party from './party.js?v=202611241832';
+import * as VP from './vplayer.js?v=202611241832';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611241832';
+import * as ArcL from './arcade-lista.js?v=202611241832';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -327,6 +327,25 @@ export async function modRenameGuest(uid, raw) { if (!C.isMod() || typeof uid !=
   if (await nickTaken(n, uid)) { const f = await freeNick(n, uid); return { err: 'Ez a név már foglalt – szabad: ' + f, free: f }; }
   try { const old = await FB.getDocs(FB.query(FB.collection(db, 'guestnames'), FB.where('uid', '==', uid))); await FB.setDoc(gnRef(n), { uid, nick: n, at: FB.serverTimestamp(), lock: true }); await Promise.all(old.docs.filter(d => d.id !== n.toLowerCase()).map(d => FB.deleteDoc(d.ref).catch(() => {}))); toast('Vendég átnevezve: ' + n); return { ok: true }; }
   catch (e) { return { err: 'Nem sikerült: ' + errText(e) }; } }
+/* moderátor: vendégfiók összevonása egy regisztrált fiókkal – a ranglistás eredmények (mindenkori, e heti) és a Drift-idők átkerülnek,
+   játékonként a jobbik marad; a vendég jelenléte és neve törlődik, a merges/{vendég} jelzi neki, hogy a fiókjával lépjen be */
+const DRIFT_TRACKS = ['belvaros', 'neon', 'kikoto', 'csillag', 'kigyo', 'szoloheggy', 'erdei', 'nyolcas', 'szerpentin', 'csucstamadas', 'teli', 'sivatag'];
+export async function mergeGuest(gid, uid) { const ok = s => typeof s === 'string' && /^[\w-]{6,128}$/.test(s); if (!C.isMod() || !ok(gid) || !ok(uid) || gid === uid || !S().users.get(uid)) return { err: 'Nincs jogosultság vagy érvénytelen fiók.' };
+  const wk = weekKey(); let moved = 0, gnick = '';
+  try {
+    for (const g of GAMES) for (const lb of [g.id, g.id + '_' + wk]) { const gr = FB.doc(db, 'leaderboards', lb, 'scores', gid), gs = await FB.getDoc(gr); if (!gs.exists()) continue; const gd = gs.data(); gnick = gnick || gd.nick || '';
+      const tr = FB.doc(db, 'leaderboards', lb, 'scores', uid), t = (await FB.getDoc(tr)).data(), best = Math.max(+gd.best || 0, +t?.best || 0), wins = (gd.wins || 0) + (t?.wins || 0);
+      if (!t || best > (+t.best || 0) || wins !== (t.wins || 0)) await FB.setDoc(tr, { best, at: FB.serverTimestamp(), ...(wins ? { wins } : {}), merged: gid }); await FB.deleteDoc(gr); moved++; }
+    for (const tk of DRIFT_TRACKS) { const gr = FB.doc(db, 'ghosts', tk, 'runs', gid), gs = await FB.getDoc(gr); if (!gs.exists()) continue; const gd = gs.data(), tr = FB.doc(db, 'ghosts', tk, 'runs', uid), t = (await FB.getDoc(tr)).data();
+      if (!t || gd.ms < t.ms || gd.rms < t.rms) { const lap = !t || gd.ms <= t.ms ? gd : t; await FB.setDoc(tr, { ms: Math.min(gd.ms, t?.ms ?? gd.ms), rms: Math.min(gd.rms, t?.rms ?? gd.rms), car: lap.car, path: lap.path, at: FB.serverTimestamp(), merged: gid }); }
+      await FB.deleteDoc(gr); moved++; }
+    await FB.setDoc(FB.doc(db, 'merges', gid), { into: uid, by: C.uid(), at: FB.serverTimestamp() });
+    const names = await FB.getDocs(FB.query(FB.collection(db, 'guestnames'), FB.where('uid', '==', gid))); gnick = gnick || names.docs[0]?.data().nick || 'Vendég'; await Promise.all(names.docs.map(d => FB.deleteDoc(d.ref).catch(() => {})));
+    await FB.deleteDoc(FB.doc(db, 'guests', gid)).catch(() => {});
+    audit('guest.merge', gnick, '→ ' + S().users.get(uid).name); toast(`Összevonva: ${gnick} → ${S().users.get(uid).name} (${moved} eredmény)`); return { ok: true, moved };
+  } catch (e) { return { err: 'Nem sikerült: ' + errText(e) + (moved ? ` (${moved} eredmény már átkerült)` : '') }; } }
+/* vendégként: ha a fiókot egy moderátor összevonta egy regisztrált fiókkal, szólunk, hogy azzal lépjen be */
+export async function mergedNotice() { if (!guest()) return; try { const s = await FB.getDoc(FB.doc(db, 'merges', C.uid())); if (!s.exists()) return; const u = S().users.get(s.data().into); toast(`Ezt a vendégfiókot összevontuk${u ? ' a(z) ' + u.name + ' fiókkal' : ' egy regisztrált fiókkal'} – az eredményeid ott vannak. Jelentkezz be azzal a fiókkal.`); } catch (_) {} }
 export function arcade(id) {
   cleanup(); watchForced();
   document.title = 'Arcade · HGWS';

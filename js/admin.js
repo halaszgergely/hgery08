@@ -1,7 +1,7 @@
 // HGWS – kezelőfelület: tagok és rangok, tagek, filmek, zenék, csatornák, jóváhagyások, rangok szerkesztése
-import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611241759';
-import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611241759';
-import { githubRepo } from '../firebase-config.js?v=202611241759';
+import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611241832';
+import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611241832';
+import { githubRepo } from '../firebase-config.js?v=202611241832';
 
 let C = null, current = null;
 /* e-mail címek: csak adminok és a tulaj olvashatják (emails/{uid}); a lista megnyitásakor egyszer töltjük be */
@@ -73,7 +73,7 @@ function zqEditor(v, again) { C.setTitle('<i class="ic ic-pencil"></i>', 'Zero Q
 /* ================= TAGOK ÉS RANGOK ================= */
 let mq = '';
 /* vendégfiókok: a jelenlétüket (guests) és a lefoglalt/moderátor által adott nevüket (guestnames) mutatja; innen át is nevezhetők */
-const GST = { list: [], at: 0, q: '' };
+const GST = { list: [], at: 0, q: '', mg: null, mq: '', mt: null };
 async function loadGuests() { const [g, n] = await Promise.all([FB.getDocs(FB.query(FB.collection(db, 'guests'), FB.orderBy('lastSeen', 'desc'), FB.limit(300))).catch(() => null), FB.getDocs(FB.collection(db, 'guestnames')).catch(() => null)]);
   const m = new Map(); if (g) g.docs.forEach(d => m.set(d.id, { id: d.id, nick: d.data().nick || 'Vendég', seen: d.data().lastSeen }));
   if (n) n.docs.forEach(d => { const x = d.data(); if (!x.uid) return; const o = m.get(x.uid) || { id: x.uid, nick: x.nick, seen: x.at }; if (x.lock) { o.nick = x.nick; o.lock = true; } else if (!o.lock && !m.has(x.uid)) o.nick = x.nick; m.set(x.uid, o); });
@@ -81,13 +81,20 @@ async function loadGuests() { const [g, n] = await Promise.all([FB.getDocs(FB.qu
 function guestsPage(v, again) {
   C.setTitle('<i class="ic ic-user"></i>', 'Vendégek', 'Vendégfiókok és nevük');
   if (!again || Date.now() - GST.at > 30e3) loadGuests().then(() => { if (current === 'vendegek') guestsPage(v, true); });
-  const focus = again && document.activeElement?.id === 'gq', l = GST.list.filter(x => !GST.q || x.nick.toLowerCase().includes(GST.q));
+  const focus = again && document.activeElement?.id, l = GST.list.filter(x => !GST.q || x.nick.toLowerCase().includes(GST.q));
+  const mrow = x => { if (GST.mg !== x.id) return ''; const cand = [...C.S.users.values()].filter(u => !u.banned && GST.mq && u.name.toLowerCase().includes(GST.mq)).slice(0, 6), t = GST.mt && C.U(GST.mt);
+    return `<div style="flex-basis:100%;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;justify-content:flex-end;padding:.5rem 0 .2rem"><input class="inp" id="gmq" placeholder="Fiók keresése" value="${esc(GST.mq)}" style="width:220px" autocomplete="off">${cand.map(u => `<button class="btn plain sm${GST.mt === u.id ? ' on' : ''}" data-gmt="${esc(u.id)}">${esc(u.name)}</button>`).join('')}${t ? `<button class="btn goldb sm" data-gmok="${esc(x.id)}">Összevonás → ${esc(t.name)}</button>` : ''}<small data-gmerr style="flex-basis:100%;text-align:right;color:#ff8080"></small></div>`; };
   v.innerHTML = `<div class="page"><div class="eyebrow">// KEZELÉS</div>${tabs()}<h1 class="gold">Vendégek</h1><div style="display:flex;gap:.6rem;align-items:center;margin:.8rem 0"><input class="inp" id="gq" placeholder="Keresés név szerint" value="${esc(GST.q)}" style="max-width:320px"><small class="hint">${GST.list.length} vendég</small></div>
     ${l.length ? l.map(x => `<div class="arow"><span class="avw"><span style="width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--bg3);font-size:1.2rem">🎮</span></span>
       <div class="who"><b>${esc(x.nick)}</b><small>${x.seen ? 'utoljára ' + esc(timeLabel(x.seen)) : ''} · <span style="user-select:all;opacity:.7">${esc(x.id.slice(0, 10))}…</span></small><div>${x.lock ? '<span class="tg b"><i class="ic ic-lock"></i> MODERÁTOR ADTA</span>' : ''}${badName(x.nick) ? `<span class="tg red"><i class="ic ic-triangle-alert"></i> NEM MEGFELELŐ NÉV</span>` : ''}</div></div>
-      <div class="ac"><input class="inp" data-gn="${esc(x.id)}" maxlength="20" value="${esc(x.nick)}" style="width:190px" autocomplete="off"><button class="btn plain sm" data-gnok="${esc(x.id)}">Átnevezés</button></div>
-      <small data-gnerr="${esc(x.id)}" style="flex-basis:100%;text-align:right;color:#ff8080"></small></div>`).join('') : `<div class="empty">${GST.at ? (GST.fail ? 'A vendéglista most nem érhető el.' : 'Nincs találat.') : 'Betöltés…'}</div>`}</div>`;
-  const q = $('#gq'); q.oninput = () => { GST.q = q.value.toLowerCase(); guestsPage(v, true); }; if (focus) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+      <div class="ac"><input class="inp" data-gn="${esc(x.id)}" maxlength="20" value="${esc(x.nick)}" style="width:190px" autocomplete="off"><button class="btn plain sm" data-gnok="${esc(x.id)}">Átnevezés</button><button class="btn plain sm${GST.mg === x.id ? ' on' : ''}" data-gm="${esc(x.id)}"><i class="ic ic-users"></i> Összevonás</button></div>
+      <small data-gnerr="${esc(x.id)}" style="flex-basis:100%;text-align:right;color:#ff8080"></small>${mrow(x)}</div>`).join('') : `<div class="empty">${GST.at ? (GST.fail ? 'A vendéglista most nem érhető el.' : 'Nincs találat.') : 'Betöltés…'}</div>`}</div>`;
+  const q = $('#gq'); q.oninput = () => { GST.q = q.value.toLowerCase(); guestsPage(v, true); }; if (focus === 'gq') { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+  const mq = $('#gmq'); if (mq) { mq.oninput = () => { GST.mq = mq.value.toLowerCase(); guestsPage(v, true); }; if (focus === 'gmq') { mq.focus(); mq.setSelectionRange(mq.value.length, mq.value.length); } }
+  $$('[data-gm]', v).forEach(b => b.onclick = () => { GST.mg = GST.mg === b.dataset.gm ? null : b.dataset.gm; GST.mq = ''; GST.mt = null; guestsPage(v, true); });
+  $$('[data-gmt]', v).forEach(b => b.onclick = () => { GST.mt = b.dataset.gmt; guestsPage(v, true); });
+  $$('[data-gmok]', v).forEach(b => b.onclick = async () => { if (!b.classList.contains('sure')) { b.classList.add('sure'); b.textContent = 'Biztos? Nem vonható vissza'; setTimeout(() => { if (b.isConnected) { b.classList.remove('sure'); guestsPage(v, true); } }, 3500); return; }
+    b.disabled = true; b.textContent = 'Összevonás…'; const r = await C.mergeGuest(b.dataset.gmok, GST.mt); if (r.ok) { GST.mg = GST.mt = null; GST.mq = ''; GST.at = 0; guestsPage(v); return; } const er = v.querySelector('[data-gmerr]'); if (er) er.textContent = r.err || ''; b.disabled = false; b.textContent = 'Újra'; });
   $$('[data-gnok]', v).forEach(b => b.onclick = async () => { const id = b.dataset.gnok, inp = v.querySelector(`[data-gn="${id}"]`), er = v.querySelector(`[data-gnerr="${id}"]`); b.disabled = true; const r = await C.renameGuest(id, inp.value); b.disabled = false;
     if (r.ok) { GST.at = 0; guestsPage(v, true); return; } if (r.free) inp.value = r.free; er.textContent = r.err || ''; });
 }
@@ -771,7 +778,7 @@ async function statsPage(v) {
     const st = { nyitott: ['Nyitott', '#6cc6ff'], folyamatban: ['Folyamatban', '#ffa94d'], kesz: ['Kész', '#5ee08a'], elutasitva: ['Elutasítva', '#ff7a6e'] };
     $('#stIdea').innerHTML = s.size ? hbars(Object.entries(st).map(([k, [l, c]]) => [l, s.docs.filter(d => d.data().status === k).length, c]), ' db') : '<div class="estate"><i class="ic ic-lightbulb"></i><b>Még nincs beküldött ötlet</b></div>';
   }).catch(() => { $('#stIdea').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
-  import('./browse.js?v=202611241759').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
+  import('./browse.js?v=202611241832').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
     .then(l => { $('#stArc').innerHTML = hbars(l, ' játékos'); });
 }
 const lbScores = g => FB.collection(db, 'leaderboards', g, 'scores');
