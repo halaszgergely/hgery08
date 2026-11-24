@@ -1,7 +1,7 @@
 /* ZERO QUEST – 3D megjelenítés (three.js): terep, ég, tenger, fények, kamera, szereplők, effektek, zónák */
-import * as THREE from './lib/three.module.min.js?v=202611242137';
-import { GB, M, mm, MAT, hex, makeMan, setGear, poseMan, makeBeast, poseBeast, weaponMesh, shieldMesh, smat, grassProto, treeProto, statueBody } from './modell.js?v=202611242137';
-import { propInto, bldInto } from './kellek.js?v=202611242137';
+import * as THREE from './lib/three.module.min.js?v=202611242139';
+import { GB, M, mm, MAT, hex, makeMan, setGear, poseMan, makeBeast, poseBeast, weaponMesh, shieldMesh, smat, grassProto, treeProto, statueBody } from './modell.js?v=202611242139';
+import { propInto, bldInto } from './kellek.js?v=202611242139';
 
 const glc = document.getElementById('g');
 const RD = new THREE.WebGLRenderer({ canvas: glc, antialias: true, powerPreference: 'high-performance' });
@@ -206,7 +206,7 @@ const pickG = new Map(); const PKC = { gold: 0x6cc0ff, ore: 0xcfe6f6, pot: 0xff6
 
 /* ---------- kamera, célzás, vetítés ---------- */
 let pitch = .95, dist = 700, zoomT = 700, tgt = new THREE.Vector3(), midDrag = null; const ray = new THREE.Raycaster(), pl = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), ndc = new THREE.Vector2();
-let zoomS = 340, distS = 340; addEventListener('wheel', e => { if (ST === 'map' || ST === 'inv' || ST === 'shop' || ST === 'menu') return; if (ST === 'edit') { zoomT = clamp(zoomT * (e.deltaY > 0 ? 1.12 : .89), 150, 5200); return; } if (CMODE === 'souls') zoomS = clamp(zoomS * (e.deltaY > 0 ? 1.1 : .9), 170, 760); else zoomT = clamp(zoomT * (e.deltaY > 0 ? 1.12 : .89), 380, 1900); }, { passive: true });
+let zoomS = 340, distS = 340; addEventListener('wheel', e => { if (ST === 'map' || ST === 'inv' || ST === 'shop' || ST === 'menu') return; if (ST === 'edit') { if (e.altKey) CAM.eh = clamp((CAM.eh || 0) - e.deltaY * .8, -3000, 6000); else zoomT = clamp(zoomT * (e.deltaY > 0 ? 1.12 : .89), 150, 5200); return; } if (CMODE === 'souls') zoomS = clamp(zoomS * (e.deltaY > 0 ? 1.1 : .9), 170, 760); else zoomT = clamp(zoomT * (e.deltaY > 0 ? 1.12 : .89), 380, 1900); }, { passive: true });
 /* vállkamera: a kamera és a hős közé kerülő talaj vagy fal elé húzza a kamerát */
 function clipCam(tx, ty, tz, px, py, pz) { for (let k = 1; k <= 14; k++) { const t = k / 14, x = tx + (px - tx) * t, y = ty + (py - ty) * t, z = tz + (pz - tz) * t; if (y < groundAt(x, z) + 16) return Math.max(.12, (k - 1.2) / 14); let hit = false; near(x, z, 18, o => { if (hit || o.t !== 'wall' || !o.solid || o.off || o.rail) return; if (Math.abs(x - o.x) < o.w / 2 + 10 && Math.abs(z - o.y) < o.d / 2 + 10) { const zz = zoneAt(o.x, o.y), base = zz ? zoneH(zz, o.x, o.y) : o.b != null ? BLDS[o.b].base + (o.fz ? FH : 0) : GH(o.x, o.y); if (y < base + (o.h || 120) + 8 && y > base - 10) hit = true; } }); if (hit) return Math.max(.12, (k - 1.2) / 14); } return 1; }
 addEventListener('pointerdown', e => { if (e.button === 1 || (e.button === 0 && e.altKey)) { midDrag = [e.clientX, e.clientY]; e.preventDefault(); } });
@@ -233,12 +233,12 @@ function render() { const now = performance.now(), dt = Math.min(.05, (now - las
   if (K.has('KeyZ')) CAMYAW += dt * 1.6; if (K.has('KeyX')) CAMYAW -= dt * 1.6;
   dist = lerp(dist, zoomT / (CAM.z || 1), 1 - Math.pow(.02, dt));
   const inGame = P && ST !== 'title', fx = CAM.x, fy = CAM.y; let gy = inGame && hyp(fx - P.x, fy - P.y) < 300 ? pElev() : (zoneAt(fx, fy) ? zoneH(zoneAt(fx, fy), fx, fy) : Math.max(GH(fx, fy), SEA));
-  const SOUL = CMODE === 'souls' && inGame && ST !== 'cine', lift = SOUL ? 74 : 40; tgt.x = fx; tgt.z = fy; tgt.y = lerp(tgt.y || gy, gy + lift, Math.abs(tgt.y - gy - lift) > 600 ? 1 : 1 - Math.pow(SOUL ? .00002 : .004, dt)); if (SOUL) { tgt.x = P.x; tgt.z = P.y; }
+  const SOUL = CMODE === 'souls' && inGame && ST !== 'cine', lift = SOUL ? 74 : ST === 'edit' ? 40 + (CAM.eh || 0) : 40; tgt.x = fx; tgt.z = fy; tgt.y = lerp(tgt.y || gy, gy + lift, Math.abs(tgt.y - gy - lift) > 600 ? 1 : 1 - Math.pow(SOUL ? .00002 : ST === 'edit' ? 1e-6 : .004, dt)); if (SOUL) { tgt.x = P.x; tgt.z = P.y; }
   const z = palette(fx, fy, dt), sh = (CAM.sh || 0) * .9, zin = z && z.kind !== 'tor' && !z.star && ST !== 'edit', cp = ST === 'title' ? .5 : zin ? Math.max(pitch, 1.18) : pitch, cd = ST === 'title' ? 2600 : zin ? Math.min(dist, 900) : dist, yaw = ST === 'title' ? TT * .02 : CAMYAW;
   if (SOUL) { const p2 = CAMPITCH, d0 = zoomS / (CAM.z || 1), wx = tgt.x + Math.sin(yaw) * Math.cos(p2) * d0, wy = tgt.y + Math.sin(p2) * d0, wz = tgt.z + Math.cos(yaw) * Math.cos(p2) * d0, k = clipCam(tgt.x, tgt.y, tgt.z, wx, wy, wz) * d0; distS = k < distS ? k : lerp(distS, k, 1 - Math.pow(.02, dt));
     cam.position.set(tgt.x + Math.sin(yaw) * Math.cos(p2) * distS + (Math.random() - .5) * sh, tgt.y + Math.sin(p2) * distS + (Math.random() - .5) * sh, tgt.z + Math.cos(yaw) * Math.cos(p2) * distS); if (cam.fov !== 55 + (cam.aspect < 1 ? 14 : 0)) { cam.fov = 55 + (cam.aspect < 1 ? 14 : 0); cam.updateProjectionMatrix(); } }
   else { cam.position.set(tgt.x + Math.sin(yaw) * Math.cos(cp) * cd + (Math.random() - .5) * sh, tgt.y + Math.sin(cp) * cd + (Math.random() - .5) * sh, tgt.z + Math.cos(yaw) * Math.cos(cp) * cd); const f0 = cam.aspect < 1 ? 42 + 26 * Math.min(1, (1 - cam.aspect) * 1.6) : 42; if (cam.fov !== f0) { cam.fov = f0; cam.updateProjectionMatrix(); } }
-  if (!z) { const gh = GH(cam.position.x, cam.position.z); if (cam.position.y < gh + (SOUL ? 14 : 80)) cam.position.y = gh + (SOUL ? 14 : 80); } if (SOUL) cam.lookAt(tgt.x, tgt.y + 14, tgt.z); else cam.lookAt(tgt); cam.updateMatrixWorld();
+  if (!z && !(ST === 'edit' && (CAM.eh || 0) < 0)) { const gh = GH(cam.position.x, cam.position.z); if (cam.position.y < gh + (SOUL ? 14 : 80)) cam.position.y = gh + (SOUL ? 14 : 80); } if (SOUL) cam.lookAt(tgt.x, tgt.y + 14, tgt.z); else cam.lookAt(tgt); cam.updateMatrixWorld();
   /* ég, köd, fények */
   skyU.top.value.copy(cur.top); skyU.hor.value.copy(cur.hor); skyU.sunC.value.copy(cur.sun).multiplyScalar(z ? 0 : 1); skyU.dark.value = z && z.kind !== 'tor' ? 1 : 0; let triW = 0; if (!z) { regW(fx, fy, PW3); triW = PW3[REGS.findIndex(r => r.k === 'nap')]; } skyU.tri.value = triW;
   scene.fog.color.copy(cur.fog); scene.fog.near = z ? (z.star ? 4500 : z.kind === 'tor' ? 1500 : 500) : 1700 - triW * 300; scene.fog.far = z ? (z.star ? 30000 : z.kind === 'tor' ? 6000 : 2600) : Math.min(7600 - triW * 1000, (LOWQ ? 4 : 6) * CK - 250); if (ST === 'edit') { scene.fog.near = 4000; scene.fog.far = Math.max(9000, dist * 2.6); } RD.setClearColor(cur.fog);
