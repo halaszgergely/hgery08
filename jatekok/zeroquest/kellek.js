@@ -1,5 +1,5 @@
 /* ZERO QUEST – tereptárgyak és épületek geometriája (világkoordinátában, darabonként összefűzve) */
-import { GB, M, mm, MAT, hex, statueBody, treeProto, rockProto, bushProto } from './modell.js?v=202611241934';
+import { GB, M, mm, MAT, hex, statueBody, treeProto, rockProto, bushProto } from './modell.js?v=202611242044';
 const TAU = Math.PI * 2;
 const mat = k => MAT[k] || MAT.ko, mulc = (a, k) => [a[0] * k, a[1] * k, a[2] * k], mixc = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const R = (a, b, c) => rnd(a | 0, b | 0, c | 0);
@@ -25,9 +25,9 @@ export function propInto(B, o, g) { const x = o.x, z = o.y, t = o.t, sd = (x * 1
     case 'pillar': pillar(B, x, g, z, o.r || 20, o.h || 150, o.dg ? (o.mat || 'ko') : mk, o.broken, sd); break;
     case 'wall': { const hh = o.h || 120, a = o.w >= o.d, L = a ? o.w : o.d, th = a ? o.d : o.w; if (o.nr || o.rail) return; const x0 = a ? x - L / 2 : x, x1 = a ? x + L / 2 : x, z0 = a ? z : z - L / 2, z1 = a ? z : z + L / 2;
       stoneWall(B, x0, z0, x1, z1, g - 6, hh + 6, th, o.dg ? (o.dg === 'rez' ? 'sar' : o.dg === 'gy' ? 'fa' : o.dg === 'mely' ? 'sotet' : o.dg) : mk, { cren: o.cren, big: o.city, jag: !o.city && !o.zw && !o.cren ? q => hh * (.55 + .45 * Math.abs(Math.sin(q * 7 + sd))) : null }); break; }
-    case 'kocka': B.box(M(x, g, z), o.w || 100, o.h || 100, o.d || 100, c[0], c[2]); break;
-    case 'henger': B.cyl(M(x, g, z, Math.PI / 2 - Math.PI / (o.n || 8)), o.r || 50, o.r || 50, o.h || 100, clamp(o.n | 0 || 8, 3, 48), c[0], true, c[2]); break;
-    case 'kup': B.cyl(M(x, g, z, Math.PI / 2 - Math.PI / (o.n || 8)), 0, o.r || 50, o.h || 100, clamp(o.n | 0 || 8, 3, 48), c[0]); break;
+    case 'kocka': if (o.pat) { patBox(B, x, g, z, o.w || 100, o.h || 100, o.d || 100, o.pat, mk); break; } B.box(M(x, g, z), o.w || 100, o.h || 100, o.d || 100, c[0], c[2]); break;
+    case 'henger': if (o.pat) { patCyl(B, x, g, z, o.r || 50, o.h || 100, clamp(o.n | 0 || 8, 3, 48), o.pat, mk); break; } B.cyl(M(x, g, z, Math.PI / 2 - Math.PI / (o.n || 8)), o.r || 50, o.r || 50, o.h || 100, clamp(o.n | 0 || 8, 3, 48), c[0], true, c[2]); break;
+    case 'kup': if (o.pat) { patCone(B, x, g, z, o.r || 50, o.h || 100, clamp(o.n | 0 || 8, 3, 48), o.pat, mk); break; } B.cyl(M(x, g, z, Math.PI / 2 - Math.PI / (o.n || 8)), 0, o.r || 50, o.h || 100, clamp(o.n | 0 || 8, 3, 48), c[0]); break;
     case 'menhir': B.box(M(x, g - 5, z, o.a || 0, (R(sd, 1, 2) - .5) * .2, (R(sd, 2, 2) - .5) * .2), 26, o.h || 120, 16, c[1]); break;
     case 'totem': { const h = o.h || 120; B.cyl(M(x, g, z), 9, 11, h, 7, hex('#5a4030')); for (let i = 0; i < 3; i++) B.box(M(x, g + h * (.3 + i * .25), z, o.a || 0), 26, 14, 20, hex(['#7a4a2a', '#4a6a3a', '#8a7a4a'][i])); B.ico(M(x, g + h + 6, z), 10, 0, hex('#d8d0c0'), .3); break; }
     case 'statue': { const s = o.dust ? .95 : 1.25, m = M(x, g, z, o.a || 0, 0, 0, s), cc = o.dust ? hex('#8a7e68') : c[0]; if (o.broken) { statueBody(B, mm(m, M(0, -50, 0)), cc, o.v || 0); B.ico(M(x + 30, g + 8, z + 10), 12, 0, cc, .3); } else statueBody(B, m, cc, o.v || 0); if (!o.dust) B.box(M(x, g - 8, z), 56, 14, 56, c[1]); break; }
@@ -135,6 +135,45 @@ export function propInto(B, o, g) { const x = o.x, z = o.y, t = o.t, sd = (x * 1
     case 'rack': B.box(M(x, g, z), 80, 6, 20, hex('#4e3622')); B.box(M(x, g + 70, z), 80, 5, 8, hex('#4e3622')); for (let i = -2; i <= 2; i++) B.cyl(M(x + i * 15, g + 4, z + 4, 0, -.12, 0), 1.6, 1.6, 90, 4, hex(i % 2 ? '#a0a4a8' : '#5a3a22')); break;
     case 'chains': for (const s of [-30, 30]) for (let i = 0; i < 6; i++) B.cyl(M(x + s, g + 160 - i * 14, z, 0, 0, i % 2 ? .4 : -.4), 2, 2, 14, 4, hex('#4a4644')); break;
   } }
+/* ---------- mintázott alakzatok: a felületet mindig egyforma méretű kövek, csempék, deszkák, cserepek töltik ki (nem nyúlnak) ---------- */
+const WOOD = [hex('#7a5a3a'), hex('#4e3620')], CLAY = [hex('#a44e30'), hex('#6e2e1c')];
+function pcol(pat, mk, i, j) { const r = R(i * 13 + 7, j * 29 + 3, 77); if (pat === 'gerenda') return mixc(WOOD[0], WOOD[1], r); if (pat === 'cserep') return mixc(CLAY[0], CLAY[1], r); const c = mat(mk); return mixc(c[0], c[2], r * .85); }
+const mortar = (pat, mk) => pat === 'gerenda' ? hex('#2e2014') : pat === 'cserep' ? hex('#3a2a20') : mulc(mat(mk)[1], .55);
+/* függőleges oldal A→B között: téglasorok kötésben, vagy függőleges deszkák; n: kifelé mutató irány */
+function faceFill(B, ax, az, bx, bz, nx, nz, y0, y1, pat, mk, k0) { const L = Math.hypot(bx - ax, bz - az); if (L < 3 || y1 - y0 < 3) return; const ux = (bx - ax) / L, uz = (bz - az) / L, ry = Math.atan2(-uz, ux), th = pat === 'gerenda' ? 5 : 7;
+  const put = (t0, t1, ya, yb, i, j) => { const tm = (t0 + t1) / 2, px = ax + ux * tm + nx * (th / 2 - 2), pz = az + uz * tm + nz * (th / 2 - 2); B.box(M(px, ya + .9, pz, ry), Math.max(1, t1 - t0 - 2.2), Math.max(1, yb - ya - 2), th, pcol(pat, mk, i + k0, j)); };
+  if (pat === 'gerenda') { const n = Math.max(1, Math.round(L / 22)), bw = L / n, sn = Math.max(1, Math.round((y1 - y0) / 360)), sh = (y1 - y0) / sn; for (let i = 0; i < n; i++) for (let j = 0; j < sn; j++) { const o = (i % 2) * sh / 2, ya = Math.max(y0, y0 + j * sh - o), yb = Math.min(y1, y0 + (j + 1) * sh - o); put(i * bw, (i + 1) * bw, ya, j === sn - 1 ? y1 : yb, i, j); if (i % 2 && j === sn - 1 && yb < y1) put(i * bw, (i + 1) * bw, yb, y1, i, j + 9); } return; }
+  const BH = 26, BL = 54, nc = Math.max(1, Math.round((y1 - y0) / BH)), ch = (y1 - y0) / nc, n = Math.max(1, Math.round(L / BL)), bl = L / n;
+  for (let c = 0; c < nc; c++) { const ya = y0 + c * ch, yb = ya + ch; if (c % 2 && n > 1) { put(0, bl / 2, ya, yb, -1, c); for (let i = 0; i < n - 1; i++) put(bl / 2 + i * bl, bl / 2 + (i + 1) * bl, ya, yb, i, c); put(L - bl / 2, L, ya, yb, n, c); } else for (let i = 0; i < n; i++) put(i * bl, (i + 1) * bl, ya, yb, i, c); } }
+/* vízszintes felső lap: csempe, téglafedés, cserépsorok (átfedve), deszkapadló */
+function topFill(B, x, y, z, w, d, pat, mk, clip) { const put = (x0, z0, x1, z1, yy, hh, col, tilt) => { if (!clip) return B.box(M((x0 + x1) / 2, yy, (z0 + z1) / 2, 0, tilt || 0), x1 - x0, hh, z1 - z0, col); const P = clipPoly([[x0, z0], [x1, z0], [x1, z1], [x0, z1]], clip); if (P.length < 3) return; if (P.length === 4 && P.every(p => (p[0] === x0 || p[0] === x1) && (p[1] === z0 || p[1] === z1))) return B.box(M((x0 + x1) / 2, yy, (z0 + z1) / 2, 0, tilt || 0), x1 - x0, hh, z1 - z0, col); slab(B, P, (u, v, t) => [u, yy + t, v], [0, 1, 0], hh, col); }; if (pat === 'cserep') { const TW = 34, TD = 40, nr = Math.max(1, Math.ceil(d / (TD * .72))), nt = Math.max(1, Math.round(w / TW)), tw = w / nt;
+    for (let r = 0; r < nr; r++) { const zz = z - d / 2 + r * (d - TD) / Math.max(1, nr - 1) + TD / 2, of = (r % 2) * tw / 2; for (let i = -1; i < nt; i++) { const x0 = Math.max(-w / 2, -w / 2 + i * tw + of), x1 = Math.min(w / 2, -w / 2 + (i + 1) * tw + of); if (x1 - x0 < 4) continue; const ax = x + x0 + 1, bx = x + x1 - 1; put(ax, zz - TD / 2, bx, zz + TD / 2, y + r * .9, 4, pcol(pat, mk, i, r), clip ? 0 : -.13); } } return; }
+  const gw = pat === 'gerenda' ? 22 : pat === 'tegla' ? 54 : 60, gd = pat === 'gerenda' ? Math.max(60, Math.min(d, 360)) : pat === 'tegla' ? 26 : 60, ni = Math.max(1, Math.round(w / gw)), nj = Math.max(1, Math.round(d / gd)), cw = w / ni, cd = d / nj;
+  for (let i = 0; i < ni; i++) for (let j = 0; j < nj; j++) { const cx = x - w / 2 + (i + .5) * cw, cz = z - d / 2 + (j + .5) * cd; put(cx - cw / 2 + 1, cz - cd / 2 + 1, cx + cw / 2 - 1, cz + cd / 2 - 1, y - 1 + R(i, j, 81) * .8, 3, pcol(pat, mk, i, j)); } }
+const PMAX = 9000;
+/* konvex vágás (Sutherland–Hodgman) és vágott lap kihúzása: a csempék, cserepek a forma széléhez igazodnak */
+function clipPoly(P, C) { let out = P; for (let i = 0; i < C.length && out.length; i++) { const a = C[i], b = C[(i + 1) % C.length], inp = out, sd = p => (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]); out = [];
+    for (let j = 0; j < inp.length; j++) { const p = inp[j], q = inp[(j + 1) % inp.length], sp = sd(p), sq = sd(q); if (sp >= 0) out.push(p); if ((sp >= 0) !== (sq >= 0)) { const t = sp / (sp - sq); out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]); } } } return out; }
+function ccw(C) { let a = 0; for (let i = 0; i < C.length; i++) { const p = C[i], q = C[(i + 1) % C.length]; a += p[0] * q[1] - q[0] * p[1]; } return a < 0 ? C.slice().reverse() : C; }
+function triN(B, a, b, c, n, col) { const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2], d = (uy * vz - uz * vy) * n[0] + (uz * vx - ux * vz) * n[1] + (ux * vy - uy * vx) * n[2]; if (d < 0) [b, c] = [c, b]; B.tri(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2], col); }
+function slab(B, P, map, N, th, col) { const n = P.length, T = P.map(p => map(p[0], p[1], th)), L = P.map(p => map(p[0], p[1], 0)), cx = T.reduce((s, p) => s + p[0], 0) / n, cy = T.reduce((s, p) => s + p[1], 0) / n, cz = T.reduce((s, p) => s + p[2], 0) / n;
+  for (let i = 1; i < n - 1; i++) triN(B, T[0], T[i], T[i + 1], N, col); for (let i = 0; i < n; i++) { const j = (i + 1) % n, o = [(T[i][0] + T[j][0]) / 2 - cx, (T[i][1] + T[j][1]) / 2 - cy, (T[i][2] + T[j][2]) / 2 - cz]; triN(B, L[i], L[j], T[j], o, col); triN(B, L[i], T[j], T[i], o, col); } }
+function patBox(B, x, g, z, w, h, d, pat, mk) { B.box(M(x, g, z), w - 4, h - (pat === 'cserep' || pat === 'csempe' ? 2 : 0), d - 4, mortar(pat, mk));
+  const est = (w + d) * 2 * h / (54 * 26) + w * d / 1600; if (est > PMAX) { B.box(M(x, g, z), w, h, d, pcol(pat, mk, 0, 0), pcol(pat, mk, 1, 1)); return; }
+  if (pat === 'tegla' || pat === 'gerenda') { const X0 = x - w / 2, X1 = x + w / 2, Z0 = z - d / 2, Z1 = z + d / 2; faceFill(B, X0, Z1, X1, Z1, 0, 1, g, g + h, pat, mk, 0); faceFill(B, X1, Z0, X0, Z0, 0, -1, g, g + h, pat, mk, 50); faceFill(B, X1, Z1, X1, Z0, 1, 0, g, g + h, pat, mk, 100); faceFill(B, X0, Z0, X0, Z1, -1, 0, g, g + h, pat, mk, 150); }
+  topFill(B, x, g + h, z, w - (pat === 'tegla' || pat === 'gerenda' ? 0 : 0), d, pat, mk); }
+function polyV(x, z, r, n, ry) { const V = []; for (let i = 0; i < n; i++) { const a = i / n * TAU, px = Math.cos(a) * r, pz = Math.sin(a) * r; V.push([x + px * Math.cos(ry) + pz * Math.sin(ry), z - px * Math.sin(ry) + pz * Math.cos(ry)]); } return V; }
+function patCyl(B, x, g, z, r, h, n, pat, mk) { const ry = Math.PI / 2 - Math.PI / n; B.cyl(M(x, g, z, ry), r - 3, r - 3, h - 2, n, mortar(pat, mk), true, mortar(pat, mk)); const V = polyV(x, z, r, n, ry);
+  if (2 * Math.PI * r * h / (54 * 26) > PMAX) return;
+  if (pat === 'tegla' || pat === 'gerenda') for (let i = 0; i < n; i++) { const a = V[i], b = V[(i + 1) % n], mx = (a[0] + b[0]) / 2 - x, mz = (a[1] + b[1]) / 2 - z, l = Math.hypot(mx, mz) || 1; faceFill(B, a[0], a[1], b[0], b[1], mx / l, mz / l, g, g + h, pat, mk, i * 40); }
+  topFill(B, x, g + h - 1, z, r * 2, r * 2, pat === 'gerenda' ? 'gerenda' : pat === 'tegla' ? 'csempe' : pat, mk, ccw(polyV(x, z, r - 2, n, ry))); }
+function patCone(B, x, g, z, r, h, n, pat, mk) { const ry = Math.PI / 2 - Math.PI / n; B.cyl(M(x, g, z, ry), 0, r - 2, h - 3, n, mortar(pat, mk)); const V = polyV(x, z, r, n, ry);
+  for (let i = 0; i < n; i++) { const a = V[i], b = V[(i + 1) % n], ex = b[0] - a[0], ez = b[1] - a[1], E = Math.hypot(ex, ez), ux = ex / E, uz = ez / E, mx = (a[0] + b[0]) / 2 - x, mz = (a[1] + b[1]) / 2 - z, ap = Math.hypot(mx, mz), S = Math.hypot(h, ap), phi = Math.atan2(h, ap);
+    const Vx = -mx / S, Vy = h / S, Vz = -mz / S; let N = [-uz * Vy, uz * Vx - ux * Vz, ux * Vy]; if (N[0] * mx + N[2] * mz < 0) N = N.map(q => -q);
+    const ox = x + mx, oz = z + mz, map = (s0, v, t) => [ox + ux * s0 + Vx * v + N[0] * t, g + Vy * v + N[1] * t, oz + uz * s0 + Vz * v + N[2] * t], tri = ccw([[-E / 2, 0], [E / 2, 0], [0, S]]);
+    const TD = pat === 'tegla' ? 26 : 38, TW = pat === 'tegla' ? 54 : 34, nr = Math.max(1, Math.round(S / (TD * .8))), rh = S / nr, nt = Math.max(1, Math.round(E / TW)), tw = E / nt;
+    for (let k = 0; k < nr; k++) { const v0 = k * rh, v1 = Math.min(S, v0 + rh * (pat === 'tegla' ? 1 : 1.15)), of = (k % 2) * tw / 2;
+      for (let j = -1; j <= nt; j++) { const s0 = -E / 2 + j * tw + of, s1 = s0 + tw, P = clipPoly([[s0 + 1, v0 + 1], [s1 - 1, v0 + 1], [s1 - 1, v1 - 1], [s0 + 1, v1 - 1]], tri); if (P.length >= 3) slab(B, P, map, N, 4, pcol(pat, mk, j + i * 30, k)); } } } }
 function doorInto(B, o, g, x, z) { const dk = o.dk || 'hatch', st = hex('#5a544c');
   if (dk === 'hatch') { B.box(M(x, g, z), 80, 3, 70, hex('#1a1612')); B.box(M(x - 50, g, z, 0, 0, -1.2), 70, 3, 66, hex('#5a4030')); for (let i = 0; i < 4; i++) B.box(M(x, g - 4 - i * 10, z - 24 + i * 16), 70, 3, 14, hex('#2a2622')); }
   else if (dk === 'stairs' || dk === 'shaft') { const up = o.up || o.out; B.box(M(x, g, z - 10), 120, 150, 26, hex('#2e2a26')); B.box(M(x, g, z - 2), 80, 120, 14, hex('#0a0908')); for (let i = 0; i < 5; i++) B.box(M(x, g + (up ? i * 10 : -i * 6), z + 10 + i * 16), 80, 6, 16, mulc(st, 1 - i * .08)); }

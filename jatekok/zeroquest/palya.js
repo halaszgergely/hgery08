@@ -1,7 +1,7 @@
 /* ---------- kézi pályamódosítások (palya.json) betöltése a generált világra ----------
    Formátum: { v: 1, terr: [[i, j, eltolás], …] (64-es rács), del: [uid, …], mod: { uid: [x, y, szög, méret] }, add: [{ id, t, x, y, a, s, …paraméterek }] }
    A generált tárgyak azonosítója a létrehozásuk sorszáma, a szórt növényzeté 's<cx>_<cy>_<i>', a lerakottaké a saját id-jük. */
-const MED = { add: [], del: new Set(), mod: new Map(), nid: 1, dun: [] };
+const MED = { add: [], del: new Set(), mod: new Map(), nid: 1, dun: [], pre: [], en: { mod: new Map(), del: new Set(), add: [] } };
 /* ---------- saját kazamaták: külön zóna a világ keleti szélén túl, domborzattal (a peremén fal), kijárattal ---------- */
 function dunZone(d) { const hc = 64, hw = Math.ceil(d.w / hc) + 1, hh = Math.ceil(d.h / hc) + 1, hm = new Float32Array(hw * hh);
   for (let j = 0; j < hh; j++) for (let i = 0; i < hw; i++) { const e = Math.min(i, j, hw - 1 - i, hh - 1 - j); hm[i + j * hw] = e === 0 ? 420 : e === 1 ? 260 : 0; }
@@ -46,18 +46,27 @@ function setTrA(o, tr) { const [x, y, a, s, z, rx, rz, sx, sy, sz] = trN(tr); if
   if (!o.sc) gridAdd(o); edDyn(o); const m = Math.max(o.w || 0, o.d || 0, o.r || 0, 120) * Math.max(s * sx, s * sz, s * sy, 1) + 300; edDirty(Math.min(ox, x) - m, Math.min(oy, y) - m, Math.max(ox, x) + m, Math.max(oy, y) + m); }
 function delObj(o) { if (o.sc) { SDEL.add(o.uid); SCM.forEach(l => { const i = l.indexOf(o); if (i >= 0) l.splice(i, 1); }); } else { gridDel(o); o.del = 1; if (isGroup(o)) for (const c of OBJ) if (c.b === o.id && c !== o) { gridDel(c); c.del = 1; edDyn(c); } } edDyn(o); edDirty(o.x - 300, o.y - 300, o.x + 300, o.y + 300); }
 function undelObj(o) { if (o.sc) { SDEL.delete(o.uid); SCM.clear(); } else { o.del = 0; gridAdd(o); if (isGroup(o)) for (const c of OBJ) if (c.b === o.id && c !== o) { c.del = 0; gridAdd(c); } } edDirty(o.x - 300, o.y - 300, o.x + 300, o.y + 300); }
+/* saját objektum (több elemből mentve): elemei a középponthoz képest, forgatással, méretezéssel */
+const gzW = (x, y) => { const z = zoneAt(x, y); return z ? zoneH(z, x, y) : GH(x, y); };
+function preItems(sp) { const P = MED.pre.find(p => p.id === sp.p); if (!P) return []; const A = sp.a || 0, S = sp.s || 1, c = Math.cos(A), s = Math.sin(A), g0 = gzW(sp.x, sp.y) + (sp.ez || 0);
+  return P.items.map(it => { const x = sp.x + S * (it.lx * c - it.ly * s), y = sp.y + S * (it.lx * s + it.ly * c), q = { ...it, x, y, a: (it.a || 0) + A, s: (it.s || 1) * S, ez: g0 + S * (it.lh || 0) - gzW(x, y) }; delete q.lx; delete q.ly; delete q.lh; return q; }); }
+function mk1(sp) { const o = { ...sp, uid: undefined }; delete o.id; delete o.a; delete o.s; if (o.r == null) o.r = EDR[o.t] != null ? EDR[o.t] : 0; if (VEG(o.t)) { o.rot = 0; o.s = 1; if (o.t === 'rock') o.solid = 1; if (o.t === 'tree') o.solid = o.v !== 9 && o.v !== 2 ? 1 : 0; if (o.t === 'tree' && sp.r == null) o.r = 14; } for (const k of ['ez', 'rx', 'rz', 'sx', 'sy', 'sz']) delete o[k]; if (o.t === 'fire') { o.i = FIRES.length; FIRES.push([o.x, o.y]); FIRE_N.push(sp.n || 'Tábortűz'); } if (o.t === 'chest' && !o.id) o.id = 'e' + sp.id; addO(o); setTrA(o, [sp.x, sp.y, sp.a, sp.s, sp.ez, sp.rx, sp.rz, sp.sx, sp.sy, sp.sz]); return o; }
 /* lerakott elem: egyszerű kellék, vagy egész épület/rom (ruin) */
 function createAdd(sp) { const n0 = OBJ.length; let made = [];
   if (sp.t === '@rom') { ruin(sp.x, sp.y, sp.k || biomeW(sp.x, sp.y).k, 5000 + (parseInt(String(sp.id).slice(1)) || 0), { tp: sp.tp, dm: sp.dm != null ? sp.dm : .4, cd: sp.cd }); made = OBJ.slice(n0); const nb = made.filter(o => o.t === 'bld'); for (const p of PADS) if (p[5] && !p[6]) { p[4] = Hcalc(p[0], p[1]) - terrDelta(p[0], p[1]); p[6] = 1; } nb.forEach(b => { if (b.pad) { b.pad[6] = 0; b.pad[4] = Hcalc(b.pad[0], b.pad[1]) - terrDelta(b.pad[0], b.pad[1]); b.pad[6] = 1; } bldBase(b); }); }
-  else { const o = { ...sp, uid: undefined }; delete o.id; delete o.a; delete o.s; if (o.r == null) o.r = EDR[o.t] != null ? EDR[o.t] : 0; if (VEG(o.t)) { o.rot = 0; o.s = 1; if (o.t === 'rock') o.solid = 1; if (o.t === 'tree') o.solid = o.v !== 9 && o.v !== 2 ? 1 : 0; if (o.t === 'tree' && sp.r == null) o.r = 14; } for (const k of ['ez', 'rx', 'rz', 'sx', 'sy', 'sz']) delete o[k]; if (o.t === 'fire') { o.i = FIRES.length; FIRES.push([o.x, o.y]); FIRE_N.push(sp.n || 'Tábortűz'); } if (o.t === 'chest' && !o.id) o.id = 'e' + sp.id; addO(o); made = [o]; setTrA(o, [sp.x, sp.y, sp.a, sp.s, sp.ez, sp.rx, sp.rz, sp.sx, sp.sy, sp.sz]); }
-  made.forEach((o, i) => { UIDS.delete(String(o.uid)); o.uid = i ? sp.id + '_' + i : sp.id; UIDS.set(String(o.uid), o); o.added = sp.id; }); edDirty(sp.x - 400, sp.y - 400, sp.x + 400, sp.y + 400); return made; }
+  else if (sp.t === '@pre') made = preItems(sp).map((it, i) => mk1({ ...it, id: sp.id + '_' + i }));
+  else made = [mk1(sp)];
+  made.forEach((o, i) => { UIDS.delete(String(o.uid)); o.uid = i ? sp.id + '_' + i : sp.id; UIDS.set(String(o.uid), o); o.added = sp.id; }); let m = 400; for (const o of made) m = Math.max(m, hyp(o.x - sp.x, o.y - sp.y) + 400); edDirty(sp.x - m, sp.y - m, sp.x + m, sp.y + m); return made; }
 /* alap ütközési sugár a lerakható kellékekhez */
 const EDR = { kocka: 0, henger: 50, kup: 50, pillar: 22, statue: 28, brazier: 14, lamp: 8, crate: 15, barrel: 12, altar: 24, anvil: 16, forge: 34, tent: 40, stall: 26, ctower: 70, obelisk: 24, chest: 18, fire: 22, cart: 30, sarc: 0, well: 30 };
-function applyMapEdits(m) { if (!m || m.v !== 1) return; try {
+function applyMapEdits(m) { SPAWN.forEach((s, i) => { if (s.si == null) s.si = i; }); if (!m || m.v !== 1) return; try {
+  if (m.pre) MED.pre.push(...m.pre);
   if (m.dun) for (const d of m.dun) { MED.dun.push(d); dunZone(d); }
   if (m.zt) for (const id in m.zt) { const z = ZK[id]; if (!z || !z.hm) continue; for (const [k, d] of m.zt[id]) if (k < z.hm.length) zoneHm(z, k, (z.hm0 || z.hm)[k] + d); }
   if (m.terr) for (const [i, j, d] of m.terr) TED.set(tek(i, j), d);
   if (m.add) for (const sp of m.add) { MED.add.push(sp); MED.nid = Math.max(MED.nid, (parseInt(String(sp.id).slice(1)) || 0) + 1); createAdd(sp); }
   if (m.del) for (const u of m.del) { MED.del.add(String(u)); if (String(u)[0] === 's') SDEL.add(String(u)); else { const o = UIDS.get(String(u)); if (o) delObj(o); } }
   if (m.mod) for (const u in m.mod) { const o = UIDS.get(u), v = m.mod[u]; if (!o) continue; MED.mod.set(u, v); setTrA(o, v); }
+  if (m.en) { const E = m.en; for (const k in E.mod || {}) { const s = SPAWN[+k]; if (s) { const v = E.mod[k]; s.x = v[0]; s.y = v[1]; if (v[2] != null) s.lv = v[2]; if (v[3]) s.t = v[3]; MED.en.mod.set(+k, v); } } for (const k of E.del || []) { const s = SPAWN[+k]; if (s) { s.off = 1; MED.en.del.add(+k); } }
+    for (const a of E.add || []) { MED.en.add.push(a); MED.nid = Math.max(MED.nid, (parseInt(String(a.id).slice(1)) || 0) + 1); SPAWN.push({ t: a.t, x: a.x, y: a.y, lv: a.lv || 3, eid: a.id }); } }
   if (TED.size || m.mod) { HTL.clear(); for (const b of BLDS) bldBase(b); } } catch (e) { console.warn('palya.json', e); } }
