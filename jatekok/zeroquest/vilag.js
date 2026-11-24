@@ -143,7 +143,7 @@ function toWorld(o, x, y) { if (!o.ca) return [x, y]; const c = Math.cos(o.ca), 
 const fpW = o => o.gr || (o.w ? o.w / 2 : o.r || 0), fpD = o => o.gr || (o.w ? o.d / 2 : o.r || 0);
 function gridDel(o) { const hw = fpW(o), hd = fpD(o); for (let gx = Math.floor((o.x - hw) / GC); gx <= Math.floor((o.x + hw) / GC); gx++) for (let gy = Math.floor((o.y - hd) / GC); gy <= Math.floor((o.y + hd) / GC); gy++) { const l = GRID.get(gk(gx, gy)); if (l) { const i = l.indexOf(o); if (i >= 0) l.splice(i, 1); } } }
 function gridAdd(o) { const hw = fpW(o), hd = fpD(o); for (let gx = Math.floor((o.x - hw) / GC); gx <= Math.floor((o.x + hw) / GC); gx++) for (let gy = Math.floor((o.y - hd) / GC); gy <= Math.floor((o.y + hd) / GC); gy++) { const k = gk(gx, gy); let l = GRID.get(k); if (!l) GRID.set(k, l = []); if (!l.includes(o)) l.push(o); } }
-function addO(o) { if (o.uid == null) o.uid = OBJ.length; UIDS.set(String(o.uid), o); OBJ.push(o); const hw = o.w ? o.w / 2 : o.r || 0, hd = o.w ? o.d / 2 : o.r || 0;
+function addO(o) { if (o.uid == null) o.uid = OBJ.length; UIDS.set(String(o.uid), o); OBJ.push(o); const hw = fpW(o), hd = fpD(o);
   for (let gx = Math.floor((o.x - hw) / GC); gx <= Math.floor((o.x + hw) / GC); gx++) for (let gy = Math.floor((o.y - hd) / GC); gy <= Math.floor((o.y + hd) / GC); gy++) { const k = gk(gx, gy); let l = GRID.get(k); if (!l) GRID.set(k, l = []); l.push(o); } return o; }
 /* szórt növényzet, sziklák: cellánként, igény szerint, mindig ugyanúgy */
 const SCC = 512, SCM = new Map(), BLDS = [];
@@ -165,11 +165,14 @@ function bldAt(x, y) { let b = null; const l = GRID.get(gk(Math.floor(x / GC), M
 const floorAt = (b, x0, y0) => { if (!b.tiles) return false; const [x, y] = toLoc(b, x0, y0); const i = Math.floor((x - b.x + b.w / 2) / b.ts), j = Math.floor((y - b.y + b.d / 2) / b.ts); return i >= 0 && j >= 0 && i < b.tw && j < b.th && b.tiles[i + j * b.tw] === 1; };
 function stairT(s, x, y) { if (Math.abs(x - s.x) > s.w / 2 || Math.abs(y - s.y) > s.d / 2) return -1; const t = s.dir === 0 ? (x - s.x + s.w / 2) / s.w : s.dir === 1 ? (s.x + s.w / 2 - x) / s.w : s.dir === 2 ? (y - s.y + s.d / 2) / s.d : (s.y + s.d / 2 - y) / s.d; return clamp(t, 0, 1); }
 /* a talaj magassága egy szereplő alatt (épület, emelet, lépcső, zóna, terep) */
-function elev(e) { const z = zoneAt(e.x, e.y); if (z) return zoneH(z, e.x, e.y); const b = e.bld || bldAt(e.x, e.y); if (b && b.base != null) { const fh = b.fh || FH; if (e.sz != null) return b.base + e.sz * fh; if (b.kind === 'aqua' && !e.fz) return GH(e.x, e.y); return b.base + (e.fz ? fh : 0); } return GH(e.x, e.y) + (e.alt || 0); }
+function elev(e) { const z = zoneAt(e.x, e.y); if (z) return walkH(e, zoneH(z, e.x, e.y)); const b = e.bld || bldAt(e.x, e.y); if (b && b.base != null) { const fh = b.fh || FH; if (e.sz != null) return b.base + e.sz * fh; if (b.kind === 'aqua' && !e.fz) return GH(e.x, e.y); return b.base + (e.fz ? fh : 0); } const g0 = GH(e.x, e.y) + (e.alt || 0); return walkH(e, g0); }
+/* járható felületek: lépcső (rámpa) és vízszintes tetejű alakzatok; csak akkor lép fel rá, ha legfeljebb egy lépcsőfoknyi a különbség */
+function walkH(e, g0) { let best = g0; const cur = e.wz0 != null ? e.wz0 : g0; near(e.x, e.y, 10, o => { if (!o.wk || o.del) return; const q = toLoc(o, e.x, e.y), lx = q[0] - o.x, ly = q[1] - o.y; if (o.w ? Math.abs(lx) > o.w / 2 || Math.abs(ly) > o.d / 2 : hyp(lx, ly) > o.r) return;
+    const h = o.wk === 'ramp' ? o.wb + clamp(lx / o.w + .5, 0, 1) * (o.wt - o.wb) : o.wt; if (h <= cur + 46 && h > best) best = h; }); e.wz0 = best; return best; }
 
 /* ---------- ütközés: falak, oszlopok, fák, emeletek, meredek lejtők, tenger ---------- */
 function collide(e, r) { const fz = e.fz | 0;
-  for (let it = 0; it < 2; it++) near(e.x, e.y, r + 30, o => { if (!o.solid || o.off || o.nz || o.del || (o.fz | 0) !== fz) return;
+  for (let it = 0; it < 2; it++) near(e.x, e.y, r + 30, o => { if (!o.solid || o.off || o.nz || o.del || (o.fz | 0) !== fz) return; if (o.wk && e.wz0 != null && o.wt - e.wz0 < 46) return;
     if (o.w) { let [ex, ey] = toLoc(o, e.x, e.y); const cx = clamp(ex, o.x - o.w / 2, o.x + o.w / 2), cy = clamp(ey, o.y - o.d / 2, o.y + o.d / 2), dx = ex - cx, dy = ey - cy, d = hyp(dx, dy); if (d < r) { if (d < .01) { const px = o.w / 2 + r - Math.abs(ex - o.x), py = o.d / 2 + r - Math.abs(ey - o.y); if (px < py) ex += Math.sign(ex - o.x || 1) * px; else ey += Math.sign(ey - o.y || 1) * py; } else { ex = cx + dx / d * r; ey = cy + dy / d * r; } [e.x, e.y] = toWorld(o, ex, ey); } }
     else { const dx = e.x - o.x, dy = e.y - o.y, d = hyp(dx, dy), m = r + o.r * (o.t === 'tree' || o.t === 'rock' ? .75 : 1); if (d < m && d > .01) { e.x = o.x + dx / d * m; e.y = o.y + dy / d * m; } } });
   const z = zoneAt(e.x, e.y);

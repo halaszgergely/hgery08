@@ -19,6 +19,8 @@ function buildRoads() { const N = [...FIRES.slice(0, 11), ...Object.values(LORD)
       for (let it = 0; it < 20 && land(px, py) < .08; it++) { px = lerp(px, OW / 2, .06); py = lerp(py, OH / 2, .06); } pts.push([px, py]); } pts.push(B); const s = smooth(pts, 60); ROADS.push(s); stampRoad(s); } }
 
 /* ---------- épületek: alaprajz, falszakaszok, emelet, lépcső, tető ---------- */
+/* nyitható kétszárnyú kapu (a várakban a kapuőrök legyőzéséig zárva) */
+const KAPU = (x, y, gw, a, gate) => addO({ t: 'kapu', x, y, gw, gh: 270, lv: 2, w: gw + 8, d: 26, ca: a, gr: a ? (gw + 8) / 2 + 14 : 0, solid: 1, gate });
 const MATS = { mez: 'ko', lap: 'sar', nap: 'feher', var: 'ko', cso: 'homok', kak: 'voros', jeg: 'jeg', so: 'so', mely: 'sotet' };
 let RCD = null;
 function bld(x, y, w, d, o = {}) { const ts = 40; w = Math.max(160, Math.round(w / ts) * ts); d = Math.max(120, Math.round(d / ts) * ts); const id = BLDS.length, sd = o.seed != null ? o.seed : id * 7 + 3;
@@ -98,7 +100,7 @@ function castle(id, cx, cy, R, mat, side = 1, o = {}) { addPad(cx, cy, R + 120, 
     PW('ctower', kx0 + e2, ky0 + back0 * e2, 90, { mat, r: 90, h: 1250, spire: 1 }); PW('ctower', kx0 - e2, ky0 + back0 * e2, 76, { mat, r: 76, h: 980, spire: 1 }); }
   for (let s = 0; s < 4; s++) { const hor = s < 2, c0 = hor ? (s === 0 ? cy - R : cy + R) : (s === 2 ? cx - R : cx + R);
     if (s === side) { const g = hor ? cx : cy; if (hor) { wl((cx - R + g - GW / 2) / 2, c0, g - GW / 2 - (cx - R), T); wl((g + GW / 2 + cx + R) / 2, c0, cx + R - g - GW / 2, T); } else { wl(c0, (cy - R + g - GW / 2) / 2, T, g - GW / 2 - (cy - R)); wl(c0, (g + GW / 2 + cy + R) / 2, T, cy + R - g - GW / 2); }
-      const gx = hor ? g : c0, gy = hor ? c0 : g; PW('gatehouse', gx, gy, 0, { a: hor ? 0 : Math.PI / 2, w: GW, mat }); C.gate = addO({ t: 'portc', x: gx, y: gy, w: hor ? GW + 8 : 26, d: hor ? 26 : GW + 8, solid: 1, h: 250, gate: id, a: hor ? 0 : Math.PI / 2 }); C.gx = gx; C.gy = gy; C.out = [gx + (hor ? 0 : (s === 2 ? -1 : 1) * 260), gy + (hor ? (s === 0 ? -1 : 1) * 260 : 0)]; }
+      const gx = hor ? g : c0, gy = hor ? c0 : g; PW('gatehouse', gx, gy, 0, { a: hor ? 0 : Math.PI / 2, w: GW, mat }); C.gate = KAPU(gx, gy, GW, hor ? 0 : Math.PI / 2, id); C.gx = gx; C.gy = gy; C.out = [gx + (hor ? 0 : (s === 2 ? -1 : 1) * 260), gy + (hor ? (s === 0 ? -1 : 1) * 260 : 0)]; }
     else { if (hor) wl(cx, c0, 2 * R + T, T); else wl(c0, cy, T, 2 * R + T); } }
   for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) PW('ctower', cx + sx * R, cy + sy * R, 96, { mat, r: 96, h: 520, spire: 1 });
   for (const t of [-.5, .5]) for (let s = 0; s < 4; s++) { if (s === side) continue; const hor = s < 2; PW('ctower', hor ? cx + t * R : (s === 2 ? cx - R : cx + R), hor ? (s === 0 ? cy - R : cy + R) : cy + t * R, 70, { mat, r: 70, h: 430, spire: 1 }); }
@@ -134,8 +136,8 @@ function aqueduct(x, y, L, horiz, n, ao = {}) { const W = 120, ts = 40, x0 = hor
 /* ---------- Szárazvár: fallal kerített város utcákkal, házakkal, a bálteremmel ---------- */
 function buildCity() { const C = RK.var.c, X0 = C[0] - 1950, X1 = C[0] + 1950, Y0 = C[1] - 1450, Y1 = C[1] + 1450; addPad(C[0], C[1], 2250, 500); FIRES[3] = [X1 + 380, FIRES[3][1]]; const zx = ZONES.filter(z => z.at && z.at[0] > X0 && z.at[0] < X1 && z.at[1] > Y0 && z.at[1] < Y1).map(z => z.at);
   const gates = { n: C[0], s: C[0], w: C[1], e: FIRES[3][1] }, GW = 260, WT = 70, wl = (x, y, w, d) => WALL(x, y, w, d, { h: 300, mat: 'ko', cren: 1, city: 1 });
-  for (const [yy, g, k, sd] of [[Y0, gates.n, 'v_n', -1], [Y1, gates.s, 'v_s', 1]]) { wl((X0 + g - GW / 2) / 2, yy, g - GW / 2 - X0, WT); wl((g + GW / 2 + X1) / 2, yy, X1 - g - GW / 2, WT); PW('gatehouse', g, yy, 0, { a: 0, w: GW }); addO({ t: 'portc', x: g, y: yy, w: GW + 8, d: 26, solid: 1, h: 250, gate: k, a: 0 }); CASTLES.push({ id: k, x: g, y: yy, R: 0, city: 1, out: [g, yy + sd * 260], gx: g, gy: yy, side: sd < 0 ? 0 : 1 }); }
-  for (const [xx, g, k, sd] of [[X0, gates.w, 'v_w', -1], [X1, gates.e, 'v_e', 1]]) { wl(xx, (Y0 + g - GW / 2) / 2, WT, g - GW / 2 - Y0); wl(xx, (g + GW / 2 + Y1) / 2, WT, Y1 - g - GW / 2); PW('gatehouse', xx, g, 0, { a: Math.PI / 2, w: GW }); addO({ t: 'portc', x: xx, y: g, w: 26, d: GW + 8, solid: 1, h: 250, gate: k, a: Math.PI / 2 }); CASTLES.push({ id: k, x: xx, y: g, R: 0, city: 1, out: [xx + sd * 260, g], gx: xx, gy: g, side: sd < 0 ? 2 : 3 }); }
+  for (const [yy, g, k, sd] of [[Y0, gates.n, 'v_n', -1], [Y1, gates.s, 'v_s', 1]]) { wl((X0 + g - GW / 2) / 2, yy, g - GW / 2 - X0, WT); wl((g + GW / 2 + X1) / 2, yy, X1 - g - GW / 2, WT); PW('gatehouse', g, yy, 0, { a: 0, w: GW }); KAPU(g, yy, GW, 0, k); CASTLES.push({ id: k, x: g, y: yy, R: 0, city: 1, out: [g, yy + sd * 260], gx: g, gy: yy, side: sd < 0 ? 0 : 1 }); }
+  for (const [xx, g, k, sd] of [[X0, gates.w, 'v_w', -1], [X1, gates.e, 'v_e', 1]]) { wl(xx, (Y0 + g - GW / 2) / 2, WT, g - GW / 2 - Y0); wl(xx, (g + GW / 2 + Y1) / 2, WT, Y1 - g - GW / 2); PW('gatehouse', xx, g, 0, { a: Math.PI / 2, w: GW }); KAPU(xx, g, GW, Math.PI / 2, k); CASTLES.push({ id: k, x: xx, y: g, R: 0, city: 1, out: [xx + sd * 260, g], gx: xx, gy: g, side: sd < 0 ? 2 : 3 }); }
   for (const [x, y] of [[X0, Y0], [X1, Y0], [X0, Y1], [X1, Y1]]) PW('ctower', x, y, 90, { mat: 'ko' }); for (let t = X0 + 650; t < X1 - 300; t += 650) { if (Math.abs(t - gates.n) > 300) PW('ctower', t, Y0, 60, { mat: 'ko' }); if (Math.abs(t - gates.s) > 300) PW('ctower', t, Y1, 60, { mat: 'ko' }); }
   const ro = LORD.rozalia, mk = FIRES[4], kw = sc([4420, 3740]); let n = 0;
   for (let gx = X0 + 260; gx < X1 - 200; gx += 430) for (let gy = Y0 + 240; gy < Y1 - 180; gy += 380) { const cx = gx + 150, cy = gy + 130; if (Math.abs(cx - gates.n) < 260 || Math.abs(cy - C[1]) < 240 || Math.abs(cy - gates.e) < 220) continue;
