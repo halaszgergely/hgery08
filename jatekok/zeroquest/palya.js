@@ -33,31 +33,44 @@ function setTr(o, x, y, a, s) { return setTrA(o, [x, y, a, s]); }
 function rotBld(b, a) { const da = a - (b.ea || 0); if (Math.abs(da) < 1e-6) return; const c = Math.cos(da), s = Math.sin(da);
   for (const o of OBJ) if (o !== b && o.b === b.id && o.t !== 'bld') { gridDel(o); const dx = o.x - b.x, dy = o.y - b.y; o.x = b.x + dx * c - dy * s; o.y = b.y + dx * s + dy * c; o.ca = (o.ca || 0) + da; if (o.w) o.gr = Math.hypot(o.w, o.d) / 2; gridAdd(o); edDyn(o); }
   gridDel(b); b.ea = b.ca = a; b.gr = a ? Math.hypot(b.w, b.d) / 2 : 0; gridAdd(b); }
-function trBld(b, x, y, a, z) { const ox = b.x, oy = b.y; moveBld(b, x, y); rotBld(b, a); if (!b.pad && b.base0 == null) b.base0 = b.base; b.edz = z; bldBase(b); b.edt = 1;
+/* z: abszolút magasság (rel: régi, talajhoz mért eltolás); null: marad */
+function trBld(b, x, y, a, z, rel) { const ox = b.x, oy = b.y; moveBld(b, x, y); rotBld(b, a); if (!b.pad && b.base0 == null) b.base0 = b.base - (b.edz || 0); if (z != null) { const g0 = b.pad ? b.pad[4] + terrDelta(b.x, b.y) : b.base0; b.edz = rel ? z : z - g0; } bldBase(b); b.edt = 1;
   for (const o of OBJ) if (o !== b && o.b === b.id) edDyn(o); edDyn(b); const m = Math.max(b.w, b.d) + 400; edDirty(Math.min(ox, x) - m, Math.min(oy, y) - m, Math.max(ox, x) + m, Math.max(oy, y) + m); }
-function setTrA(o, tr) { const [x, y, a, s, z, rx, rz, sx, sy, sz] = trN(tr); if (isGroup(o)) return trBld(o, x, y, a, z);
+/* tr[4]: abszolút magasság (központi 0); rel: régi mentés, a talajhoz mérve; hiányzik: a talajon */
+function setTrA(o, tr, rel) { const [x, y, a, s, z0, rx, rz, sx, sy, sz] = trN(tr), zin = tr && tr[4] != null && isFinite(tr[4]) ? +tr[4] : null; if (isGroup(o)) return trBld(o, x, y, a, zin, rel); const gw = gzW(x, y), z = zin == null ? gw : rel ? zin + gw : zin;
   if (!o.o0) o.o0 = { x: o.x, y: o.y, w: o.w, d: o.d, r: o.r, h: o.h, s: o.s || 1 }; const q = o.o0, ox = o.x, oy = o.y; if (!o.sc) gridDel(o);
   o.x = x; o.y = y; o.X = { a, s, z, rx, rz, sx, sy, sz }; o.ea = 0; o.es = 1; o.edt = 1;
   if (q.w) { o.w = q.w * s * sx; o.d = q.d * s * sz; if (q.h) o.h = q.h * s * sy; o.ca = a; o.gr = a ? Math.hypot(o.w, o.d) / 2 : 0; }
   else if (q.r != null) o.r = q.r / (VEG(o.t) && o.t !== 'rock' ? q.s : 1) * s * Math.max(sx, sz);
-  if (o.t === 'lepcso' || o.t === 'kocka' || o.t === 'henger') { const flat = Math.abs(rx) < .02 && Math.abs(rz) < .02, g = gzW(x, y) + z, top = g + (q.h || 100) * s * sy; o.wk = !flat ? null : o.t === 'lepcso' ? 'ramp' : 'flat'; o.wb = g; o.wt = top; }
-  const hg = (q.h || (o.t === 'tree' ? 260 : 90)) * s * sy; o.nz = z > 70 || z + hg < 10 ? 1 : 0; o.zb = gzW(x, y) + z; o.zt = o.zb + hg;
+  if (o.t === 'lepcso' || o.t === 'kocka' || o.t === 'henger') { const flat = Math.abs(rx) < .02 && Math.abs(rz) < .02, g = z, top = g + (q.h || 100) * s * sy; o.wk = !flat ? null : o.t === 'lepcso' ? 'ramp' : 'flat'; o.wb = g; o.wt = top; }
+  const zr = z - gw;
+  const hg = (q.h || (o.t === 'tree' ? 260 : 90)) * s * sy; o.nz = zr > 70 || zr + hg < 10 ? 1 : 0; o.zb = z; o.zt = o.zb + hg;
   if (o.t === 'fire' && o.i != null && FIRES[o.i]) { FIRES[o.i][0] = x; FIRES[o.i][1] = y; }
   if (o.t === 'door' && o.z && ZK[o.z]) { const zz = ZK[o.z]; if (!o.out) zz.at = [x, y]; else if (zz.cu) zz.in = [x + 140, y]; }
-  if (!o.sc) gridAdd(o); edDyn(o); const m = Math.max(o.w || 0, o.d || 0, o.r || 0, 120) * Math.max(s * sx, s * sz, s * sy, 1) + 300; edDirty(Math.min(ox, x) - m, Math.min(oy, y) - m, Math.max(ox, x) + m, Math.max(oy, y) + m); }
-function delObj(o) { if (o.sc) { SDEL.add(o.uid); SCM.forEach(l => { const i = l.indexOf(o); if (i >= 0) l.splice(i, 1); }); } else { gridDel(o); o.del = 1; if (isGroup(o)) for (const c of OBJ) if (c.b === o.id && c !== o) { gridDel(c); c.del = 1; edDyn(c); } } edDyn(o); edDirty(o.x - 300, o.y - 300, o.x + 300, o.y + 300); }
-function undelObj(o) { if (o.sc) { SDEL.delete(o.uid); SCM.clear(); } else { o.del = 0; gridAdd(o); if (isGroup(o)) for (const c of OBJ) if (c.b === o.id && c !== o) { c.del = 0; gridAdd(c); } } edDirty(o.x - 300, o.y - 300, o.x + 300, o.y + 300); }
+  if (!o.sc) gridAdd(o); edDyn(o); if (o.t === 'kocka' || o.inw) rehost(o, ox, oy); const m = Math.max(o.w || 0, o.d || 0, o.r || 0, 120) * Math.max(s * sx, s * sz, s * sy, 1) + 300; edDirty(Math.min(ox, x) - m, Math.min(oy, y) - m, Math.max(ox, x) + m, Math.max(oy, y) + m); }
+function delObj(o) { if (o.inw) setTimeout(() => rehost(o), 0); if (o.sc) { SDEL.add(o.uid); SCM.forEach(l => { const i = l.indexOf(o); if (i >= 0) l.splice(i, 1); }); } else { gridDel(o); o.del = 1; if (isGroup(o)) for (const c of OBJ) if (c.b === o.id && c !== o) { gridDel(c); c.del = 1; edDyn(c); } } edDyn(o); edDirty(o.x - 300, o.y - 300, o.x + 300, o.y + 300); }
+function undelObj(o) { if (o.inw) setTimeout(() => rehost(o), 0); if (o.sc) { SDEL.delete(o.uid); SCM.clear(); } else { o.del = 0; gridAdd(o); if (isGroup(o)) for (const c of OBJ) if (c.b === o.id && c !== o) { c.del = 0; gridAdd(c); } } edDirty(o.x - 300, o.y - 300, o.x + 300, o.y + 300); }
 /* saját objektum (több elemből mentve): elemei a középponthoz képest, forgatással, méretezéssel */
 const gzW = (x, y) => { const z = zoneAt(x, y); return z ? zoneH(z, x, y) : GH(x, y); };
-function preItems(sp) { const P = MED.pre.find(p => p.id === sp.p); if (!P) return []; const A = sp.a || 0, S = sp.s || 1, c = Math.cos(A), s = Math.sin(A), g0 = gzW(sp.x, sp.y) + (sp.ez || 0);
-  return P.items.map(it => { const x = sp.x + S * (it.lx * c - it.ly * s), y = sp.y + S * (it.lx * s + it.ly * c), q = { ...it, x, y, a: (it.a || 0) + A, s: (it.s || 1) * S, ez: g0 + S * (it.lh || 0) - gzW(x, y) }; delete q.lx; delete q.ly; delete q.lh; return q; }); }
-function mk1(sp) { const o = { ...sp, uid: undefined }; delete o.id; delete o.a; delete o.s; if (o.r == null) o.r = EDR[o.t] != null ? EDR[o.t] : 0; if (VEG(o.t)) { o.rot = 0; o.s = 1; if (o.t === 'rock') o.solid = 1; if (o.t === 'tree') o.solid = o.v !== 9 && o.v !== 2 ? 1 : 0; if (o.t === 'tree' && sp.r == null) o.r = 14; } for (const k of ['ez', 'rx', 'rz', 'sx', 'sy', 'sz']) delete o[k]; if (o.t === 'fire') { o.i = FIRES.length; FIRES.push([o.x, o.y]); FIRE_N.push(sp.n || 'Tábortűz'); } if (o.t === 'chest' && !o.id) o.id = 'e' + sp.id; addO(o); setTrA(o, [sp.x, sp.y, sp.a, sp.s, sp.ez, sp.rx, sp.rz, sp.sx, sp.sy, sp.sz]); return o; }
+function preItems(sp, rel) { const P = MED.pre.find(p => p.id === sp.p); if (!P) return []; const A = sp.a || 0, S = sp.s || 1, c = Math.cos(A), s = Math.sin(A), g0 = sp.ez == null ? gzW(sp.x, sp.y) : rel ? gzW(sp.x, sp.y) + sp.ez : sp.ez;
+  return P.items.map(it => { const x = sp.x + S * (it.lx * c - it.ly * s), y = sp.y + S * (it.lx * s + it.ly * c), q = { ...it, x, y, a: (it.a || 0) + A, s: (it.s || 1) * S, ez: g0 + S * (it.lh || 0) }; delete q.lx; delete q.ly; delete q.lh; return q; }); }
+function mk1(sp, rel) { const o = { ...sp, uid: undefined }; delete o.id; delete o.a; delete o.s; if (o.r == null) o.r = EDR[o.t] != null ? EDR[o.t] : 0; if (VEG(o.t)) { o.rot = 0; o.s = 1; if (o.t === 'rock') o.solid = 1; if (o.t === 'tree') o.solid = o.v !== 9 && o.v !== 2 ? 1 : 0; if (o.t === 'tree' && sp.r == null) o.r = 14; } for (const k of ['ez', 'rx', 'rz', 'sx', 'sy', 'sz']) delete o[k]; if (o.t === 'fire') { o.i = FIRES.length; FIRES.push([o.x, o.y]); FIRE_N.push(sp.n || 'Tábortűz'); } if (o.t === 'chest' && !o.id) o.id = 'e' + sp.id; addO(o); setTrA(o, [sp.x, sp.y, sp.a, sp.s, sp.ez, sp.rx, sp.rz, sp.sx, sp.sy, sp.sz], rel); return o; }
 /* lerakott elem: egyszerű kellék, vagy egész épület/rom (ruin) */
-function createAdd(sp) { const n0 = OBJ.length; let made = [];
+function createAdd(sp, rel) { const n0 = OBJ.length; let made = [];
   if (sp.t === '@rom') { ruin(sp.x, sp.y, sp.k || biomeW(sp.x, sp.y).k, 5000 + (parseInt(String(sp.id).slice(1)) || 0), { tp: sp.tp, dm: sp.dm != null ? sp.dm : .4, cd: sp.cd }); made = OBJ.slice(n0); const nb = made.filter(o => o.t === 'bld'); for (const p of PADS) if (p[5] && !p[6]) { p[4] = Hcalc(p[0], p[1]) - terrDelta(p[0], p[1]); p[6] = 1; } nb.forEach(b => { if (b.pad) { b.pad[6] = 0; b.pad[4] = Hcalc(b.pad[0], b.pad[1]) - terrDelta(b.pad[0], b.pad[1]); b.pad[6] = 1; } bldBase(b); }); }
-  else if (sp.t === '@pre') made = preItems(sp).map((it, i) => mk1({ ...it, id: sp.id + '_' + i }));
-  else made = [mk1(sp)];
+  else if (sp.t === '@pre') { made = preItems(sp, rel).map((it, i) => mk1({ ...it, id: sp.id + '_' + i })); if (rel) sp.ez = (sp.ez || 0) + gzW(sp.x, sp.y); }
+  else { made = [mk1(sp, rel)]; if (rel && made[0].X) sp.ez = Math.round(made[0].X.z); }
   made.forEach((o, i) => { UIDS.delete(String(o.uid)); o.uid = i ? sp.id + '_' + i : sp.id; UIDS.set(String(o.uid), o); o.added = sp.id; }); let m = 400; for (const o of made) m = Math.max(m, hyp(o.x - sp.x, o.y - sp.y) + 400); edDirty(sp.x - m, sp.y - m, sp.x + m, sp.y + m); return made; }
+/* ---------- falnyílás: a falba tett boltív/ajtó/kapu lyukat vág a fal köveibe és az ütközésébe ---------- */
+const WALLT = o => o.t === 'kocka' && o.X && !o.del && Math.abs(o.X.rx) < .03 && Math.abs(o.X.rz) < .03;
+/* a fal nyílásai a fal saját keretében: { x: közép, hw: fél szélesség, y0: alja a fal aljától, hh: egyenes rész, r: ív sugara } */
+function wallHoles(w) { const out = [], c = Math.cos(w.ca || 0), s = Math.sin(w.ca || 0), R = Math.hypot(w.w, w.d) / 2 + 400;
+  near(w.x, w.y, R, q => { if (!q.inw || q.del || !q.X) return; const dx = q.x - w.x, dy = q.y - w.y, lx = dx * c + dy * s, lz = -dx * s + dy * c; if (Math.abs(lz) > w.d / 2 + 20 || Math.abs(lx) > w.w / 2 + 10) return; if (Math.abs(Math.sin((q.X.a || 0) - (w.ca || 0))) > .1) return; const k = q.X.s || 1, gw = (q.gw || 100) * k;
+    if (!out.some(h => h.q === q)) out.push({ q, x: lx, hw: gw / 2, y0: q.X.z - w.X.z, hh: (q.gh || 150) * k, r: gw / 2 }); }); return out.map(({ q, ...h }) => h); }
+/* a környező falak nyílásait újraszámolja (ütközéshez, rajzhoz), és újrarajzolja őket */
+function rehost(o, ox, oy) { const pts = [[o.x, o.y]]; if (ox != null) pts.push([ox, oy]); const seen = new Set();
+  for (const [px, py] of pts) near(px, py, o.t === 'kocka' ? 10 : 900, w => { if (!WALLT(w) || seen.has(w)) return; seen.add(w); const prev = JSON.stringify(w.hl || []); w.hl = wallHoles(w); if (JSON.stringify(w.hl) !== prev && o.t !== 'kocka') { const m = Math.hypot(w.w, w.d) / 2 + 100; edDirty(w.x - m, w.y - m, w.x + m, w.y + m); } });
+  if (o.t === 'kocka' && WALLT(o)) o.hl = wallHoles(o); }
 /* alap ütközési sugár a lerakható kellékekhez */
 const EDR = { kocka: 0, henger: 50, kup: 50, lepcso: 0, kapu: 0, pillar: 22, statue: 28, brazier: 14, lamp: 8, crate: 15, barrel: 12, altar: 24, anvil: 16, forge: 34, tent: 40, stall: 26, ctower: 70, obelisk: 24, chest: 18, fire: 22, cart: 30, sarc: 0, well: 30 };
 function applyMapEdits(m) { SPAWN.forEach((s, i) => { if (s.si == null) s.si = i; }); if (!m || m.v !== 1) return; try {
@@ -65,9 +78,10 @@ function applyMapEdits(m) { SPAWN.forEach((s, i) => { if (s.si == null) s.si = i
   if (m.dun) for (const d of m.dun) { MED.dun.push(d); dunZone(d); }
   if (m.zt) for (const id in m.zt) { const z = ZK[id]; if (!z || !z.hm) continue; for (const [k, d] of m.zt[id]) if (k < z.hm.length) zoneHm(z, k, (z.hm0 || z.hm)[k] + d); }
   if (m.terr) for (const [i, j, d] of m.terr) TED.set(tek(i, j), d);
-  if (m.add) for (const sp of m.add) { MED.add.push(sp); MED.nid = Math.max(MED.nid, (parseInt(String(sp.id).slice(1)) || 0) + 1); createAdd(sp); }
+  if (m.add) for (const sp of m.add) { MED.add.push(sp); MED.nid = Math.max(MED.nid, (parseInt(String(sp.id).slice(1)) || 0) + 1); createAdd(sp, !m.za); }
   if (m.del) for (const u of m.del) { MED.del.add(String(u)); if (String(u)[0] === 's') SDEL.add(String(u)); else { const o = UIDS.get(String(u)); if (o) delObj(o); } }
-  if (m.mod) for (const u in m.mod) { const o = UIDS.get(u), v = m.mod[u]; if (!o) continue; MED.mod.set(u, v); setTrA(o, v); }
-  if (m.en) { const E = m.en; for (const k in E.mod || {}) { const s = SPAWN[+k]; if (s) { const v = E.mod[k]; s.x = v[0]; s.y = v[1]; if (v[2] != null) s.lv = v[2]; if (v[3]) s.t = v[3]; MED.en.mod.set(+k, v); } } for (const k of E.del || []) { const s = SPAWN[+k]; if (s) { s.off = 1; MED.en.del.add(+k); } }
-    for (const a of E.add || []) { MED.en.add.push(a); MED.nid = Math.max(MED.nid, (parseInt(String(a.id).slice(1)) || 0) + 1); SPAWN.push({ t: a.t, x: a.x, y: a.y, lv: a.lv || 3, eid: a.id }); } }
-  if (TED.size || m.mod) { HTL.clear(); for (const b of BLDS) bldBase(b); } } catch (e) { console.warn('palya.json', e); } }
+  if (m.mod) for (const u in m.mod) { const o = UIDS.get(u), v = m.mod[u]; if (!o) continue; setTrA(o, v, !m.za); const w = trN(v); w[4] = o.t === 'bld' ? Math.round(o.base) : o.X ? Math.round(o.X.z) : w[4]; MED.mod.set(u, w); }
+  if (m.en) { const E = m.en; for (const k in E.mod || {}) { const s = SPAWN[+k]; if (s) { const v = E.mod[k]; s.x = v[0]; s.y = v[1]; if (v[2] != null) s.lv = v[2]; if (v[3]) s.t = v[3]; if (v[4] != null) s.z = v[4]; MED.en.mod.set(+k, v); } } for (const k of E.del || []) { const s = SPAWN[+k]; if (s) { s.off = 1; MED.en.del.add(+k); } }
+    for (const a of E.add || []) { MED.en.add.push(a); MED.nid = Math.max(MED.nid, (parseInt(String(a.id).slice(1)) || 0) + 1); SPAWN.push({ t: a.t, x: a.x, y: a.y, lv: a.lv || 3, eid: a.id, z: a.z }); } }
+  if (TED.size || m.mod) { HTL.clear(); for (const b of BLDS) bldBase(b); }
+  for (const o of OBJ) if (o.inw && !o.del) rehost(o); } catch (e) { console.warn('palya.json', e); } }
