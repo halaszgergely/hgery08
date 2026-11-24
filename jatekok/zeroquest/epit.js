@@ -306,6 +306,24 @@ function buildWorld() {
   for (const k in LORD) CLEAR.push([LORD[k][0], LORD[k][1], LORD[k][2] + 80]); for (const f of FIRES) CLEAR.push([f[0], f[1], 200]); CLEAR.push([HUB[0], HUB[1], 800]);
 }
 /* a szereplők helye után: ösvények minden fontos ponthoz, majd a domborzat véglegesítése */
-function finishWorld() { for (const p of POIS) trailTo(p[0], p[1]);
+/* az NPC-k helye: mesterségükre utaló tárgyak körülöttük (mögöttük, hogy elölről szabadon megközelíthetők maradjanak) */
+const NPCSET = {
+  bence: [['forge', -90, -95, 34], ['rack', 95, -95, 0], ['crate', -140, 0, 15], ['crate', -145, 35, 15], ['barrel', 120, 10, 12], ['dummy', 150, -40, 0], ['sign', 60, -130, 0, { k: 'kard' }]],
+  ilona: [['stall', 0, -80, 26], ['crate', -85, -40, 15], ['crate', -95, -5, 15], ['barrel', 80, -40, 12], ['pot', 62, 8, 0], ['pot', 74, 22, 0], ['sign', -120, -95, 0, { k: 'erme' }]],
+  erzs: [['pot', -70, -30, 0], ['pot', -82, -18, 0], ['candles', -40, -60, 0], ['sign', 60, -70, 0, { k: 'csepp' }]],
+  ambrus: [['tent', 0, -130, 40], ['banner', -75, -70, 0], ['rack', 75, -80, 0], ['dummy', 110, 30, 0], ['brazier', -70, 40, 14, { lit: 1 }], ['sign', -130, -40, 0, { k: 'kard2' }]],
+  par1: [['barrel', 50, -40, 12], ['crate', 80, -10, 15]], par2: [['pot', -40, -40, 0], ['pot', -55, -30, 0], ['bench', 0, -60, 0]], par3: [['bench', 0, -55, 0], ['pot', 40, -30, 0]], juli: [['bench', 0, -55, 0]],
+  hanna: [['pot', -50, -40, 0], ['pot', -64, -28, 0], ['pot', 52, -38, 0], ['candles', 0, -60, 0], ['sign', 90, -70, 0, { k: 'csepp' }]],
+  kornel: [['altar', 0, -80, 22], ['candles', -45, -70, 0], ['candles', 45, -70, 0], ['pot', -70, -20, 0], ['pot', -82, -8, 0], ['pot', 70, -20, 0], ['sign', 110, -60, 0, { k: 'kanna' }]],
+  kalman: [['bush', -60, -50, 0], ['bush', 60, -60, 0], ['bush', 0, -90, 0], ['pot', -80, 10, 0], ['pot', 80, 10, 0]],
+  pal: [['tent', 0, -130, 40], ['stall', 80, -50, 26], ['crate', -80, -40, 15], ['crate', -90, -5, 15], ['brazier', -60, 50, 12, { lit: 1 }], ['sign', 150, -60, 0, { k: 'erme' }]],
+  ferenc: [['altar', 0, -80, 24], ['candles', -45, -65, 0], ['candles', 45, -65, 0], ['bench', -60, 40, 0], ['bench', 60, 40, 0], ['sign', 100, -60, 0, { k: 'kereszt' }]],
+  marton: [['barrel', -60, -40, 12], ['barrel', -75, -10, 12], ['barrel', 60, -45, 12], ['crate', 85, -15, 15], ['sign', 120, -60, 0, { k: 'horgony' }]],
+  terez: [['tent', 0, -120, 40], ['pot', -55, -30, 0], ['pot', 55, -30, 0]], panni: [['bench', 0, -55, 0], ['crate', 50, -30, 15]], gyula: [['brazier', 50, 30, 14, { lit: 1 }], ['bench', -40, -50, 0]],
+  vince: [['tomb', -80, -90, 0, { v: .3 }], ['tomb', 0, -110, 0, { v: .7 }], ['tomb', 80, -90, 0, { v: .5 }], ['bones', -110, -20, 0], ['candles', 0, -70, 0], ['sign', 120, -40, 0, { k: 'kereszt' }]],
+  lukacs: [['table', 0, -60, 0], ['candles', 0, -60, 0], ['shelf', -70, -95, 0], ['shelf', 70, -95, 0], ['sign', -110, -40, 0, { k: 'konyv' }]],
+  kristof: [['brazier', 60, 30, 14, { lit: 1 }], ['crate', -60, -40, 15], ['barrel', -80, 0, 12]] };
+function npcProps() { for (const n of NPCS) { const L = NPCSET[n.id]; if (!L) continue; for (const [t, dx, dy, r, o] of L) PW(t, n.x + dx, n.y + dy, r, { ...(o || {}), npcp: 1 }); } }
+function finishWorld() { npcProps(); for (const p of POIS) trailTo(p[0], p[1]);
   /* a telkek magassága az utak után, sorrendben: a későbbi telek a már elegyengetett talajhoz igazodik */
   for (const p of PADS) if (p[5]) p[6] = 0; for (const p of PADS) if (p[5]) { p[4] = Hcalc(p[0], p[1]); p[6] = 1; } for (const b of BLDS) b.base = b.pad[4]; HREADY = true; }
