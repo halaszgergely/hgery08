@@ -1,7 +1,7 @@
 /* ZERO QUEST – 3D megjelenítés (three.js): terep, ég, tenger, fények, kamera, szereplők, effektek, zónák */
-import * as THREE from './lib/three.module.min.js?v=202611242335';
-import { GB, M, mm, MAT, hex, makeMan, setGear, poseMan, makeBeast, poseBeast, weaponMesh, shieldMesh, smat, grassProto, treeProto, statueBody } from './modell.js?v=202611242335';
-import { propInto, bldInto } from './kellek.js?v=202611242335';
+import * as THREE from './lib/three.module.min.js?v=202611242341';
+import { GB, M, mm, MAT, hex, makeMan, setGear, poseMan, makeBeast, poseBeast, weaponMesh, shieldMesh, smat, grassProto, treeProto, statueBody } from './modell.js?v=202611242341';
+import { propInto, bldInto } from './kellek.js?v=202611242341';
 
 const glc = document.getElementById('g');
 const RD = new THREE.WebGLRenderer({ canvas: glc, antialias: true, powerPreference: 'high-performance' });
@@ -290,7 +290,7 @@ function render() { const now = performance.now(), dt = Math.min(.05, (now - las
     pm.visible = !(R.inv > 0 && R.alive && Math.sin(TT * 40) > .3); seen.add('P');
     slash.visible = !!A && A.ty !== 't'; if (A) { const k = clamp(A.t / A.T, 0, 1), r = (A.heavy ? 88 : 74) + (A.rch || 0); slash.geometry.dispose(); slash.geometry = new THREE.RingGeometry(r * .45, r, 20, 1, 0, Math.PI * .9 * k + .05); slash.position.set(P.x, pElev() + 32, P.y); { const L = Math.PI * .9 * k + .05; slash.rotation.set(-Math.PI / 2, 0, A.dir > 0 ? -(A.a + Math.PI * .45) : -(A.a - Math.PI * .45 + L)); } slash.material.opacity = .55 * (1 - k * .7); const w = IT[P.eq.wep]; slash.material.color.set(w && w.glow ? w.glow : 0xffffff); } }
   else { if (pMod) pMod.visible = false; slash.visible = false; }
-  for (const n of NPCS) { if (hyp(n.x - fx, n.y - fy) > 2300 || (P && !npcOn(n)) || zoneAt(n.x, n.y) !== z) continue; const look = P && hyp(P.x - n.x, P.y - n.y) < 260 ? Math.atan2(P.y - n.y, P.x - n.x) : n.a; show(n, () => npcModel(n), n.x, n.y, elevOf(n), look, { walk: 0, mv: 0 }); }
+  for (const n of NPCS) { if (hyp(n.x - fx, n.y - fy) > 2300 || (P && !npcOn(n)) || zoneAt(n.x, n.y) !== z) continue; show(n, () => npcModel(n), n.x, n.y, elevOf(n), n.a, { walk: 0, mv: 0 }); }
   if (inGame) for (const e of EN) { const de = hyp(e.x - fx, e.y - fy); if ((de > 2300 && e !== BOSS) || zoneAt(e.x, e.y) !== z) continue; if (e.hid && e.t !== 'fereg' && e.t !== 'szil') continue; const E = ET[e.t], beast = ['kutya', 'jfarkas', 'varju', 'nyalka', 'skorp', 'sorak', 'ordog'].includes(e.t);
     if (e.t === 'szil' && MOD.has(e) && (MOD.get(e).userData.pi | 0) !== ((e.pi | 0) >= 2 ? 2 : e.pi | 0) && ((e.pi | 0) >= 2) !== (MOD.get(e).userData.custom === 'szil2')) { actG.remove(MOD.get(e)); MOD.delete(e); }
     let sw = null; if (e.st === 'wind') sw = -1.6; else if (e.st === 'rec' && e.tm > (E.rec || .5) - .16) sw = -1.6 + 3.2 * (1 - (e.tm - ((E.rec || .5) - .16)) / .16); else if (e.st === 'rec') sw = 1.4;

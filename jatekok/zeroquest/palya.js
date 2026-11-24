@@ -1,7 +1,7 @@
 /* ---------- kézi pályamódosítások (palya.json) betöltése a generált világra ----------
    Formátum: { v: 1, terr: [[i, j, eltolás], …] (64-es rács), del: [uid, …], mod: { uid: [x, y, szög, méret] }, add: [{ id, t, x, y, a, s, …paraméterek }] }
    A generált tárgyak azonosítója a létrehozásuk sorszáma, a szórt növényzeté 's<cx>_<cy>_<i>', a lerakottaké a saját id-jük. */
-const MED = { add: [], del: new Set(), mod: new Map(), nid: 1, dun: [], pre: [], en: { mod: new Map(), del: new Set(), add: [] } };
+const MED = { add: [], del: new Set(), mod: new Map(), nid: 1, dun: [], pre: [], npc: new Map(), en: { mod: new Map(), del: new Set(), add: [] } };
 /* ---------- saját kazamaták: külön zóna a világ keleti szélén túl, domborzattal (a peremén fal), kijárattal ---------- */
 function dunZone(d) { const hc = 64, hw = Math.ceil(d.w / hc) + 1, hh = Math.ceil(d.h / hc) + 1, hm = new Float32Array(hw * hh);
   for (let j = 0; j < hh; j++) for (let i = 0; i < hw; i++) { const e = Math.min(i, j, hw - 1 - i, hh - 1 - j); hm[i + j * hw] = e === 0 ? 420 : e === 1 ? 260 : 0; }
@@ -75,6 +75,7 @@ function rehost(o, ox, oy) { const pts = [[o.x, o.y]]; if (ox != null) pts.push(
 const EDR = { kocka: 0, henger: 50, kup: 50, lepcso: 0, kapu: 0, pillar: 22, statue: 28, brazier: 14, lamp: 8, crate: 15, barrel: 12, altar: 24, anvil: 16, forge: 34, tent: 40, stall: 26, ctower: 70, obelisk: 24, chest: 18, fire: 22, cart: 30, sarc: 0, well: 30 };
 function applyMapEdits(m) { SPAWN.forEach((s, i) => { if (s.si == null) s.si = i; }); if (!m || m.v !== 1) return; try {
   if (m.pre) MED.pre.push(...m.pre);
+  if (m.npc) for (const id in m.npc) { const n = NPCS.find(q => q.id === id), v = m.npc[id]; if (!n) continue; n.x = v[0]; n.y = v[1]; if (v[2] != null) n.a = v[2]; MED.npc.set(id, v); }
   if (m.dun) for (const d of m.dun) { MED.dun.push(d); dunZone(d); }
   if (m.zt) for (const id in m.zt) { const z = ZK[id]; if (!z || !z.hm) continue; for (const [k, d] of m.zt[id]) if (k < z.hm.length) zoneHm(z, k, (z.hm0 || z.hm)[k] + d); }
   if (m.terr) for (const [i, j, d] of m.terr) TED.set(tek(i, j), d);
