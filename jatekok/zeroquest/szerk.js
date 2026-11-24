@@ -3,34 +3,48 @@
    A módosítások a böngészőben folyamatosan mentődnek (munkapéldány), a Mentés gomb letölti a palya.json-t. */
 const ZQED = (() => {
   const WORK = 'zqed_work', $ = s => document.querySelector(s);
-  const S = { tool: 'sel', br: 360, str: .5, sel: null, hover: null, pt: null, drag: null, stroke: null, rebT: 0, pal: null, palA: 0, palS: 1, mat: 'ko', undo: [], redo: [], dirty: 0, saveT: 0, keys: new Set(), rot: null, msgT: 0 };
+  const S = { tool: 'sel', br: 360, str: .5, sel: null, hover: null, pt: null, drag: null, stroke: null, rebT: 0, pal: null, palA: 0, palS: 1, mat: 'ko', undo: [], redo: [], dirty: 0, saveT: 0, keys: new Set(), rot: null, msgT: 0, gm: 'move', gd: null, prev: null };
+  const BB = new Map();
   const TOOLS = [['sel', '⬚', 'Kijelölés', 'V'], ['up', '⛰', 'Emelés', '1'], ['down', '⛏', 'Süllyesztés', '2'], ['smooth', '〰', 'Simítás', '3'], ['flat', '▭', 'Lapítás', '4'], ['place', '✚', 'Lerakás', '5']];
   const PAL = [
+    ['Alakzat', [['Kocka', { t: 'kocka', w: 100, h: 100, d: 100, solid: 1 }], ['Lap', { t: 'kocka', w: 240, h: 20, d: 240, solid: 1 }], ['Henger', { t: 'henger', r: 50, h: 140, n: 16, solid: 1 }], ['Háromszög', { t: 'henger', r: 60, h: 120, n: 3, solid: 1 }], ['Hatszög', { t: 'henger', r: 60, h: 120, n: 6, solid: 1 }], ['Kúp', { t: 'kup', r: 60, h: 150, n: 16, solid: 1 }], ['Gúla', { t: 'kup', r: 70, h: 120, n: 4, solid: 1 }]]],
     ['Növényzet', [['Tölgy', { t: 'tree', v: 0 }], ['Bükk', { t: 'tree', v: 3 }], ['Fenyő', { t: 'tree', v: 11 }], ['Nyír', { t: 'tree', v: 5 }], ['Fűz', { t: 'tree', v: 12 }], ['Száraz fa', { t: 'tree', v: 10 }], ['Bokor', { t: 'bush', v: .5 }], ['Szikla', { t: 'rock', v: .5, r: 34 }], ['Nagy szikla', { t: 'rock', v: .2, r: 70 }]]],
     ['Rom', [['Oszlop', { t: 'pillar', h: 220, dg: 1 }], ['Törött oszlop', { t: 'pillar', h: 220, broken: 1, dg: 1 }], ['Ledőlt oszlop', { t: 'colfall' }], ['Boltív', { t: 'arch', h: 240 }], ['Fal', { t: 'wall', w: 240, d: 28, h: 160, solid: 1 }], ['Magas fal', { t: 'wall', w: 240, d: 40, h: 330, solid: 1, cren: 1, zw: 1 }], ['Szobor', { t: 'statue', v: 1 }], ['Obeliszk', { t: 'obelisk' }], ['Törmelék', { t: 'rubble' }], ['Szarkofág', { t: 'sarc' }], ['Sírkő', { t: 'tomb', v: .5 }], ['Csontok', { t: 'bones' }], ['Menhír', { t: 'menhir' }]]],
     ['Kellék', [['Kosártűz', { t: 'brazier', lit: 1 }], ['Lámpa', { t: 'lamp' }], ['Zászló', { t: 'banner' }], ['Pad', { t: 'bench' }], ['Asztal', { t: 'table' }], ['Gyertyák', { t: 'candles' }], ['Láda (dísz)', { t: 'crate' }], ['Hordó', { t: 'barrel' }], ['Korsó', { t: 'pot' }], ['Szekér', { t: 'cart' }], ['Sátor', { t: 'tent' }], ['Stand', { t: 'stall' }], ['Üllő', { t: 'anvil' }], ['Kohó', { t: 'forge' }], ['Cégér', { t: 'sign', k: 'kard' }], ['Polc', { t: 'shelf' }], ['Oltár', { t: 'altar' }], ['Bábu', { t: 'dummy' }], ['Fegyverállvány', { t: 'rack' }], ['Kút', { t: 'well' }]]],
     ['Torony', [['Bástyatorony', { t: 'ctower', r: 70, h: 430, spire: 1 }], ['Nagy torony', { t: 'ctower', r: 96, h: 620, spire: 1 }], ['Lapos torony', { t: 'ctower', r: 80, h: 380 }]]],
     ['Épület', [['Ház', { t: '@rom', tp: 'house' }], ['Emeletes ház', { t: '@rom', tp: 'house2' }], ['Torony (bejárható)', { t: '@rom', tp: 'tower' }], ['Kápolna', { t: '@rom', tp: 'chapel' }], ['Lakótorony', { t: '@rom', tp: 'keep' }], ['Templom', { t: '@rom', tp: 'temple' }], ['Malom', { t: '@rom', tp: 'mill' }], ['Kripta', { t: '@rom', tp: 'crypt' }]]],
     ['Játék', [['Kincsesláda', { t: 'chest' }], ['Tábortűz', { t: 'fire' }]]]];
-  const MATS2 = [['ko', 'Kő'], ['feher', 'Fehér kő'], ['homok', 'Homokkő'], ['voros', 'Vörös kő'], ['jeg', 'Jég'], ['so', 'Só'], ['sotet', 'Sötét kő'], ['sar', 'Sár']];
-  const NAMES = Object.fromEntries(PAL.flatMap(g => g[1].map(([n, o]) => [o.t + (o.t === 'tree' ? o.v : o.t === '@rom' ? o.tp : ''), n])));
+  const MATS2 = [['ko', 'Kő'], ['fa', 'Fa'], ['feher', 'Fehér kő'], ['homok', 'Homokkő'], ['voros', 'Vörös kő'], ['jeg', 'Jég'], ['so', 'Só'], ['sotet', 'Sötét kő'], ['sar', 'Sár']];
+  const NAMES = Object.fromEntries(PAL.flatMap(g => g[1].map(([n, o]) => [o.t + (o.t === 'tree' ? o.v : o.t === '@rom' ? o.tp : ''), n])).reverse());
   const nameOf = o => o.t === 'bld' ? ({ house: 'Ház', keep: 'Lakótorony', church: 'Templom', tower: 'Torony', aqua: 'Vízvezeték', mill: 'Malom' }[o.kind] || 'Épület') : NAMES[o.t + (o.t === 'tree' ? o.v : '')] || NAMES[o.t] || o.t;
   /* ---------- segédek ---------- */
   const V3 = () => new GL3.cam.position.constructor();
   function project(x, h, y) { const v = V3().set(x, h, y).project(GL3.cam); return v.z > 1 ? null : [(v.x + 1) / 2 * W, (1 - v.y) / 2 * H]; }
   function pick(px, py) { if (!GL3) return null; const cam = GL3.cam, o = cam.position.clone(), d = V3().set(px / W * 2 - 1, 1 - py / H * 2, .5).unproject(cam).sub(o).normalize(); let t = 0, st = 30, prev = null;
     for (let i = 0; i < 2400; i++) { const x = o.x + d.x * t, y = o.y + d.y * t, z = o.z + d.z * t, g = Math.max(GH(x, z), SEA - 2); if (y < g) { let a = prev, b = t; for (let k = 0; k < 10; k++) { const m = (a + b) / 2, yy = o.y + d.y * m; if (yy < Math.max(GH(o.x + d.x * m, o.z + d.z * m), SEA - 2)) b = m; else a = m; } return [o.x + d.x * b, o.z + d.z * b]; } prev = t; t += st; st *= 1.004; if (t > 40000) break; } return null; }
-  const trOf = o => { const u = String(o.uid); if (MED.mod.has(u)) return MED.mod.get(u).slice(); if (o.added) { const sp = MED.add.find(s => s.id === o.added); if (sp && o.uid === sp.id) return [sp.x, sp.y, sp.a || 0, sp.s || 1]; } return [o.x, o.y, o.t === 'tree' || o.t === 'rock' || o.t === 'bush' ? o.rot || 0 : 0, o.t === 'tree' || o.t === 'rock' || o.t === 'bush' ? o.s || 1 : 1]; };
-  function hitObj(x, y) { let best = null, bd = 1e9; const consider = o => { if (o.del || o.t === 'portc' || (o.rail)) return; let t = o; if (o.b != null && BLDS[o.b] && BLDS[o.b].t === 'bld') t = BLDS[o.b];
-      let d; if (t.t === 'bld') { if (Math.abs(x - t.x) < t.w / 2 + 10 && Math.abs(y - t.y) < t.d / 2 + 10) d = 40 + Math.min(t.w, t.d) * .2; else return; } else if (t.w) { if (Math.abs(x - t.x) < t.w / 2 + 20 && Math.abs(y - t.y) < t.d / 2 + 20) d = 10; else return; } else d = hyp(x - t.x, y - t.y) - Math.max(t.r || 0, 20);
-      if (d < bd && d < 60) { bd = d; best = t; } };
-    near(x, y, 160, consider); return best; }
+  const trOf = o => { const u = String(o.uid); if (MED.mod.has(u)) return trN(MED.mod.get(u)); if (o.added) { const sp = MED.add.find(s => s.id === o.added); if (sp && o.uid === sp.id) return trN([sp.x, sp.y, sp.a, sp.s, sp.z, sp.rx, sp.rz, sp.sx, sp.sy, sp.sz]); }
+    if (o.t === 'bld') return trN([o.x, o.y, o.ea || 0, 1, o.edz || 0]); return trN([o.x, o.y, VEG(o.t) ? o.rot || 0 : 0, VEG(o.t) && o.t !== 'rock' ? o.s || 1 : 1]); };
+  const xOf = t => ({ a: t[2], s: t[3], z: t[4], rx: t[5], rz: t[6], sx: t[7], sy: t[8], sz: t[9] });
+  const owner = o => o.b != null && BLDS[o.b] && BLDS[o.b].t === 'bld' && o.t !== 'bld' ? BLDS[o.b] : o;
+  /* befoglaló doboz: a tárgy teljes geometriája a saját keretében, és a világba vivő mátrix egy adott transzformációhoz */
+  function bbOf(o) { let b = BB.get(o); if (!b) { b = GL3.box(o, o.t === 'bld' ? null : xOf(trOf(o))); BB.set(o, b); } return b; }
+  function matOf(o, t) { const T = GL3.T;
+    if (o.t === 'bld') return new T.Matrix4().makeTranslation(t[0], (t[4] || 0) - (o.edz || 0), t[1]).multiply(new T.Matrix4().makeRotationY(-t[2])).multiply(new T.Matrix4().makeTranslation(-o.x, 0, -o.y));
+    const k = t[3]; return new T.Matrix4().compose(new T.Vector3(t[0], GH(t[0], t[1]) + t[4], t[1]), new T.Quaternion().setFromEuler(new T.Euler(t[5], -t[2], t[6], 'YXZ')), new T.Vector3(k * t[7], k * t[8], k * t[9])); }
+  function ray(px, py) { const T = GL3.T, cam = GL3.cam, o = cam.position.clone(), d = new T.Vector3(px / W * 2 - 1, 1 - py / H * 2, .5).unproject(cam).sub(o).normalize(); return [o, d]; }
+  function rayBox(o, d, b, m) { const T = GL3.T, inv = m.clone().invert(), O = o.clone().applyMatrix4(inv), D = d.clone().applyMatrix3(new T.Matrix3().setFromMatrix4(inv)); let t0 = -1e9, t1 = 1e9;
+    for (const [k, a] of [['x', 0], ['y', 1], ['z', 2]]) { const lo = b.mn[a] - 4, hi = b.mx[a] + 4; if (Math.abs(D[k]) < 1e-9) { if (O[k] < lo || O[k] > hi) return null; continue; } let u = (lo - O[k]) / D[k], v = (hi - O[k]) / D[k]; if (u > v) [u, v] = [v, u]; t0 = Math.max(t0, u); t1 = Math.min(t1, v); if (t0 > t1) return null; } return t1 < 0 ? null : Math.max(t0, 0); }
+  /* kattintás: sugár a kamerából; a sugár menti tárgyak közül az, amelyiknek a dobozát legelőbb éri (a föld alá süllyesztetteket a talajon át is) */
+  function pickObj(px, py) { if (!GL3 || !GL3.T) return null; const [o, d] = ray(px, py), cand = new Set(); let tg = null;
+    for (let t = 0, st = 60; t < 32000; t += st, st = Math.min(st * 1.03, 260)) { const x = o.x + d.x * t, y = o.y + d.y * t, z = o.z + d.z * t; if (tg == null && y < Math.max(GH(x, z), SEA - 2)) tg = t; if (tg != null && t > tg + 900) break;
+      near(x, z, 220, q => { if (q.del || q.t === 'portc' || q.rail || q.nr) return; cand.add(owner(q)); }); }
+    let best = null, bt = 1e12, under = null, ut = 1e12; for (const q of cand) { const b = bbOf(q), t = rayBox(o, d, b, matOf(q, trOf(q))); if (t == null) continue; if (tg == null || t <= tg + 30) { if (t < bt) { bt = t; best = q; } } else if (t < ut) { ut = t; under = q; } } return best || under; }
   function msg(t) { const m = $('#edMsg'); if (!m) return; m.textContent = t; m.style.opacity = 1; S.msgT = 2.5; }
-  function touched() { S.dirty = 1; S.saveT = .8; S.redo.length = 0; }
+  function touched() { S.dirty = 1; S.saveT = .8; S.redo.length = 0; BB.clear(); }
   /* ---------- műveletek (visszavonhatók) ---------- */
-  function applyTr(o, tr) { const u = String(o.uid); MED.mod.set(u, tr); setTr(o, tr[0], tr[1], tr[2], tr[3]); }
+  function applyTr(o, tr) { const u = String(o.uid); tr = trN(tr); MED.mod.set(u, tr); setTrA(o, tr); BB.clear(); }
   function promote(o) { /* szórt növényt valódi, mozgatható elemmé alakít */ const sp = { id: 'n' + MED.nid++, t: o.t, v: o.v, rg: o.rg, x: Math.round(o.x), y: Math.round(o.y), a: +(o.rot || 0).toFixed(3), s: +(o.s || 1).toFixed(3) }; if (o.t === 'rock') sp.r = Math.round(o.r / (o.s || 1)); MED.del.add(o.uid); delObj(o); MED.add.push(sp); const made = createAdd(sp); return { sp, o: made[0], su: o.uid }; }
-  function doTr(o, tr) { if (o.sc) { const p = promote(o); const before = [p.o.x, p.o.y, p.sp.a, p.sp.s]; applyTr(p.o, tr); S.undo.push({ k: 'prom', p, before, after: tr.slice() }); S.sel = p.o; touched(); return; }
+  function doTr(o, tr) { if (o.sc) { const p = promote(o); const before = trOf(p.o); applyTr(p.o, tr); S.undo.push({ k: 'prom', p, before, after: tr.slice() }); S.sel = p.o; touched(); return; }
     const before = trOf(o); applyTr(o, tr); S.undo.push({ k: 'tr', o, before, after: tr.slice() }); touched(); }
   function doDel(o) { if (o.sc) { MED.del.add(o.uid); delObj(o); S.undo.push({ k: 'sdel', o }); }
     else if (o.added) { const i = MED.add.findIndex(s => s.id === o.added), sp = MED.add[i]; const all = OBJ.filter(q => q.added === o.added && !q.del); all.forEach(q => delObj(q)); MED.add.splice(i, 1); S.undo.push({ k: 'adel', sp, i, all }); }
@@ -41,8 +55,11 @@ const ZQED = (() => {
     else if (a.k === 'prom') { if (back) { a.p.o && OBJ.filter(q => q.added === a.p.sp.id).forEach(q => delObj(q)); MED.add.splice(MED.add.indexOf(a.p.sp), 1); MED.mod.delete(String(a.p.o.uid)); MED.del.delete(a.p.su); SDEL.delete(a.p.su); SCM.clear(); edDirty(a.p.sp.x - 600, a.p.sp.y - 600, a.p.sp.x + 600, a.p.sp.y + 600); S.sel = null; } else { MED.del.add(a.p.su); SDEL.add(a.p.su); SCM.clear(); MED.add.push(a.p.sp); const m = createAdd(a.p.sp); a.p.o = m[0]; applyTr(a.p.o, a.after); S.sel = a.p.o; } }
     else if (a.k === 'del' || a.k === 'sdel') { if (back) { MED.del.delete(String(a.o.uid)); undelObj(a.o); } else { MED.del.add(String(a.o.uid)); delObj(a.o); } }
     else if (a.k === 'adel' || a.k === 'add') { const add = a.k === 'add' ? !back : back; if (add) { if (!MED.add.includes(a.sp)) MED.add.splice(a.i != null ? a.i : MED.add.length, 0, a.sp); a.made = createAdd(a.sp); } else { OBJ.filter(q => q.added === a.sp.id && !q.del).forEach(q => delObj(q)); const i = MED.add.indexOf(a.sp); if (i >= 0) MED.add.splice(i, 1); S.sel = null; } }
+    else if (a.k === 'spec') { for (const k in a.after) delete a.sp[k]; Object.assign(a.sp, back ? a.before : a.after); respawn(a.sp); }
     else if (a.k === 'terr') { for (const [k, v] of (back ? a.old : a.neu)) { if (v) TED.set(k, v); else TED.delete(k); } invalH(a.x0, a.y0, a.x1, a.y1); for (const b of BLDS) if (b.x > a.x0 - 600 && b.x < a.x1 + 600 && b.y > a.y0 - 600 && b.y < a.y1 + 600) bldBase(b); GL3.rebuild(a.x0, a.y0, a.x1, a.y1); }
-    S.dirty = 1; S.saveT = .8; }
+    S.dirty = 1; S.saveT = .8; BB.clear(); }
+  function respawn(sp) { OBJ.filter(q => q.added === sp.id && !q.del).forEach(q => delObj(q)); const made = createAdd(sp), mo = MED.mod.get(String(sp.id)); if (mo && made[0]) setTrA(made[0], mo); S.sel = made[0] || null; BB.clear(); }
+  function doSpec(o, patch) { const sp = MED.add.find(s => s.id === o.added); if (!sp) return; const before = { ...sp }; Object.assign(sp, patch); respawn(sp); S.undo.push({ k: 'spec', sp, before, after: { ...sp } }); touched(); }
   function undo() { const a = S.undo.pop(); if (!a) return; undoOne(a, true); S.redo.push(a); }
   function redo() { const a = S.redo.pop(); if (!a) return; undoOne(a, false); S.undo.push(a); }
   /* ---------- domborzat-ecset ---------- */
@@ -57,7 +74,7 @@ const ZQED = (() => {
   function endStroke() { const st = S.stroke; if (!st) return; S.stroke = null; st.neu = new Map([...st.old.keys()].map(k => [k, TED.get(k) || 0])); for (const b of BLDS) if (b.x > st.x0 - 600 && b.x < st.x1 + 600 && b.y > st.y0 - 600 && b.y < st.y1 + 600) bldBase(b); GL3.rebuild(st.x0, st.y0, st.x1, st.y1); S.undo.push({ k: 'terr', old: st.old, neu: st.neu, x0: st.x0, y0: st.y0, x1: st.x1, y1: st.y1 }); touched(); }
   /* ---------- mentés ---------- */
   function exportMap() { const terr = []; for (const [k, d] of TED) if (Math.abs(d) > .05) terr.push([Math.floor(k / 100000), k % 100000, Math.round(d * 10) / 10]);
-    const mod = {}; for (const [u, v] of MED.mod) { const o = UIDS.get(u); if (o && !o.del) mod[u] = [Math.round(v[0]), Math.round(v[1]), +(+v[2] || 0).toFixed(3), +(+v[3] || 1).toFixed(3)]; }
+    const mod = {}; for (const [u, v] of MED.mod) { const o = UIDS.get(u); if (o && !o.del) { const t = trN(v).map((q, i) => i < 2 || i === 4 ? Math.round(q) : +q.toFixed(3)); while (t.length > 4 && t[t.length - 1] === TRD[t.length - 1]) t.pop(); mod[u] = t; } }
     return { v: 1, terr, del: [...MED.del], mod, add: MED.add }; }
   function autosave() { try { localStorage.setItem(WORK, JSON.stringify(exportMap())); S.dirty = 0; } catch (e) { msg('A munkapéldány nem fért el a böngészőben.'); } }
   function download() { autosave(); const blob = new Blob([JSON.stringify(exportMap())], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'palya.json'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); msg('palya.json letöltve'); }
@@ -68,7 +85,8 @@ const ZQED = (() => {
 #ed button{font:inherit;color:inherit;background:rgba(255,255,255,.06);border:1px solid rgba(200,170,110,.25);border-radius:7px;padding:6px 9px;cursor:pointer}#ed button:hover{background:rgba(232,182,86,.18)}#ed button.on{background:rgba(232,182,86,.32);border-color:#e8b656;color:#fff}
 #edT{position:absolute;left:10px;top:10px;padding:6px;display:flex;flex-direction:column;gap:5px}#edT button{width:42px;height:42px;font-size:19px;padding:0;position:relative}#edT button i{position:absolute;right:3px;bottom:1px;font:700 9px system-ui;font-style:normal;color:#e8b656}
 #edF{position:absolute;right:10px;top:10px;padding:8px;display:flex;gap:6px;flex-wrap:wrap;max-width:560px;justify-content:flex-end}#edB{position:absolute;left:64px;top:10px;padding:8px 10px;display:flex;gap:12px;align-items:center}#edB input{width:110px;accent-color:#e8b656}
-#edR{position:absolute;right:10px;top:62px;bottom:200px;width:250px;padding:10px;overflow:auto}#edR h4{margin:10px 0 6px;font-size:11px;letter-spacing:.12em;color:#c8a050;text-transform:uppercase}#edR .g{display:grid;grid-template-columns:1fr 1fr;gap:4px}#edR .g button{text-align:left;font-size:12px;padding:5px 7px}#edR select{width:100%;background:#1c1915;color:inherit;border:1px solid rgba(200,170,110,.3);border-radius:6px;padding:5px}
+#edR .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}#edR .g3 button{font-size:11px;padding:5px 3px}#edR .f{display:flex;flex-direction:column;gap:2px;font-size:10px;color:#a89e88}#edR .f input{width:100%;box-sizing:border-box;background:#1c1915;color:#efe6cf;border:1px solid rgba(200,170,110,.3);border-radius:6px;padding:4px 5px;font:600 12px ui-monospace,monospace}
+#edR{position:absolute;right:10px;top:62px;bottom:200px;width:270px;padding:10px;overflow:auto}#edR h4{margin:10px 0 6px;font-size:11px;letter-spacing:.12em;color:#c8a050;text-transform:uppercase}#edR .g{display:grid;grid-template-columns:1fr 1fr;gap:4px}#edR .g button{text-align:left;font-size:12px;padding:5px 7px}#edR select{width:100%;background:#1c1915;color:inherit;border:1px solid rgba(200,170,110,.3);border-radius:6px;padding:5px}
 #edS{position:absolute;left:10px;bottom:10px;padding:6px 10px;font:600 12px ui-monospace,monospace;color:#c8bfa8}#edMsg{position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:8px 14px;opacity:0;transition:opacity .3s}#edM{position:absolute;right:10px;bottom:10px;padding:4px;cursor:crosshair}#edM canvas{display:block;position:static;inset:auto;width:240px;height:160px;border-radius:6px;touch-action:auto}</style>
 <div id="edT" class="pn"></div><div id="edB" class="pn"><label>Ecset <input id="edBr" type="range" min="80" max="1600" step="20"></label><label>Erő <input id="edStr" type="range" min=".05" max="1" step=".05"></label></div>
 <div id="edF" class="pn"><button id="edUndo">↶</button><button id="edRedo">↷</button><button id="edSave">💾 Mentés (palya.json)</button><button id="edLoad">📂 Megnyitás</button><button id="edReset">Vissza a kiadott pályához</button><input id="edFile" type="file" accept=".json,application/json" hidden></div>
@@ -77,46 +95,81 @@ const ZQED = (() => {
     $('#edBr').value = S.br; $('#edStr').value = S.str; $('#edBr').oninput = e => S.br = +e.target.value; $('#edStr').oninput = e => S.str = +e.target.value;
     $('#edUndo').onclick = undo; $('#edRedo').onclick = redo; $('#edSave').onclick = download; $('#edLoad').onclick = () => $('#edFile').click(); $('#edFile').onchange = e => e.target.files[0] && loadFile(e.target.files[0]); $('#edReset').onclick = reset;
     $('#edM canvas').onclick = e => { const r = e.target.getBoundingClientRect(); CAM.x = (e.clientX - r.left) / r.width * OW; CAM.y = (e.clientY - r.top) / r.height * OH; };
-    $('#edR').onclick = e => { const b = e.target.closest('[data-pal]'); if (b) { const [g, i] = b.dataset.pal.split(':').map(Number); S.pal = PAL[g][1][i]; setTool('place'); } const a = e.target.closest('[data-act]'); if (a) act(a.dataset.act); };
-    $('#edR').onchange = e => { if (e.target.id === 'edMat') { S.mat = e.target.value; } };
+    $('#edR').onclick = e => { const b = e.target.closest('[data-pal]'); if (b) { const [g, i] = b.dataset.pal.split(':').map(Number); S.pal = PAL[g][1][i]; setTool('place'); } const a = e.target.closest('[data-act]'); if (a) act(a.dataset.act); const gm = e.target.closest('[data-gm]'); if (gm) setGm(gm.dataset.gm); };
+    $('#edR').onchange = e => { if (e.target.id === 'edMat') { S.mat = e.target.value; return; } field(e); };
     setTool('sel'); }
   function setTool(t) { S.tool = t; document.querySelectorAll('#edT [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t)); $('#edB').style.display = ['up', 'down', 'smooth', 'flat'].includes(t) ? 'flex' : 'none'; panel(); }
+  const PRIM = { kocka: [['w', 'Szél.'], ['h', 'Mag.'], ['d', 'Mély.']], henger: [['r', 'Sugár'], ['h', 'Mag.'], ['n', 'Oldal']], kup: [['r', 'Sugár'], ['h', 'Mag.'], ['n', 'Oldal']] };
+  const fld = (lab, k, v, at = 'data-f') => `<label class="f"><span>${lab}</span><input type="number" ${at}="${k}" value="${v}"></label>`;
+  const spOf = o => o.added && MED.add.find(s => s.id === o.added && s.id === o.uid);
   function panel() { const r = $('#edR'); let h = '';
     if (S.tool === 'place') { h += `<h4>Anyag</h4><select id="edMat">${MATS2.map(([k, n]) => `<option value="${k}"${k === S.mat ? ' selected' : ''}>${n}</option>`).join('')}</select>`; PAL.forEach(([g, l], gi) => { h += `<h4>${g}</h4><div class="g">${l.map(([n], i) => `<button data-pal="${gi}:${i}" class="${S.pal === l[i] ? 'on' : ''}">${n}</button>`).join('')}</div>`; }); }
-    else if (S.sel) { const o = S.sel, tr = trOf(o), bld = o.t === 'bld'; h += `<h4>Kijelölve</h4><div style="font-size:15px;color:#fff">${nameOf(o)}</div><div style="font:12px ui-monospace,monospace;color:#a89e88;margin:4px 0 8px">${Math.round(o.x)}, ${Math.round(o.y)}${bld ? '' : ` · ${Math.round(tr[2] * 180 / Math.PI) % 360}° · ${Math.round(tr[3] * 100)}%`}</div>
-      ${bld ? '' : `<h4>Forgatás</h4><div class="g"><button data-act="r-">⟲ 15° (Q)</button><button data-act="r+">⟳ 15° (E)</button><button data-act="r-90">⟲ 90°</button><button data-act="r+90">⟳ 90°</button></div><h4>Méret</h4><div class="g"><button data-act="s-">− 10%</button><button data-act="s+">+ 10%</button></div>`}
-      <h4>Elem</h4><div class="g">${bld ? '' : '<button data-act="dup">⧉ Másolás</button>'}<button data-act="del">🗑 Törlés</button></div>`; }
+    else if (S.sel) { const o = S.sel, t = trOf(o), bld = o.t === 'bld', dg = v => Math.round(v * 1800 / Math.PI) / 10, pc = v => Math.round(v * 1000) / 10, sp = spOf(o);
+      h += `<h4>Kijelölve</h4><div style="font-size:15px;color:#fff;margin-bottom:6px">${nameOf(o)}</div><div class="g3">${[['move', '✥ Mozgat', 'G'], ['rot', '⟳ Forgat', 'R'], ['scale', '⤢ Méretez', 'T']].filter(m => !(bld && m[0] === 'scale')).map(([m, n, k]) => `<button data-gm="${m}" class="${S.gm === m ? 'on' : ''}" title="${k}">${n}</button>`).join('')}</div>
+      <h4>Hely</h4><div class="g3">${fld('X', 0, Math.round(t[0]))}${fld('Y', 1, Math.round(t[1]))}${fld('Fel', 4, Math.round(t[4]))}</div>
+      <h4>Forgatás</h4><div class="g3">${bld ? '' : fld('X°', 5, dg(t[5])) + fld('Y°', 6, dg(t[6]))}${fld('Z°', 2, dg(t[2]))}</div>
+      ${bld ? '' : `<h4>Méret</h4><div class="g3">${fld('%', 3, pc(t[3]))}${fld('X %', 7, pc(t[7]))}${fld('Y %', 9, pc(t[9]))}${fld('Z %', 8, pc(t[8]))}</div>`}
+      ${sp && PRIM[sp.t] ? `<h4>Alakzat</h4><div class="g3">${PRIM[sp.t].map(([k, n]) => fld(n, k, sp[k], 'data-sp')).join('')}</div><select data-spm style="margin-top:4px">${MATS2.map(([k, n]) => `<option value="${k}"${k === (sp.mat || 'ko') ? ' selected' : ''}>${n}</option>`).join('')}</select>` : ''}
+      <h4>Elem</h4><div class="g">${bld ? '' : '<button data-act="dup">⧉ Másolás</button>'}<button data-act="res">↺ Alaphelyzet</button><button data-act="del">🗑 Törlés</button></div>`; }
     r.innerHTML = h; r.style.display = h ? '' : 'none'; }
-  function act(a) { const o = S.sel; if (!o) return; const tr = trOf(o);
-    if (a === 'del') doDel(o); else if (a === 'dup') { const c = { ...dupSpec(o), x: o.x + 80, y: o.y + 80 }; if (c.t) doAdd(c); }
-    else if (o.t !== 'bld') { if (a[0] === 'r') tr[2] += (a[1] === '+' ? 1 : -1) * (a.endsWith('90') ? Math.PI / 2 : Math.PI / 12); else tr[3] = clamp(tr[3] * (a === 's+' ? 1.1 : 1 / 1.1), .2, 6); doTr(o, tr); }
+  function setGm(m) { if (S.sel && S.sel.t === 'bld' && m === 'scale') return; S.gm = m; panel(); }
+  function field(e) { const o = S.sel; if (!o) return; const el = e.target, v = parseFloat(el.value); if (el.dataset.spm != null) { doSpec(o, { mat: el.value }); panel(); return; } if (!isFinite(v)) { panel(); return; }
+    if (el.dataset.sp) { const k = el.dataset.sp; doSpec(o, { [k]: k === 'n' ? clamp(Math.round(v), 3, 48) : clamp(v, 2, 5000) }); panel(); return; }
+    if (el.dataset.f == null) return; const k = +el.dataset.f, t = trOf(o); t[k] = [2, 5, 6].includes(k) ? v * Math.PI / 180 : [3, 7, 8, 9].includes(k) ? clamp(v / 100, .02, 100) : v; doTr(o, t); panel(); }
+  function act(a) { const o = S.sel; if (!o) return; const t = trOf(o), bld = o.t === 'bld';
+    if (a === 'del') doDel(o); else if (a === 'dup') { if (!bld) { const c = { ...dupSpec(o), x: o.x + 80, y: o.y + 80 }; if (c.t) doAdd(c); } }
+    else if (a === 'res') { t[4] = t[5] = t[6] = 0; t[7] = t[8] = t[9] = 1; doTr(o, t); }
+    else if (a === 'z+' || a === 'z-') { t[4] += (a === 'z+' ? 1 : -1) * (S.keys.has('ShiftLeft') ? 100 : 10); doTr(o, t); }
+    else if (a[0] === 'r') { t[2] += (a[1] === '+' ? 1 : -1) * (a.endsWith('90') ? Math.PI / 2 : Math.PI / 12); doTr(o, t); }
+    else if (!bld) { t[3] = clamp(t[3] * (a === 's+' ? 1.1 : 1 / 1.1), .02, 100); doTr(o, t); }
     panel(); }
-  const SKIP = new Set(['x', 'y', 'uid', 'b', 'o0', 'edt', 'ea', 'es', 'del', 'added', 'sc', 'rot', 's', 'id', 'i', 'fz', 'cas']);
-  function dupSpec(o) { if (o.t === 'bld') return {}; const tr = trOf(o), sp = { t: o.t }; for (const k in o) { if (SKIP.has(k) || typeof o[k] === 'object' || typeof o[k] === 'function') continue; sp[k] = o[k]; } if (o.o0) { if (o.o0.r != null) sp.r = o.o0.r / (o.o0.s || 1); if (o.o0.w) { sp.w = o.o0.w; sp.d = o.o0.d; sp.h = o.o0.h; } } sp.a = tr[2]; sp.s = tr[3]; return sp; }
+  const SKIP = new Set(['x', 'y', 'uid', 'b', 'o0', 'edt', 'ea', 'es', 'del', 'added', 'sc', 'rot', 's', 'id', 'i', 'fz', 'cas', 'X', 'ca', 'gr', 'nz']);
+  function dupSpec(o) { if (o.t === 'bld') return {}; const tr = trOf(o), sp = { t: o.t }; for (const k in o) { if (SKIP.has(k) || typeof o[k] === 'object' || typeof o[k] === 'function') continue; sp[k] = o[k]; } if (o.o0) { if (o.o0.r != null) sp.r = o.o0.r / (VEG(o.t) && o.t !== 'rock' ? o.o0.s || 1 : 1); if (o.o0.w) { sp.w = o.o0.w; sp.d = o.o0.d; sp.h = o.o0.h; } }
+    [sp.a, sp.s, sp.z, sp.rx, sp.rz, sp.sx, sp.sy, sp.sz] = tr.slice(2); return sp; }
+  /* ---------- gizmó: tengelyek (X piros: kelet, Y zöld: észak, Z kék: fel) ---------- */
+  const AX = [['x', [1, 0, 0], '#ff6a5a'], ['y', [0, 0, 1], '#7ad96a'], ['z', [0, 1, 0], '#5aa0ff']], AXI = { x: [0, 5, 7], y: [1, 6, 9], z: [4, 2, 8] };
+  const pivotOf = (o, t) => o.t === 'bld' ? [t[0], o.base - (o.edz || 0) + t[4], t[1]] : [t[0], GH(t[0], t[1]) + t[4], t[1]];
+  function gizmo(o, t) { const pv = pivotOf(o, t), c = GL3.cam.position, L = Math.hypot(c.x - pv[0], c.y - pv[1], c.z - pv[2]) * .14, p0 = project(pv[0], pv[1], pv[2]); if (!p0) return null; const ax = [];
+    for (const [k, v, col] of AX) { if (o.t === 'bld' && (S.gm === 'scale' || S.gm === 'rot' && k !== 'z')) continue; const q = project(pv[0] + v[0] * L, pv[1] + v[1] * L, pv[2] + v[2] * L); if (q) ax.push({ k, col, q }); } return { p0, ax, L }; }
+  function gizmoHit(x, y) { const gz = gizmo(S.sel, trOf(S.sel)); if (!gz) return null; for (const a of gz.ax) if (hyp(x - a.q[0], y - a.q[1]) < 16 * DPR) { const dx = a.q[0] - gz.p0[0], dy = a.q[1] - gz.p0[1], l = Math.hypot(dx, dy) || 1; return { ax: a.k, dir: [dx / l, dy / l], Lpx: l, L: gz.L }; }
+    if (S.gm !== 'rot' && hyp(x - gz.p0[0], y - gz.p0[1]) < 13 * DPR) return { ax: 'c', gp: pick(x, y) }; return null; }
+  function gizmoApply(g, x, y, snap) { const t = g.t0.slice(), dx = x - g.mx, dy = y - g.my, d = g.dir ? dx * g.dir[0] + dy * g.dir[1] : dx - dy, I = AXI[g.ax];
+    if (S.gm === 'move') { if (g.ax === 'c') { const p = pick(x, y); if (p && g.gp) { t[0] = g.t0[0] + p[0] - g.gp[0]; t[1] = g.t0[1] + p[1] - g.gp[1]; } } else t[I[0]] = g.t0[I[0]] + d / g.Lpx * g.L; if (snap) for (const i of [0, 1, 4]) t[i] = Math.round(t[i] / 10) * 10; }
+    else if (S.gm === 'rot') { let a = dx * .01; if (snap) a = Math.round(a / (Math.PI / 12)) * Math.PI / 12; t[I[1]] = g.t0[I[1]] + a; }
+    else { const i = g.ax === 'c' ? 3 : I[2]; t[i] = clamp(g.t0[i] * Math.exp(d * .006), .02, 100); if (snap) t[i] = Math.max(.1, Math.round(t[i] * 10) / 10); }
+    return t; }
   /* ---------- bemenet ---------- */
   const typing = e => e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT');
   function onKey(e) { if (ST !== 'edit' || typing(e)) return; const k = e.code; e.stopImmediatePropagation(); if (e.type === 'keyup') { S.keys.delete(k); return; } S.keys.add(k);
     if ((e.ctrlKey || e.metaKey) && k === 'KeyZ') { e.preventDefault(); e.shiftKey ? redo() : undo(); panel(); return; } if ((e.ctrlKey || e.metaKey) && k === 'KeyY') { e.preventDefault(); redo(); panel(); return; } if ((e.ctrlKey || e.metaKey) && k === 'KeyS') { e.preventDefault(); download(); return; } if ((e.ctrlKey || e.metaKey) && k === 'KeyD') { e.preventDefault(); act('dup'); return; }
     if (k === 'KeyV') setTool('sel'); const ti = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5'].indexOf(k); if (ti >= 0) setTool(TOOLS[ti + 1][0]);
     if (k === 'Delete' || k === 'Backspace') act('del'); if (k === 'Escape') { S.sel = null; panel(); } if (k === 'BracketLeft') S.br = Math.max(80, S.br / 1.15); if (k === 'BracketRight') S.br = Math.min(1600, S.br * 1.15); $('#edBr').value = S.br;
-    if (S.sel && S.tool === 'sel') { if (k === 'KeyQ') act('r-'); if (k === 'KeyE') act('r+'); if (k === 'NumpadAdd' || k === 'Equal') act('s+'); if (k === 'NumpadSubtract' || k === 'Minus') act('s-'); }
+    if (S.sel && S.tool === 'sel') { if (k === 'KeyG') setGm('move'); if (k === 'KeyR') setGm('rot'); if (k === 'KeyT') setGm('scale'); if (k === 'PageUp') act('z+'); if (k === 'PageDown') act('z-'); if (k === 'KeyQ') act('r-'); if (k === 'KeyE') act('r+'); if (k === 'NumpadAdd' || k === 'Equal') act('s+'); if (k === 'NumpadSubtract' || k === 'Minus') act('s-'); }
     if (S.tool === 'place') { if (k === 'KeyQ') S.palA -= Math.PI / 12; if (k === 'KeyE') S.palA += Math.PI / 12; if (k === 'Equal' || k === 'NumpadAdd') S.palS = Math.min(6, S.palS * 1.1); if (k === 'Minus' || k === 'NumpadSubtract') S.palS = Math.max(.2, S.palS / 1.1); } }
   function onPtr(e) { if (ST !== 'edit') return; if (e.target !== cv) return; e.stopImmediatePropagation(); const x = e.clientX * DPR, y = e.clientY * DPR;
     if (e.type === 'pointerdown') { cv.setPointerCapture && cv.setPointerCapture(e.pointerId); if (e.button === 2 || e.button === 1) { S.rot = [e.clientX, e.clientY]; e.preventDefault(); return; } if (e.button !== 0) return; const p = pick(x, y); S.pt = p; if (!p) return;
-      if (S.tool === 'sel') { const o = hitObj(p[0], p[1]); if (o && o === S.sel) S.drag = { o, dx: o.x - p[0], dy: o.y - p[1], to: null }; else { S.sel = o; S.drag = o ? { o, dx: o.x - p[0], dy: o.y - p[1], to: null } : null; } panel(); }
-      else if (S.tool === 'place') { if (S.pal) { const sp = { ...S.pal[1], x: Math.round(p[0]), y: Math.round(p[1]), a: +S.palA.toFixed(3), s: +S.palS.toFixed(3) }; if (['pillar', 'arch', 'wall', 'statue', 'obelisk', 'ctower', 'sarc', 'tomb', 'altar', 'menhir', 'colfall'].includes(sp.t)) sp.mat = S.mat; if (sp.t === '@rom') { sp.k = biomeW(sp.x, sp.y).k; delete sp.a; delete sp.s; } doAdd(sp); S.sel = null; panel(); } }
+      if (S.tool === 'sel') { const gh = S.sel && !S.sel.del && gizmoHit(x, y); if (gh) { S.gd = { ...gh, mx: x, my: y, t0: trOf(S.sel) }; S.prev = null; return; }
+        const o = pickObj(x, y); if (o && o === S.sel) S.drag = { o, dx: o.x - p[0], dy: o.y - p[1], to: null }; else { S.sel = o; S.drag = o ? { o, dx: o.x - p[0], dy: o.y - p[1], to: null } : null; if (o && o.t === 'bld' && S.gm === 'scale') S.gm = 'move'; } panel(); }
+      else if (S.tool === 'place') { if (S.pal) { const sp = { ...S.pal[1], x: Math.round(p[0]), y: Math.round(p[1]), a: +S.palA.toFixed(3), s: +S.palS.toFixed(3) }; if (['kocka', 'henger', 'kup', 'pillar', 'arch', 'wall', 'statue', 'obelisk', 'ctower', 'sarc', 'tomb', 'altar', 'menhir', 'colfall'].includes(sp.t)) sp.mat = S.mat; if (sp.t === '@rom') { sp.k = biomeW(sp.x, sp.y).k; delete sp.a; delete sp.s; } doAdd(sp); S.sel = null; panel(); } }
       else { S.stroke = { old: new Map(), h: Hcalc(p[0], p[1]), x0: p[0], y0: p[1], x1: p[0], y1: p[1] }; } }
-    else if (e.type === 'pointermove') { M.x = x; M.y = y; if (S.rot) { CAMYAW -= (e.clientX - S.rot[0]) * .006; GL3.setPitch(clamp(GL3.pitch + (e.clientY - S.rot[1]) * .004, .12, 1.45)); S.rot = [e.clientX, e.clientY]; return; } S.pt = pick(x, y); if (S.drag && S.pt) S.drag.to = [S.pt[0] + S.drag.dx, S.pt[1] + S.drag.dy]; if (S.tool === 'sel' && !S.drag && S.pt) S.hover = hitObj(S.pt[0], S.pt[1]); }
-    else if (e.type === 'pointerup' || e.type === 'pointercancel') { S.rot = null; if (S.drag) { const d = S.drag; S.drag = null; if (d.to && hyp(d.to[0] - d.o.x, d.to[1] - d.o.y) > 4) { const tr = trOf(d.o); tr[0] = Math.round(d.to[0]); tr[1] = Math.round(d.to[1]); doTr(d.o, tr); panel(); } } if (S.stroke) endStroke(); } }
+    else if (e.type === 'pointermove') { M.x = x; M.y = y; if (S.rot) { CAMYAW -= (e.clientX - S.rot[0]) * .006; GL3.setPitch(clamp(GL3.pitch + (e.clientY - S.rot[1]) * .004, .12, 1.45)); S.rot = [e.clientX, e.clientY]; return; } if (S.gd) { S.prev = gizmoApply(S.gd, x, y, e.ctrlKey || e.metaKey); return; } S.pt = pick(x, y); if (S.drag && S.pt) { S.drag.to = [S.pt[0] + S.drag.dx, S.pt[1] + S.drag.dy]; const t = trOf(S.drag.o); t[0] = S.drag.to[0]; t[1] = S.drag.to[1]; S.prev = t; } if (S.tool === 'sel' && !S.drag) S.hover = pickObj(x, y); }
+    else if (e.type === 'pointerup' || e.type === 'pointercancel') { S.rot = null; if (S.gd) { S.gd = null; if (S.prev && S.sel) { doTr(S.sel, S.prev); panel(); } S.prev = null; } if (S.drag) { const d = S.drag; S.drag = null; S.prev = null; if (d.to && hyp(d.to[0] - d.o.x, d.to[1] - d.o.y) > 4) { const tr = trOf(d.o); tr[0] = Math.round(d.to[0]); tr[1] = Math.round(d.to[1]); doTr(d.o, tr); panel(); } } if (S.stroke) endStroke(); } }
   /* ---------- rajz ---------- */
   function ring(g, x, y, r, col, w = 2) { g.strokeStyle = col; g.lineWidth = w; g.beginPath(); let on = false; for (let i = 0; i <= 40; i++) { const a = i / 40 * TAU, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r, q = project(px, Math.max(GH(px, py), SEA) + 4, py); if (!q) { on = false; continue; } on ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); on = true; } g.stroke(); }
-  function box(g, o, x, y, col, w = 2) { const hw = (o.w || 60) / 2, hd = (o.d || 60) / 2, pts = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd], [-hw, -hd]]; g.strokeStyle = col; g.lineWidth = w; g.beginPath(); let on = false; for (let i = 0; i < pts.length - 1; i++) for (let s = 0; s <= 8; s++) { const px = x + pts[i][0] + (pts[i + 1][0] - pts[i][0]) * s / 8, py = y + pts[i][1] + (pts[i + 1][1] - pts[i][1]) * s / 8, q = project(px, Math.max(GH(px, py), SEA) + 4, py); if (!q) { on = false; continue; } on ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); on = true; } g.stroke(); }
-  function outline(g, o, x, y, col, w) { if (o.t === 'bld' || o.w) box(g, o, x, y, col, w); else ring(g, x, y, Math.max(24, o.r || 0) + 6, col, w); }
+  const E12 = [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]];
+  function box3(g, o, t, col, w) { const b = bbOf(o), m = matOf(o, t), T = GL3.T, P = []; for (let i = 0; i < 8; i++) { const v = new T.Vector3(i & 1 ? b.mx[0] : b.mn[0], i & 2 ? b.mx[1] : b.mn[1], i & 4 ? b.mx[2] : b.mn[2]).applyMatrix4(m); P.push(project(v.x, v.y, v.z)); }
+    g.strokeStyle = col; g.lineWidth = w; g.beginPath(); for (const [a, c] of E12) if (P[a] && P[c]) { g.moveTo(P[a][0], P[a][1]); g.lineTo(P[c][0], P[c][1]); } g.stroke(); }
+  function drawGizmo(g, o, t) { const gz = gizmo(o, t); if (!gz) return; const [x0, y0] = gz.p0, r = 7 * DPR; g.lineWidth = 3 * DPR;
+    for (const a of gz.ax) { const [x, y] = a.q; g.strokeStyle = g.fillStyle = a.col; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x, y); g.stroke(); g.beginPath();
+      if (S.gm === 'move') { const dx = x - x0, dy = y - y0, l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l; g.moveTo(x + ux * r * 1.6, y + uy * r * 1.6); g.lineTo(x - uy * r, y + ux * r); g.lineTo(x + uy * r, y - ux * r); g.fill(); }
+      else if (S.gm === 'rot') { g.arc(x, y, r, 0, TAU); g.stroke(); } else g.fillRect(x - r, y - r, r * 2, r * 2);
+      g.font = `700 ${11 * DPR}px system-ui`; g.fillText(a.k.toUpperCase(), x + r * 1.6, y - r); }
+    if (S.gm !== 'rot') { g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(x0, y0, 5 * DPR, 0, TAU); g.fill(); } }
   function draw(g) { if (!GL3 || !GL3.cam) return; const p = S.pt;
     if (['up', 'down', 'smooth', 'flat'].includes(S.tool) && p) { ring(g, p[0], p[1], S.br, S.tool === 'down' ? 'rgba(255,140,110,.9)' : 'rgba(255,226,150,.9)', 2 * DPR); ring(g, p[0], p[1], S.br * .5, 'rgba(255,226,150,.35)', 1 * DPR); }
-    if (S.tool === 'place' && p && S.pal) ring(g, p[0], p[1], Math.max(30, (EDR[S.pal[1].t] || S.pal[1].r || 30) * S.palS), 'rgba(140,220,255,.9)', 2 * DPR);
-    if (S.hover && S.hover !== S.sel && S.tool === 'sel') outline(g, S.hover, S.hover.x, S.hover.y, 'rgba(255,255,255,.45)', 1.5 * DPR);
-    if (S.sel && !S.sel.del) { outline(g, S.sel, S.sel.x, S.sel.y, '#e8b656', 2.5 * DPR); if (S.drag && S.drag.to) outline(g, S.sel, S.drag.to[0], S.drag.to[1], 'rgba(140,220,255,.95)', 2 * DPR); }
+    if (S.tool === 'place' && p && S.pal) ring(g, p[0], p[1], Math.max(30, (EDR[S.pal[1].t] || S.pal[1].r || (S.pal[1].w || 0) / 2 || 30) * S.palS), 'rgba(140,220,255,.9)', 2 * DPR);
+    if (S.hover && S.hover !== S.sel && !S.hover.del && S.tool === 'sel') box3(g, S.hover, trOf(S.hover), 'rgba(255,255,255,.45)', 1.5 * DPR);
+    if (S.sel && !S.sel.del) { box3(g, S.sel, trOf(S.sel), '#e8b656', 2.5 * DPR); if (S.prev) box3(g, S.sel, S.prev, 'rgba(140,220,255,.95)', 2 * DPR); if (S.tool === 'sel') drawGizmo(g, S.sel, S.prev || trOf(S.sel)); }
     const s = $('#edS'); if (s) s.textContent = (p ? `${Math.round(p[0])}, ${Math.round(p[1])} · ${Math.round(GH(p[0], p[1]))} m · ` : '') + `${biomeName()} · ${MED.add.length} lerakott · ${MED.del.size} törölt · ${MED.mod.size} módosított` + (S.dirty ? ' · …' : ' · mentve a böngészőben');
     const mc = $('#edM canvas'); if (mc && MAPC.done && MAPC.det) { const x = mc.getContext('2d'); x.drawImage(MAPC.det, 0, 0, mc.width, mc.height); const vx = CAM.x / OW * mc.width, vy = CAM.y / OH * mc.height; x.strokeStyle = '#e8b656'; x.lineWidth = 2; x.beginPath(); x.arc(vx, vy, 5, 0, TAU); x.stroke(); } }
   const biomeName = () => { const b = biomeW(CAM.x, CAM.y), r = REGS.find(q => q.k === b.k); return r ? r.n : ''; };

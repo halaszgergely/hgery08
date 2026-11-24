@@ -137,8 +137,12 @@ const OBJ = [], GRID = new Map(), GC = 128, gk = (x, y) => (x + 64) * 8192 + y +
 /* kézi pályaszerkesztés: minden tárgynak állandó azonosítója van (a generálás sorrendje), a domborzat-módosítás 64-es rácson tárolt eltolás */
 const UIDS = new Map(), TED = new Map(), TEC = 64, SDEL = new Set(), tek = (i, j) => i * 100000 + j;
 function terrDelta(x, y) { if (!TED.size) return 0; const fx = x / TEC, fy = y / TEC, i = Math.floor(fx), j = Math.floor(fy), u = fx - i, v = fy - j, g = (a, b) => TED.get(tek(a, b)) || 0; return (g(i, j) * (1 - u) + g(i + 1, j) * u) * (1 - v) + (g(i, j + 1) * (1 - u) + g(i + 1, j + 1) * u) * v; }
-function gridDel(o) { const hw = o.w ? o.w / 2 : o.r || 0, hd = o.w ? o.d / 2 : o.r || 0; for (let gx = Math.floor((o.x - hw) / GC); gx <= Math.floor((o.x + hw) / GC); gx++) for (let gy = Math.floor((o.y - hd) / GC); gy <= Math.floor((o.y + hd) / GC); gy++) { const l = GRID.get(gk(gx, gy)); if (l) { const i = l.indexOf(o); if (i >= 0) l.splice(i, 1); } } }
-function gridAdd(o) { const hw = o.w ? o.w / 2 : o.r || 0, hd = o.w ? o.d / 2 : o.r || 0; for (let gx = Math.floor((o.x - hw) / GC); gx <= Math.floor((o.x + hw) / GC); gx++) for (let gy = Math.floor((o.y - hd) / GC); gy <= Math.floor((o.y + hd) / GC); gy++) { const k = gk(gx, gy); let l = GRID.get(k); if (!l) GRID.set(k, l = []); if (!l.includes(o)) l.push(o); } }
+/* elforgatott tárgy (o.ca): pont a tárgy saját keretébe és vissza */
+function toLoc(o, x, y) { if (!o.ca) return [x, y]; const c = Math.cos(o.ca), s = Math.sin(o.ca), dx = x - o.x, dy = y - o.y; return [o.x + dx * c + dy * s, o.y - dx * s + dy * c]; }
+function toWorld(o, x, y) { if (!o.ca) return [x, y]; const c = Math.cos(o.ca), s = Math.sin(o.ca), dx = x - o.x, dy = y - o.y; return [o.x + dx * c - dy * s, o.y + dx * s + dy * c]; }
+const fpW = o => o.gr || (o.w ? o.w / 2 : o.r || 0), fpD = o => o.gr || (o.w ? o.d / 2 : o.r || 0);
+function gridDel(o) { const hw = fpW(o), hd = fpD(o); for (let gx = Math.floor((o.x - hw) / GC); gx <= Math.floor((o.x + hw) / GC); gx++) for (let gy = Math.floor((o.y - hd) / GC); gy <= Math.floor((o.y + hd) / GC); gy++) { const l = GRID.get(gk(gx, gy)); if (l) { const i = l.indexOf(o); if (i >= 0) l.splice(i, 1); } } }
+function gridAdd(o) { const hw = fpW(o), hd = fpD(o); for (let gx = Math.floor((o.x - hw) / GC); gx <= Math.floor((o.x + hw) / GC); gx++) for (let gy = Math.floor((o.y - hd) / GC); gy <= Math.floor((o.y + hd) / GC); gy++) { const k = gk(gx, gy); let l = GRID.get(k); if (!l) GRID.set(k, l = []); if (!l.includes(o)) l.push(o); } }
 function addO(o) { if (o.uid == null) o.uid = OBJ.length; UIDS.set(String(o.uid), o); OBJ.push(o); const hw = o.w ? o.w / 2 : o.r || 0, hd = o.w ? o.d / 2 : o.r || 0;
   for (let gx = Math.floor((o.x - hw) / GC); gx <= Math.floor((o.x + hw) / GC); gx++) for (let gy = Math.floor((o.y - hd) / GC); gy <= Math.floor((o.y + hd) / GC); gy++) { const k = gk(gx, gy); let l = GRID.get(k); if (!l) GRID.set(k, l = []); l.push(o); } return o; }
 /* szórt növényzet, sziklák: cellánként, igény szerint, mindig ugyanúgy */
@@ -157,23 +161,23 @@ function scatterOf(cx, cy) { const k = cx * 4096 + cy; let l = SCM.get(k); if (l
 function near(x, y, r, fn) { for (let gx = Math.floor((x - r) / GC); gx <= Math.floor((x + r) / GC); gx++) for (let gy = Math.floor((y - r) / GC); gy <= Math.floor((y + r) / GC); gy++) { const l = GRID.get(gk(gx, gy)); if (l) for (const o of l) fn(o); }
   if (x < OW + 400) for (let cx = Math.floor((x - r) / SCC); cx <= Math.floor((x + r) / SCC); cx++) for (let cy = Math.floor((y - r) / SCC); cy <= Math.floor((y + r) / SCC); cy++) for (const o of scatterOf(cx, cy)) if (Math.abs(o.x - x) < r + 30 && Math.abs(o.y - y) < r + 30) fn(o); }
 /* melyik épület alaprajzán áll (az emeletekhez) */
-function bldAt(x, y) { let b = null; const l = GRID.get(gk(Math.floor(x / GC), Math.floor(y / GC))); if (l) for (const o of l) if (o.t === 'bld' && Math.abs(x - o.x) < o.w / 2 && Math.abs(y - o.y) < o.d / 2) b = o; return b; }
-const floorAt = (b, x, y) => { if (!b.tiles) return false; const i = Math.floor((x - b.x + b.w / 2) / b.ts), j = Math.floor((y - b.y + b.d / 2) / b.ts); return i >= 0 && j >= 0 && i < b.tw && j < b.th && b.tiles[i + j * b.tw] === 1; };
+function bldAt(x, y) { let b = null; const l = GRID.get(gk(Math.floor(x / GC), Math.floor(y / GC))); if (l) for (const o of l) if (o.t === 'bld' && !o.del) { const q = toLoc(o, x, y); if (Math.abs(q[0] - o.x) < o.w / 2 && Math.abs(q[1] - o.y) < o.d / 2) b = o; } return b; }
+const floorAt = (b, x0, y0) => { if (!b.tiles) return false; const [x, y] = toLoc(b, x0, y0); const i = Math.floor((x - b.x + b.w / 2) / b.ts), j = Math.floor((y - b.y + b.d / 2) / b.ts); return i >= 0 && j >= 0 && i < b.tw && j < b.th && b.tiles[i + j * b.tw] === 1; };
 function stairT(s, x, y) { if (Math.abs(x - s.x) > s.w / 2 || Math.abs(y - s.y) > s.d / 2) return -1; const t = s.dir === 0 ? (x - s.x + s.w / 2) / s.w : s.dir === 1 ? (s.x + s.w / 2 - x) / s.w : s.dir === 2 ? (y - s.y + s.d / 2) / s.d : (s.y + s.d / 2 - y) / s.d; return clamp(t, 0, 1); }
 /* a talaj magassága egy szereplő alatt (épület, emelet, lépcső, zóna, terep) */
 function elev(e) { const z = zoneAt(e.x, e.y); if (z) return zoneH(z, e.x, e.y); const b = e.bld || bldAt(e.x, e.y); if (b && b.base != null) { const fh = b.fh || FH; if (e.sz != null) return b.base + e.sz * fh; if (b.kind === 'aqua' && !e.fz) return GH(e.x, e.y); return b.base + (e.fz ? fh : 0); } return GH(e.x, e.y) + (e.alt || 0); }
 
 /* ---------- ütközés: falak, oszlopok, fák, emeletek, meredek lejtők, tenger ---------- */
 function collide(e, r) { const fz = e.fz | 0;
-  for (let it = 0; it < 2; it++) near(e.x, e.y, r + 30, o => { if (!o.solid || o.off || (o.fz | 0) !== fz) return;
-    if (o.w) { const cx = clamp(e.x, o.x - o.w / 2, o.x + o.w / 2), cy = clamp(e.y, o.y - o.d / 2, o.y + o.d / 2), dx = e.x - cx, dy = e.y - cy, d = hyp(dx, dy); if (d < r) { if (d < .01) { const px = o.w / 2 + r - Math.abs(e.x - o.x), py = o.d / 2 + r - Math.abs(e.y - o.y); if (px < py) e.x += Math.sign(e.x - o.x || 1) * px; else e.y += Math.sign(e.y - o.y || 1) * py; } else { e.x = cx + dx / d * r; e.y = cy + dy / d * r; } } }
+  for (let it = 0; it < 2; it++) near(e.x, e.y, r + 30, o => { if (!o.solid || o.off || o.nz || o.del || (o.fz | 0) !== fz) return;
+    if (o.w) { let [ex, ey] = toLoc(o, e.x, e.y); const cx = clamp(ex, o.x - o.w / 2, o.x + o.w / 2), cy = clamp(ey, o.y - o.d / 2, o.y + o.d / 2), dx = ex - cx, dy = ey - cy, d = hyp(dx, dy); if (d < r) { if (d < .01) { const px = o.w / 2 + r - Math.abs(ex - o.x), py = o.d / 2 + r - Math.abs(ey - o.y); if (px < py) ex += Math.sign(ex - o.x || 1) * px; else ey += Math.sign(ey - o.y || 1) * py; } else { ex = cx + dx / d * r; ey = cy + dy / d * r; } [e.x, e.y] = toWorld(o, ex, ey); } }
     else { const dx = e.x - o.x, dy = e.y - o.y, d = hyp(dx, dy), m = r + o.r * (o.t === 'tree' || o.t === 'rock' ? .75 : 1); if (d < m && d > .01) { e.x = o.x + dx / d * m; e.y = o.y + dy / d * m; } } });
   const z = zoneAt(e.x, e.y);
   if (z) { e.bld = null; e.sz = null; e.x = clamp(e.x, z.x + 30, z.x + z.w - 30); e.y = clamp(e.y, z.y + 30, z.y + z.h - 30); if (z.hm && e.lx != null && zoneAt(e.lx, e.ly) === z) { const h0 = zoneH(z, e.lx, e.ly), h1 = zoneH(z, e.x, e.y), dd = hyp(e.x - e.lx, e.y - e.ly); if (h1 - h0 > Math.max(12, dd * 1.4) || z.star && e !== P && h0 - h1 > 40) { e.x = e.lx; e.y = e.ly; } }
     /* a Csillagmélyi Városban a szakadékba lépni zuhanás */ if (z.star && e === P) { const h = zoneH(z, e.x, e.y); if (h > -25) { if (!e.safe || hyp(e.safe[0] - e.x, e.safe[1] - e.y) > 90) e.safe = [e.x, e.y]; } else if (h < -500 && e.safe) { e.x = e.safe[0]; e.y = e.safe[1]; e.abyss = 1; } } }
   else {
     const b = bldAt(e.x, e.y); e.bld = b; let st = null;
-    if (b && b.stairs) { const t = stairT(b.stairs, e.x, e.y); if (t >= 0) { st = t; e.fz = t > .5 ? 1 : 0; } } e.sz = st;
+    if (b && b.stairs) { const t = stairT(b.stairs, ...toLoc(b, e.x, e.y)); if (t >= 0) { st = t; e.fz = t > .5 ? 1 : 0; } } e.sz = st;
     if (e.fz && st == null) { if (!b || !floorAt(b, e.x, e.y)) { if (e === P) { e.fz = 0; e.fall = 1; } else if (e.lx != null) { e.x = e.lx; e.y = e.ly; e.fz = 1; } } }
     if (!e.fz && (!b || b.kind === 'aqua') && e.sz == null && e.lx != null && !zoneAt(e.lx, e.ly)) { const dd = hyp(e.x - e.lx, e.y - e.ly); if (dd > .01) { const h0 = GH(e.lx, e.ly), h1 = GH(e.x, e.y);
         if (h1 - h0 > dd * 1.05 + .5 || h1 < SEA + 3) { const hx = GH(e.x, e.ly), hy = GH(e.lx, e.y); if (hx - h0 <= Math.abs(e.x - e.lx) * 1.05 + .5 && hx >= SEA + 3) e.y = e.ly; else if (hy - h0 <= Math.abs(e.y - e.ly) * 1.05 + .5 && hy >= SEA + 3) e.x = e.lx; else { e.x = e.lx; e.y = e.ly; } } } }
