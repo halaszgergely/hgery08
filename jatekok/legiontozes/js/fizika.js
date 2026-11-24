@@ -5,7 +5,7 @@
    - drone: sebességtartó robotpilóta, akkumulátor. airship: felhajtóerő ≈ súly, ballaszt, erősen sodorja a szél.
    A víz tömege beleszámít: tele tartállyal nehezebb és lomhább. */
 import * as THREE from 'three';
-import { FORGO } from './config.js?v=202611241759';
+import { FORGO } from './config.js?v=202611241832';
 
 const g0 = 9.81, V3 = () => new THREE.Vector3();
 const _f = V3(), _u = V3(), _r = V3(), _va = V3(), _F = V3(), _t = V3(), _q = new THREE.Quaternion(), _e = new THREE.Euler(0, 0, 0, 'YXZ'), _n = V3();

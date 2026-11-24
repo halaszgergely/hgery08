@@ -125,7 +125,14 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['nick', 'lastSeen'])
         && request.resource.data.nick is string && request.resource.data.nick.size() >= 2 && request.resource.data.nick.size() <= 20 && request.resource.data.nick.matches('^[^<>&"]+$')
         && request.resource.data.lastSeen == request.time;
-      allow delete: if request.auth.uid == uid || perm('publishMedia');
+      allow delete: if request.auth.uid == uid || perm('publishMedia') || perm('moderate');
+    }
+
+    // ---------- vendégfiók-összevonás jelzése: a moderátor írja, a vendég (és a moderátorok) olvassák ----------
+    match /merges/{gid} {
+      allow read: if signedIn() && (request.auth.uid == gid || perm('moderate'));
+      allow create, update: if perm('moderate') && request.resource.data.keys().hasOnly(['into', 'by', 'at'])
+        && request.resource.data.into is string && request.resource.data.into != gid && request.resource.data.by == request.auth.uid && request.resource.data.at == request.time;
     }
 
     // ---------- vendégnevek egyedisége: guestnames/{kisbetűs név} = { uid, nick, at, lock } ----------
@@ -363,7 +370,12 @@ service cloud.firestore {
         && request.resource.data.at == request.time
         && (resource == null || (request.resource.data.ms <= resource.data.ms && request.resource.data.rms <= resource.data.rms
             && (request.resource.data.ms < resource.data.ms || request.resource.data.rms < resource.data.rms || nickChanged())));
-      allow delete: if perm('publishMedia');
+      // vendégfiók összevonása: a moderátor a regisztrált fiók idejét csak javíthatja, a vendégét törölheti
+      allow create, update: if perm('moderate') && request.resource.data.keys().hasOnly(['ms', 'car', 'path', 'rms', 'at', 'merged']) && request.resource.data.merged is string
+        && request.resource.data.ms is int && request.resource.data.ms > 5000 && request.resource.data.rms is int && request.resource.data.rms > 10000
+        && request.resource.data.car is string && request.resource.data.car.size() < 20 && request.resource.data.path is string && request.resource.data.path.size() < 60000 && request.resource.data.at == request.time
+        && (resource == null || (!('nick' in resource.data) && request.resource.data.ms <= resource.data.ms && request.resource.data.rms <= resource.data.rms));
+      allow delete: if perm('publishMedia') || (perm('moderate') && 'nick' in resource.data);
     }
 
     // ---------- Arcade ranglista: mindenki csak a saját rekordját írhatja, és csak felfelé ----------
@@ -380,8 +392,13 @@ service cloud.firestore {
         && (request.resource.data.get('wins', 0) == resource.data.get('wins', 0) || request.resource.data.get('wins', 0) == resource.data.get('wins', 0) + 1)
         && (request.resource.data.best > resource.data.best || request.resource.data.get('wins', 0) == resource.data.get('wins', 0) + 1 || nickChanged())
         && request.resource.data.at == request.time;
-      // eredmény törlése: admin és tulaj
-      allow delete: if perm('publishMedia');
+      // vendégfiók összevonása: a moderátor a regisztrált fiók eredményét csak növelheti, a vendégét törölheti
+      allow create, update: if perm('moderate') && request.resource.data.keys().hasOnly(['best', 'at', 'wins', 'merged']) && request.resource.data.merged is string
+        && request.resource.data.best is number && request.resource.data.best > 0 && request.resource.data.best <= 9000000000000000
+        && request.resource.data.get('wins', 0) is int && request.resource.data.at == request.time
+        && (resource == null || (!('nick' in resource.data) && request.resource.data.best >= resource.data.best && request.resource.data.get('wins', 0) >= resource.data.get('wins', 0)));
+      // eredmény törlése: admin és tulaj; vendégét a moderátor is (összevonáskor)
+      allow delete: if perm('publishMedia') || (perm('moderate') && 'nick' in resource.data);
     }
 
     // ---------- közös nézés ----------
