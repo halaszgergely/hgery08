@@ -47,7 +47,8 @@ function setTrA(o, tr, rel) { const [x, y, a, s, z0, rx, rz, sx, sy, sz] = trN(t
   const hg = (q.h || (o.t === 'tree' ? 260 : 90)) * s * sy; o.nz = zr > 70 || zr + hg < 10 ? 1 : 0; o.zb = z; o.zt = o.zb + hg;
   if (o.t === 'fire' && o.i != null && FIRES[o.i]) { FIRES[o.i][0] = x; FIRES[o.i][1] = y; }
   if (o.t === 'door' && o.z && ZK[o.z]) { const zz = ZK[o.z]; if (!o.out) zz.at = [x, y]; else if (zz.cu) zz.in = [x + 140, y]; }
-  if (!o.sc) gridAdd(o); edDyn(o); if (o.t === 'kocka' || o.inw) rehost(o, ox, oy); const m = Math.max(o.w || 0, o.d || 0, o.r || 0, 120) * Math.max(s * sx, s * sz, s * sy, 1) + 300; edDirty(Math.min(ox, x) - m, Math.min(oy, y) - m, Math.max(ox, x) + m, Math.max(oy, y) + m); }
+  o.ri = o.t === 'henger' && o.pat === 'tegla' && o.r >= 70 ? o.r - (o.th || 40) : 0; if (o.ri) o.wk = null;
+  if (!o.sc) gridAdd(o); edDyn(o); if (o.t === 'kocka' || o.t === 'henger' || o.inw) rehost(o, ox, oy); const m = Math.max(o.w || 0, o.d || 0, o.r || 0, 120) * Math.max(s * sx, s * sz, s * sy, 1) + 300; edDirty(Math.min(ox, x) - m, Math.min(oy, y) - m, Math.max(ox, x) + m, Math.max(oy, y) + m); }
 function delObj(o) { if (o.inw) setTimeout(() => rehost(o), 0); if (o.sc) { SDEL.add(o.uid); SCM.forEach(l => { const i = l.indexOf(o); if (i >= 0) l.splice(i, 1); }); } else { gridDel(o); o.del = 1; if (isGroup(o)) for (const c of OBJ) if (c.b === o.id && c !== o) { gridDel(c); c.del = 1; edDyn(c); } } edDyn(o); edDirty(o.x - 300, o.y - 300, o.x + 300, o.y + 300); }
 function undelObj(o) { if (o.inw) setTimeout(() => rehost(o), 0); if (o.sc) { SDEL.delete(o.uid); SCM.clear(); } else { o.del = 0; gridAdd(o); if (isGroup(o)) for (const c of OBJ) if (c.b === o.id && c !== o) { c.del = 0; gridAdd(c); } } edDirty(o.x - 300, o.y - 300, o.x + 300, o.y + 300); }
 /* saját objektum (több elemből mentve): elemei a középponthoz képest, forgatással, méretezéssel */
@@ -63,14 +64,17 @@ function createAdd(sp, rel) { const n0 = OBJ.length; let made = [];
   made.forEach((o, i) => { UIDS.delete(String(o.uid)); o.uid = i ? sp.id + '_' + i : sp.id; UIDS.set(String(o.uid), o); o.added = sp.id; }); let m = 400; for (const o of made) m = Math.max(m, hyp(o.x - sp.x, o.y - sp.y) + 400); edDirty(sp.x - m, sp.y - m, sp.x + m, sp.y + m); return made; }
 /* ---------- falnyílás: a falba tett boltív/ajtó/kapu lyukat vág a fal köveibe és az ütközésébe ---------- */
 const WALLT = o => o.t === 'kocka' && o.X && !o.del && Math.abs(o.X.rx) < .03 && Math.abs(o.X.rz) < .03;
+/* üreges bástya (kőfal mintájú, legalább 70-es sugarú henger) */
+const CYLT = o => o.t === 'henger' && o.X && !o.del && o.ri > 0 && Math.abs(o.X.rx) < .03 && Math.abs(o.X.rz) < .03;
+function cylHoles(w) { const out = [], rm = (w.r + w.ri) / 2, th = w.r - w.ri; near(w.x, w.y, w.r + 300, q => { if (!q.inw || q.del || !q.X || out.some(h => h.q === q)) return; const dx = q.x - w.x, dy = q.y - w.y, d = hyp(dx, dy); if (Math.abs(d - rm) > th / 2 + 30) return; const k = q.X.s || 1, gw = (q.gw || 100) * k; out.push({ q, ang: Math.atan2(dy, dx) - (w.X.a || 0), hw: gw / 2, y0: q.X.z - w.X.z, hh: (q.gh || 150) * k, r: q.arch ? gw / 2 : 0 }); }); return out.map(({ q, ...h }) => h); }
 /* a fal nyílásai a fal saját keretében: { x: közép, hw: fél szélesség, y0: alja a fal aljától, hh: egyenes rész, r: ív sugara } */
 function wallHoles(w) { const out = [], c = Math.cos(w.ca || 0), s = Math.sin(w.ca || 0), R = Math.hypot(w.w, w.d) / 2 + 400;
   near(w.x, w.y, R, q => { if (!q.inw || q.del || !q.X) return; const dx = q.x - w.x, dy = q.y - w.y, lx = dx * c + dy * s, lz = -dx * s + dy * c; if (Math.abs(lz) > w.d / 2 + 20 || Math.abs(lx) > w.w / 2 + 10) return; if (Math.abs(Math.sin((q.X.a || 0) - (w.ca || 0))) > .1) return; const k = q.X.s || 1, gw = (q.gw || 100) * k;
     if (!out.some(h => h.q === q)) out.push({ q, x: lx, hw: gw / 2, y0: q.X.z - w.X.z, hh: (q.gh || 150) * k, r: q.arch ? gw / 2 : 0 }); }); return out.map(({ q, ...h }) => h); }
 /* a környező falak nyílásait újraszámolja (ütközéshez, rajzhoz), és újrarajzolja őket */
 function rehost(o, ox, oy) { const pts = [[o.x, o.y]]; if (ox != null) pts.push([ox, oy]); const seen = new Set();
-  for (const [px, py] of pts) near(px, py, o.t === 'kocka' ? 10 : 900, w => { if (!WALLT(w) || seen.has(w)) return; seen.add(w); const prev = JSON.stringify(w.hl || []); w.hl = wallHoles(w); if (JSON.stringify(w.hl) !== prev && o.t !== 'kocka') { const m = Math.hypot(w.w, w.d) / 2 + 100; edDirty(w.x - m, w.y - m, w.x + m, w.y + m); } });
-  if (o.t === 'kocka' && WALLT(o)) o.hl = wallHoles(o); }
+  for (const [px, py] of pts) near(px, py, o.t === 'kocka' || o.t === 'henger' ? 10 : 900, w => { if (!(WALLT(w) || CYLT(w)) || seen.has(w)) return; seen.add(w); const prev = JSON.stringify(w.hl || []); w.hl = CYLT(w) ? cylHoles(w) : wallHoles(w); if (JSON.stringify(w.hl) !== prev && o.t !== 'kocka' && o.t !== 'henger') { const m = Math.hypot(w.w, w.d) / 2 + 100; edDirty(w.x - m, w.y - m, w.x + m, w.y + m); } });
+  if (o.t === 'kocka' && WALLT(o)) o.hl = wallHoles(o); if (CYLT(o)) o.hl = cylHoles(o); }
 /* alap ütközési sugár a lerakható kellékekhez */
 const EDR = { kocka: 0, henger: 50, kup: 50, lepcso: 0, kapu: 0, pillar: 22, statue: 28, brazier: 14, lamp: 8, crate: 15, barrel: 12, altar: 24, anvil: 16, forge: 34, tent: 40, stall: 26, ctower: 70, obelisk: 24, chest: 18, fire: 22, cart: 30, sarc: 0, well: 30 };
 function applyMapEdits(m) { SPAWN.forEach((s, i) => { if (s.si == null) s.si = i; }); if (!m || m.v !== 1) return; try {

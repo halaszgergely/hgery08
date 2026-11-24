@@ -1,5 +1,5 @@
 /* ZERO QUEST – tereptárgyak és épületek geometriája (világkoordinátában, darabonként összefűzve) */
-import { GB, M, mm, MAT, hex, statueBody, treeProto, rockProto, bushProto } from './modell.js?v=202611242346';
+import { GB, M, mm, MAT, hex, statueBody, treeProto, rockProto, bushProto } from './modell.js?v=202611242348';
 const TAU = Math.PI * 2;
 const mat = k => MAT[k] || MAT.ko, mulc = (a, k) => [a[0] * k, a[1] * k, a[2] * k], mixc = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const R = (a, b, c) => rnd(a | 0, b | 0, c | 0);
@@ -26,7 +26,7 @@ export function propInto(B, o, g) { const x = o.x, z = o.y, t = o.t, sd = (x * 1
     case 'wall': { const hh = o.h || 120, a = o.w >= o.d, L = a ? o.w : o.d, th = a ? o.d : o.w; if (o.nr || o.rail) return; const x0 = a ? x - L / 2 : x, x1 = a ? x + L / 2 : x, z0 = a ? z : z - L / 2, z1 = a ? z : z + L / 2;
       stoneWall(B, x0, z0, x1, z1, g - 6, hh + 6, th, o.dg ? (o.dg === 'rez' ? 'sar' : o.dg === 'gy' ? 'fa' : o.dg === 'mely' ? 'sotet' : o.dg) : mk, { cren: o.cren, big: o.city, jag: !o.city && !o.zw && !o.cren ? q => hh * (.55 + .45 * Math.abs(Math.sin(q * 7 + sd))) : null }); break; }
     case 'kocka': if (o.pat) { patBox(B, x, g, z, o.w || 100, o.h || 100, o.d || 100, o.pat, mk, o.holes, o.dm); break; } if (o.holes) { coreHoles(B, x, g, z, o.w || 100, o.h || 100, o.d || 100, o.holes, c[0], c[2]); break; } B.box(M(x, g, z), o.w || 100, o.h || 100, o.d || 100, c[0], c[2]); break;
-    case 'henger': if (o.pat) { patCyl(B, x, g, z, o.r || 50, o.h || 100, clamp(o.n | 0 || 8, 3, 48), o.pat, mk, o.dm); break; } B.cyl(M(x, g, z, Math.PI / 2 - Math.PI / (o.n || 8)), o.r || 50, o.r || 50, o.h || 100, clamp(o.n | 0 || 8, 3, 48), c[0], true, c[2]); break;
+    case 'henger': if (o.pat) { const rr = o.r || 50; if (o.pat === 'tegla' && rr >= 70) { hollowCyl(B, x, g, z, rr, o.h || 100, o.th || 40, mk, o.dm, o.holes); break; } patCyl(B, x, g, z, rr, o.h || 100, clamp(o.n | 0 || 8, 3, 48), o.pat, mk, o.dm); break; } B.cyl(M(x, g, z, Math.PI / 2 - Math.PI / (o.n || 8)), o.r || 50, o.r || 50, o.h || 100, clamp(o.n | 0 || 8, 3, 48), c[0], true, c[2]); break;
     case 'kup': if (o.pat) { patCone(B, x, g, z, o.r || 50, o.h || 100, clamp(o.n | 0 || 8, 3, 48), o.pat, mk); break; } B.cyl(M(x, g, z, Math.PI / 2 - Math.PI / (o.n || 8)), 0, o.r || 50, o.h || 100, clamp(o.n | 0 || 8, 3, 48), c[0]); break;
     case 'partazat': partazat(B, x, g, z, o.w || 300, o.h || 70, o.d || 40, o.v | 0, o.pat || '', mk); break;
     case 'lepcso': { const L = o.w || 300, H = o.h || 150, W = o.d || 120, n = Math.max(2, Math.round(H / 20)), sl = L / n, sh = H / n; for (let i = 0; i < n; i++) B.box(M(x - L / 2 + (i + .5) * sl, g, z), sl + .5, (i + 1) * sh, W, i % 2 ? c[0] : mixc(c[0], c[2], .4), c[2]); break; }
@@ -195,6 +195,18 @@ function partazat(B, x, g, z, w, h, d, v, pat, mk) { const c = mat(mk), dark = h
     else if (v === 6) { const bh = hm * .6; blk(cx, y1, zz, mw, bh, D); B.cyl(M(cx, y1 + bh, zz, PI / 4), 0, Math.hypot(mw, D) / 2 * .98, hm - bh + 10, 4, mixc(c[0], c[2], .35)); B.ico(M(cx, y1 + hm + 10, zz), 3.5, 0, c[2], .2); }
     if (v === 1 || v === 7) { const sw = Math.min(8, mw * .16), sh = hm * .62, sy = y1 + hm * .18; for (const sd of [-1, 1]) { const fz = zz + sd * (D / 2 + .6); B.box(M(cx, sy, fz), sw, sh, 1.6, dark); if (v === 7) B.box(M(cx, sy + sh * .5, fz), mw * .45, sw * .8, 1.6, dark); } } } }
 function polyV(x, z, r, n, ry) { const V = []; for (let i = 0; i < n; i++) { const a = i / n * TAU, px = Math.cos(a) * r, pz = Math.sin(a) * r; V.push([x + px * Math.cos(ry) + pz * Math.sin(ry), z - px * Math.sin(ry) + pz * Math.cos(ry)]); } return V; }
+/* üreges bástya: kívül-belül körbefutó, soronként eltolt kősorok, közte falmag; a falnyílások ívben vágják ki */
+const wrapA = a => Math.atan2(Math.sin(a), Math.cos(a));
+function hollowCyl(B, x, g, z, r, h, th, mk, dm, holes) { const pat = 'tegla', ruin = dm > .01, top = ruin ? ruinTop(h, dm, Math.round(r * 5 + h)) : null, ri = r - th, rm = r - th / 2, BH = 30, nc = Math.max(1, Math.round(h / BH)), ch = h / nc;
+  if (ruin) rubble(B, x, g, z, r * 2, r * 2, dm, pat, mk); if (TAU * r * h * 2 / (54 * 26) > PMAX) { B.cyl(M(x, g, z), r, r, h, 24, mat(mk)[0], false); return; }
+  const cut = (a, rad, ym) => { if (!holes) return false; for (const q of holes) { const s = Math.abs(wrapA(a - q.ang)) * rad, hw = holeW(q, ym); if (hw > 0 && s < hw) return true; } return false; };
+  for (const [rad, side, k0] of [[r, 1, 0], [ri, -1, 300]]) { const m = Math.max(6, Math.round(TAU * rad / 58)), da = TAU / m, cl = 2 * rad * Math.sin(da / 2);
+    for (let c = 0; c < nc; c++) { const of = (c % 2) * da / 2, ym = (c + .5) * ch; for (let i = 0; i < m; i++) { const a = i * da + of + da / 2; if (top) { const tp = top(a * r), q = R(i + k0, c, 57); if (ym > tp || (ym > tp - 70 && q < dm * .55) || q < dm * .05) continue; } if (cut(a, rad, ym)) continue;
+        const rr = rad - side * 3 + (R(c + k0, 3, 91) - .5) * 1.5; B.box(M(x + Math.cos(a) * rr, g + c * ch + 1, z + Math.sin(a) * rr, -a + Math.PI / 2), cl - 2.5, ch - 2.5, 10, pcol(pat, mk, i + k0, c)); } } }
+  const ms = Math.max(8, Math.round(TAU * rm / 27)), ds = TAU / ms, sw = 2 * rm * Math.sin(ds / 2) + .6, col = mortar(pat, mk);
+  for (let i = 0; i < ms; i++) { const a = (i + .5) * ds, tp = Math.max(0, (top ? top(a * r) : h) - (top ? 8 : 2)); let iv = [[0, tp]];
+    for (const q of holes || []) { const s = Math.abs(wrapA(a - q.ang)) * rm; if (s >= q.hw) continue; const hi = q.y0 + q.hh + (q.r ? Math.sqrt(Math.max(0, q.r * q.r - (s * q.r / q.hw) ** 2)) : 0); iv = iv.flatMap(([u, v]) => hi <= u || q.y0 >= v ? [[u, v]] : [[u, q.y0], [hi, v]].filter(([p, w]) => w - p > 2)); }
+    for (const [u, v] of iv) B.box(M(x + Math.cos(a) * rm, g + u, z + Math.sin(a) * rm, -a + Math.PI / 2), sw, v - u, th - 14, col, !top && v >= tp - .5 ? mixc(mat(mk)[1], mat(mk)[2], .3) : null); } }
 function patCyl(B, x, g, z, r, h, n, pat, mk, dm) { const ry = Math.PI / 2 - Math.PI / n, ruin = dm > .01 && pat === 'tegla', top = ruin ? ruinTop(h, dm, Math.round(r * 5 + h)) : null; if (ruin) rubble(B, x, g, z, r * 2, r * 2, dm, pat, mk); B.cyl(M(x, g, z, ry), r - 3, r - 3, ruin ? h * (1 - dm * .9) : h - 2, n, mortar(pat, mk), true, mortar(pat, mk)); const V = polyV(x, z, r, n, ry);
   if (2 * Math.PI * r * h / (54 * 26) > PMAX) return;
   if (pat === 'tegla' && n >= 10) { const BH = 30, nc = Math.max(1, Math.round(h / BH)), ch = h / nc, m = Math.max(6, Math.round(TAU * r / 58)), da = TAU / m, cl = 2 * r * Math.sin(da / 2);
