@@ -188,6 +188,40 @@ function buildKast(z, zi) { const L = z.lv || 4, LS = z.ls, RW = 2000, RD = 1100
     z.cells.push([cx - 400, cy, i * 2 + 1], [cx + 300, cy + 200, i * 2 + 1], [cx + 500, cy - 250, i * 2 + 2]); }
   z.in = [z.x + 100 + 200, z.y + 100 + RD / 2 + 300]; PW('door', z.in[0] - 80, z.in[1] + 60, 0, { z: z.id, out: 1, dk: 'stairs' });
   const tx = z.x + (L - 1) * LS + 100 + RW / 2, ty = z.y + 100 + RD / 2; z.far = [tx, ty]; z.far2 = z.far; PW('chest', tx + 500, ty, 18, { id: 'z' + z.id, rare: 1 }); const cI = z.lvls.indexOf('cath'); if (cI >= 0) PW('chest', z.x + cI * LS + 100 + RW - 260, ty + 160, 18, { id: 'z' + z.id + 'b', rare: 1 }); }
+/* ---------- a Csillagmélyi Város: lebegő szikla-szigeteken romos utcák, vízvezeték-hidak a szakadék felett, kupolás katedrális, csillagos ég ---------- */
+function buildStar(z, zi) { const hc = 60, hw = Math.ceil(z.w / hc) + 1, hh = Math.ceil(z.h / hc) + 1, AB = -3000, hm = new Float32Array(hw * hh).fill(AB), X = z.x + 1900, Y = z.y + 1500, th = 'ko';
+  const IS = [[X + 700, Y + 2400, 520, 0], [X + 2000, Y + 1500, 820, 40], [X + 2300, Y + 3350, 620, 60], [X + 3900, Y + 2300, 720, 30], [X + 4950, Y + 1100, 420, 80]];
+  const BR = [[0, 1], [0, 2], [1, 3], [2, 3], [3, 4]], edge = (p, q) => { const a = IS[p], b = IS[q], d = hyp(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / d, uy = (b[1] - a[1]) / d; return { a, b, d, ux, uy, x0: a[0] + ux * a[2] * .8, y0: a[1] + uy * a[2] * .8, L: d - (a[2] + b[2]) * .8 }; };
+  const isH = (x, y) => { let h = AB; for (const [cx, cy, r, h0] of IS) { const d = hyp(x - cx, y - cy), rr = r * (1 + (fbm(x / 260 + zi, y / 260, 2) - .5) * .5); if (d < rr) h = Math.max(h, h0 + (fbm(x / 90, y / 90, 2) - .5) * 8); } return h; };
+  const brs = BR.map(([p, q]) => edge(p, q));
+  for (let j = 0; j < hh; j++) for (let i = 0; i < hw; i++) { const x = z.x + i * hc, y = z.y + j * hc; let h = isH(x, y);
+    for (const e of brs) { const t = (x - e.a[0]) * e.ux + (y - e.a[1]) * e.uy, lat = Math.abs(-(x - e.a[0]) * e.uy + (y - e.a[1]) * e.ux); if (t > 0 && t < e.d && lat < 75) h = Math.max(h, lerp(e.a[3], e.b[3], clamp((t - e.a[2] * .6) / (e.d - (e.a[2] + e.b[2]) * .6), 0, 1))); }
+    hm[i + j * hw] = h; }
+  Object.assign(z, { hm, hc, hw, hh, star: 1 }); z.cells = []; const sd = zi * 31 + 7, Hs = (x, y) => zoneH(z, x, y), on = (x, y) => Hs(x, y) > -30;
+  /* a hidak alatt többszintes vízvezetékek */
+  for (const e of brs) PW('aqmega', e.a[0] + e.ux * e.a[2] * .55, e.a[1] + e.uy * e.a[2] * .55, 0, { a: Math.atan2(e.uy, e.ux), L: e.d - (e.a[2] + e.b[2]) * .55, top: Math.min(e.a[3], e.b[3]) - 2, base: AB, bw: 160 });
+  /* távoli óriástornyok és a lebegő szikla a romtemplommal */
+  const ZX = z.x + z.w / 2, ZY = z.y + z.h / 2;
+  for (let k = 0; k < 18; k++) { const a = k / 18 * TAU + rnd(k, 1, 3) * .25, f = .4 + rnd(k, 2, 3) * .06; PW('megatower', ZX + Math.cos(a) * z.w * f, ZY + Math.sin(a) * z.h * f, 0, { h: 4200 + rnd(k, 4, 3) * 4200, r: 240 + rnd(k, 5, 3) * 320, a: rnd(k, 6, 3), base: AB - 200, broken: rnd(k, 7, 3) < .55 }); }
+  for (const [fx, fy, r, b] of [[X + 3800, Y - 900, 620, 1400], [X - 1200, Y + 4300, 520, 1900], [X + 5600, Y + 4600, 760, 2400]]) PW('floatrock', fx, fy, 0, { r, base: b });
+  /* a barlang: hatalmas sziklafalak körben, befelé hajló peremmel és cseppkövekkel – középen nyílik a csillagos „ég” */
+  for (let k = 0; k < 30; k++) { const a = k / 30 * TAU, px = ZX + Math.cos(a) * z.w * .5, py = ZY + Math.sin(a) * z.h * .5; PW('cavewall', px, py, 0, { a: a + Math.PI, h: 7000 + rnd(k, 1, 4) * 3000, s: 900 + rnd(k, 2, 4) * 400, base: AB - 300 }); }
+  /* romos utcák: utcarács, házfalak csonkjai, lámpák, szobrok, ledőlt oszlopok */
+  const house = (hx, hy, w, d, k) => { const hgt = 130 + rnd(sd, k, 1) * 200, br = rnd(sd, k, 2); for (let s = 0; s < 4; s++) { if (rnd(sd, k, 10 + s) < .22) continue; const hor = s < 2, L2 = hor ? w : d, cx = hor ? hx : hx + (s === 2 ? -w / 2 : w / 2), cy = hor ? hy + (s === 0 ? -d / 2 : d / 2) : hy;
+      if (s === 1) { const q = L2 / 2 - 40; WALL(cx - (L2 / 4 + 20), cy, q, 18, { dg: th, h: hgt * (br < .5 ? .6 : 1) }); WALL(cx + (L2 / 4 + 20), cy, q, 18, { dg: th, h: hgt }); } else WALL(cx, cy, hor ? L2 : 18, hor ? 18 : L2, { dg: th, h: hgt * (s === 3 && br < .35 ? .45 : 1) }); }
+    if (rnd(sd, k, 20) < .5) PW('rubble', hx + 20, hy, 0); };
+  for (const q of [1, 3, 0]) { const [cx, cy, r] = IS[q]; let k = q * 100; for (let gx = -r; gx <= r; gx += 280) for (let gy = -r; gy <= r; gy += 280) { const hx = cx + gx + 70, hy = cy + gy + 70; k++; if (!on(hx - 110, hy - 90) || !on(hx + 110, hy + 90) || !on(hx + 110, hy - 90) || !on(hx - 110, hy + 90)) continue; if (hyp(hx - cx, hy - cy) < 200 && q !== 1) continue; if (rnd(sd, k, 30) < .72) house(hx, hy, 180 + rnd(sd, k, 31) * 40, 150 + rnd(sd, k, 32) * 30, k); else { PW('statue', hx, hy, 26, { v: k % 4, broken: rnd(sd, k, 33) < .4 }); PW('tree', hx + 60, hy + 40, 18, { v: 9 }); } }
+    for (let gx = -r; gx <= r; gx += 280) for (let gy = -r; gy <= r; gy += 280) { const lx = cx + gx - 70, ly = cy + gy - 70; if (on(lx, ly) && rnd(sd, gx | 0, gy | 0) < .55) PW('lamp', lx, ly, 8); } }
+  for (let k = 0; k < 40; k++) { const q = IS[k % 5], a = rnd(k, 1, 51) * TAU, r = q[2] * (.3 + rnd(k, 2, 51) * .6), px = q[0] + Math.cos(a) * r, py = q[1] + Math.sin(a) * r; if (!on(px, py)) continue; PW(k % 3 ? 'colfall' : 'pillar', px, py, k % 3 ? 0 : 20, { a: rnd(k, 3, 51) * TAU, h: 160, broken: 1, dg: 1, mat: th }); }
+  /* a szigetek peremén sziklák */
+  for (let k = 0; k < 90; k++) { const q = IS[k % 5], a = rnd(k, 1, 61) * TAU, px = q[0] + Math.cos(a) * q[2] * 1.05, py = q[1] + Math.sin(a) * q[2] * 1.05; if (Hs(px, py) > -30) continue; PW('rock', px, py, 0, { r: 50 + rnd(k, 2, 61) * 60, rg: 'jeg' }); }
+  /* kupolás katedrális a középső szigeten, előtte lépcsős tér */
+  { const [cx, cy] = IS[2], dx = cx + 60, dy = cy - 60; PW('dome', dx, dy, 0, { s: .62 }); WALL(dx, dy, 400, 400, { nr: 1, h: 400 }); WALL(dx, dy, 560, 190, { nr: 1, h: 300 }); WALL(dx, dy, 190, 560, { nr: 1, h: 300 }); for (const s of [-1, 1]) PW('brazier', dx + s * 130, dy + 330, 14, { lit: 1 }); PW('chest', dx - 160, dy + 380, 18, { id: 'z' + z.id + 'b', rare: 1 }); }
+  /* bejárat, tábortűz, végpont */
+  const [ex, ey] = IS[0]; z.in = [ex - 250, ey]; PW('door', ex - 340, ey, 0, { z: z.id, out: 1, dk: 'stairs' }); ZFIRE.push([ex - 60, ey + 120, 'A Csillagmélyi Város']);
+  const [fx, fy] = IS[4]; z.far = [fx, fy]; z.far2 = [fx + 120, fy]; PW('chest', fx, fy - 60, 18, { id: 'z' + z.id, rare: 1 }); PW('statue', fx - 120, fy - 140, 30, { v: 3 }); PW('statue', fx + 120, fy - 140, 30, { v: 2 }); PW('brazier', fx, fy + 120, 16, { lit: 1 });
+  PW('msg', ex + 120, ey - 60, 0, { txt: 'Ez a város a víz alatt épült, amikor még volt víz. A csillagok a tenger tükörképei voltak – most csak ők maradtak.' }); PW('msg', IS[1][0], IS[1][1] + 200, 0, { txt: 'A Rend alapítói innen jöttek fel. A kutakat a csillagok vízéből fakasztották.' });
+  for (let q = 0; q < 5; q++) { const [cx, cy, r] = IS[q]; for (let k = 0; k < (q === 1 || q === 3 ? 5 : 3); k++) { const a = rnd(q, k, 71) * TAU, rr = r * (.2 + rnd(q, k, 72) * .55), px = cx + Math.cos(a) * rr, py = cy + Math.sin(a) * rr; if (on(px, py) && q + k > 0) z.cells.push([px, py, 2 + q]); } } }
 function buildMely(z, zi) { buildBar(z, zi, 1); const hc = z.hc, I = (x, y) => Math.round((x - z.x) / hc) + Math.round((y - z.y) / hc) * z.hw;
   /* szabad út a lejárattól a Szívig, és a szívterem */
   const H0 = [z.x + 1200, z.y + 340]; for (let y = H0[1]; y < HEART[1]; y += hc) for (let dx = -180; dx <= 180; dx += hc) { const k = I(H0[0] + dx + Math.sin(y / 300) * 120, y); if (k >= 0 && k < z.hm.length) z.hm[k] = Math.min(z.hm[k], 6 * Math.sin(y / 90)); }
@@ -260,7 +294,7 @@ function buildWorld() {
   /* további tábortüzek: romoknál, kereszteződéseknél */
   const extra = []; for (const r of REGS) { let c = 0; for (const q of RUINS) { if (c >= 3 || q[2] !== r.k || !q[3] || !q[3].b) continue; if (FIRES.some(f => hyp(f[0] - q[0], f[1] - q[1]) < 3500) || extra.some(f => hyp(f[0] - q[0], f[1] - q[1]) < 3500)) continue; const f = [q[0] + q[3].b.w / 2 + 120, q[1] + 60, r.n.charAt(0) + r.n.slice(1).toLowerCase() + ' · ' + ['Omladék', 'Csonka torony', 'Néma ház', 'Hamuudvar', 'Kőkapu'][c + r.t & 3]]; extra.push(f); poi(f[0], f[1], 120); c++; } }
   /* zónák belseje */
-  ZONES.forEach((z, zi) => { if (z.open) buildMely(z, zi); else if (z.kind === 'kat') buildKat(z, zi); else if (z.kind === 'bar') buildBar(z, zi); else if (z.kast) buildKast(z, zi); else buildTor(z, zi); });
+  ZONES.forEach((z, zi) => { if (z.open) buildMely(z, zi); else if (z.kind === 'kat') buildKat(z, zi); else if (z.kind === 'bar') buildBar(z, zi); else if (z.kast) buildKast(z, zi); else if (z.kind === 'star') buildStar(z, zi); else buildTor(z, zi); });
   for (const z of ZONES) if (z.par) { const p = ZK[z.par]; z.at = [p.far2[0], p.far2[1] + 40]; PW('door', p.far2[0], p.far2[1], 0, { z: z.id, dk: p.kind === 'bar' ? 'cave' : 'stairs', down: 1 }); }
   for (const f of [...extra, ...ZFIRE]) { FIRES.push([f[0], f[1]]); FIRE_N.push(f[2]); }
   FIRES.forEach((f, i) => PW('fire', f[0], f[1], i === 2 ? 0 : 22, { i, hub: i === 2 }));
