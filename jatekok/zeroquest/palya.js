@@ -41,7 +41,7 @@ function setTrA(o, tr) { const [x, y, a, s, z, rx, rz, sx, sy, sz] = trN(tr); if
   if (q.w) { o.w = q.w * s * sx; o.d = q.d * s * sz; if (q.h) o.h = q.h * s * sy; o.ca = a; o.gr = a ? Math.hypot(o.w, o.d) / 2 : 0; }
   else if (q.r != null) o.r = q.r / (VEG(o.t) && o.t !== 'rock' ? q.s : 1) * s * Math.max(sx, sz);
   if (o.t === 'lepcso' || o.t === 'kocka' || o.t === 'henger') { const flat = Math.abs(rx) < .02 && Math.abs(rz) < .02, g = gzW(x, y) + z, top = g + (q.h || 100) * s * sy; o.wk = !flat ? null : o.t === 'lepcso' ? 'ramp' : 'flat'; o.wb = g; o.wt = top; }
-  const hg = (q.h || (o.t === 'tree' ? 260 : 90)) * s * sy; o.nz = z > 70 || z + hg < 10 ? 1 : 0;
+  const hg = (q.h || (o.t === 'tree' ? 260 : 90)) * s * sy; o.nz = z > 70 || z + hg < 10 ? 1 : 0; o.zb = gzW(x, y) + z; o.zt = o.zb + hg;
   if (o.t === 'fire' && o.i != null && FIRES[o.i]) { FIRES[o.i][0] = x; FIRES[o.i][1] = y; }
   if (o.t === 'door' && o.z && ZK[o.z]) { const zz = ZK[o.z]; if (!o.out) zz.at = [x, y]; else if (zz.cu) zz.in = [x + 140, y]; }
   if (!o.sc) gridAdd(o); edDyn(o); const m = Math.max(o.w || 0, o.d || 0, o.r || 0, 120) * Math.max(s * sx, s * sz, s * sy, 1) + 300; edDirty(Math.min(ox, x) - m, Math.min(oy, y) - m, Math.max(ox, x) + m, Math.max(oy, y) + m); }

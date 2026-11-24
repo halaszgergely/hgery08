@@ -175,6 +175,31 @@ function lordDown(e) { bossOn = false; BOSS = null; BA = null; AOE = []; PRJ = [
     lorinc: [{ x: e.x, y: e.y - 30, T: 4.2, z: 1.3, cap: 'Az admirális sóoszloppá dermed. A könnyei is sóból vannak.' }], denes: [{ x: e.x, y: e.y - 30, T: 4.2, z: 1.3, cap: '„Nem Szilárdé… ő csak elhitte, hogy az övé. A harmadik nap néz. Valaki onnan néz minket.”' }] }[e.id];
   if (sh) cine(sh, after); else after(); }
 /* ---------- a Szárazurak közös harcrendje ---------- */
+/* bossok előjelzése: a felkészülés (wind) alatt a talajra rajzolt alakzatok – k: cone (r, h félszög), rect (len, wid), circ (x, y, r), ray (len, wid) */
+function teleOf(e) { const m = e.m, E = ET[e.t], a = e.aa, k = m && m[0], out = []; if (!k) return out; const toP = Math.atan2(P.y - e.y, P.x - e.x);
+  const ray = (an, len, wid) => out.push({ k: 'rect', x: e.x, y: e.y, a: an, len, wid });
+  if (k === 'sweep' || k === 'blink' || k === 'veil') out.push({ k: 'cone', x: e.x, y: e.y, a, r: 160 + E.r, h: 1.2 });
+  else if (k === 'cone') out.push({ k: 'cone', x: e.x, y: e.y, a, r: m[1], h: m[2] });
+  else if (k === 'pour') out.push({ k: 'cone', x: e.x, y: e.y, a: toP, r: 340, h: .5 });
+  else if (k === 'tail') out.push({ k: 'cone', x: e.x, y: e.y, a: a + Math.PI, r: 290, h: Math.PI - .7 });
+  else if (k === 'charge' || k === 'waltz' || k === 'anchor') ray(a, k === 'anchor' ? 520 : 360, E.r * 2 + 44);
+  else if (k === 'fan') { const h = (m[2] - 1) / 2; for (let j = -h; j <= h; j++) ray(toP + j * m[3], m[4] * 1.1, 16); }
+  else if (k === 'lances') for (const s2 of [-.18, 0, .18]) ray(toP + s2, 640, 30);
+  else if (k === 'ring' || k === 'bloom') { const n = k === 'bloom' ? 20 : m[2], o = e.ro || 0; for (let i = 0; i < n; i++) ray((i + o) / n * TAU, (k === 'bloom' ? 260 : m[3]) * 1.1, 12); }
+  else if (k === 'devil') for (let i = 0; i < m[1]; i++) ray(toP + (i - (m[1] - 1) / 2) * 1.4, 320, 52);
+  else if (k === 'summon') for (let i = 0; i < m[2]; i++) { const an = i / m[2] * TAU + 1; out.push({ k: 'circ', x: e.x + Math.cos(an) * 120, y: e.y + Math.sin(an) * 100, r: 42 }); }
+  else if (k === 'burrow') out.push({ k: 'circ', x: e.x, y: e.y, r: 170 });
+  else if (k === 'ambush') out.push({ k: 'circ', x: e.x, y: e.y, r: m[1] || 200 });
+  else if (k === 'beam') { const s0 = e.bsg || 1, st = toP - 1.4 * s0; for (let j = 0; j < (m[1] || 1); j++) ray(st + j * Math.PI, 600, 26); }
+  else if (k === 'blizzard') ray(toP, 4 * 95 + 80, 170);
+  else if (k === 'flash') out.push({ k: 'circ', x: e.x, y: e.y, r: 600, faint: 1 });
+  else if (k === 'suns') { const nx = -Math.sin(toP), ny = Math.cos(toP); for (const o of [0, -260, 260]) out.push({ k: 'circ', x: P.x + nx * o, y: P.y + ny * o, r: 165 }); }
+  else if (k === 'thirst') out.push({ k: 'circ', x: e.x, y: e.y, r: 430 });
+  else if (k === 'scythe') out.push({ k: 'circ', x: e.x, y: e.y, r: 250 });
+  else if (k === 'pull' || k === 'mudwave') out.push({ k: 'circ', x: e.x, y: e.y, r: k === 'pull' ? 210 : 440, faint: k === 'mudwave' });
+  else if (k === 'crows' || k === 'pools') out.push({ k: 'circ', x: P.x, y: P.y, r: k === 'pools' ? 110 : 120 });
+  else if (k === 'tide' || k === 'firerow' || k === 'cannon' || k === 'icefield' || k === 'geysers') { const L = LORD[e.t]; if (L) out.push({ k: 'circ', x: L[0], y: L[1], r: L[2] - 40, faint: 1 }); }
+  return out; }
 const WIND = { sweep: .5, cone: .85, fan: .5, ring: .6, rain: .5, nova: .75, charge: .8, devil: .6, summon: .7, blink: .35, burrow: 1, lines: .7 };
 /* ---------- a Szárazurak saját mozdulatai (felülírja az alap mozdulatlistát), jóval több életerő ---------- */
 const BOSSMV = {
@@ -202,7 +227,7 @@ const BM = {
   pull(e, m, d, toP, D0) { R.pull = { x: e.x, y: e.y, t: 1.3 }; aoeL(e.x, e.y, 210, 1.45, D0 * 1.2); hiss(1, .06, 250); say('A sár húz magához!'); },
   pools(e, m, d, toP, D0, L) { for (let i = 0; i < m[1]; i++) { const a = Math.random() * TAU, r = Math.random() * L[2] * .8, x = i ? L[0] + Math.cos(a) * r : P.x, y = i ? L[1] + Math.sin(a) * r : P.y; HZ.push({ x, y, r: 90 + Math.random() * 40, t: 9, dps: D0 * .45, slow: .6, col: '70,80,40', grow: 0 }); } sfx(80, .5, 'sine', .07, -20); },
   mudwave(e, m, d, toP, D0) { [160, 300, 440].forEach((R0, j) => { const n = Math.round(R0 / 34); for (let i = 0; i < n; i++) { const a = i / n * TAU; aoeL(e.x + Math.cos(a) * R0, e.y + Math.sin(a) * R0, 52, .6 + j * .45, D0 * .8); } }); },
-  beam(e, m, d, toP) { e.st = 'beam'; e.tm = 2.3; e.bn = m[1] || 1; e.ba = toP - 1.4; e.bs = (Math.random() < .5 ? 1 : -1) * 1.25; if (e.bs < 0) e.ba = toP + 1.4; e.bhit = 0; sfx(300, 2.2, 'sawtooth', .05, 600); return 'keep'; },
+  beam(e, m, d, toP) { e.st = 'beam'; e.tm = 2.3; e.bn = m[1] || 1; e.ba = toP - 1.4; e.bs = (e.bsg || (Math.random() < .5 ? 1 : -1)) * 1.25; if (e.bs < 0) e.ba = toP + 1.4; e.bhit = 0; sfx(300, 2.2, 'sawtooth', .05, 600); return 'keep'; },
   suns(e, m, d, toP, D0) { const nx = -Math.sin(toP), ny = Math.cos(toP); [[0, 1.3], [-260, 1.65], [260, 2]].forEach(([o, t]) => aoeL(P.x + nx * o, P.y + ny * o, 165, t, D0 * 1.3)); say('Három nap zuhan alá.'); },
   flash(e, m, d, toP, D0) { FX.push({ k: 'ring', x: e.x, y: e.y, l: .6, r: 600, col: '255,255,220' }); sfx(1600, .6, 'sine', .07, -1200); const face = angD(R.a, Math.atan2(e.y - P.y, e.x - P.x)) < 1.3; if (face) { R.blind = 2.6; hurtP(D0 * .8, toP, 200); say('Belenéztél a fénybe.'); } },
   veil(e, m, d, toP, D0, L) { FX.push({ k: 'arc', x: e.x, y: e.y - 24, a: e.aa, r: 160, l: .18, foe: 1 }); hiss(.14, .07, 1500); if (d < 170 + ET[e.t].r && angD(toP, e.aa) < 1.25) hurtP(D0 * .9, e.aa, 340);
@@ -213,7 +238,7 @@ const BM = {
   tail(e, m, d, toP, D0) { FX.push({ k: 'ring', x: e.x, y: e.y, l: .4, r: 290, col: '220,190,140' }); CAM.sh = 10; hiss(.3, .1, 400); if (d < 290 && angD(toP, e.aa) > .7) hurtP(D0 * 1.1, toP, 520); },
   geysers(e, m, d, toP, D0, L) { aoeL(P.x, P.y, 95, .9, D0); for (let i = 0; i < m[1]; i++) { const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * L[2]; aoeL(L[0] + Math.cos(a) * r, L[1] + Math.sin(a) * r, 80, .7 + Math.random() * 1.4, D0); } },
   roots(e, m, d, toP, D0) { const n = m[1] || 8, o = toP; for (let k2 = 0; k2 < n; k2++) { const a = o + k2 / n * TAU; for (let i = 1; i <= 7; i++) aoeL(e.x + Math.cos(a) * (60 + i * 70), e.y + Math.sin(a) * (60 + i * 70), 42, .45 + i * .1, D0 * .9); } sfx(130, .5, 'sawtooth', .06, 60); },
-  bloom(e, m, d, toP, D0) { const o = Math.random(); for (let w = 0; w < 2; w++) for (let i = 0; i < 20; i++) { const a = (i + o + w * .5) / 20 * TAU, v = 230 + w * 80; PRJ.push({ x: e.x, y: e.y - 30, vx: Math.cos(a) * v, vy: Math.sin(a) * v, d: D0 * .5, r: 9, l: 2.8, k: 'thorn', foe: 1 }); } FX.push({ k: 'ring', x: e.x, y: e.y, l: .5, r: 160, col: '230,120,150' }); sfx(700, .3, 'triangle', .05, -300); },
+  bloom(e, m, d, toP, D0) { const o = e.ro != null ? e.ro : Math.random(); for (let w = 0; w < 2; w++) for (let i = 0; i < 20; i++) { const a = (i + o + w * .5) / 20 * TAU, v = 230 + w * 80; PRJ.push({ x: e.x, y: e.y - 30, vx: Math.cos(a) * v, vy: Math.sin(a) * v, d: D0 * .5, r: 9, l: 2.8, k: 'thorn', foe: 1 }); } FX.push({ k: 'ring', x: e.x, y: e.y, l: .5, r: 160, col: '230,120,150' }); sfx(700, .3, 'triangle', .05, -300); },
   prison(e, m, d, toP, D0) { const cx = P.x, cy = P.y; for (let i = 0; i < 16; i++) { const a = i / 16 * TAU; aoeL(cx + Math.cos(a) * 262, cy + Math.sin(a) * 262, 56, 1.1, D0); } aoeL(cx, cy, 118, 1.1, D0 * 1.2); say('Jégbörtön.'); },
   lances(e, m, d, toP, D0) { for (const s of [-.18, 0, .18]) { const a = toP + s; PRJ.push({ x: e.x + Math.cos(a) * 30, y: e.y - 30, vx: Math.cos(a) * 620, vy: Math.sin(a) * 620, d: D0 * .9, r: 16, l: 1.6, k: 'ice', foe: 1 }); } sfx(1400, .2, 'square', .04, -900); },
   blizzard(e, m, d, toP, D0) { for (let i = 1; i <= 4; i++) HZ.push({ x: e.x + Math.cos(toP) * i * 95, y: e.y + Math.sin(toP) * i * 95, r: 70 + i * 14, t: 3.2, dps: D0 * .5, slow: .7, col: '200,230,255', ice: 1 }); hiss(1.2, .07, 2500); },
@@ -231,7 +256,7 @@ function boss(e, dt) { const E = ET[e.t], L = LORD[e.t], dx = P.x - e.x, dy = P.
   const nx = E.ph[e.pi]; if (nx && e.hp < E.hp * nx.at) { e.pi++; e.nm = e.t === 'szil' ? 'Szikkadt Szilárd – ' + nx.n[0] + nx.n.slice(1).toLowerCase() : null; e.st = 'rec'; e.tm = 2.4; e.inv = 2.4; e.pos = 0; e.n = 0; e.hid = 0; AOE = []; PRJ = PRJ.filter(q => !q.foe); CAM.sh = 16; sfx(60, 1.6, 'sawtooth', .09, 90); for (let i = 0; i < 3; i++) FX.push({ k: 'ring', x: e.x, y: e.y, l: .7 + i * .3, r: 200 + i * 90, col: '255,150,60' });
     if (e.t === 'szil' && e.pi === 1) { if (P.f.pohar) return ending(2); P.pot = Math.floor(P.pot / 2); say('A kráter hősége elpárologtatja a kortyaid felét.'); } cine([{ x: e.x, y: e.y - 40, T: 3.6, z: 1.3, title: nx.n, cap: nx.q }]); return; }
   if (e.st === 'idle' || e.st === 'chase') { e.st = 'chase'; e.a = toP; if (sp && d > 120) moveE(e, toP, sp, dt);
-    if (e.cd <= 0) { let m = mv[(e.n++) % mv.length]; if (m[0] === 'sweep' && d > 170) m = mv[(e.n++) % mv.length]; if (m[0] === 'summon' && EN.filter(o => o.sum && o.st !== 'dead').length >= 4) m = mv[(e.n++) % mv.length]; e.m = m; e.mode = m[0]; e.aa = toP; e.st = 'wind'; e.tm = WIND[m[0]] || .6; e.vol = m[0] === 'fan' && e.pi ? 2 : 1;
+    if (e.cd <= 0) { let m = mv[(e.n++) % mv.length]; if (m[0] === 'sweep' && d > 170) m = mv[(e.n++) % mv.length]; if (m[0] === 'summon' && EN.filter(o => o.sum && o.st !== 'dead').length >= 4) m = mv[(e.n++) % mv.length]; e.m = m; e.mode = m[0]; e.aa = toP; e.ro = Math.random(); e.bsg = Math.random() < .5 ? 1 : -1; e.st = 'wind'; e.tm = WIND[m[0]] || .6; e.vol = m[0] === 'fan' && e.pi ? 2 : 1;
       if (m[0] === 'nova') AOE.push({ x: e.x, y: e.y, r: m[1], t: e.tm, T: e.tm, d: D0 }); if (m[0] === 'burrow' || m[0] === 'ambush') { e.hid = 1; e.inv = 1.3; hiss(.4, .08, 200); }
       if (m[0] === 'blink') { const a = Math.random() * TAU; FX.push({ k: 'ring', x: e.x, y: e.y, l: .4, r: 80, col: '220,220,255' }); e.x = clamp(P.x + Math.cos(a) * 150, L[0] - L[2] + 80, L[0] + L[2] - 80); e.y = clamp(P.y + Math.sin(a) * 120, L[1] - L[2] + 80, L[1] + L[2] - 80); e.aa = Math.atan2(P.y - e.y, P.x - e.x); FX.push({ k: 'ring', x: e.x, y: e.y, l: .4, r: 80, col: '220,220,255' }); sfx(900, .15, 'sine', .05, -500); } } }
   else if (e.st === 'wind') { const m = e.m; e.tm -= dt; if (e.tm > .3 && m[0] !== 'charge' || m[0] === 'fan') e.aa = toP; if (m[0] === 'charge' && e.tm > .3) e.aa = toP; e.a = e.aa; if (m[0] === 'burrow' || m[0] === 'ambush') moveE(e, toP, Math.min(m[0] === 'ambush' ? 620 : 420, d * 2.6), dt);
@@ -239,7 +264,7 @@ function boss(e, dt) { const E = ET[e.t], L = LORD[e.t], dx = P.x - e.x, dy = P.
       if (k === 'sweep' || k === 'blink') { FX.push({ k: 'arc', x: e.x, y: e.y - 24, a: e.aa, r: 160, l: .18, foe: 1 }); hiss(.14, .07, 1500); if (d < 160 + E.r && angD(toP, e.aa) < 1.2) hurtP(D0, e.aa, 380); }
       else if (k === 'cone') { hiss(.5, .1, 300); sfx(90, .5, 'sawtooth', .07, 40); CAM.sh = 9; for (let i = 0; i < 26; i++) { const a = e.aa + (Math.random() - .5) * m[2] * 2, v = 300 + Math.random() * 500; FX.push({ k: 'sp', x: e.x, y: e.y - 24, vx: Math.cos(a) * v, vy: Math.sin(a) * v + 40, l: .35 + Math.random() * .3, col: '#ffcf8a' }); } if (d < m[1] && angD(toP, e.aa) < m[2]) hurtP(D0 * 1.1, e.aa, 440); }
       else if (k === 'fan') { const h = (m[2] - 1) / 2; for (let j = -h; j <= h; j++) { const a = toP + j * m[3]; PRJ.push({ x: e.x + Math.cos(a) * 24, y: e.y - 30, vx: Math.cos(a) * m[4], vy: Math.sin(a) * m[4], d: D0 * .55, r: 9, l: 1.7, k: m[1], foe: 1 }); } sfx(760, .12, 'sawtooth', .05, -300); if (--e.vol > 0) { e.tm = .34; return; } }
-      else if (k === 'ring') { const o = Math.random(); for (let i = 0; i < m[2]; i++) { const a = (i + o) / m[2] * TAU; PRJ.push({ x: e.x, y: e.y - 30, vx: Math.cos(a) * m[3], vy: Math.sin(a) * m[3], d: D0 * .5, r: 9, l: 2.6, k: m[1], foe: 1 }); } sfx(110, .3, 'square', .07, -40); CAM.sh = 8; }
+      else if (k === 'ring') { const o = e.ro != null ? e.ro : Math.random(); for (let i = 0; i < m[2]; i++) { const a = (i + o) / m[2] * TAU; PRJ.push({ x: e.x, y: e.y - 30, vx: Math.cos(a) * m[3], vy: Math.sin(a) * m[3], d: D0 * .5, r: 9, l: 2.6, k: m[1], foe: 1 }); } sfx(110, .3, 'square', .07, -40); CAM.sh = 8; }
       else if (k === 'rain') { for (let i = 0; i < m[1]; i++) AOE.push({ x: P.x + (i ? (Math.random() - .5) * 280 : 0), y: P.y + (i ? (Math.random() - .5) * 280 : 0), r: m[2], t: .8 + i * .24, T: .8 + i * .24, d: D0 * .8 }); }
       else if (k === 'lines') { for (const s of [-.45, 0, .45]) for (let i = 1; i <= 5; i++) AOE.push({ x: e.x + Math.cos(e.aa + s) * i * 95, y: e.y + Math.sin(e.aa + s) * i * 95, r: 50, t: .45 + i * .12, T: .45 + i * .12, d: D0 * .8 }); sfx(140, .4, 'sawtooth', .06, 80); }
       else if (k === 'charge') { e.st = 'atk'; e.tm = .6; e.hitd = 0; sfx(90, .5, 'sawtooth', .08, 120); return; }
