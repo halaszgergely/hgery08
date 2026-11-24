@@ -116,18 +116,18 @@ const ZDEF = [
   { id: 'kiserlet', n: 'A KÍSÉRLETEZŐK KRIPTÁJA', th: 'mely', at: null, t: 9, g: [8, 6], kind: 'kat' },
   ...['BEOMLOTT PINCE', 'ELFELEDETT KRIPTA', 'A SZOMJAS ÜREG', 'A REMETE PINCÉJE', 'AZ ÖNTÖZŐK RAKTÁRA', 'A NÉMA KRIPTA', 'A HOMOKBA FULLADT TEMPLOM', 'A KISZÁRADT FORRÁSÉR', 'A KANNÁSOK SZENTÉLYE', 'A CSONTOK PINCÉJE', 'A HAMUS JÁRAT', 'A SÓFOLYOSÓ', 'A FAGYOTT KAMRA', 'AZ ÁRNYÉK-CISZTERNA', 'A GYÖKERES PINCE', 'A TÖRT KÚTAKNA'].map((n, i) => ({ id: 'p' + i, n, th: 'ko', at: null, t: 1, g: i % 3 === 2 ? [6, 5] : [5, 4], kind: i % 3 === 2 ? 'bar' : 'kat', proc: 1 })),
   { id: 'k_gaspar', n: 'A VARJÚVÁR TÖMLÖCE', th: 'ko', at: null, t: 2, g: [7, 5], kind: 'kat', kas: 1 }, { id: 'k_denes', n: 'A NAPERŐD ALAGSORA', th: 'ko', at: null, t: 4, g: [8, 5], kind: 'kat', kas: 1 },
-  { id: 'k_palota', n: 'A PALOTA KAZAMATÁI', th: 'ko', at: null, t: 5, g: [8, 6], kind: 'kat', kas: 1 }, { id: 'k_klara', n: 'A JÉGKOLOSTOR KRIPTÁJA', th: 'jeg', at: null, t: 8, g: [7, 6], kind: 'kat', kas: 1 }, { id: 'k_lorinc', n: 'A SÓERŐD BÖRTÖNE', th: 'so', at: null, t: 9, g: [8, 6], kind: 'kat', kas: 1 },
+  { id: 'k_palota', n: 'A PALOTA KAZAMATÁI', th: 'ko', at: null, t: 5, g: [8, 6], kind: 'kat', kas: 1 }, { id: 'k_klara', n: 'A JÉGKOLOSTOR KRIPTÁJA', th: 'jeg', at: null, t: 8, g: [7, 6], kind: 'kat', kas: 1 }, { id: 'k_lorinc', n: 'A SÓERŐD BÖRTÖNE', th: 'so', at: null, t: 9, g: [8, 6], kind: 'kat', kas: 1 }, { id: 'u_gaspar', n: 'A VARJÚVÁR FELSŐ TERMEI', th: 'ko', at: null, t: 3, g: [4, 4], kind: 'tor', kast: 1, kas: 1, lv: 4, ls: 2200, lvls: ['hall', 'gal', 'cath', 'terr'] }, { id: 'u_denes', n: 'A NAPERŐD PALOTÁJA', th: 'feher', at: null, t: 5, g: [4, 4], kind: 'tor', kast: 1, kas: 1, lv: 4, ls: 2200, lvls: ['hall', 'gal', 'cath', 'terr'] }, { id: 'u_klara', n: 'A JÉGKOLOSTOR CSARNOKAI', th: 'jeg', at: null, t: 8, g: [4, 4], kind: 'tor', kast: 1, kas: 1, lv: 4, ls: 2200, lvls: ['hall', 'gal', 'cath', 'terr'] }, { id: 'u_lorinc', n: 'A SÓERŐD TERMEI', th: 'so', at: null, t: 9, g: [4, 4], kind: 'tor', kast: 1, kas: 1, lv: 4, ls: 2200, lvls: ['hall', 'gal', 'cath', 'terr'] },
   { id: 'mely', n: 'A MÉLY', th: 'mely', at: null, t: 10, open: 1, kind: 'open' }];
 const ZONES = [], ZK = {}, ZC = 430, ZX0 = OW + 6000;
 let WW = 0, WH = OH;
-(() => { let x = ZX0, y = 0, colW = 0; for (const z of ZDEF) { const w = z.open ? 2400 : z.kind === 'tor' ? (z.lv || 3) * 1200 : z.g[0] * ZC, h = z.open ? 3200 : z.kind === 'tor' ? 1100 : z.g[1] * ZC; if (y + h > OH) { y = 0; x += colW + 1500; colW = 0; }
+(() => { let x = ZX0, y = 0, colW = 0; for (const z of ZDEF) { const w = z.open ? 2400 : z.kind === 'tor' ? (z.lv || 3) * (z.ls || 1200) : z.g[0] * ZC, h = z.open ? 3200 : z.kast ? 1300 : z.kind === 'tor' ? 1100 : z.g[1] * ZC; if (y + h > OH) { y = 0; x += colW + 1500; colW = 0; }
     z.x = x; z.y = y; z.w = w; z.h = h; if (z.at) z.at = sc(z.at); colW = Math.max(colW, w); y += h + 1500; ZONES.push(z); ZK[z.id] = z; } WW = x + colW + 2000; })();
 ZK.kiserlet.at = [RK.mely.c[0] - 1500, RK.mely.c[1] - 900]; ZK.mely.at = KWELL;
 const zoneAt = (x, y) => { if (x < ZX0 - 2000) return null; for (const z of ZONES) if (x > z.x - 700 && x < z.x + z.w + 700 && y > z.y - 700 && y < z.y + z.h + 700) return z; return ZONES[0]; };
 /* zónák magassága: barlangban a falak magasba szöknek, a tornyokban szintenként emelkedik */
 function zoneH(z, x, y) { if (z.hm) { const fx = clamp((x - z.x) / z.hc, 0, z.hw - 1.001), fy = clamp((y - z.y) / z.hc, 0, z.hh - 1.001), ix = fx | 0, iy = fy | 0, u = fx - ix, v = fy - iy, k = ix + iy * z.hw, m = z.hm;
     return (m[k] * (1 - u) + m[k + 1] * u) * (1 - v) + (m[k + z.hw] * (1 - u) + m[k + z.hw + 1] * u) * v; }
-  if (z.kind === 'tor') return clamp(Math.floor((x - z.x) / 1200), 0, (z.lv || 3) - 1) * 420; return 0; }
+  if (z.kind === 'tor') return clamp(Math.floor((x - z.x) / (z.ls || 1200)), 0, (z.lv || 3) - 1) * 420; return 0; }
 const HEART = [ZK.mely.x + 1200, ZK.mely.y + 2500]; LORD.szil = [HEART[0], HEART[1], 430]; FIRES.push([ZK.mely.x + 1200, ZK.mely.y + 340]);
 
 /* ---------- tereptárgyak rácsa ---------- */
