@@ -1,7 +1,7 @@
 /* ZERO QUEST – 3D megjelenítés (three.js): terep, ég, tenger, fények, kamera, szereplők, effektek, zónák */
-import * as THREE from './lib/three.module.min.js?v=202611242044';
-import { GB, M, mm, MAT, hex, makeMan, setGear, poseMan, makeBeast, poseBeast, weaponMesh, shieldMesh, smat, grassProto, treeProto, statueBody } from './modell.js?v=202611242044';
-import { propInto, bldInto } from './kellek.js?v=202611242044';
+import * as THREE from './lib/three.module.min.js?v=202611242110';
+import { GB, M, mm, MAT, hex, makeMan, setGear, poseMan, makeBeast, poseBeast, weaponMesh, shieldMesh, smat, grassProto, treeProto, statueBody } from './modell.js?v=202611242110';
+import { propInto, bldInto } from './kellek.js?v=202611242110';
 
 const glc = document.getElementById('g');
 const RD = new THREE.WebGLRenderer({ canvas: glc, antialias: true, powerPreference: 'high-performance' });
@@ -70,15 +70,15 @@ const lantern = new THREE.PointLight(0xffb070, 0, 800, 1.3); scene.add(lantern);
 /* ---------- terepdarabok ---------- */
 const CK = 1024, CN = CK / HG, CH = new Map(), world = new THREE.Group(), JOBS = []; scene.add(world);
 function pump(ms) { const t0 = performance.now(); while (JOBS.length && performance.now() - t0 < ms) JOBS.shift()(); }
-const isDyn = t => t === 'fire' || t === 'chest' || t === 'page' || t === 'dew' || t === 'heart' || t === 'flower' || t === 'kut' || t === 'msg' || t === 'bld' || t === 'portc';
+const isDyn = t => t === 'kapu' || t === 'fire' || t === 'chest' || t === 'page' || t === 'dew' || t === 'heart' || t === 'flower' || t === 'kut' || t === 'msg' || t === 'bld' || t === 'portc';
 function gAt(o) { if (o.b != null && BLDS[o.b]) return BLDS[o.b].base + (o.fz ? FH : 0); const z = zoneAt(o.x, o.y); return z ? zoneH(z, o.x, o.y) : GH(o.x, o.y); }
 /* ---------- szerkesztett tárgyak: helyi másolat + 3D transzformáció (eltolás, forgatás három tengely körül, nyújtás) ---------- */
 const _q = new THREE.Quaternion(), _e = new THREE.Euler(0, 0, 0, 'YXZ'), _v = new THREE.Vector3(), _s = new THREE.Vector3(), _n3 = new THREE.Matrix3();
 function edMat(o, g, bk) { const X = o.X, k = X.s || 1, b = bk || [1, 1, 1]; _e.set(X.rx || 0, -(X.a || 0), X.rz || 0, 'YXZ'); _q.setFromEuler(_e); return new THREE.Matrix4().compose(_v.set(o.x, g + (X.z || 0), o.y), _q, _s.set(k * (X.sx || 1) / b[0], k * (X.sy || 1) / b[1], k * (X.sz || 1) / b[2])); }
 function bldMat(b) { return new THREE.Matrix4().makeTranslation(b.x, 0, b.y).multiply(new THREE.Matrix4().makeRotationY(-(b.ea || 0))).multiply(new THREE.Matrix4().makeTranslation(-b.x, 0, -b.y)); }
 /* alakzatoknál a méretezés a méretekbe kerül (a minta nem nyúlik, hanem újra kitölt); bk: a beégetett nagyítás */
-const PRIMS = { kocka: 1, henger: 1, kup: 1 };
-function edCopy(o) { const q = o.o0 || o, X = o.X; if (X && PRIMS[o.t]) { const k = X.s || 1, sx = X.sx || 1, sy = X.sy || 1, sz = X.sz || 1; if (o.t === 'kocka') return { ...o, x: 0, y: 0, w: (q.w || 100) * k * sx, h: (q.h || 100) * k * sy, d: (q.d || 100) * k * sz, X: null, bk: [k * sx, k * sy, k * sz] }; const m = Math.min(sx, sz); return { ...o, x: 0, y: 0, r: (q.r || 50) * k * m, h: (q.h || 100) * k * sy, X: null, bk: [k * m, k * sy, k * m] }; }
+const PRIMS = { kocka: 1, henger: 1, kup: 1, lepcso: 1 };
+function edCopy(o) { const q = o.o0 || o, X = o.X; if (X && PRIMS[o.t]) { const k = X.s || 1, sx = X.sx || 1, sy = X.sy || 1, sz = X.sz || 1; if (o.t === 'kocka' || o.t === 'lepcso') return { ...o, x: 0, y: 0, w: (q.w || 100) * k * sx, h: (q.h || 100) * k * sy, d: (q.d || 100) * k * sz, X: null, bk: [k * sx, k * sy, k * sz] }; const m = Math.min(sx, sz); return { ...o, x: 0, y: 0, r: (q.r || 50) * k * m, h: (q.h || 100) * k * sy, X: null, bk: [k * m, k * sy, k * m] }; }
   return { ...o, x: 0, y: 0, w: q.w, d: q.d, h: q.h, r: o.t === 'rock' ? q.r / (q.s || 1) : q.r, s: 1, rot: 0, ea: 0, es: 1, X: null }; }
 function unrot(c, b) { const q = toLoc(b, c.x, c.y); return { ...c, x: q[0], y: q[1] }; }
 function xfInto(D, S, m) { const P = S.p, N = S.n, C = S.c, e = m.elements; _n3.getNormalMatrix(m); const ne = _n3.elements, n0 = D.p.length / 3;
@@ -95,7 +95,7 @@ function objGeo(o, Bu) { const B = new GB(); let m = null, bk = null;
 function edBox(o, X) { const Bu = new GB(), [B, m0, bk] = objGeo(o.t === 'bld' ? o : X ? { ...o, X: X } : o, Bu), mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
   for (const P of [B.p, Bu.p]) for (let i = 0; i < P.length; i += 3) for (let k = 0; k < 3; k++) { if (P[i + k] < mn[k]) mn[k] = P[i + k]; if (P[i + k] > mx[k]) mx[k] = P[i + k]; }
   if (o.t === 'bld') for (const c of OBJ) if (c.b === o.id && c !== o && !c.del && c.t !== 'bld') { const [Bc] = objGeo({ ...unrot(c, o), b: null, X: null }); const P = Bc.p; for (let i = 0; i < P.length; i += 3) for (let k = 0; k < 3; k++) { if (P[i + k] < mn[k]) mn[k] = P[i + k]; if (P[i + k] > mx[k]) mx[k] = P[i + k]; } }
-  if (mn[0] > mx[0]) { const r = o.w ? Math.max(o.w, o.d) / 2 : Math.max(o.r || 20, 20), g = o.X || X ? 0 : gAt(o); mn[0] = (o.X || X ? 0 : o.x) - r; mx[0] = (o.X || X ? 0 : o.x) + r; mn[2] = (o.X || X ? 0 : o.y) - r; mx[2] = (o.X || X ? 0 : o.y) + r; mn[1] = g; mx[1] = g + 60; }
+  if (mn[0] > mx[0]) { const r = o.w ? Math.max(o.w, o.d) / 2 : Math.max(o.r || 20, 20), g = o.X || X ? 0 : gAt(o); mn[0] = (o.X || X ? 0 : o.x) - r; mx[0] = (o.X || X ? 0 : o.x) + r; mn[2] = (o.X || X ? 0 : o.y) - r; mx[2] = (o.X || X ? 0 : o.y) + r; mn[1] = g; mx[1] = g + (o.gh || 60); }
   if (bk) for (let k = 0; k < 3; k++) { mn[k] /= bk[k]; mx[k] /= bk[k]; }
   return { mn, mx, m: m0 }; }
 function objsIn(x0, y0, x1, y1) { const out = [], seen = new Set(); for (let gx = Math.floor(x0 / GC); gx <= Math.floor((x1 - 1) / GC); gx++) for (let gy = Math.floor(y0 / GC); gy <= Math.floor((y1 - 1) / GC); gy++) { const l = GRID.get(gk(gx, gy)); if (l) for (const o of l) if (!seen.has(o) && o.x >= x0 && o.x < x1 && o.y >= y0 && o.y < y1) { seen.add(o); out.push(o); } } return out; }
@@ -118,7 +118,7 @@ function chunkProps(ch) { const { grp, cx, cy, ups } = ch, x0 = cx * CK, y0 = cy
 }
 function dropChunk(c) { c.dead = true; world.remove(c.grp); c.grp.traverse(o => { if (o.geometry && !o.userData.keep) o.geometry.dispose(); }); for (const u of c.ups) u.material.dispose(); }
 /* ---------- állapotos tárgyak (tűz, láda, lap, harmatgyűjtő, kút, szív, épületek felső szintje) ---------- */
-function dynFor(o) { if (DYN.has(o)) return; const g = zoneAt(o.x, o.y) ? zoneH(zoneAt(o.x, o.y), o.x, o.y) : gAt(o), grp = new THREE.Group(); grp.position.set(o.x, g, o.y); if (o.X) { const X = o.X, k = X.s || 1; grp.position.y += X.z || 0; grp.rotation.set(X.rx || 0, -(X.a || 0), X.rz || 0, 'YXZ'); grp.scale.set(k * (X.sx || 1), k * (X.sy || 1), k * (X.sz || 1)); } else if (o.b != null && BLDS[o.b] && BLDS[o.b].ea) grp.rotation.y = -BLDS[o.b].ea; const B = new GB(), u = {}; grp.userData = u;
+function dynFor(o) { if (DYN.has(o)) return; const g = zoneAt(o.x, o.y) ? zoneH(zoneAt(o.x, o.y), o.x, o.y) : gAt(o), grp = new THREE.Group(); grp.position.set(o.x, g, o.y); if (o.X) { const X = o.X, k = X.s || 1; grp.position.y += X.z || 0; grp.rotation.set(X.rx || 0, -(X.a || 0), X.rz || 0, 'YXZ'); grp.scale.set(k * (X.sx || 1), k * (X.sy || 1), k * (X.sz || 1)); } else if (o.b != null && BLDS[o.b] && BLDS[o.b].ea) grp.rotation.y = -BLDS[o.b].ea; else if (o.ca) grp.rotation.y = -o.ca; const B = new GB(), u = {}; grp.userData = u;
   switch (o.t) {
     case 'fire': if (o.hub) { B.cyl(M(0, -4, 0), 64, 70, 34, 18, hex('#6a6660')); B.cyl(M(0, 30, 0), 66, 66, 8, 18, hex('#8a8680')); for (let i = 0; i < 4; i++) B.box(M(Math.cos(i * 1.57 + .78) * 60, 0, Math.sin(i * 1.57 + .78) * 60), 14, 170, 14, hex('#4e3a28')); B.cyl(M(0, 170, 0, .785), 0, 110, 70, 4, hex('#3e3228')); hubPool.position.set(o.x, g + 26, o.y); }
       else { const st = hex('#5a5650'); for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; B.ico(M(Math.cos(a) * 26, 2, Math.sin(a) * 26), 7, 0, st, .4); } for (let i = 0; i < 4; i++) B.cyl(M(0, 4, 0, i * .8, Math.PI / 2 - .3, 0), 3, 3.8, 34, 5, hex('#3e2a1a')); B.ico(M(0, 2, 0, 0, 0, 0, 1, .25, 1), 14, 0, hex('#2a2422'));
@@ -130,11 +130,16 @@ function dynFor(o) { if (DYN.has(o)) return; const g = zoneAt(o.x, o.y) ? zoneH(
     case 'kut': { const c = MAT.ko; B.cyl(M(0, -4, 0), 32, 36, 38, 14, c[1]); B.cyl(M(0, 34, 0), 36, 36, 6, 14, c[2]); B.cyl(M(0, 30, 0), 26, 26, 4, 14, hex('#0a0e12')); for (const s of [-1, 1]) B.box(M(s * 30, 0, 0), 8, 120, 8, hex('#4e3a28')); B.box(M(0, 116, 0), 70, 6, 6, hex('#4e3a28')); B.cyl(M(0, 120, 0, 0, 0, 0), 0, 52, 40, 4, hex('#5a4630')); B.cyl(M(0, 60, 0), 7, 6, 12, 8, hex('#6a5034')); u.kut = 1; break; }
     case 'heart': B.cyl(M(0, -20, 0), 70, 90, 60, 10, hex('#4a4040')); B.glow = .6; B.ico(M(0, 90, 0), 60, 1, hex('#e8e0d8'), .2); B.glow = 0; for (let i = 0; i < 9; i++) B.box(M(Math.cos(i / 9 * 6.28) * 58, 80, Math.sin(i / 9 * 6.28) * 58, -i / 9 * 6.28), 16, 26, 10, i === 8 ? hex('#1a1414') : hex('#bfe9ff')); u.heart = 1; u.light = [0xd8c0ff, 1.6]; break;
     case 'flower': B.cyl(M(0, 0, 0), 1, 1.4, 30, 4, hex('#3a6a2a')); B.glow = .8; for (let i = 0; i < 6; i++) B.ico(M(Math.cos(i) * 6, 30, Math.sin(i) * 6), 4.5, 0, hex('#e8e0ff')); B.glow = 0; u.flower = 1; break;
+    case 'kapu': { const gw = o.gw || 200, gh = o.gh || 260, n = o.lv || 2, lw = gw / n, wood = hex('#5a3e26'), dark = hex('#3a281a'), iron = hex('#2e2c2a'); u.leaves = []; u.op = o.open ? 1 : 0;
+      if (o.fr) { const c = MAT[o.mat || 'ko'] || MAT.ko; for (const sx of [-1, 1]) B.box(M(sx * (gw / 2 + 14), 0, 0), 28, gh + 24, 34, c[0]); B.box(M(0, gh, 0), gw + 56, 26, 36, c[2]); }
+      for (let k = 0; k < n; k++) { const sgn = n === 1 ? 1 : k ? -1 : 1, piv = new THREE.Group(), L = new GB(); piv.position.set(-sgn * gw / 2, 0, 0); const np = Math.max(2, Math.round(lw / 22));
+        for (let i = 0; i < np; i++) L.box(M(sgn * (i + .5) * lw / np, 1, 0), lw / np - 1.5, gh - 3, 9, mixA(wood, dark, (i * 37 % 10) / 14)); for (const yy of [.18, .5, .82]) L.box(M(sgn * lw / 2, gh * yy, 5), lw - 6, 9, 2, iron); L.box(M(sgn * lw * .82, gh * .45, 7), 8, 8, 5, iron);
+        const lm = new THREE.Mesh(L.geo(), propMat); lm.castShadow = true; piv.add(lm); grp.add(piv); u.leaves.push(piv); } break; }
     case 'portc': { const R0 = new GB(), wd = Math.max(o.w, o.d); for (let i = -wd / 2 + 10; i <= wd / 2 - 10; i += 22) R0.cyl(M(o.a ? 0 : i, 0, o.a ? i : 0), 2.6, 2.6, 250, 5, hex('#2e2a28')); for (let k = 0; k < 6; k++) R0.box(M(0, 20 + k * 42, 0, o.a || 0), wd - 8, 5, 6, hex('#2e2a28')); for (let i = -wd / 2 + 10; i <= wd / 2 - 10; i += 22) R0.cyl(M(o.a ? 0 : i, -14, o.a ? i : 0), 0, 3, 14, 4, hex('#3a3634'), false); const pm = new THREE.Mesh(R0.geo(), propMat); pm.castShadow = true; grp.add(pm); u.portc = pm; break; }
     case 'msg': B.box(M(0, 0, 0, o.x % 3), 50, 20, 30, hex('#5a5650')); B.box(M(0, 0, -6, o.x % 3, .4), 40, 56, 10, hex('#6e6a62')); B.glow = .25; B.box(M(0, 30, -.5, o.x % 3, .4), 30, 2, 11, hex('#ffd98a')); B.glow = 0; break;
   }
   if (!B.empty) { const m = new THREE.Mesh(B.geo(), propMat); m.castShadow = m.receiveShadow = true; grp.add(m); } DYN.set(o, grp); dynG.add(grp); }
-const mulA = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
+const mulA = (a, k) => [a[0] * k, a[1] * k, a[2] * k], mixA = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const dynG = new THREE.Group(); scene.add(dynG);
 
 /* ---------- zónák ---------- */
@@ -253,6 +258,7 @@ function render() { const now = performance.now(), dt = Math.min(.05, (now - las
       if (b === pb && P.fz) { u.visible = true; u.material.opacity = lerp(u.material.opacity, 1, .2); u.material.transparent = false; if (b.roof) { u.material.opacity = .25; u.material.transparent = true; } } else { u.material.opacity = lerp(u.material.opacity, o, 1 - Math.pow(.001, dt)); u.material.transparent = u.material.opacity < .99; u.material.depthWrite = u.material.opacity > .5; u.visible = u.material.opacity > .03; } }
   /* állapotos tárgyak */
   const lights = []; for (const [o, g] of DYN) { const near = hyp(o.x - fx, o.y - fy) < (o.t === 'fire' || o.t === 'kut' || o.t === 'heart' ? 5500 : 2600), u = g.userData; g.visible = near && (zoneAt(o.x, o.y) === z); if (!g.visible) continue;
+    if (u.leaves) { u.op = lerp(u.op, o.open ? 1 : 0, 1 - Math.pow(.06, dt)); u.leaves.forEach((p, k) => p.rotation.y = (k ? 1 : -1) * u.op * 1.5); }
     if (u.portc) u.portc.position.y = lerp(u.portc.position.y, o.off ? 230 : 0, 1 - Math.pow(.2, dt));
     if (o.t === 'chest' && u.lid) u.lid.rotation.x = P && P.chest[o.id] ? lerp(u.lid.rotation.x, -1.9, .1) : 0;
     if (o.t === 'page' || o.t === 'dew' || o.t === 'flower') g.visible = !(P && (o.t === 'page' ? P.pg[o.i] : o.t === 'flower' ? P.f.virag : 0)); if (u.dew && P && P.dw[o.i]) g.children.forEach(c => c.material && (c.material = propMat));

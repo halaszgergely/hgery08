@@ -1,6 +1,6 @@
 // Vízágyú.io – kliens: menü, váróterem, hálózat, előrejelzés + interpoláció, rajz, vezérlés.
-import { TICK, PR, RANGE, MODES, MAPS, ITEMS, COLORS, TEAMC, mapOf, movePlayer, blocked, newWorld, step, encodeSnap, decodeSnap, encodeInput, decodeInput, worldFromSnap } from './jatek.js?v=202611242044';
-import { joinRoom, localSignal, fireSignal, hasTurn } from '../../js/net.js?v=202611242044';
+import { TICK, PR, RANGE, MODES, MAPS, ITEMS, COLORS, TEAMC, mapOf, movePlayer, blocked, newWorld, step, encodeSnap, decodeSnap, encodeInput, decodeInput, worldFromSnap } from './jatek.js?v=202611242110';
+import { joinRoom, localSignal, fireSignal, hasTurn } from '../../js/net.js?v=202611242110';
 
 const $ = s => document.querySelector(s), Q = new URLSearchParams(location.search), LOCAL = Q.has('local');
 const cv = $('#c'), g = cv.getContext('2d'), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -16,7 +16,7 @@ function fillSel(el, list, val) { el.innerHTML = list.map(([v, n]) => `<option v
 for (const p of ['m', 'l']) { fillSel($('#' + p + 'Mode'), MODES.map(m => [m.id, m.n]), 'ffa'); fillSel($('#' + p + 'Map'), MAPS.map(m => [m.id, m.n]), 'volgy'); fillSel($('#' + p + 'Fill'), [2, 3, 4, 5, 6, 7, 8].map(n => [n, n + ' fő']), 4); }
 async function boot() {
   if (LOCAL) { me = { uid: Q.get('uid') || 'u' + Math.random().toString(36).slice(2, 7), name: Q.get('name') || 'Teszt', color: COLORS[0], guest: false }; sig = localSignal(); return ready(); }
-  try { core = await import('../../js/core.js?v=202611242044'); } catch (e) { console.warn(e); }
+  try { core = await import('../../js/core.js?v=202611242110'); } catch (e) { console.warn(e); }
   if (!core || core.notConfigured || !core.auth) return ready();
   core.FB.onAuthStateChanged(core.auth, async u => {
     if (u && !u.isAnonymous) { me = { uid: u.uid, name: u.displayName || 'Tag', color: COLORS[0], guest: false }; try { const s = await core.FB.getDoc(core.FB.doc(core.db, 'users', u.uid)); if (s.exists()) { me.name = s.data().name || me.name; if (COLORS.includes(s.data().color)) me.color = s.data().color; } } catch (_) {} sig = fireSignal(core.FB, core.db); }

@@ -40,6 +40,7 @@ function setTrA(o, tr) { const [x, y, a, s, z, rx, rz, sx, sy, sz] = trN(tr); if
   o.x = x; o.y = y; o.X = { a, s, z, rx, rz, sx, sy, sz }; o.ea = 0; o.es = 1; o.edt = 1;
   if (q.w) { o.w = q.w * s * sx; o.d = q.d * s * sz; if (q.h) o.h = q.h * s * sy; o.ca = a; o.gr = a ? Math.hypot(o.w, o.d) / 2 : 0; }
   else if (q.r != null) o.r = q.r / (VEG(o.t) && o.t !== 'rock' ? q.s : 1) * s * Math.max(sx, sz);
+  if (o.t === 'lepcso' || o.t === 'kocka' || o.t === 'henger') { const flat = Math.abs(rx) < .02 && Math.abs(rz) < .02, g = gzW(x, y) + z, top = g + (q.h || 100) * s * sy; o.wk = !flat ? null : o.t === 'lepcso' ? 'ramp' : 'flat'; o.wb = g; o.wt = top; }
   const hg = (q.h || (o.t === 'tree' ? 260 : 90)) * s * sy; o.nz = z > 70 || z + hg < 10 ? 1 : 0;
   if (o.t === 'fire' && o.i != null && FIRES[o.i]) { FIRES[o.i][0] = x; FIRES[o.i][1] = y; }
   if (o.t === 'door' && o.z && ZK[o.z]) { const zz = ZK[o.z]; if (!o.out) zz.at = [x, y]; else if (zz.cu) zz.in = [x + 140, y]; }
@@ -58,7 +59,7 @@ function createAdd(sp) { const n0 = OBJ.length; let made = [];
   else made = [mk1(sp)];
   made.forEach((o, i) => { UIDS.delete(String(o.uid)); o.uid = i ? sp.id + '_' + i : sp.id; UIDS.set(String(o.uid), o); o.added = sp.id; }); let m = 400; for (const o of made) m = Math.max(m, hyp(o.x - sp.x, o.y - sp.y) + 400); edDirty(sp.x - m, sp.y - m, sp.x + m, sp.y + m); return made; }
 /* alap ütközési sugár a lerakható kellékekhez */
-const EDR = { kocka: 0, henger: 50, kup: 50, pillar: 22, statue: 28, brazier: 14, lamp: 8, crate: 15, barrel: 12, altar: 24, anvil: 16, forge: 34, tent: 40, stall: 26, ctower: 70, obelisk: 24, chest: 18, fire: 22, cart: 30, sarc: 0, well: 30 };
+const EDR = { kocka: 0, henger: 50, kup: 50, lepcso: 0, kapu: 0, pillar: 22, statue: 28, brazier: 14, lamp: 8, crate: 15, barrel: 12, altar: 24, anvil: 16, forge: 34, tent: 40, stall: 26, ctower: 70, obelisk: 24, chest: 18, fire: 22, cart: 30, sarc: 0, well: 30 };
 function applyMapEdits(m) { SPAWN.forEach((s, i) => { if (s.si == null) s.si = i; }); if (!m || m.v !== 1) return; try {
   if (m.pre) MED.pre.push(...m.pre);
   if (m.dun) for (const d of m.dun) { MED.dun.push(d); dunZone(d); }
