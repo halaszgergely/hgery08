@@ -1,7 +1,7 @@
 /* ZERO QUEST – 3D megjelenítés (three.js): terep, ég, tenger, fények, kamera, szereplők, effektek, zónák */
-import * as THREE from './lib/three.module.min.js?v=202611242234';
-import { GB, M, mm, MAT, hex, makeMan, setGear, poseMan, makeBeast, poseBeast, weaponMesh, shieldMesh, smat, grassProto, treeProto, statueBody } from './modell.js?v=202611242234';
-import { propInto, bldInto } from './kellek.js?v=202611242234';
+import * as THREE from './lib/three.module.min.js?v=202611242308';
+import { GB, M, mm, MAT, hex, makeMan, setGear, poseMan, makeBeast, poseBeast, weaponMesh, shieldMesh, smat, grassProto, treeProto, statueBody } from './modell.js?v=202611242308';
+import { propInto, bldInto } from './kellek.js?v=202611242308';
 
 const glc = document.getElementById('g');
 const RD = new THREE.WebGLRenderer({ canvas: glc, antialias: true, powerPreference: 'high-performance' });
@@ -89,7 +89,7 @@ function xfInto(D, S, m) { const P = S.p, N = S.n, C = S.c, e = m.elements; _n3.
 function objGeo(o, Bu) { const B = new GB(); let m = null, bk = null;
   if (o.t === 'bld') { bldInto(B, Bu || new GB(), o); if (o.ea) m = bldMat(o); }
   else if (o.b != null && BLDS[o.b] && BLDS[o.b].ea && o.t !== 'bld') { propInto(B, unrot(o, BLDS[o.b]), gAt(o)); m = bldMat(BLDS[o.b]); }
-  else if (o.X) { const c = edCopy(o); propInto(B, c, 0); m = edMat(o, gAt(o), c.bk); bk = c.bk; }
+  else if (o.X) { const c = edCopy(o); if (o.hl && o.hl.length) c.holes = o.hl; propInto(B, c, 0); m = edMat(o, 0, c.bk); bk = c.bk; }
   else propInto(B, o, gAt(o));
   return [B, m, bk]; }
 function edBox(o, X) { const Bu = new GB(), [B, m0, bk] = objGeo(o.t === 'bld' ? o : X ? { ...o, X: X } : o, Bu), mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
@@ -118,7 +118,7 @@ function chunkProps(ch) { const { grp, cx, cy, ups } = ch, x0 = cx * CK, y0 = cy
 }
 function dropChunk(c) { c.dead = true; world.remove(c.grp); c.grp.traverse(o => { if (o.geometry && !o.userData.keep) o.geometry.dispose(); }); for (const u of c.ups) u.material.dispose(); }
 /* ---------- állapotos tárgyak (tűz, láda, lap, harmatgyűjtő, kút, szív, épületek felső szintje) ---------- */
-function dynFor(o) { if (DYN.has(o)) return; const g = zoneAt(o.x, o.y) ? zoneH(zoneAt(o.x, o.y), o.x, o.y) : gAt(o), grp = new THREE.Group(); grp.position.set(o.x, g, o.y); if (o.X) { const X = o.X, k = X.s || 1; grp.position.y += X.z || 0; grp.rotation.set(X.rx || 0, -(X.a || 0), X.rz || 0, 'YXZ'); grp.scale.set(k * (X.sx || 1), k * (X.sy || 1), k * (X.sz || 1)); } else if (o.b != null && BLDS[o.b] && BLDS[o.b].ea) grp.rotation.y = -BLDS[o.b].ea; else if (o.ca) grp.rotation.y = -o.ca; const B = new GB(), u = {}; grp.userData = u;
+function dynFor(o) { if (DYN.has(o)) return; const g = zoneAt(o.x, o.y) ? zoneH(zoneAt(o.x, o.y), o.x, o.y) : gAt(o), grp = new THREE.Group(); grp.position.set(o.x, g, o.y); if (o.X) { const X = o.X, k = X.s || 1; grp.position.y = X.z; grp.rotation.set(X.rx || 0, -(X.a || 0), X.rz || 0, 'YXZ'); grp.scale.set(k * (X.sx || 1), k * (X.sy || 1), k * (X.sz || 1)); } else if (o.b != null && BLDS[o.b] && BLDS[o.b].ea) grp.rotation.y = -BLDS[o.b].ea; else if (o.ca) grp.rotation.y = -o.ca; const B = new GB(), u = {}; grp.userData = u;
   switch (o.t) {
     case 'fire': if (o.hub) { B.cyl(M(0, -4, 0), 64, 70, 34, 18, hex('#6a6660')); B.cyl(M(0, 30, 0), 66, 66, 8, 18, hex('#8a8680')); for (let i = 0; i < 4; i++) B.box(M(Math.cos(i * 1.57 + .78) * 60, 0, Math.sin(i * 1.57 + .78) * 60), 14, 170, 14, hex('#4e3a28')); B.cyl(M(0, 170, 0, .785), 0, 110, 70, 4, hex('#3e3228')); hubPool.position.set(o.x, g + 26, o.y); }
       else { const st = hex('#5a5650'); for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; B.ico(M(Math.cos(a) * 26, 2, Math.sin(a) * 26), 7, 0, st, .4); } for (let i = 0; i < 4; i++) B.cyl(M(0, 4, 0, i * .8, Math.PI / 2 - .3, 0), 3, 3.8, 34, 5, hex('#3e2a1a')); B.ico(M(0, 2, 0, 0, 0, 0, 1, .25, 1), 14, 0, hex('#2a2422'));
@@ -130,7 +130,10 @@ function dynFor(o) { if (DYN.has(o)) return; const g = zoneAt(o.x, o.y) ? zoneH(
     case 'kut': { const c = MAT.ko; B.cyl(M(0, -4, 0), 32, 36, 38, 14, c[1]); B.cyl(M(0, 34, 0), 36, 36, 6, 14, c[2]); B.cyl(M(0, 30, 0), 26, 26, 4, 14, hex('#0a0e12')); for (const s of [-1, 1]) B.box(M(s * 30, 0, 0), 8, 120, 8, hex('#4e3a28')); B.box(M(0, 116, 0), 70, 6, 6, hex('#4e3a28')); B.cyl(M(0, 120, 0, 0, 0, 0), 0, 52, 40, 4, hex('#5a4630')); B.cyl(M(0, 60, 0), 7, 6, 12, 8, hex('#6a5034')); u.kut = 1; break; }
     case 'heart': B.cyl(M(0, -20, 0), 70, 90, 60, 10, hex('#4a4040')); B.glow = .6; B.ico(M(0, 90, 0), 60, 1, hex('#e8e0d8'), .2); B.glow = 0; for (let i = 0; i < 9; i++) B.box(M(Math.cos(i / 9 * 6.28) * 58, 80, Math.sin(i / 9 * 6.28) * 58, -i / 9 * 6.28), 16, 26, 10, i === 8 ? hex('#1a1414') : hex('#bfe9ff')); u.heart = 1; u.light = [0xd8c0ff, 1.6]; break;
     case 'flower': B.cyl(M(0, 0, 0), 1, 1.4, 30, 4, hex('#3a6a2a')); B.glow = .8; for (let i = 0; i < 6; i++) B.ico(M(Math.cos(i) * 6, 30, Math.sin(i) * 6), 4.5, 0, hex('#e8e0ff')); B.glow = 0; u.flower = 1; break;
-    case 'kapu': { const gw = o.gw || 200, gh = o.gh || 260, n = o.lv || 2, lw = gw / n, wood = hex('#5a3e26'), dark = hex('#3a281a'), iron = hex('#2e2c2a'); u.leaves = []; u.op = o.open ? 1 : 0;
+    case 'kapu': { const gw = o.gw || 200, gh = o.gh || 260, n = o.lv == null ? 2 : o.lv, lw = gw / n, wood = hex('#5a3e26'), dark = hex('#3a281a'), iron = hex('#2e2c2a'); u.leaves = []; u.op = o.open ? 1 : 0;
+      if (o.arch) { const c = MAT[o.mat || 'ko'] || MAT.ko, wd = (o.wd || 40) + 8, r = gw / 2, sw = Math.max(18, Math.min(34, gw * .16)); for (const sx of [-1, 1]) { const nj = Math.max(2, Math.round(gh / 34)); for (let j = 0; j < nj; j++) B.box(M(sx * (r + sw / 2), j * gh / nj, 0), sw + (j % 2) * 6, gh / nj - 1.5, wd + (j % 2) * 4, mixA(c[0], c[2], ((j * 7 + (sx > 0 ? 3 : 0)) % 5) / 6)); }
+        const nv = Math.max(5, Math.round(Math.PI * r / 30) | 1); for (let i = 0; i < nv; i++) { const f0 = i / nv * Math.PI, f1 = (i + 1) / nv * Math.PI, fm = (f0 + f1) / 2, R2 = r + sw + (i === (nv - 1) / 2 ? 6 : 0), al = (R2 + r) / 2 * (f1 - f0); B.box(M(Math.cos(fm) * R2, gh + Math.sin(fm) * R2, 0, 0, 0, fm + Math.PI / 2), al - 2, R2 - r, wd + (i === (nv - 1) / 2 ? 6 : 0), mixA(c[0], c[2], (i % 3) / 4)); }
+        if (n) { const np = Math.max(3, Math.round(gw / 22)); for (let i = 0; i < np; i++) { const px = -r + (i + .5) * gw / np, hh = Math.sqrt(Math.max(0, r * r - px * px)); if (hh > 2) B.box(M(px, gh, 0), gw / np - 1.5, hh, 8, mixA(wood, dark, (i * 37 % 10) / 14)); } } }
       if (o.fr) { const c = MAT[o.mat || 'ko'] || MAT.ko; for (const sx of [-1, 1]) B.box(M(sx * (gw / 2 + 14), 0, 0), 28, gh + 24, 34, c[0]); B.box(M(0, gh, 0), gw + 56, 26, 36, c[2]); }
       for (let k = 0; k < n; k++) { const sgn = n === 1 ? 1 : k ? -1 : 1, piv = new THREE.Group(), L = new GB(); piv.position.set(-sgn * gw / 2, 0, 0); const np = Math.max(2, Math.round(lw / 22));
         for (let i = 0; i < np; i++) L.box(M(sgn * (i + .5) * lw / np, 1, 0), lw / np - 1.5, gh - 3, 9, mixA(wood, dark, (i * 37 % 10) / 14)); for (const yy of [.18, .5, .82]) L.box(M(sgn * lw / 2, gh * yy, 5), lw - 6, 9, 2, iron); L.box(M(sgn * lw * .82, gh * .45, 7), 8, 8, 5, iron);
@@ -222,7 +225,7 @@ addEventListener('touchmove', e => { if (e.touches.length === 2) { const a = e.t
 AIMF = (sx, sy) => { ndc.set(sx / innerWidth * 2 - 1, -sy / innerHeight * 2 + 1); ray.setFromCamera(ndc, cam); pl.constant = -(P ? pElev() + 30 : 0); const q = new THREE.Vector3(); return ray.ray.intersectPlane(pl, q) ? [q.x, q.z] : null; };
 PROJF = (x, y, h) => { V3.set(x, h, y).project(cam); if (V3.z > 1) return null; return [(V3.x + 1) / 2 * innerWidth * DPR, (1 - V3.y) / 2 * innerHeight * DPR]; };
 const pElev = () => elevOf(P) + (R && R.fallT > 0 ? R.fallT / .35 * FH * .8 : 0);
-function elevOf(e) { if (e === P || e.fz || e.sz != null) return elev(e); const z = zoneAt(e.x, e.y); if (z) return zoneH(z, e.x, e.y); const b = bldAt(e.x, e.y); return (b && b.kind !== 'aqua' ? b.base : GH(e.x, e.y)) + (e.alt || 0); }
+function elevOf(e) { if (e === P || e.fz || e.sz != null) return elev(e); if (e.wz0 == null && e.z != null) e.wz0 = e.z; const z = zoneAt(e.x, e.y); if (z) return walkH(e, zoneH(z, e.x, e.y)); const b = bldAt(e.x, e.y); return b && b.kind !== 'aqua' ? b.base + (e.alt || 0) : walkH(e, GH(e.x, e.y) + (e.alt || 0)); }
 
 /* ---------- a képkocka ---------- */
 let last = performance.now(), TT = 0; const PW3 = new Float32Array(REGS.length), cur = { top: new THREE.Color(), hor: new THREE.Color(), fog: new THREE.Color(), sun: new THREE.Color(), amb: new THREE.Color(), si: 2 };
