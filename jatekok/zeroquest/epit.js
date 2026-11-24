@@ -84,11 +84,17 @@ function castle(id, cx, cy, R, mat, side = 1, o = {}) { addPad(cx, cy, R + 120, 
     if (s === side) { const g = hor ? cx : cy; if (hor) { wl((cx - R + g - GW / 2) / 2, c0, g - GW / 2 - (cx - R), T); wl((g + GW / 2 + cx + R) / 2, c0, cx + R - g - GW / 2, T); } else { wl(c0, (cy - R + g - GW / 2) / 2, T, g - GW / 2 - (cy - R)); wl(c0, (g + GW / 2 + cy + R) / 2, T, cy + R - g - GW / 2); }
       const gx = hor ? g : c0, gy = hor ? c0 : g; PW('gatehouse', gx, gy, 0, { a: hor ? 0 : Math.PI / 2, w: GW, mat }); C.gate = addO({ t: 'portc', x: gx, y: gy, w: hor ? GW + 8 : 26, d: hor ? 26 : GW + 8, solid: 1, h: 250, gate: id, a: hor ? 0 : Math.PI / 2 }); C.gx = gx; C.gy = gy; C.out = [gx + (hor ? 0 : (s === 2 ? -1 : 1) * 260), gy + (hor ? (s === 0 ? -1 : 1) * 260 : 0)]; }
     else { if (hor) wl(cx, c0, 2 * R + T, T); else wl(c0, cy, T, 2 * R + T); } }
-  for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) PW('ctower', cx + sx * R, cy + sy * R, 96, { mat, r: 96 });
-  for (const t of [-.5, .5]) for (let s = 0; s < 4; s++) { if (s === side) continue; const hor = s < 2; PW('ctower', hor ? cx + t * R : (s === 2 ? cx - R : cx + R), hor ? (s === 0 ? cy - R : cy + R) : cy + t * R, 70, { mat, r: 70 }); }
+  for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) PW('ctower', cx + sx * R, cy + sy * R, 96, { mat, r: 96, h: 520, spire: 1 });
+  for (const t of [-.5, .5]) for (let s = 0; s < 4; s++) { if (s === side) continue; const hor = s < 2; PW('ctower', hor ? cx + t * R : (s === 2 ? cx - R : cx + R), hor ? (s === 0 ? cy - R : cy + R) : cy + t * R, 70, { mat, r: 70, h: 430, spire: 1 }); }
   /* udvar: tornyos lakóépület a kapuval szemközti sarokban, benne a tömlöc lejárata */
   const back = side === 1 ? -1 : 1, kx = cx + (o.kx || R * .55), ky = cy + back * R * .62; const keep = bld(kx, ky, 400, 280, { fl: 2, dmg: .35, mat, kind: 'keep', doors: [back < 0 ? 1 : 0], seed: id.length * 31 }); furnish(keep); C.keep = keep;
   const bar = bld(cx - R * .55, ky, 360, 240, { fl: 2, dmg: .5, mat, kind: 'house', doors: [back < 0 ? 1 : 0], seed: id.length * 37 }); furnish(bar);
+  /* felső termek: a lakótorony emeletéről vezet fel ajtó */
+  if (o.uz) { const z = ZK[o.uz], dx = keep.x + 60, dy = keep.y + 40; for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { const ti = Math.floor((dx + i * 40 - keep.x + keep.w / 2) / keep.ts), tj = Math.floor((dy + j * 40 - keep.y + keep.d / 2) / keep.ts); if (ti >= 0 && tj >= 0 && ti < keep.tw && tj < keep.th && keep.tiles[ti + tj * keep.tw] !== 2) keep.tiles[ti + tj * keep.tw] = 1; } z.at = [dx, dy]; z.atfz = 1; PW('door', dx, dy, 0, { z: z.id, dk: 'up', b: keep.id, fz: 1 }); z.rg = o.rg; }
+  /* katedrális az udvaron, emeleti karzattal, mellette csúcsos harangtorony */
+  { const chx = cx - R * .7, chy = cy + R * .3 * -back; const ch = bld(chx, chy, 300, 560, { fl: 2, dmg: .2, mat, kind: 'church', doors: [3], seed: id.length * 11 });
+    for (let k = -2; k <= 2; k++) for (const s of [-1, 1]) PW('pillar', chx + s * 95, chy + k * 100, 16, { h: FH * 1.9, mat, b: ch.id }); PW('altar', chx, chy - back * 0 - 220, 24, { b: ch.id, mat }); PW('candles', chx, chy - 180, 0, { b: ch.id }); for (let k = -1; k <= 2; k++) PW('bench', chx, chy + k * 70, 0, { b: ch.id });
+    PW('ctower', chx - 120, chy - 330, 64, { mat, r: 64, h: 560, spire: 1 }); }
   if (o.dz) { const z = ZK[o.dz]; z.at = [keep.x - keep.w / 4, keep.y]; PW('door', z.at[0], z.at[1], 0, { z: z.id, dk: 'hatch', b: keep.id }); z.rg = o.rg; }
   for (let k = 0; k < 6; k++) PW(k % 2 ? 'banner' : 'brazier', C.out[0] + (k - 2.5) * 70 * (side < 2 ? 1 : 0), C.out[1] + (k - 2.5) * 70 * (side < 2 ? 0 : 1) + (side < 2 ? -back * 60 : 0), k % 2 ? 0 : 14, { lit: 1, mat });
   RUINS.push([kx, ky, o.rg || 'var', { b: keep, up: 1, tp: 'keep', cas: id }]); return C; }
@@ -164,6 +170,24 @@ function buildTor(z, zi) { const L = z.lv || 3; z.cells = []; for (let i = 0; i 
     if (i > 0) z.cells.push([cx, cy, i * 2], [cx + 150, cy + 100, i * 2], [cx - 120, cy - 140, i * 2]); else z.cells.push([cx + 160, cy, 1]); }
   z.in = [z.x + 600, z.y + 550 + 300]; PW('door', z.in[0], z.in[1] + 60, 0, { z: z.id, out: 1, dk: 'stairs' }); z.far = [z.x + (L - 1) * 1200 + 600, z.y + 550]; z.far2 = z.far;
   PW('chest', z.far[0] + 60, z.far[1] + 60, 18, { id: 'z' + z.id }); const pg = PAGES.findIndex(q => q[0] === z.id); if (pg >= 0) PW('page', z.far[0] - 80, z.far[1] - 40, 0, { i: pg, txt: PAGES[pg][1] }); }
+/* ---------- várkastélyok felső szintjei: lovagterem, könyvtár-karzat, katedrális, nyitott terasz ---------- */
+function buildKast(z, zi) { const L = z.lv || 4, LS = z.ls, RW = 2000, RD = 1100; z.cells = []; const th = z.th, sd = zi * 17 + 3;
+  for (let i = 0; i < L; i++) { const x0 = z.x + i * LS + 100, y0 = z.y + 100, x1 = x0 + RW, y1 = y0 + RD, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, kind = z.lvls[i], open = kind === 'terr', H = open ? 48 : kind === 'cath' ? 300 : 220;
+    const wl = (x, y, w, d) => WALL(x, y, w, d, { dg: th, h: H, zw: 1, cren: 1, tor: 1 }); wl(cx, y0, RW + 40, 40); wl(cx, y1, RW + 40, 40); wl(x0, cy, 40, RD + 40); wl(x1, cy, 40, RD + 40);
+    if (kind === 'hall') { for (let k = 0; k < 6; k++) for (const s of [-1, 1]) PW('pillar', x0 + 260 + k * 300, cy + s * 300, 28, { h: 300, mat: th, dg: 1, broken: rnd(sd, k * 2 + s, 1) < .15 });
+      for (let k = 0; k < 4; k++) { PW('table', x0 + 500 + k * 280, cy, 0, { a: 0 }); PW('bench', x0 + 500 + k * 280, cy - 40, 0); PW('bench', x0 + 500 + k * 280, cy + 40, 0); PW('candles', x0 + 500 + k * 280, cy, 0); }
+      PW('altar', x1 - 160, cy, 26, { mat: th }); PW('statue', x1 - 90, cy - 220, 30, { mat: th, v: 1 }); PW('statue', x1 - 90, cy + 220, 30, { mat: th, v: 2 }); for (let k = 0; k < 5; k++) { PW('banner', x0 + 300 + k * 360, y0 + 40, 0, { mat: th }); PW('brazier', x0 + 300 + k * 360, y1 - 70, 14, { lit: 1, mat: th }); } }
+    else if (kind === 'gal') { for (let k = 0; k < 9; k++) { PW('shelf', x0 + 160 + k * 200, y0 + 50, 0); PW('shelf', x0 + 160 + k * 200, y1 - 50, 0); } for (let k = 0; k < 3; k++) { PW('table', x0 + 560 + k * 420, cy, 0); PW('candles', x0 + 560 + k * 420, cy, 0); PW('arch', x0 + 400 + k * 600, cy, 0, { a: Math.PI / 2, h: 220, mat: th }); }
+      for (let k = 0; k < 4; k++) PW('pillar', x0 + 300 + k * 460, cy + (k % 2 ? -260 : 260), 24, { h: 220, mat: th, dg: 1 }); PW('brazier', cx, cy, 16, { lit: 1, mat: th }); }
+    else if (kind === 'cath') { for (let k = 0; k < 7; k++) for (const s of [-1, 1]) PW('pillar', x0 + 240 + k * 250, cy + s * 280, 32, { h: 420, mat: th, dg: 1, broken: rnd(sd, k + s * 9, 3) < .12 });
+      for (let k = 0; k < 6; k++) PW('arch', x0 + 240 + k * 250 + 125, cy, 0, { a: 0, h: 340, big: 1, mat: th }); for (let k = 0; k < 7; k++) for (const s of [-1, 1]) PW('bench', x0 + 340 + k * 170, cy + s * 110, 0, { a: Math.PI / 2 });
+      PW('altar', x1 - 150, cy, 30, { mat: th }); PW('candles', x1 - 200, cy - 70, 0); PW('candles', x1 - 200, cy + 70, 0); PW('statue', x1 - 70, cy, 34, { mat: th, v: 3 }); for (const s of [-1, 1]) { PW('sarc', x0 + 400, cy + s * 420, 0, { mat: th }); PW('sarc', x0 + 900, cy + s * 420, 0, { mat: th }); PW('banner', x1 - 300, cy + s * 480, 0, { mat: th }); } }
+    else { for (let k = 0; k < 8; k++) for (const s of [-1, 1]) PW('pillar', x0 + 120 + k * 250, cy + s * (RD / 2 - 40), 22, { h: 90, mat: th, dg: 1 }); for (const [a, b] of [[x0 + 300, y0 + 220], [x1 - 300, y0 + 220], [x0 + 300, y1 - 220], [x1 - 300, y1 - 220]]) { PW('statue', a, b, 30, { mat: th, v: (a + b) % 4 | 0 }); PW('brazier', a + 120, b, 14, { lit: 1, mat: th }); }
+      for (let k = 0; k < 3; k++) PW('bench', cx - 300 + k * 300, cy + 300, 0); PW('arch', cx, cy - 200, 0, { a: 0, h: 300, big: 1, mat: th }); }
+    const up = [x1 - 140, cy - 380], dn = [x0 + 140, cy + 380]; if (i < L - 1) PW('door', up[0], up[1], 0, { go: [z.x + (i + 1) * LS + 100 + 140 + 70, z.y + 100 + RD / 2 + 380 - 40], dk: 'up' }); if (i > 0) PW('door', dn[0], dn[1], 0, { go: [z.x + (i - 1) * LS + 100 + RW - 140 - 70, z.y + 100 + RD / 2 - 380 + 40], dk: 'down' });
+    z.cells.push([cx - 400, cy, i * 2 + 1], [cx + 300, cy + 200, i * 2 + 1], [cx + 500, cy - 250, i * 2 + 2]); }
+  z.in = [z.x + 100 + 200, z.y + 100 + RD / 2 + 300]; PW('door', z.in[0] - 80, z.in[1] + 60, 0, { z: z.id, out: 1, dk: 'stairs' });
+  const tx = z.x + (L - 1) * LS + 100 + RW / 2, ty = z.y + 100 + RD / 2; z.far = [tx, ty]; z.far2 = z.far; PW('chest', tx + 500, ty, 18, { id: 'z' + z.id, rare: 1 }); const cI = z.lvls.indexOf('cath'); if (cI >= 0) PW('chest', z.x + cI * LS + 100 + RW - 260, ty + 160, 18, { id: 'z' + z.id + 'b', rare: 1 }); }
 function buildMely(z, zi) { buildBar(z, zi, 1); const hc = z.hc, I = (x, y) => Math.round((x - z.x) / hc) + Math.round((y - z.y) / hc) * z.hw;
   /* szabad út a lejárattól a Szívig, és a szívterem */
   const H0 = [z.x + 1200, z.y + 340]; for (let y = H0[1]; y < HEART[1]; y += hc) for (let dx = -180; dx <= 180; dx += hc) { const k = I(H0[0] + dx + Math.sin(y / 300) * 120, y); if (k >= 0 && k < z.hm.length) z.hm[k] = Math.min(z.hm[k], 6 * Math.sin(y / 90)); }
@@ -183,8 +207,8 @@ function buildWorld() {
   FIRES.forEach((f, i) => { if (f[0] < OW) poi(f[0], f[1], 170); });
   for (const k in LORD) { const l = LORD[k]; if (l[0] < OW) addPad(l[0], l[1], l[2] + 80, 260); }
   const city = buildCity();
-  castle('c_gaspar', LORD.gaspar[0], LORD.gaspar[1] - 120, 960, 'ko', 1, { dz: 'k_gaspar', rg: 'mez' }); castle('c_denes', LORD.denes[0], LORD.denes[1] - 80, 920, 'feher', 1, { dz: 'k_denes', rg: 'nap' });
-  castle('c_klara', LORD.klara[0], LORD.klara[1] - 80, 920, 'jeg', 1, { dz: 'k_klara', rg: 'jeg' }); castle('c_lorinc', LORD.lorinc[0], LORD.lorinc[1] - 60, 960, 'so', 1, { dz: 'k_lorinc', rg: 'so' });
+  castle('c_gaspar', LORD.gaspar[0], LORD.gaspar[1] - 120, 960, 'ko', 1, { dz: 'k_gaspar', uz: 'u_gaspar', rg: 'mez' }); castle('c_denes', LORD.denes[0], LORD.denes[1] - 80, 920, 'feher', 1, { dz: 'k_denes', uz: 'u_denes', rg: 'nap' });
+  castle('c_klara', LORD.klara[0], LORD.klara[1] - 80, 920, 'jeg', 1, { dz: 'k_klara', uz: 'u_klara', rg: 'jeg' }); castle('c_lorinc', LORD.lorinc[0], LORD.lorinc[1] - 60, 960, 'so', 1, { dz: 'k_lorinc', uz: 'u_lorinc', rg: 'so' });
   /* Szikkadt Mezők: Kalászvég, malmok, Varjúdomb, Gáspár udvarháza */
   const V = (x, y, w, d, o) => { const p = sc([x, y]), b = bld(p[0], p[1], w, d, { roof: 1, dmg: .05, ...o }); furnish(b); return b; };
   V(8100, 3640, 260, 180, { mat: 'fa' }); V(8480, 3650, 240, 170, { mat: 'fa', doors: [1] }); V(8110, 3900, 240, 170, { mat: 'fa', doors: [0] }); V(8500, 3920, 260, 180, { mat: 'fa', doors: [0] }); KCH = V(8300, 3560, 400, 220, { kind: 'church', mat: 'ko', doors: [2], dmg: .25 });
@@ -236,7 +260,7 @@ function buildWorld() {
   /* további tábortüzek: romoknál, kereszteződéseknél */
   const extra = []; for (const r of REGS) { let c = 0; for (const q of RUINS) { if (c >= 3 || q[2] !== r.k || !q[3] || !q[3].b) continue; if (FIRES.some(f => hyp(f[0] - q[0], f[1] - q[1]) < 3500) || extra.some(f => hyp(f[0] - q[0], f[1] - q[1]) < 3500)) continue; const f = [q[0] + q[3].b.w / 2 + 120, q[1] + 60, r.n.charAt(0) + r.n.slice(1).toLowerCase() + ' · ' + ['Omladék', 'Csonka torony', 'Néma ház', 'Hamuudvar', 'Kőkapu'][c + r.t & 3]]; extra.push(f); poi(f[0], f[1], 120); c++; } }
   /* zónák belseje */
-  ZONES.forEach((z, zi) => { if (z.open) buildMely(z, zi); else if (z.kind === 'kat') buildKat(z, zi); else if (z.kind === 'bar') buildBar(z, zi); else buildTor(z, zi); });
+  ZONES.forEach((z, zi) => { if (z.open) buildMely(z, zi); else if (z.kind === 'kat') buildKat(z, zi); else if (z.kind === 'bar') buildBar(z, zi); else if (z.kast) buildKast(z, zi); else buildTor(z, zi); });
   for (const z of ZONES) if (z.par) { const p = ZK[z.par]; z.at = [p.far2[0], p.far2[1] + 40]; PW('door', p.far2[0], p.far2[1], 0, { z: z.id, dk: p.kind === 'bar' ? 'cave' : 'stairs', down: 1 }); }
   for (const f of [...extra, ...ZFIRE]) { FIRES.push([f[0], f[1]]); FIRE_N.push(f[2]); }
   FIRES.forEach((f, i) => PW('fire', f[0], f[1], i === 2 ? 0 : 22, { i, hub: i === 2 }));

@@ -1,5 +1,5 @@
 /* ZERO QUEST – modellek: kódból épített, lapos árnyalású geometria (tereptárgyak, épületek, szereplők) */
-import * as THREE from './lib/three.module.min.js?v=202611240622';
+import * as THREE from './lib/three.module.min.js?v=202611240716';
 const TAU = Math.PI * 2; const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 export const hex = (h, k = 1) => { const n = typeof h === 'string' ? parseInt(h.slice(1), 16) : h; return [((n >> 16) & 255) / 255 * k, ((n >> 8) & 255) / 255 * k, (n & 255) / 255 * k]; };
 export const rgb = (r, g, b) => [r / 255, g / 255, b / 255];
@@ -124,7 +124,9 @@ export function makeMan(L) { const root = new THREE.Group(), body = new THREE.Gr
     const ey = L.eye, glowE = ey && /^#(f|e|c|b)/i.test(ey); if (glowE) { b.glow = 1; for (const s of [-1, 1]) b.ico(M(s * 2.5, 9.2, 6.2), 1.25, 0, hex(ey)); b.glow = 0; } else for (const s of [-1, 1]) b.box(M(s * 2.4, 8.8, 6.2), 1.6, 1.2, .6, hex('#1c1410'));
     if (L.hood) { const hc = lift(L.hood); b.ico(M(0, 11.4, -1.2, 0, 0, 0, 1.06, 1.05, 1.1), 7.6, 1, hc); b.cyl(M(0, 15, -5, 0, -.9, 0), .5, 4.4, 10, 6, hc); b.box(M(0, 9, 7.2), 12, 10, 1, mulc(hc, .5)); b.ico(M(0, 9.2, .8, 0, 0, 0, 1, 1.12, 1.04), 6.82, 1, sk); }
     else if (L.helm) { const hc = lift(L.helm, 1.1), st = L.helmStyle, dk = hex('#0c0a0a');
-      if (st === 'great') { b.cyl(M(0, 9.6, 0), 7.9, 8.1, 13, 12, hc); b.cyl(M(0, 16.4, 0), 6, 7.9, 2.4, 12, mulc(hc, 1.08)); b.box(M(0, 10.6, 8), 11, 1.2, .6, dk); b.box(M(0, 7, 8), 1.2, 6, .6, dk); for (const y of [4, 13.4]) b.cyl(M(0, y, 0), 8.3, 8.3, 1, 12, mulc(hc, .8)); b.box(M(0, 9.6, 8.2), 1.4, 13, 1, mulc(hc, 1.15)); }
+      if (st === 'horn') { b.cyl(M(0, 9.6, 0), 7.9, 8.3, 13, 12, hc); b.ico(M(0, 16.2, 0, 0, 0, 0, 1, .55, 1), 8, 1, hc); b.box(M(0, 10.6, 8.1), 11, 1.2, .6, hex('#ff3a20')); b.glow = .6; b.box(M(0, 10.6, 8.3), 9, .6, .3, hex('#ff5a30')); b.glow = 0; for (const s of [-1, 1]) for (let k = 0; k < 4; k++) b.cyl(M(s * (8.5 + k * 2.6), 15 + k * 3.2 - k * k * .2, -1 - k * .6, 0, 0, s * (-1.2 + k * .35)), 2.2 - k * .45, 2.8 - k * .45, 4.4, 6, mixc(hc, hex('#d8ccb0'), .4 + k * .15)); }
+      else if (st === 'crown') { b.cyl(M(0, 9.4, 0), 7.6, 7.8, 10, 12, hc); b.ico(M(0, 14.4, 0, 0, 0, 0, 1, .6, 1), 7.6, 1, hc); b.box(M(0, 7.6, 7.6), 9.5, 6, 1, mulc(hc, 1.1)); b.box(M(0, 9.6, 8.2), 8, .9, .5, dk); b.glow = .35; for (let k = 0; k < 10; k++) { const a = k / 10 * TAU; b.cyl(M(Math.cos(a) * 7.8, 15 + (k % 2) * 1.5, Math.sin(a) * 7.8), 0, 1.6, 6 + (k % 2) * 4, 4, hex('#f0d070')); } b.glow = 0; b.cyl(M(0, 14.4, 0), 8.2, 8.2, 2, 12, hex('#f0d070'), false); }
+      else if (st === 'great') { b.cyl(M(0, 9.6, 0), 7.9, 8.1, 13, 12, hc); b.cyl(M(0, 16.4, 0), 6, 7.9, 2.4, 12, mulc(hc, 1.08)); b.box(M(0, 10.6, 8), 11, 1.2, .6, dk); b.box(M(0, 7, 8), 1.2, 6, .6, dk); for (const y of [4, 13.4]) b.cyl(M(0, y, 0), 8.3, 8.3, 1, 12, mulc(hc, .8)); b.box(M(0, 9.6, 8.2), 1.4, 13, 1, mulc(hc, 1.15)); }
       else if (st === 'kettle') { b.cyl(M(0, 8.4, 0), 7.3, 7.5, 6, 10, hc); b.ico(M(0, 13.2, 0, 0, 0, 0, 1, .7, 1), 7.4, 1, hc); b.cyl(M(0, 10.6, 0), 12.4, 12.8, 1.2, 14, mulc(hc, .9)); b.cyl(M(0, 17.4, 0), .5, 1.4, 2, 6, mulc(hc, .8)); }
       else if (st === 'beak') { b.ico(M(0, 10, 0, 0, 0, 0, 1, 1.05, 1.1), 7.8, 1, hc); b.cyl(M(0, 7.4, 9.4, 1.35, 0, 0), .4, 3, 11, 6, mulc(hc, .85)); b.box(M(0, 9.6, 7.4), 9, 1.4, .6, hex('#a02a30')); for (let k = 0; k < 5; k++) b.box(M((k - 2) * 2.2, 17 + Math.abs(k - 2) * -.6, -3 - Math.abs(k - 2) * .6, -.7, 0, (k - 2) * .18), 1.6, 9, .6, mulc(hc, .7)); }
       else if (st === 'hat') { b.cyl(M(0, 11.8, 0), 12.6, 12.8, 1, 14, hc); b.cyl(M(-.6, 19, -1, -.12, 0, .06), .6, 7.4, 15, 10, hc); b.cyl(M(0, 13, 0), 7.5, 7.6, 2, 10, hex('#c8a050')); b.ico(M(0, 11.6, -1.4, 0, 0, 0, 1.04, .78, 1.02), 7.1, 1, lift(L.hair || '#3a2a1c')); }
@@ -146,17 +148,23 @@ export function makeMan(L) { const root = new THREE.Group(), body = new THREE.Gr
   if (L.cape) { cape = new THREE.Group(); cape.position.set(0, 21, -7); hips.add(cape); const b = new GB(); const cc = lift(L.cape); const cn = L.longCape ? 5 : 4; for (let k = 0; k < cn; k++) { const y0 = -k * 9, y1 = -(k + 1) * 9, w0 = 10 + k * 1.6, w1 = 10 + (k + 1) * 1.6, z0 = -k * 1.3, z1 = -(k + 1) * 1.3; b.shape([[-w0, y0, z0], [w0, y0, z0], [w1, y1, z1], [-w1, y1, z1]], [0, 2, 1, 0, 3, 2, 0, 1, 2, 0, 2, 3], M(), mulc(cc, 1 - k * .05)); } cape.add(bm(b)); }
   const s = L.s || 1; root.scale.setScalar(s); root.userData = { body, hips, head, neck, A, L: Lg, cape, wep: null, sh: null };
   root.traverse(o => { if (o.isMesh) o.castShadow = true; }); return root; }
-export function setGear(m, wep, sh) { const u = m.userData; if (u.wep) u.A.r.hand.remove(u.wep); if (u.sh) u.A.l.hand.remove(u.sh); u.wep = wep; u.sh = sh; if (wep) { wep.rotation.set(Math.PI / 2, 0, 0); u.A.r.hand.add(wep); } if (sh) { sh.position.set(2, 0, 4); sh.rotation.set(0, Math.PI / 2 * 0, 0); u.A.l.hand.add(sh); } }
+export function setGear(m, wep, sh, wep2) { const u = m.userData; if (u.wep) u.A.r.hand.remove(u.wep); if (u.sh) u.A.l.hand.remove(u.sh); u.wep = wep; u.sh = sh || wep2 || null; if (wep) { wep.rotation.set(Math.PI / 2, 0, 0); u.A.r.hand.add(wep); } if (wep2) { wep2.rotation.set(Math.PI / 2, 0, 0); u.A.l.hand.add(wep2); } else if (sh) { sh.position.set(2, 0, 4); sh.rotation.set(0, Math.PI / 2 * 0, 0); u.A.l.hand.add(sh); } }
 /* póz: walk fázis, mozgás erőssége, kar-lendítés (sw: -2..2), védekezés, gurulás, halál */
 export function poseMan(m, o) { const u = m.userData, w = o.walk || 0, k = o.mv || 0, sw = Math.sin(w), cw = Math.cos(w);
   u.L.r.hp.rotation.x = sw * .75 * k; u.L.l.hp.rotation.x = -sw * .75 * k; u.L.r.kn.rotation.x = Math.max(0, -cw) * .9 * k; u.L.l.kn.rotation.x = Math.max(0, cw) * .9 * k; u.body.position.y = Math.abs(cw) * 1.6 * k;
   u.hips.rotation.y = sw * .08 * k; u.A.l.sh.rotation.set(-sw * .5 * k, 0, .12); u.A.l.el.rotation.x = -.3 - .2 * k; u.A.r.sh.rotation.set(sw * .5 * k, 0, -.12); u.A.r.el.rotation.x = -.35;
   if (o.sw != null) { const a = o.sw; u.A.r.sh.rotation.set(-1.2 - Math.cos(a) * .5, 0, -.2 - Math.sin(a) * 1.1); u.A.r.el.rotation.x = -.2 - Math.max(0, Math.cos(a)) * .5; u.hips.rotation.y = -Math.sin(a) * .45; }
+  if (o.atk) { const A = o.atk, e = A.k, cl = A.cl, L = cl === 'dual' && A.dir < 0, sA = L ? u.A.l : u.A.r, sg = L ? -1 : 1;
+    if (A.ty === 'h') { const a = (-1.6 + 3.2 * e) * A.dir * (cl === 'great' ? 1.15 : 1); sA.sh.rotation.set(-1.2 - Math.cos(a) * .5, 0, sg * (-.2 - Math.sin(a) * 1.1 * sg)); sA.el.rotation.x = -.2 - Math.max(0, Math.cos(a)) * .5; u.hips.rotation.y = -Math.sin(a) * (cl === 'great' ? .7 : .45); }
+    else if (A.ty === 'v') { const w = e < .35 ? e / .35 : 1, d = e < .35 ? 0 : clamp((e - .35) / .4, 0, 1); sA.sh.rotation.set(-1.2 - 1.7 * w + 2.4 * d, 0, -.15 * sg); sA.el.rotation.x = -.9 * w + .8 * d; u.hips.rotation.x = .3 * d; }
+    else if (A.ty === 't') { const p = e < .4 ? e / .4 : 1, x = e < .4 ? 0 : clamp((e - .4) / .25, 0, 1); sA.sh.rotation.set(-.8 - .75 * x + .3 * p * (1 - x), 0, -.1 * sg); sA.el.rotation.x = -1.7 * p * (1 - x); u.hips.rotation.y = .35 * p - .75 * x; }
+    else if (A.ty === 's') { for (const s of ['r', 'l']) { u.A[s].sh.rotation.set(-1.1, 0, s === 'r' ? -1.3 : 1.3); u.A[s].el.rotation.x = -.15; } }
+    if (cl === 'great') { u.A.l.sh.rotation.set(u.A.r.sh.rotation.x, 0, -u.A.r.sh.rotation.z * .3 + .55); u.A.l.el.rotation.x = u.A.r.el.rotation.x - .5; } }
   if (o.raise) { u.A.r.sh.rotation.set(-2.6, 0, -.2); u.A.r.el.rotation.x = -.6; }
   if (o.cast) { u.A.r.sh.rotation.set(-1.5, 0, 0); u.A.l.sh.rotation.set(-1.5, 0, 0); u.A.r.el.rotation.x = 0; u.A.l.el.rotation.x = 0; }
   if (o.block) { u.A.l.sh.rotation.set(-1.35, 0, -.55); u.A.l.el.rotation.x = -1.1; }
   if (o.bow) { u.A.l.sh.rotation.set(-1.55, 0, .1); u.A.r.sh.rotation.set(-1.5, 0, -.4); u.A.r.el.rotation.x = -1.3 * (o.draw || .3); }
-  u.neck.rotation.x = 0; u.body.position.z = 0;
+  u.neck.rotation.x = 0; u.body.position.z = 0; if (!o.atk) u.hips.rotation.x = 0;
   if (o.roll) { const r = o.roll, e = r * r * (3 - 2 * r), th = e * TAU, tk = clamp(Math.sin(Math.PI * Math.min(1, r * 1.15)) * 1.7, 0, 1), c0 = 25 - 3 * tk;
     for (const s of ['r', 'l']) { u.L[s].hp.rotation.x = -1.7 * tk; u.L[s].kn.rotation.x = 2.3 * tk; u.A[s].sh.rotation.set(-1.1 * tk, 0, (s === 'r' ? -.2 : .2)); u.A[s].el.rotation.x = -1.5 * tk; } u.neck.rotation.x = .7 * tk; u.hips.rotation.y = 0;
     u.body.rotation.set(th, 0, 0); u.body.position.y = c0 - c0 * Math.cos(th) - 5 * tk; u.body.position.z = -c0 * Math.sin(th) + 10 * Math.sin(Math.PI * r); if (u.cape) u.cape.rotation.x = .15 + .45 * tk; return; }
