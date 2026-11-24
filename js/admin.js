@@ -1,7 +1,7 @@
 // HGWS – kezelőfelület: tagok és rangok, tagek, filmek, zenék, csatornák, jóváhagyások, rangok szerkesztése
-import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611241215';
-import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611241215';
-import { githubRepo } from '../firebase-config.js?v=202611241215';
+import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611241759';
+import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611241759';
+import { githubRepo } from '../firebase-config.js?v=202611241759';
 
 let C = null, current = null;
 /* e-mail címek: csak adminok és a tulaj olvashatják (emails/{uid}); a lista megnyitásakor egyszer töltjük be */
@@ -40,9 +40,10 @@ export function render(sub, again) {
     jovahagyas: C.can('publishMedia') || C.isOwner() || C.can('submitMedia') || C.can('assignRoles'),
     rangok: C.isOwner(),
     naplo: C.isOwner() || C.can('assignRoles'),
-    stat: C.isOwner() || C.can('publishMedia')
+    stat: C.isOwner() || C.can('publishMedia'),
+    zqszerk: C.isAdmin()
   };
-  if (ok[sub]) return ({ vendegek: guestsPage, tagok: members, cimkek: tagsPage, filmek: films, zene: music, csatornak: channels, jovahagyas: approvals, rangok: rolesPage, naplo: auditPage, stat: statsPage })[sub](v, again);
+  if (ok[sub]) return ({ vendegek: guestsPage, tagok: members, cimkek: tagsPage, filmek: films, zene: music, csatornak: channels, jovahagyas: approvals, rangok: rolesPage, naplo: auditPage, stat: statsPage, zqszerk: zqEditor })[sub](v, again);
   C.setTitle('<i class="ic ic-lock"></i>', 'Nincs jogosultság');
   v.innerHTML = '<div class="full"><div><div class="big"><i class="ic ic-lock"></i></div><h2>Ehhez nincs jogosultságod</h2></div></div>';
 }
@@ -54,7 +55,7 @@ function tabList() {
     ['csatornak', '<i class="ic ic-settings"></i> Csatornák', C.can('manageChannels')],
     ['jovahagyas', `<i class="ic ic-circle-check"></i> Jóváhagyások${n ? ` <span class="cnt">${n}</span>` : ''}`, C.can('publishMedia') || C.isOwner() || C.can('submitMedia') || C.can('assignRoles')],
     ['stat', '<i class="ic ic-chart-column"></i> Statisztika', C.isOwner() || C.can('publishMedia')], ['naplo', '<i class="ic ic-scroll-text"></i> Napló', C.isOwner() || C.can('assignRoles')],
-    ['rangok', '<i class="ic ic-crown"></i> Rangok', C.isOwner()]].filter(x => x[2]);
+    ['rangok', '<i class="ic ic-crown"></i> Rangok', C.isOwner()], ['zqszerk', '<i class="ic ic-pencil"></i> Zero Quest pálya', C.isAdmin()]].filter(x => x[2]);
 }
 function tabs() {
   return `<div class="atabs" style="margin:.6rem 0 1rem">${tabList().map(([k, l]) => `<a href="#/admin/${k}" class="${current === k ? 'on' : ''}">${l}</a>`).join('')}</div>`;
@@ -62,6 +63,12 @@ function tabs() {
 /* a profilmenü kezelési linkjei – csak amihez joga van */
 export function menuLinks() { startSubs(); return tabList().map(([k, l]) => `<a href="#/admin/${k}">${l}</a>`).join(''); }
 export function firstTab() { return tabList()[0]?.[0] || 'tagok'; }
+
+/* ================= ZERO QUEST PÁLYASZERKESZTŐ (csak admin) ================= */
+function zqEditor(v, again) { C.setTitle('<i class="ic ic-pencil"></i>', 'Zero Quest pálya', 'Pályaszerkesztő'); if (again && v.querySelector('#zqEd')) return;
+  window.HGZQ_EDIT = true; v.innerHTML = `<div class="page" style="max-width:none;padding-bottom:0"><div class="eyebrow">// KEZELÉS</div>${tabs()}<div style="display:flex;justify-content:flex-end;margin:-.4rem 0 .5rem"><button class="btn plain" id="zqFull"><i class="ic ic-maximize"></i> Teljes képernyő</button></div>
+    <iframe id="zqEd" src="jatekok/zeroquest/szerkeszto.html?v=${Date.now()}" style="width:100%;height:calc(100vh - 210px);min-height:520px;border:1px solid rgba(200,170,110,.3);border-radius:12px;background:#07070a" allow="fullscreen"></iframe></div>`;
+  v.querySelector('#zqFull').onclick = () => v.querySelector('#zqEd').requestFullscreen?.(); }
 
 /* ================= TAGOK ÉS RANGOK ================= */
 let mq = '';
@@ -764,7 +771,7 @@ async function statsPage(v) {
     const st = { nyitott: ['Nyitott', '#6cc6ff'], folyamatban: ['Folyamatban', '#ffa94d'], kesz: ['Kész', '#5ee08a'], elutasitva: ['Elutasítva', '#ff7a6e'] };
     $('#stIdea').innerHTML = s.size ? hbars(Object.entries(st).map(([k, [l, c]]) => [l, s.docs.filter(d => d.data().status === k).length, c]), ' db') : '<div class="estate"><i class="ic ic-lightbulb"></i><b>Még nincs beküldött ötlet</b></div>';
   }).catch(() => { $('#stIdea').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
-  import('./browse.js?v=202611241215').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
+  import('./browse.js?v=202611241759').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
     .then(l => { $('#stArc').innerHTML = hbars(l, ' játékos'); });
 }
 const lbScores = g => FB.collection(db, 'leaderboards', g, 'scores');

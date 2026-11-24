@@ -86,7 +86,9 @@ function Hraw(x, y) { const L = land(x, y); if (L < 0) return Math.max(-420, -30
   /* a kráter: perem és lapos medence az Utolsó Kút körül */
   const r = hyp(x - HUB[0], y - HUB[1]); if (r < HUBR + 1800) { h = lerp(170 + 25 * fbm(x / 500, y / 500, 2), h, sstep(HUBR - 700, HUBR + 100, r)); h += 430 * Math.exp(-Math.pow((r - HUBR - 120) / 480, 2)) * (1 - .8 * rc); }
   return lerp(10 + 6 * noise(x / 200, y / 200), h, sstep(.015, .16, L)); }
-function Hcalc(x, y) { let h = Hraw(x, y); const l = padsAt(x, y); if (l) for (const p of l) { if (!p[6]) continue; const d = hyp(x - p[0], y - p[1]); if (d < p[2] + p[3]) h = lerp(h, p[4], 1 - sstep(p[2], p[2] + p[3], d)); } return h; }
+function Hcalc(x, y) { let h = Hraw(x, y); const l = padsAt(x, y); if (l) for (const p of l) { if (!p[6]) continue; const d = hyp(x - p[0], y - p[1]); if (d < p[2] + p[3]) h = lerp(h, p[4], 1 - sstep(p[2], p[2] + p[3], d)); } return h + terrDelta(x, y); }
+/* a magasság-gyorsítótár érvénytelenítése egy téglalapon (szerkesztés után) */
+function invalH(x0, y0, x1, y1) { const S = HT * HG; for (let tx = Math.floor(x0 / S); tx <= Math.floor(x1 / S); tx++) for (let ty = Math.floor(y0 / S); ty <= Math.floor(y1 / S); ty++) HTL.delete(tx * 1024 + ty); }
 /* magasság-gyorsítótár: 32 egységes rács, 2048-as csempékben */
 const HG = 32, HT = 64, HTL = new Map(); let HREADY = false;
 function htile(tx, ty) { const k = tx * 1024 + ty; let t = HTL.get(k); if (t) return t; t = new Float32Array((HT + 1) * (HT + 1)); const x0 = tx * HT * HG, y0 = ty * HT * HG; for (let j = 0; j <= HT; j++) for (let i = 0; i <= HT; i++) t[i + j * (HT + 1)] = Hcalc(x0 + i * HG, y0 + j * HG); HTL.set(k, t); return t; }
@@ -132,7 +134,12 @@ const HEART = [ZK.mely.x + 1200, ZK.mely.y + 2500]; LORD.szil = [HEART[0], HEART
 
 /* ---------- tereptárgyak rácsa ---------- */
 const OBJ = [], GRID = new Map(), GC = 128, gk = (x, y) => (x + 64) * 8192 + y + 64;
-function addO(o) { OBJ.push(o); const hw = o.w ? o.w / 2 : o.r || 0, hd = o.w ? o.d / 2 : o.r || 0;
+/* kézi pályaszerkesztés: minden tárgynak állandó azonosítója van (a generálás sorrendje), a domborzat-módosítás 64-es rácson tárolt eltolás */
+const UIDS = new Map(), TED = new Map(), TEC = 64, SDEL = new Set(), tek = (i, j) => i * 100000 + j;
+function terrDelta(x, y) { if (!TED.size) return 0; const fx = x / TEC, fy = y / TEC, i = Math.floor(fx), j = Math.floor(fy), u = fx - i, v = fy - j, g = (a, b) => TED.get(tek(a, b)) || 0; return (g(i, j) * (1 - u) + g(i + 1, j) * u) * (1 - v) + (g(i, j + 1) * (1 - u) + g(i + 1, j + 1) * u) * v; }
+function gridDel(o) { const hw = o.w ? o.w / 2 : o.r || 0, hd = o.w ? o.d / 2 : o.r || 0; for (let gx = Math.floor((o.x - hw) / GC); gx <= Math.floor((o.x + hw) / GC); gx++) for (let gy = Math.floor((o.y - hd) / GC); gy <= Math.floor((o.y + hd) / GC); gy++) { const l = GRID.get(gk(gx, gy)); if (l) { const i = l.indexOf(o); if (i >= 0) l.splice(i, 1); } } }
+function gridAdd(o) { const hw = o.w ? o.w / 2 : o.r || 0, hd = o.w ? o.d / 2 : o.r || 0; for (let gx = Math.floor((o.x - hw) / GC); gx <= Math.floor((o.x + hw) / GC); gx++) for (let gy = Math.floor((o.y - hd) / GC); gy <= Math.floor((o.y + hd) / GC); gy++) { const k = gk(gx, gy); let l = GRID.get(k); if (!l) GRID.set(k, l = []); if (!l.includes(o)) l.push(o); } }
+function addO(o) { if (o.uid == null) o.uid = OBJ.length; UIDS.set(String(o.uid), o); OBJ.push(o); const hw = o.w ? o.w / 2 : o.r || 0, hd = o.w ? o.d / 2 : o.r || 0;
   for (let gx = Math.floor((o.x - hw) / GC); gx <= Math.floor((o.x + hw) / GC); gx++) for (let gy = Math.floor((o.y - hd) / GC); gy <= Math.floor((o.y + hd) / GC); gy++) { const k = gk(gx, gy); let l = GRID.get(k); if (!l) GRID.set(k, l = []); l.push(o); } return o; }
 /* szórt növényzet, sziklák: cellánként, igény szerint, mindig ugyanúgy */
 const SCC = 512, SCM = new Map(), BLDS = [];
@@ -146,7 +153,7 @@ function scatterOf(cx, cy) { const k = cx * 4096 + cy; let l = SCM.get(k); if (l
         if (t === 'rock') l.push({ t, x, y, r: (16 + rnd(cx, cy, i + 92) * 30) * s, v: rnd(cx, cy, i + 93), rg: w.k, solid: 1, s, rot });
         else if (t === 'bush') l.push({ t, x, y, r: 0, v: rnd(cx, cy, i + 93), rg: w.k, s, rot });
         else if (!(w.k === 'lap' && GH(x, y) < LAPW - 6 && v !== 12)) l.push({ t, v, x, y, r: v === 5 ? 22 : v === 1 ? 17 : v === 3 ? 18 : v === 9 ? 0 : 14, s, rot, solid: v !== 9 && v !== 2 ? 1 : 0, rg: w.k }); break; } p -= pr; } }
-  return l; }
+  l.forEach((o, i) => { o.uid = 's' + cx + '_' + cy + '_' + i; o.sc = 1; }); if (SDEL.size) { const k2 = l.filter(o => !SDEL.has(o.uid)); l.length = 0; l.push(...k2); } return l; }
 function near(x, y, r, fn) { for (let gx = Math.floor((x - r) / GC); gx <= Math.floor((x + r) / GC); gx++) for (let gy = Math.floor((y - r) / GC); gy <= Math.floor((y + r) / GC); gy++) { const l = GRID.get(gk(gx, gy)); if (l) for (const o of l) fn(o); }
   if (x < OW + 400) for (let cx = Math.floor((x - r) / SCC); cx <= Math.floor((x + r) / SCC); cx++) for (let cy = Math.floor((y - r) / SCC); cy <= Math.floor((y + r) / SCC); cy++) for (const o of scatterOf(cx, cy)) if (Math.abs(o.x - x) < r + 30 && Math.abs(o.y - y) < r + 30) fn(o); }
 /* melyik épület alaprajzán áll (az emeletekhez) */
