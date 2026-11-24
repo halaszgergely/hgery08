@@ -1,7 +1,7 @@
 /* ZERO QUEST – 3D megjelenítés (three.js): terep, ég, tenger, fények, kamera, szereplők, effektek, zónák */
-import * as THREE from './lib/three.module.min.js?v=202611242327';
-import { GB, M, mm, MAT, hex, makeMan, setGear, poseMan, makeBeast, poseBeast, weaponMesh, shieldMesh, smat, grassProto, treeProto, statueBody } from './modell.js?v=202611242327';
-import { propInto, bldInto } from './kellek.js?v=202611242327';
+import * as THREE from './lib/three.module.min.js?v=202611242335';
+import { GB, M, mm, MAT, hex, makeMan, setGear, poseMan, makeBeast, poseBeast, weaponMesh, shieldMesh, smat, grassProto, treeProto, statueBody } from './modell.js?v=202611242335';
+import { propInto, bldInto } from './kellek.js?v=202611242335';
 
 const glc = document.getElementById('g');
 const RD = new THREE.WebGLRenderer({ canvas: glc, antialias: true, powerPreference: 'high-performance' });
@@ -134,6 +134,10 @@ function dynFor(o) { if (DYN.has(o)) return; const g = zoneAt(o.x, o.y) ? zoneH(
       if (o.arch) { const c = MAT[o.mat || 'ko'] || MAT.ko, wd = (o.wd || 40) + 8, r = gw / 2, sw = Math.max(18, Math.min(34, gw * .16)); for (const sx of [-1, 1]) { const nj = Math.max(2, Math.round(gh / 34)); for (let j = 0; j < nj; j++) B.box(M(sx * (r + sw / 2), j * gh / nj, 0), sw + (j % 2) * 6, gh / nj - 1.5, wd + (j % 2) * 4, mixA(c[0], c[2], ((j * 7 + (sx > 0 ? 3 : 0)) % 5) / 6)); }
         const nv = Math.max(5, Math.round(Math.PI * r / 30) | 1); for (let i = 0; i < nv; i++) { const f0 = i / nv * Math.PI, f1 = (i + 1) / nv * Math.PI, fm = (f0 + f1) / 2, R2 = r + sw + (i === (nv - 1) / 2 ? 6 : 0), al = (R2 + r) / 2 * (f1 - f0); B.box(M(Math.cos(fm) * R2, gh + Math.sin(fm) * R2, 0, 0, 0, fm + Math.PI / 2), al - 2, R2 - r, wd + (i === (nv - 1) / 2 ? 6 : 0), mixA(c[0], c[2], (i % 3) / 4)); }
         if (n) { const np = Math.max(3, Math.round(gw / 22)); for (let i = 0; i < np; i++) { const px = -r + (i + .5) * gw / np, hh = Math.sqrt(Math.max(0, r * r - px * px)); if (hh > 2) B.box(M(px, gh, 0), gw / np - 1.5, hh, 8, mixA(wood, dark, (i * 37 % 10) / 14)); } } }
+      if (o.inw && !o.arch) { const c = MAT[o.mat || 'ko'] || MAT.ko, wd = (o.wd || 40) + 8, sw = Math.max(14, Math.min(30, gw * .14)); for (const sx of [-1, 1]) B.box(M(sx * (gw / 2 + sw / 2), 0, 0), sw, gh, wd, c[0]); B.box(M(0, gh, 0), gw + sw * 2 + 8, Math.max(18, sw), wd + 4, c[2]); }
+      if (o.win) { const c = MAT[o.mat || 'ko'] || MAT.ko, wd = (o.wd || 40), r = o.arch ? gw / 2 : 0, top = x => gh + (r ? Math.sqrt(Math.max(0, r * r - x * x)) : 0); B.box(M(0, -12, 0), gw + 24, 12, wd + 18, c[2]);
+        if (o.fill === 'racs') { const iron = hex('#2a2826'); for (let x = -gw / 2 + 12; x < gw / 2 - 4; x += 16) B.cyl(M(x, 0, 0), 1.8, 1.8, top(x), 5, iron); for (const yy of [gh * .35, gh * .75]) B.box(M(0, yy, 0), gw, 4, 4, iron); }
+        else if (o.fill === 'uveg') { const P = [hex('#3a6ab8'), hex('#a83a3a'), hex('#c8a040'), hex('#3a8a5a')], cw = Math.max(12, gw / 5), nw = Math.round(gw / cw), lead = hex('#1e1c1a'); B.glow = .35; for (let i = 0; i < nw; i++) { const x = -gw / 2 + (i + .5) * gw / nw, ht = top(x), nh = Math.max(2, Math.round(ht / 26)); for (let j = 0; j < nh; j++) B.box(M(x, j * ht / nh + 1, 0), gw / nw - 2.5, ht / nh - 2.5, 2, P[(i * 3 + j) % 4]); } B.glow = 0; for (let i = 0; i <= nw; i++) { const x = -gw / 2 + i * gw / nw; B.box(M(x, 0, 0), 2, top(clamp(x, -gw / 2 + 1, gw / 2 - 1)), 3, lead); } } }
       if (o.fr) { const c = MAT[o.mat || 'ko'] || MAT.ko; for (const sx of [-1, 1]) B.box(M(sx * (gw / 2 + 14), 0, 0), 28, gh + 24, 34, c[0]); B.box(M(0, gh, 0), gw + 56, 26, 36, c[2]); }
       for (let k = 0; k < n; k++) { const sgn = n === 1 ? 1 : k ? -1 : 1, piv = new THREE.Group(), L = new GB(); piv.position.set(-sgn * gw / 2, 0, 0); const np = Math.max(2, Math.round(lw / 22));
         for (let i = 0; i < np; i++) L.box(M(sgn * (i + .5) * lw / np, 1, 0), lw / np - 1.5, gh - 3, 9, mixA(wood, dark, (i * 37 % 10) / 14)); for (const yy of [.18, .5, .82]) L.box(M(sgn * lw / 2, gh * yy, 5), lw - 6, 9, 2, iron); L.box(M(sgn * lw * .82, gh * .45, 7), 8, 8, 5, iron);

@@ -1,5 +1,5 @@
 /* ZERO QUEST – modellek: kódból épített, lapos árnyalású geometria (tereptárgyak, épületek, szereplők) */
-import * as THREE from './lib/three.module.min.js?v=202611242327';
+import * as THREE from './lib/three.module.min.js?v=202611242335';
 const TAU = Math.PI * 2; const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 export const hex = (h, k = 1) => { const n = typeof h === 'string' ? parseInt(h.slice(1), 16) : h; return [((n >> 16) & 255) / 255 * k, ((n >> 8) & 255) / 255 * k, (n & 255) / 255 * k]; };
 export const rgb = (r, g, b) => [r / 255, g / 255, b / 255];
