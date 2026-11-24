@@ -66,7 +66,7 @@ const WALLT = o => o.t === 'kocka' && o.X && !o.del && Math.abs(o.X.rx) < .03 &&
 /* a fal nyílásai a fal saját keretében: { x: közép, hw: fél szélesség, y0: alja a fal aljától, hh: egyenes rész, r: ív sugara } */
 function wallHoles(w) { const out = [], c = Math.cos(w.ca || 0), s = Math.sin(w.ca || 0), R = Math.hypot(w.w, w.d) / 2 + 400;
   near(w.x, w.y, R, q => { if (!q.inw || q.del || !q.X) return; const dx = q.x - w.x, dy = q.y - w.y, lx = dx * c + dy * s, lz = -dx * s + dy * c; if (Math.abs(lz) > w.d / 2 + 20 || Math.abs(lx) > w.w / 2 + 10) return; if (Math.abs(Math.sin((q.X.a || 0) - (w.ca || 0))) > .1) return; const k = q.X.s || 1, gw = (q.gw || 100) * k;
-    if (!out.some(h => h.q === q)) out.push({ q, x: lx, hw: gw / 2, y0: q.X.z - w.X.z, hh: (q.gh || 150) * k, r: gw / 2 }); }); return out.map(({ q, ...h }) => h); }
+    if (!out.some(h => h.q === q)) out.push({ q, x: lx, hw: gw / 2, y0: q.X.z - w.X.z, hh: (q.gh || 150) * k, r: q.arch ? gw / 2 : 0 }); }); return out.map(({ q, ...h }) => h); }
 /* a környező falak nyílásait újraszámolja (ütközéshez, rajzhoz), és újrarajzolja őket */
 function rehost(o, ox, oy) { const pts = [[o.x, o.y]]; if (ox != null) pts.push([ox, oy]); const seen = new Set();
   for (const [px, py] of pts) near(px, py, o.t === 'kocka' ? 10 : 900, w => { if (!WALLT(w) || seen.has(w)) return; seen.add(w); const prev = JSON.stringify(w.hl || []); w.hl = wallHoles(w); if (JSON.stringify(w.hl) !== prev && o.t !== 'kocka') { const m = Math.hypot(w.w, w.d) / 2 + 100; edDirty(w.x - m, w.y - m, w.x + m, w.y + m); } });
