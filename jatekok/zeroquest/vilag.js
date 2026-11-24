@@ -15,7 +15,10 @@ function smooth(p, step = 60) { const o = []; for (let i = 0; i < p.length - 1; 
     for (let k = 0; k < n; k++) { const t = k / n, t2 = t * t, t3 = t2 * t; o.push([.5 * (2 * b[0] + (-a[0] + c[0]) * t + (2 * a[0] - 5 * b[0] + 4 * c[0] - d[0]) * t2 + (-a[0] + 3 * b[0] - 3 * c[0] + d[0]) * t3), .5 * (2 * b[1] + (-a[1] + c[1]) * t + (2 * a[1] - 5 * b[1] + 4 * c[1] - d[1]) * t2 + (-a[1] + 3 * b[1] - 3 * c[1] + d[1]) * t3)]); } } o.push(p[p.length - 1]); return o; }
 function polyD(pts, x, y) { let bd = 1e9; for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], dx = b[0] - a[0], dy = b[1] - a[1], l = dx * dx + dy * dy || 1, t = clamp(((x - a[0]) * dx + (y - a[1]) * dy) / l, 0, 1), d = hyp(x - a[0] - dx * t, y - a[1] - dy * t); if (d < bd) bd = d; } return bd; }
 /* a 3D réteg tölti ki: kameraforgás, célzás, vetítés */
-let CAMYAW = 0, AIMF = null, PROJF = null, GL3 = null;
+let CAMYAW = 0, CAMPITCH = .3, AIMF = null, PROJF = null, GL3 = null, LOCKE = null, CAMD = null;
+/* kameramód: 'souls' = a hős háta mögött, egérrel forgatva; 'top' = felülnézet */
+let CMODE = (() => { try { return localStorage.getItem('zq_cam') || 'souls'; } catch (e) { return 'souls'; } })();
+const camFwd = () => Math.atan2(-Math.cos(CAMYAW), -Math.sin(CAMYAW));
 
 /* ---------- tájak (a rajzolt térkép szerint) ---------- */
 const REGS = [
@@ -112,6 +115,8 @@ const ZDEF = [
   { id: 'sobanya', n: 'A SÓKATEDRÁLIS ALTEMPLOMA', th: 'so', at: [1150, 4300], t: 9, g: [8, 5], kind: 'kat' },
   { id: 'kiserlet', n: 'A KÍSÉRLETEZŐK KRIPTÁJA', th: 'mely', at: null, t: 9, g: [8, 6], kind: 'kat' },
   ...['BEOMLOTT PINCE', 'ELFELEDETT KRIPTA', 'A SZOMJAS ÜREG', 'A REMETE PINCÉJE', 'AZ ÖNTÖZŐK RAKTÁRA', 'A NÉMA KRIPTA', 'A HOMOKBA FULLADT TEMPLOM', 'A KISZÁRADT FORRÁSÉR', 'A KANNÁSOK SZENTÉLYE', 'A CSONTOK PINCÉJE', 'A HAMUS JÁRAT', 'A SÓFOLYOSÓ', 'A FAGYOTT KAMRA', 'AZ ÁRNYÉK-CISZTERNA', 'A GYÖKERES PINCE', 'A TÖRT KÚTAKNA'].map((n, i) => ({ id: 'p' + i, n, th: 'ko', at: null, t: 1, g: i % 3 === 2 ? [6, 5] : [5, 4], kind: i % 3 === 2 ? 'bar' : 'kat', proc: 1 })),
+  { id: 'k_gaspar', n: 'A VARJÚVÁR TÖMLÖCE', th: 'ko', at: null, t: 2, g: [7, 5], kind: 'kat', kas: 1 }, { id: 'k_denes', n: 'A NAPERŐD ALAGSORA', th: 'ko', at: null, t: 4, g: [8, 5], kind: 'kat', kas: 1 },
+  { id: 'k_palota', n: 'A PALOTA KAZAMATÁI', th: 'ko', at: null, t: 5, g: [8, 6], kind: 'kat', kas: 1 }, { id: 'k_klara', n: 'A JÉGKOLOSTOR KRIPTÁJA', th: 'jeg', at: null, t: 8, g: [7, 6], kind: 'kat', kas: 1 }, { id: 'k_lorinc', n: 'A SÓERŐD BÖRTÖNE', th: 'so', at: null, t: 9, g: [8, 6], kind: 'kat', kas: 1 },
   { id: 'mely', n: 'A MÉLY', th: 'mely', at: null, t: 10, open: 1, kind: 'open' }];
 const ZONES = [], ZK = {}, ZC = 430, ZX0 = OW + 6000;
 let WW = 0, WH = OH;
@@ -149,7 +154,7 @@ function bldAt(x, y) { let b = null; const l = GRID.get(gk(Math.floor(x / GC), M
 const floorAt = (b, x, y) => { if (!b.tiles) return false; const i = Math.floor((x - b.x + b.w / 2) / b.ts), j = Math.floor((y - b.y + b.d / 2) / b.ts); return i >= 0 && j >= 0 && i < b.tw && j < b.th && b.tiles[i + j * b.tw] === 1; };
 function stairT(s, x, y) { if (Math.abs(x - s.x) > s.w / 2 || Math.abs(y - s.y) > s.d / 2) return -1; const t = s.dir === 0 ? (x - s.x + s.w / 2) / s.w : s.dir === 1 ? (s.x + s.w / 2 - x) / s.w : s.dir === 2 ? (y - s.y + s.d / 2) / s.d : (s.y + s.d / 2 - y) / s.d; return clamp(t, 0, 1); }
 /* a talaj magassága egy szereplő alatt (épület, emelet, lépcső, zóna, terep) */
-function elev(e) { const z = zoneAt(e.x, e.y); if (z) return zoneH(z, e.x, e.y); const b = e.bld || bldAt(e.x, e.y); if (b && b.base != null) { if (e.sz != null) return b.base + e.sz * FH; return b.base + (e.fz ? FH : 0); } return GH(e.x, e.y); }
+function elev(e) { const z = zoneAt(e.x, e.y); if (z) return zoneH(z, e.x, e.y); const b = e.bld || bldAt(e.x, e.y); if (b && b.base != null) { const fh = b.fh || FH; if (e.sz != null) return b.base + e.sz * fh; if (b.kind === 'aqua' && !e.fz) return GH(e.x, e.y); return b.base + (e.fz ? fh : 0); } return GH(e.x, e.y) + (e.alt || 0); }
 
 /* ---------- ütközés: falak, oszlopok, fák, emeletek, meredek lejtők, tenger ---------- */
 function collide(e, r) { const fz = e.fz | 0;
@@ -162,7 +167,7 @@ function collide(e, r) { const fz = e.fz | 0;
     const b = bldAt(e.x, e.y); e.bld = b; let st = null;
     if (b && b.stairs) { const t = stairT(b.stairs, e.x, e.y); if (t >= 0) { st = t; e.fz = t > .5 ? 1 : 0; } } e.sz = st;
     if (e.fz && st == null) { if (!b || !floorAt(b, e.x, e.y)) { if (e === P) { e.fz = 0; e.fall = 1; } else if (e.lx != null) { e.x = e.lx; e.y = e.ly; e.fz = 1; } } }
-    if (!e.fz && !b && e.lx != null && !zoneAt(e.lx, e.ly)) { const dd = hyp(e.x - e.lx, e.y - e.ly); if (dd > .01) { const h0 = GH(e.lx, e.ly), h1 = GH(e.x, e.y);
+    if (!e.fz && (!b || b.kind === 'aqua') && e.sz == null && e.lx != null && !zoneAt(e.lx, e.ly)) { const dd = hyp(e.x - e.lx, e.y - e.ly); if (dd > .01) { const h0 = GH(e.lx, e.ly), h1 = GH(e.x, e.y);
         if (h1 - h0 > dd * 1.05 + .5 || h1 < SEA + 3) { const hx = GH(e.x, e.ly), hy = GH(e.lx, e.y); if (hx - h0 <= Math.abs(e.x - e.lx) * 1.05 + .5 && hx >= SEA + 3) e.y = e.ly; else if (hy - h0 <= Math.abs(e.y - e.ly) * 1.05 + .5 && hy >= SEA + 3) e.x = e.lx; else { e.x = e.lx; e.y = e.ly; } } } }
     e.x = clamp(e.x, 60, OW - 60); e.y = clamp(e.y, 60, OH - 60); }
   e.lx = e.x; e.ly = e.y; }

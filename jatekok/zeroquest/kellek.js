@@ -1,5 +1,5 @@
 /* ZERO QUEST – tereptárgyak és épületek geometriája (világkoordinátában, darabonként összefűzve) */
-import { GB, M, mm, MAT, hex, statueBody, treeProto, rockProto, bushProto } from './modell.js?v=202611240124';
+import { GB, M, mm, MAT, hex, statueBody, treeProto, rockProto, bushProto } from './modell.js?v=202611240531';
 const TAU = Math.PI * 2;
 const mat = k => MAT[k] || MAT.ko, mulc = (a, k) => [a[0] * k, a[1] * k, a[2] * k], mixc = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const R = (a, b, c) => rnd(a | 0, b | 0, c | 0);
@@ -78,6 +78,10 @@ export function propInto(B, o, g) { const x = o.x, z = o.y, t = o.t, sd = (x * 1
     case 'bigwell': { const r = o.r || 52; B.cyl(M(x, g - 4, z), r + 14, r + 18, 30, 16, c[1]); B.cyl(M(x, g + 26, z), r + 16, r + 16, 6, 16, c[2]); B.cyl(M(x, g + 20, z), r, r, 12, 16, hex('#050505')); if (o.mely) { for (let i = 0; i < 4; i++) B.box(M(x + Math.cos(i * 1.57 + .78) * (r + 30), g, z + Math.sin(i * 1.57 + .78) * (r + 30)), 26, 220, 26, c[0]); B.box(M(x, g + 220, z), r * 2 + 90, 24, r * 2 + 90, c[1]); } break; }
     case 'well': B.cyl(M(x, g, z), 28, 30, 30, 12, c[1]); B.cyl(M(x, g + 24, z), 22, 22, 8, 12, hex('#0a0a0a')); break;
     case 'door': doorInto(B, o, g, x, z); break;
+    case 'bars': for (let i = -4; i <= 4; i++) B.cyl(M(x + i * 16, g, z), 2.2, 2.2, 150, 5, hex('#3a3634')); B.box(M(x, g + 146, z), 150, 8, 8, hex('#3a3634')); B.box(M(x, g + 60, z), 150, 6, 6, hex('#3a3634')); break;
+    case 'banner': { const cc = { ko: '#6a2420', feher: '#c8a040', jeg: '#3a5a8a', so: '#7a2a2a', mez: '#5a4a1a' }[o.mat] || '#5a2a2a'; B.cyl(M(x, g, z), 2.5, 3, 230, 5, hex('#3a2a1c')); B.box(M(x, g + 222, z), 70, 4, 4, hex('#3a2a1c')); B.box(M(x, g + 100, z + 2), 62, 120, 2, hex(cc)); B.shape([[x - 31, g + 100, z + 3], [x + 31, g + 100, z + 3], [x, g + 74, z + 3]], [0, 2, 1, 0, 1, 2], M(), hex(cc)); B.box(M(x, g + 150, z + 3.5), 18, 18, 1, hex('#e8b656')); break; }
+    case 'rack': B.box(M(x, g, z), 80, 6, 20, hex('#4e3622')); B.box(M(x, g + 70, z), 80, 5, 8, hex('#4e3622')); for (let i = -2; i <= 2; i++) B.cyl(M(x + i * 15, g + 4, z + 4, 0, -.12, 0), 1.6, 1.6, 90, 4, hex(i % 2 ? '#a0a4a8' : '#5a3a22')); break;
+    case 'chains': for (const s of [-30, 30]) for (let i = 0; i < 6; i++) B.cyl(M(x + s, g + 160 - i * 14, z, 0, 0, i % 2 ? .4 : -.4), 2, 2, 14, 4, hex('#4a4644')); break;
   } }
 function doorInto(B, o, g, x, z) { const dk = o.dk || 'hatch', st = hex('#5a544c');
   if (dk === 'hatch') { B.box(M(x, g, z), 80, 3, 70, hex('#1a1612')); B.box(M(x - 50, g, z, 0, 0, -1.2), 70, 3, 66, hex('#5a4030')); for (let i = 0; i < 4; i++) B.box(M(x, g - 4 - i * 10, z - 24 + i * 16), 70, 3, 14, hex('#2a2622')); }
@@ -87,7 +91,15 @@ function doorInto(B, o, g, x, z) { const dk = o.dk || 'hatch', st = hex('#5a544c
   else if (dk === 'gate') { B.box(M(x, g, z + 6), 60, 100, 6, hex('#3a2a1c')); } }
 
 /* ---------- épület: alsó szint (mindig), felső szint + tető (külön, áttetszővé tehető) ---------- */
-export function bldInto(Blo, Bup, b) { const g = b.base, c = mat(b.mat), th = 16, sd = b.id * 37 + 11, wood = hex('#5a4430'), ROOFc = ROOF[b.mat] || ROOF.ko;
+/* vízvezeték: pillérek és ívek a változó talajon, fölül a csatorna járható pallója, az elején rámpa */
+function aquaInto(Blo, Bup, b) { const c = mat(b.mat), top = b.base + b.fh, h = b.horiz, L = h ? b.w : b.d, W = h ? b.d : b.w, x0 = h ? b.x - b.w / 2 : b.x, y0 = h ? b.y : b.y - b.d / 2, at = t => h ? [x0 + t, y0] : [x0, y0 + t], ry = h ? 0 : Math.PI / 2, sd = b.id * 17;
+  for (let t = b.Ls + 110; t < L - 40; t += 220) { const [px, pz] = at(t), g = GH(px, pz) - 10; const ph = top - 30 - g; for (let k = 0; k < Math.ceil(ph / 34); k++) { const y = g + k * 34, hh = Math.min(34, top - 30 - y); if (hh <= 0) break; Blo.box(M(px, y, pz, ry), 64 - k * .3, hh - .8, W - 10, k % 3 ? c[0] : c[2]); } }
+  for (let t = b.Ls; t < L - 40; t += 220) { const t1 = Math.min(L - 40, t + 220); for (let k = 0; k <= 6; k++) { const q = k / 6, a = Math.PI * q, mx = t + 110 - Math.cos(a) * 80, [px, pz] = at(mx); if (mx < b.Ls + 20 || mx > t1) continue; Blo.box(M(px, top - 30 - 40 + Math.sin(a) * 40 - 20, pz, ry, 0, h ? Math.cos(a) * .7 : 0), 26, 24, W - 14, c[k % 2 ? 1 : 2]); }
+    const mid = top - (top - GH(...at(t + 110))) * .5; if (top - GH(...at(t + 110)) > 300) for (let k = 0; k <= 6; k++) { const q = k / 6, a = Math.PI * q, mx = t + 110 - Math.cos(a) * 80, [px, pz] = at(mx); Blo.box(M(px, mid - 60 + Math.sin(a) * 40, pz, ry), 24, 22, W - 22, c[1]); } }
+  for (let i = 0; i < b.tw; i++) for (let j = 0; j < b.th; j++) { if (b.tiles[i + j * b.tw] !== 1) continue; const px = b.x - b.w / 2 + (i + .5) * b.ts, pz = b.y - b.d / 2 + (j + .5) * b.ts; Bup.box(M(px, top - 30, pz), b.ts + .4, 30, b.ts + .4, mixc(c[0], c[2], R(sd, i * 7 + j, 3)), mulc(c[2], 1.05)); }
+  for (const s of [-1, 1]) for (let t = b.Ls; t < L; t += 40) { if (b.tiles && R(sd, t, s + 5) < .2) continue; const [px, pz] = at(t + 20); Bup.box(M(px + (h ? 0 : s * (W / 2 - 6)), top, pz + (h ? s * (W / 2 - 6) : 0), ry), 40, 26, 12, c[1]); }
+  const n = 12; for (let k = 0; k < n; k++) { const t = (k + .5) / n, [px, pz] = at(t * b.Ls), y = b.base + t * b.fh; Blo.box(M(px, b.base - 10, pz, ry), b.Ls / n + 1, y - b.base + 10, W - 26, mixc(c[1], c[0], t)); for (let r = 0; r < 2; r++) Blo.ico(M(px + (h ? 0 : (r ? 1 : -1) * W * .55), b.base + 2, pz + (h ? (r ? 1 : -1) * W * .55 : 0)), 14 + R(sd, k, r) * 12, 0, c[1], .5); } }
+export function bldInto(Blo, Bup, b) { if (b.kind === 'aqua') return aquaInto(Blo, Bup, b); const g = b.base, c = mat(b.mat), th = 16, sd = b.id * 37 + 11, wood = hex('#5a4430'), ROOFc = ROOF[b.mat] || ROOF.ko;
   /* padló */
   const fl = b.kind === 'church' || b.kind === 'keep' ? mulc(c[1], .9) : hex('#5e4a36'); Blo.box(M(b.x, g - 30, b.y), b.w + 30, 30, b.d + 30, c[1]); for (let i = 0; i < b.tw; i++) for (let j = 0; j < b.th; j++) { const q = R(sd, i * 41 + j, 1); if (q < b.dmg * .3) continue; Blo.box(M(b.x - b.w / 2 + (i + .5) * b.ts, g - 1, b.y - b.d / 2 + (j + .5) * b.ts, 0, 0, 0), b.ts - 1.5, 2 + q * 1.5, b.ts - 1.5, mixc(fl, c[0], q * .4)); }
   for (const s of b.segs) { const B = s.lv ? Bup : Blo, y0 = g + s.lv * FH, nx = s.side < 2 ? 0 : 1; if (s.st === 'gap') { if (!s.lv) { for (let i = 0; i < 3; i++) B.box(M((s.x0 + s.x1) / 2 + (R(sd, s.i * 3 + i, 2) - .5) * 40 + (s.side === 2 ? 20 : s.side === 3 ? -20 : 0), y0, (s.y0 + s.y1) / 2 + (R(sd, s.i * 3 + i, 3) - .5) * 40 + (s.side === 0 ? 20 : s.side === 1 ? -20 : 0), R(sd, i, 4) * 3, (R(sd, i, 5) - .5) * .5), 14 + R(sd, i, 6) * 14, 8 + R(sd, i, 7) * 10, 14 + R(sd, i, 6) * 10, c[R(sd, i, 8) < .5 ? 0 : 1]); } continue; }

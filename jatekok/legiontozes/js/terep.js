@@ -6,8 +6,8 @@
    - Csonkcsere atomian: a régi csonkok láthatók maradnak, amíg az újak mind fel nem épültek (időkorláttal), így nincs lyuk / villanás.
    - Közeli erdőcsonkokon kétféle (tűlevelű, lombos) instancolt fa, szélben hajladozva. */
 import * as THREE from 'three';
-import { ground, cls, hash2, onTile, clearGridCache, inAirport } from './geo.js?v=202611240124';
-import { SU, withWorld, LOGV_PARS, LOGV, LOGF_PARS, LOGF, HASH } from './kozos.js?v=202611240124';
+import { ground, cls, hash2, onTile, clearGridCache, inAirport } from './geo.js?v=202611240531';
+import { SU, withWorld, LOGV_PARS, LOGV, LOGF_PARS, LOGF, HASH } from './kozos.js?v=202611240531';
 
 const LEAF = 2000, ROOT = 32000, N = 16;
 
