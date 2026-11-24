@@ -1,19 +1,19 @@
 // HGWS Közösség – csatornák, privát üzenetek, csoportok, filmtár
 import { FB, auth, db, notConfigured, $, $$, esc, ROLES, roleOf, applyRoles, OWNER_UID, notify, audit, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
-  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611242139';
-import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611242139';
-import * as Admin from './admin.js?v=202611242139';
-import * as Browse from './browse.js?v=202611242139';
-import * as Notif from './notif.js?v=202611242139';
-import * as Profile from './profile.js?v=202611242139';
-import * as Party from './party.js?v=202611242139';
-import * as Ideas from './ideas.js?v=202611242139';
-import * as Player from './player.js?v=202611242139';
-import * as Cmdk from './cmdk.js?v=202611242139';
-import * as Stk from './stickers.js?v=202611242139';
-import * as Friends from './friends.js?v=202611242139';
-import * as Bo from './bo-ui.js?v=202611242139';
-import { bootOut, pageIn, I } from './fx.js?v=202611242139';
+  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason, signOutKeep } from './core.js?v=202611242231';
+import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611242231';
+import * as Admin from './admin.js?v=202611242231';
+import * as Browse from './browse.js?v=202611242231';
+import * as Notif from './notif.js?v=202611242231';
+import * as Profile from './profile.js?v=202611242231';
+import * as Party from './party.js?v=202611242231';
+import * as Ideas from './ideas.js?v=202611242231';
+import * as Player from './player.js?v=202611242231';
+import * as Cmdk from './cmdk.js?v=202611242231';
+import * as Stk from './stickers.js?v=202611242231';
+import * as Friends from './friends.js?v=202611242231';
+import * as Bo from './bo-ui.js?v=202611242231';
+import { bootOut, pageIn, I } from './fx.js?v=202611242231';
 
 const S = {
   user: null, me: null, users: new Map(), channels: [], convs: [], convsLoaded: false, videos: [], reads: { ch: {} },
@@ -158,7 +158,7 @@ function start() {
   $('#hamBtn').onclick = () => document.body.classList.toggle('anavopen');
   $('#ascrim').onclick = () => document.body.classList.remove('anavopen');
   $('#navSet').onclick = () => { document.body.classList.remove('anavopen'); settings(); };
-  $('#outBtn').onclick = async () => { if (await confirmBox('Kijelentkezel?', 'Kijelentkezés', false)) FB.signOut(auth); };
+  $('#outBtn').onclick = async () => { if (await confirmBox('Kijelentkezel?', 'Kijelentkezés', false)) signOutKeep(); };
   si.oninput = () => { const q = si.value; if (location.hash.startsWith('#/kereses')) history.replaceState(null, '', '#/kereses/' + encodeURIComponent(q)); else location.hash = '#/kereses/' + encodeURIComponent(q); if (location.hash.startsWith('#/kereses')) Browse.search(encodeURIComponent(q)); };
   zeroEgg();
   let taps = 0, tapT; $('.tlogo').addEventListener('click', e => { taps++; clearTimeout(tapT); tapT = setTimeout(() => taps = 0, 1200); if (taps >= 5) { taps = 0; e.preventDefault(); showZero(); } });
@@ -211,7 +211,7 @@ function startGuest() {
 /* vendég kilép, és a belépő / regisztrációs oldalra megy */
 async function guestLeave(to) {
   S.leaving = true;
-  try { await FB.signOut(auth); } catch (_) {}
+  try { await signOutKeep(); } catch (_) {}
   location.replace('belepes.html?next=' + encodeURIComponent('./' + location.hash) + (to === 'reg' ? '#regisztracio' : ''));
 }
 function guestPrompt(why) {
@@ -227,7 +227,7 @@ function soon(k, f) { clearTimeout(timers[k]); timers[k] = setTimeout(f, 30); }
 function banned() {
   S.chat?.destroy(); S.chat = null;
   document.body.classList.add('chatmode'); $('#shell').innerHTML = `<div class="full" style="height:100vh"><div><div class="big"><i class="ic ic-ban"></i></div><h2 class="gold">Ki vagy tiltva</h2><p>Egy moderátor vagy admin letiltotta a fiókodat a közösségből.</p><button class="btn plain" id="lo">Kijelentkezés</button></div></div>`;
-  $('#lo').onclick = () => FB.signOut(auth);
+  $('#lo').onclick = () => signOutKeep();
 }
 
 /* ===================== ÚTVONALAK ===================== */
@@ -560,7 +560,7 @@ function userMenu(anchor) {
   const r = anchor.getBoundingClientRect();
   p.style.left = Math.max(8, Math.min(innerWidth - p.offsetWidth - 8, r.left < innerWidth / 2 ? r.left : r.right - p.offsetWidth)) + 'px';
   p.style.top = Math.max(8, r.bottom + 8 + p.offsetHeight > innerHeight ? r.top - p.offsetHeight - 8 : r.bottom + 8) + 'px';
-  p.addEventListener('click', e => { const a = e.target.closest('[data-a]')?.dataset.a; if (e.target.closest('a,button')) closePop(); if (a === 'set') settings(); if (a === 'install') installApp(); if (a === 'out') FB.signOut(auth); });
+  p.addEventListener('click', e => { const a = e.target.closest('[data-a]')?.dataset.a; if (e.target.closest('a,button')) closePop(); if (a === 'set') settings(); if (a === 'install') installApp(); if (a === 'out') signOutKeep(); });
 }
 
 /* titkos köszönet Zerónak – írd be bárhol: z e r o */
@@ -606,7 +606,7 @@ function settings() {
     foot: `<button class="btn danger l" data-out>Kijelentkezés</button><button class="btn plain" data-x>Mégse</button><button class="btn goldb" data-save>Mentés</button>` });
   let color = m.color;
   el.querySelector('.swatches').onclick = e => { const b = e.target.closest('[data-c]'); if (!b) return; color = b.dataset.c; $$('.swatches button', el).forEach(x => x.classList.toggle('on', x === b)); };
-  el.querySelector('[data-out]').onclick = () => FB.signOut(auth);
+  el.querySelector('[data-out]').onclick = () => signOutKeep();
   const nb = el.querySelector('[data-notif]'); if (nb) nb.onclick = async () => { const p = await Notification.requestPermission(); toast(p === 'granted' ? 'Értesítések bekapcsolva 🔔' : 'Nem kaptunk engedélyt.', p !== 'granted'); el.close(); };
   const pf = el.querySelector('.pwf'), pmsg = el.querySelector('.pwmsg');
   const pwSay = (t, ok) => { pmsg.textContent = t; pmsg.hidden = false; pmsg.style.color = ok ? 'var(--ok, #86d39a)' : '#ff8a7a'; pmsg.style.margin = '0'; pmsg.style.fontSize = '.85rem'; };
