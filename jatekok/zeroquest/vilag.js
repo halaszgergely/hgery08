@@ -172,7 +172,7 @@ function walkH(e, g0) { let best = g0; const cur = e.wz0 != null ? e.wz0 : g0; n
 
 /* ---------- ütközés: falak, oszlopok, fák, emeletek, meredek lejtők, tenger ---------- */
 function collide(e, r) { const fz = e.fz | 0;
-  for (let it = 0; it < 2; it++) near(e.x, e.y, r + 30, o => { if (!o.solid || o.off || o.nz || o.del || (o.fz | 0) !== fz) return; if (o.wk && e.wz0 != null && o.wt - e.wz0 < 46) return;
+  for (let it = 0; it < 2; it++) near(e.x, e.y, r + 30, o => { if (!o.solid || o.off || o.del || (o.fz | 0) !== fz) return; if (o.nz && (o.zb == null || e.wz0 == null || e.wz0 + 40 < o.zb || e.wz0 > o.zt - 12)) return; if (o.wk && e.wz0 != null && o.wt - e.wz0 < 46) return;
     if (o.w) { let [ex, ey] = toLoc(o, e.x, e.y); const cx = clamp(ex, o.x - o.w / 2, o.x + o.w / 2), cy = clamp(ey, o.y - o.d / 2, o.y + o.d / 2), dx = ex - cx, dy = ey - cy, d = hyp(dx, dy); if (d < r) { if (d < .01) { const px = o.w / 2 + r - Math.abs(ex - o.x), py = o.d / 2 + r - Math.abs(ey - o.y); if (px < py) ex += Math.sign(ex - o.x || 1) * px; else ey += Math.sign(ey - o.y || 1) * py; } else { ex = cx + dx / d * r; ey = cy + dy / d * r; } [e.x, e.y] = toWorld(o, ex, ey); } }
     else { const dx = e.x - o.x, dy = e.y - o.y, d = hyp(dx, dy), m = r + o.r * (o.t === 'tree' || o.t === 'rock' ? .75 : 1); if (d < m && d > .01) { e.x = o.x + dx / d * m; e.y = o.y + dy / d * m; } } });
   const z = zoneAt(e.x, e.y);
