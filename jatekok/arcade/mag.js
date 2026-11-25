@@ -8,6 +8,17 @@ const store = {
 };
 
 /* =================== AUDIO =================== */
+/* ---------- Időcsalás-figyelő (pl. „slowmo” bővítmények ellen) ----------
+   A lassító bővítmények a lap óráit (performance.now, requestAnimationFrame, Date, időzítők) lassítják, de egy Web Worker
+   belsejébe nem jutnak be: kör közben a lap órájának együtt kell járnia a workerével. Ha tartósan eltérnek, a kör nem számít. */
+const IdoOr = (() => { let w = null, run = 0, base = null, strikes = 0, bad = false, tm = 0, seq = 0, warn = null;
+  try { w = new Worker(URL.createObjectURL(new Blob(['onmessage=e=>postMessage([e.data[0],e.data[1],performance.now()])'], { type: 'text/javascript' })));
+    w.onmessage = e => { const [id, m0, wt] = e.data, now = performance.now(); if (id !== run || now - m0 > 250) return; const mid = (m0 + now) / 2; if (!base) { base = [mid, wt]; return; }
+      const dw = wt - base[1]; if (dw < 3000) return; const r = (mid - base[0]) / dw; if (r < .9 || r > 1.1) { if (++strikes >= 2 && !bad) { bad = true; if (warn) warn(); } } else strikes = Math.max(0, strikes - 1); }; } catch (_) { w = null; }
+  const ping = () => { if (w && run) try { w.postMessage([run, performance.now()]); } catch (_) {} };
+  return { start(onBad) { clearInterval(tm); run = ++seq; base = null; strikes = 0; bad = false; warn = onBad || null; if (w) { tm = setInterval(ping, 700); ping(); } },
+    stop() { clearInterval(tm); run = 0; return bad; }, get bad() { return bad; } };
+})();
 const Sfx = (() => {
   let ac = null, on = store.get('mute', 0) ? false : true;
   const btn = $('#snd');
@@ -267,22 +278,23 @@ function openGame(game) {
   cancelAnimationFrame(G.raf); G.last = performance.now(); G.raf = requestAnimationFrame(loop);
 }
 G.restart = () => start();
-function start() { UI.pStart.hidden = true; UI.pOver.hidden = true; G.score = 0; G.win = 0; G.lives = G.game.lives || 0; G.fx = []; G.fl = []; G.t = 0; G.game.init(G); G.running = true; hud(); Sfx.blip(660, .1, 'square', .06); }
+function start() { IdoOr.start(() => { G.float(G.W / 2, G.H * .3, '⏱ IDŐMANIPULÁCIÓ – EZ A KÖR NEM SZÁMÍT', true); }); UI.pStart.hidden = true; UI.pOver.hidden = true; G.score = 0; G.win = 0; G.lives = G.game.lives || 0; G.fx = []; G.fl = []; G.t = 0; G.game.init(G); G.running = true; hud(); Sfx.blip(660, .1, 'square', .06); }
 function over() {
-  if (!G.running) return; G.running = false; G.overAt = performance.now(); Sfx.boom();
-  const id = 'best_' + G.game.id, prev = store.get(id), nb = G.score > prev; if (nb) store.set(id, G.score);
-  if (G.win) store.set('wins_' + G.game.id, store.get('wins_' + G.game.id) + 1);
+  if (!G.running) return; G.running = false; G.overAt = performance.now(); Sfx.boom(); const cheat = IdoOr.stop();
+  const id = 'best_' + G.game.id, prev = store.get(id), nb = !cheat && G.score > prev; if (nb) store.set(id, G.score);
+  if (G.win && !cheat) store.set('wins_' + G.game.id, store.get('wins_' + G.game.id) + 1);
   const wr = G.game.wr ? G.wr() : null; $('#oTitle').textContent = wr != null && G.score > wr ? G.game.wr : G.game.overTitle || 'VÉGE';
   $('#oScore').textContent = (G.game.sfmt ? G.game.sfmt(G.score) : bigNum(G.score)) + (G.game.unit || '');
   $('#oRank').textContent = (G.game.ranks.filter(r => G.score >= r[0]).pop() || [0, ''])[1].toUpperCase();
   $('#oBest').textContent = (nb ? '🏆 ÚJ REKORD!' : 'Rekord: ' + (G.game.sfmt ? G.game.sfmt(prev) : bigNum(prev)) + (G.game.unit || '')) + (G.win || store.get('wins_' + G.game.id) ? ' · 🏆 ×' + store.get('wins_' + G.game.id) : '');
+  if (cheat) $('#oBest').textContent = '⏱ Időmanipuláció észlelve – ez a kör nem számít';
   setTimeout(() => { UI.pOver.hidden = false; }, 450); hud(); renderCards();
-  if (window.top !== window && G.score > 0) parent.postMessage({ hgws: 'score', game: G.game.id, score: G.score, win: !!G.win }, location.origin);
+  if (window.top !== window && G.score > 0 && !cheat) parent.postMessage({ hgws: 'score', game: G.game.id, score: G.score, win: !!G.win }, location.origin);
 }
 function close() { if (G.game && G.game.leave) G.game.leave(G); if (G.running && G.score > 0) over(); /* kilépéskor is számít az addig elért pontszám */ G.running = false; cancelAnimationFrame(G.raf); gEl.classList.remove('open'); document.body.classList.remove('locked'); renderCards(); }
 $('#gQuit').onclick = () => { if (G.running) over(); };
 // lapbezárás / elnavigálás játék közben: az addig elért pontszám rekordként megmarad, és ha lehet, felmegy a ranglistára
-addEventListener('pagehide', () => { try { if (G.running && G.game && !G.game.ext && G.score > 0) { if (G.score > store.get('best_' + G.game.id)) store.set('best_' + G.game.id, G.score); if (window.top !== window) parent.postMessage({ hgws: 'score', game: G.game.id, score: G.score }, location.origin); } } catch (_) {} });
+addEventListener('pagehide', () => { try { if (G.running && G.game && !G.game.ext && G.score > 0 && !IdoOr.bad) { if (G.score > store.get('best_' + G.game.id)) store.set('best_' + G.game.id, G.score); if (window.top !== window) parent.postMessage({ hgws: 'score', game: G.game.id, score: G.score }, location.origin); } } catch (_) {} });
 $('#pGo').onclick = start; $('#oAgain').onclick = start; $('#oExit').onclick = close; $('#gClose').onclick = close;
 addEventListener('keydown', e => { if (!gEl.classList.contains('open')) return; if (e.key === 'Escape') close();
   // R: teljes újrakezdés (a rövid ügyességi játékoknál); halál után vagy a kezdőképernyőn bármelyik akciógomb indít
