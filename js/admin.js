@@ -1,7 +1,7 @@
 // HGWS – kezelőfelület: tagok és rangok, tagek, filmek, zenék, csatornák, jóváhagyások, rangok szerkesztése
-import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611252025';
-import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611252025';
-import { githubRepo } from '../firebase-config.js?v=202611252025';
+import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611252221';
+import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611252221';
+import { githubRepo } from '../firebase-config.js?v=202611252221';
 
 let C = null, current = null;
 /* e-mail címek: csak adminok és a tulaj olvashatják (emails/{uid}); a lista megnyitásakor egyszer töltjük be */
@@ -75,7 +75,7 @@ let mq = '';
 /* vendégfiókok: a jelenlétüket (guests) és a lefoglalt/moderátor által adott nevüket (guestnames) mutatja; innen át is nevezhetők */
 /* ---------- gyanús eredmények (időmanipuláció stb.): a játék nem engedte ranglistára, itt ellenőrizhetők ---------- */
 const SUS = { list: [], at: 0, fail: false, names: {} };
-async function loadSuspects() { const [s, b] = await Promise.all([FB.getDocs(FB.query(FB.collection(db, 'suspects'), FB.orderBy('at', 'desc'), FB.limit(300))).catch(() => null), import('./browse.js?v=202611252025').catch(() => null)]);
+async function loadSuspects() { const [s, b] = await Promise.all([FB.getDocs(FB.query(FB.collection(db, 'suspects'), FB.orderBy('at', 'desc'), FB.limit(300))).catch(() => null), import('./browse.js?v=202611252221').catch(() => null)]);
   SUS.fail = !s; SUS.list = s ? s.docs.map(d => ({ id: d.id, ...d.data() })) : []; if (b) for (const g of b.GAMES) SUS.names[g.id] = g; SUS.at = Date.now(); }
 const WHY = { ido: 'Időmanipuláció (lassítás/gyorsítás)' };
 function suspectsPage(v, again) {
@@ -395,6 +395,7 @@ async function filmModal(f) {
       <div class="field"><label>Év · Hossz</label><div style="display:flex;gap:.5rem"><input class="inp" name="year" maxlength="10" value="${esc(d.year || '')}" placeholder="2026"><input class="inp" name="len" maxlength="30" value="${esc(d.len || '')}" placeholder="6 perc"></div></div></div>
     <div class="grid2"><div class="field"><label>Műfaj</label><input class="inp" name="genre" maxlength="80" value="${esc(d.genre || '')}" placeholder="Akció · Vígjáték"></div>
       <div class="field"><label>Premier dátuma <em>(nem kötelező)</em></label><input class="inp" type="date" name="premiere" value="${esc(d.premiere || '')}"></div></div>
+    <div class="field"><label>Stúdiók</label><div class="chips stchips" id="stc"></div><input class="inp" id="stin" list="stlist" maxlength="60" placeholder="Stúdió neve, majd Enter" style="margin-top:.4rem"><datalist id="stlist"></datalist></div>
     <div class="field"><label>Leírás</label><textarea class="inp" name="desc" rows="4" maxlength="1500">${esc(d.desc || '')}</textarea></div>
     <div class="field"><label>YouTube link <em>(a lejátszó a saját HGWS-felülettel játssza le)</em></label><input class="inp" name="yt" value="${esc(src.youtube ? 'https://youtu.be/' + src.youtube : '')}" placeholder="https://youtu.be/…  vagy  https://www.youtube.com/watch?v=…"><span class="hint" id="ytok"></span></div>
     <div class="field"><label>…vagy MP4 videó URL</label><input class="inp" name="mp4" value="${esc(src.mp4 || '')}" placeholder="videok/film.mp4"></div>
@@ -409,6 +410,17 @@ async function filmModal(f) {
       <input class="inp" type="url" data-url placeholder="…vagy kép URL-je"><span class="hint" data-info></span></div></div></div>`).join('')}`,
     foot: `${f ? '<button class="btn danger l" data-del>Törlés</button>' : ''}<button class="btn plain" data-x>Mégse</button><button class="btn goldb" data-ok>Mentés</button>` });
   const q = n => el.querySelector(`[name=${n}]`);
+  /* stúdiók: saját nevek begépelése, a korábban használtak felajánlva */
+  const studios = Array.isArray(d.studios) ? [...d.studios] : ['HGWS Studios'], stIn = el.querySelector('#stin');
+  const known = () => [...new Set(['HGWS Studios', ...C.S.videos.flatMap(x => Array.isArray(x.studios) ? x.studios : [])])].filter(x => !studios.includes(x)).sort((a, b) => a.localeCompare(b, 'hu'));
+  const paintSt = () => { el.querySelector('#stc').innerHTML = studios.map((x, i) => `<span class="chip" style="padding-left:.7rem">${esc(x)}<button type="button" data-rs="${i}" title="Eltávolítás">×</button></span>`).join('');
+    el.querySelector('#stlist').innerHTML = known().map(x => `<option value="${esc(x)}">`).join(''); };
+  const addSt = () => { const v = stIn.value.replace(/\s+/g, ' ').trim().replace(/[,;]+$/, '').trim(); stIn.value = ''; if (!v || studios.length >= 12) return; if (!studios.some(x => x.toLowerCase() === v.toLowerCase())) studios.push(v); paintSt(); };
+  stIn.onkeydown = e => { if (e.key === 'Enter' || e.key === ',' || e.key === ';') { e.preventDefault(); addSt(); } else if (e.key === 'Backspace' && !stIn.value && studios.length) { studios.pop(); paintSt(); } };
+  stIn.onchange = () => { if (known().includes(stIn.value.trim())) addSt(); };
+  stIn.onblur = addSt;
+  el.querySelector('#stc').onclick = e => { const b = e.target.closest('[data-rs]'); if (b) { studios.splice(+b.dataset.rs, 1); paintSt(); } };
+  paintSt();
   const paint = () => { el.querySelector('#sp').innerHTML = STAGES.map((s, i) => `<button type="button" data-st="${i}" class="${i < stage ? 'done' : i === stage ? 'now' : ''}">${i < stage ? '✓ ' : i === stage ? '● ' : ''}${s.toUpperCase()}</button>`).join(''); };
   paint();
   el.querySelector('#sp').onclick = e => { const b = e.target.closest('[data-st]'); if (!b) return; const prev = STAGES[stage].toUpperCase(); stage = +b.dataset.st; paint(); if (!q('status').value || q('status').value === prev) q('status').value = STAGES[stage].toUpperCase(); };
@@ -428,7 +440,7 @@ async function filmModal(f) {
     if (ytRaw && !yt) return toast('A YouTube-link nem érvényes.', true);
     const mp4 = q('mp4').value.trim(), vtt = q('vtt').value.trim();
     const data = { title, en: q('en').value.trim(), kind: q('kind').value.trim() || 'Film', year: q('year').value.trim(), len: q('len').value.trim(),
-      genre: q('genre').value.trim(), premiere: q('premiere').value, desc: q('desc').value.trim(), status: q('status').value.trim().toUpperCase(), stage,
+      genre: q('genre').value.trim(), studios: (addSt(), studios.slice(0, 12)), premiere: q('premiere').value, desc: q('desc').value.trim(), status: q('status').value.trim().toUpperCase(), stage,
       soon: !q('rel').checked, featured: q('feat').checked, visible: q('vis').checked, hasVideo: !!(yt || mp4), poster: imgs.poster, banner: imgs.banner, updatedAt: FB.serverTimestamp() };
     const id = f ? f.id : (() => { let b = slug(title), s = b, n = 2; while (C.S.videos.some(x => x.id === s)) s = b + '-' + n++; return s; })();
     if (!C.can('publishMedia')) {
@@ -574,7 +586,7 @@ function approvals(v) {
       <div class="apb">${pic ? `<div class="appic" style="background-image:url('${esc(pic)}')"></div>` : ''}<div>
         <h4>${esc(s.title || d.title || '')}</h4>
         ${s.action === 'delete' ? '<p class="hint">A szerkesztő ennek a törlését kéri.</p>' : s.type === 'film'
-          ? `<p class="hint">${esc([d.kind, d.year, d.len, d.genre].filter(Boolean).join(' · '))}${d.soon === false ? ' · <b>MEGJELENT</b>' : ' · ' + esc(d.status || '')}</p>${d.desc ? `<p class="apdesc">${esc(d.desc)}</p>` : ''}
+          ? `<p class="hint">${esc([d.kind, d.year, d.len, d.genre, ...(Array.isArray(d.studios) ? d.studios : [])].filter(Boolean).join(' · '))}${d.soon === false ? ' · <b>MEGJELENT</b>' : ' · ' + esc(d.status || '')}</p>${d.desc ? `<p class="apdesc">${esc(d.desc)}</p>` : ''}
              <p class="hint">${s.src?.youtube ? '<i class="ic ic-play"></i> YouTube: ' + esc(s.src.youtube) : s.src?.mp4 ? '<i class="ic ic-play"></i> MP4: ' + esc(s.src.mp4) : 'Nincs videó'}</p>`
           : `<p class="hint">${esc(d.artist || 'HGWS')} · ${esc(d.src || '')}</p>${d.src ? `<audio controls preload="none" src="${esc(d.src)}" style="width:100%;max-width:360px;margin-top:.4rem"></audio>` : ''}`}
       </div></div>
@@ -791,7 +803,7 @@ async function statsPage(v) {
     const st = { nyitott: ['Nyitott', '#6cc6ff'], folyamatban: ['Folyamatban', '#ffa94d'], kesz: ['Kész', '#5ee08a'], elutasitva: ['Elutasítva', '#ff7a6e'] };
     $('#stIdea').innerHTML = s.size ? hbars(Object.entries(st).map(([k, [l, c]]) => [l, s.docs.filter(d => d.data().status === k).length, c]), ' db') : '<div class="estate"><i class="ic ic-lightbulb"></i><b>Még nincs beküldött ötlet</b></div>';
   }).catch(() => { $('#stIdea').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
-  import('./browse.js?v=202611252025').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
+  import('./browse.js?v=202611252221').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
     .then(l => { $('#stArc').innerHTML = hbars(l, ' játékos'); });
 }
 const lbScores = g => FB.collection(db, 'leaderboards', g, 'scores');
