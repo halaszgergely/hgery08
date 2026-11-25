@@ -1,7 +1,7 @@
 // HGWS – kezelőfelület: tagok és rangok, tagek, filmek, zenék, csatornák, jóváhagyások, rangok szerkesztése
-import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611252221';
-import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611252221';
-import { githubRepo } from '../firebase-config.js?v=202611252221';
+import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611252237';
+import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611252237';
+import { githubRepo } from '../firebase-config.js?v=202611252237';
 
 let C = null, current = null;
 /* e-mail címek: csak adminok és a tulaj olvashatják (emails/{uid}); a lista megnyitásakor egyszer töltjük be */
@@ -75,7 +75,7 @@ let mq = '';
 /* vendégfiókok: a jelenlétüket (guests) és a lefoglalt/moderátor által adott nevüket (guestnames) mutatja; innen át is nevezhetők */
 /* ---------- gyanús eredmények (időmanipuláció stb.): a játék nem engedte ranglistára, itt ellenőrizhetők ---------- */
 const SUS = { list: [], at: 0, fail: false, names: {} };
-async function loadSuspects() { const [s, b] = await Promise.all([FB.getDocs(FB.query(FB.collection(db, 'suspects'), FB.orderBy('at', 'desc'), FB.limit(300))).catch(() => null), import('./browse.js?v=202611252221').catch(() => null)]);
+async function loadSuspects() { const [s, b] = await Promise.all([FB.getDocs(FB.query(FB.collection(db, 'suspects'), FB.orderBy('at', 'desc'), FB.limit(300))).catch(() => null), import('./browse.js?v=202611252237').catch(() => null)]);
   SUS.fail = !s; SUS.list = s ? s.docs.map(d => ({ id: d.id, ...d.data() })) : []; if (b) for (const g of b.GAMES) SUS.names[g.id] = g; SUS.at = Date.now(); }
 const WHY = { ido: 'Időmanipuláció (lassítás/gyorsítás)' };
 function suspectsPage(v, again) {
@@ -371,28 +371,34 @@ function films(v) {
     ${pub ? '' : mySubs('film')}
     ${list.length ? `<div class="atable">${list.map((x, i) => `<div class="arow" style="grid-template-columns:auto auto 1fr auto"><div class="ord">${pub ? `<button data-up="${i}" ${i ? '' : 'disabled'}>▲</button><button data-dn="${i}" ${i < list.length - 1 ? '' : 'disabled'}>▼</button>` : ''}</div>
       <div class="fthumb">${x.poster ? `<img src="${esc(x.poster)}" alt="" loading="lazy">` : ''}</div>
-      <div class="who"><b>${esc(x.title)}</b><small>${esc([x.kind, x.year, x.genre].filter(Boolean).join(' · '))}</small>
-        <div>${x.featured ? '<span class="tg g"><i class="ic ic-star"></i> KIEMELT</span>' : ''}${x.soon === false ? '<span class="tg ok">MEGJELENT</span>' : `<span class="tg b">${esc((x.status || STAGES[x.stage ?? 0]).toUpperCase())}</span>`}${x.hasVideo ? '<span class="tg"><i class="ic ic-play"></i> VIDEÓ</span>' : ''}${x.visible === false ? '<span class="tg">REJTETT</span>' : ''}</div></div>
-      <div class="ac"><button class="btn plain sm" data-ed="${esc(x.id)}">Szerkesztés</button></div></div>`).join('')}</div>`
+      <div class="who"><b>${x.series ? '<span style="color:var(--ink2)">↳</span> ' : ''}${esc(x.title)}</b><small>${esc([x.series ? (list.find(y => y.id === x.series)?.title || '?') + ' · ' + (x.season > 1 ? x.season + '. évad · ' : '') + (x.ep || '?') + '. rész' : '', x.isSeries ? 'Sorozat · ' + list.filter(y => y.series === x.id).length + ' rész' : '', x.kind, x.year, x.genre].filter(Boolean).join(' · '))}</small>
+        <div>${x.featured ? '<span class="tg g"><i class="ic ic-star"></i> KIEMELT</span>' : ''}${x.promo ? '<span class="tg g"><i class="ic ic-megaphone"></i> REKLÁM</span>' : ''}${x.soon === false ? '<span class="tg ok">MEGJELENT</span>' : `<span class="tg b">${esc((x.status || STAGES[x.stage ?? 0]).toUpperCase())}</span>`}${x.hasVideo ? '<span class="tg"><i class="ic ic-play"></i> VIDEÓ</span>' : ''}${x.visible === false ? '<span class="tg">REJTETT</span>' : ''}</div></div>
+      <div class="ac">${x.isSeries ? `<button class="btn plain sm" data-addep="${esc(x.id)}"><i class="ic ic-plus"></i> Rész</button>` : ''}<button class="btn plain sm" data-ed="${esc(x.id)}">Szerkesztés</button></div></div>`).join('')}</div>`
     : `<div class="empty"><div class="big"><i class="ic ic-clapperboard"></i></div>Még nincs film.${pub ? '<br><button class="btn primary" id="imp">A korábbi főoldali címek áthozása</button>' : ''}</div>`}</div>`;
   $('#nf').onclick = () => filmModal();
   const imp = $('#imp'); if (imp) imp.onclick = () => importFilms(imp);
   $$('[data-ed]', v).forEach(b => b.onclick = () => filmModal(list.find(x => x.id === b.dataset.ed)));
+  $$('[data-addep]', v).forEach(b => b.onclick = () => filmModal(null, { series: b.dataset.addep }));
   $$('[data-up],[data-dn]', v).forEach(b => b.onclick = () => reorder('videos', list, +(b.dataset.up ?? b.dataset.dn), b.dataset.up != null ? -1 : 1));
 }
 
 const slug = s => (s || 'film').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'film';
 
-async function filmModal(f) {
+async function filmModal(f, pre) {
   let src = {};
   if (f) { try { src = (await FB.getDoc(FB.doc(db, 'videoSources', f.id))).data() || {}; } catch (_) {} }
-  const d = f || { kind: 'Film', year: String(new Date().getFullYear()), soon: true, stage: 0, visible: true };
+  const sers = C.S.videos.filter(x => x.isSeries && (!f || x.id !== f.id)), epNext = sid => Math.max(0, ...C.S.videos.filter(x => x.series === sid).map(x => x.ep || 0)) + 1;
+  const ps = pre?.series && C.S.videos.find(x => x.id === pre.series);
+  const d = f || { kind: ps ? ps.kind || 'Sorozat' : 'Film', year: String(new Date().getFullYear()), soon: true, stage: 0, visible: true, ...(ps ? { series: ps.id, season: 1, ep: epNext(ps.id), studios: ps.studios, genre: ps.genre } : {}) };
   let stage = d.stage ?? 0; const imgs = { poster: d.poster || '', banner: d.banner || '' };
   const el = modal({ title: f ? 'Film szerkesztése' : 'Új film', cls: 'wide', body: `
     <div class="grid2"><div class="field"><label>Cím *</label><input class="inp" name="title" maxlength="140" value="${esc(d.title || '')}"></div>
       <div class="field"><label>Alcím <em>(pl. angol cím)</em></label><input class="inp" name="en" maxlength="160" value="${esc(d.en || '')}"></div></div>
     <div class="grid2"><div class="field"><label>Típus</label><input class="inp" name="kind" list="kinds" value="${esc(d.kind || '')}"><datalist id="kinds"><option>Film</option><option>Anime</option><option>Sorozat</option><option>Trailer</option><option>Kisfilm</option><option>Játék</option></datalist></div>
       <div class="field"><label>Év · Hossz</label><div style="display:flex;gap:.5rem"><input class="inp" name="year" maxlength="10" value="${esc(d.year || '')}" placeholder="2026"><input class="inp" name="len" maxlength="30" value="${esc(d.len || '')}" placeholder="6 perc"></div></div></div>
+    <div class="grid2"><div class="field"><label>Sorozat</label><select class="inp" name="series"><option value="">— önálló cím —</option>${sers.map(x => `<option value="${esc(x.id)}"${d.series === x.id ? ' selected' : ''}>${esc(x.title)}</option>`).join('')}</select>
+        <label class="chk" style="margin-top:.45rem"><input type="checkbox" name="isser" ${d.isSeries ? 'checked' : ''}> Ez maga egy sorozat (mappa a részeknek)</label></div>
+      <div class="field" id="epf"><label>Évad · Rész</label><div style="display:flex;gap:.5rem"><input class="inp" type="number" min="1" max="99" name="season" value="${esc(String(d.season || 1))}" placeholder="évad"><input class="inp" type="number" min="0" max="9999" name="ep" value="${esc(String(d.ep || ''))}" placeholder="rész"></div></div></div>
     <div class="grid2"><div class="field"><label>Műfaj</label><input class="inp" name="genre" maxlength="80" value="${esc(d.genre || '')}" placeholder="Akció · Vígjáték"></div>
       <div class="field"><label>Premier dátuma <em>(nem kötelező)</em></label><input class="inp" type="date" name="premiere" value="${esc(d.premiere || '')}"></div></div>
     <div class="field"><label>Stúdiók</label><div class="chips stchips" id="stc"></div><input class="inp" id="stin" list="stlist" maxlength="60" placeholder="Stúdió neve, majd Enter" style="margin-top:.4rem"><datalist id="stlist"></datalist></div>
@@ -404,12 +410,17 @@ async function filmModal(f) {
     <div class="grid2"><div class="field"><label>Állapot felirat</label><input class="inp" name="status" maxlength="40" value="${esc(d.status || STAGES[stage].toUpperCase())}"></div><div></div></div>
     <div class="checks"><label class="chk"><input type="checkbox" name="rel" ${d.soon === false ? 'checked' : ''}> Megjelent – megnézhető</label>
       <label class="chk"><input type="checkbox" name="feat" ${d.featured ? 'checked' : ''}> Kiemelt (nagy kártya a főoldalon)</label>
-      <label class="chk"><input type="checkbox" name="vis" ${d.visible !== false ? 'checked' : ''}> Látható</label></div>
+      <label class="chk"><input type="checkbox" name="vis" ${d.visible !== false ? 'checked' : ''}> Látható</label>
+      <label class="chk"><input type="checkbox" name="promo" ${d.promo ? 'checked' : ''}> Reklámozás az oldalon (animált hirdetés)</label></div>
     ${['poster', 'banner'].map(k => `<div class="field"><label>${k === 'poster' ? 'Poszter <em>(16:9)</em>' : 'Kiemelt háttérkép <em>(ha üres, a poszter)</em>'}</label><div class="imgp" data-img="${k}"><div class="prev">nincs kép</div>
       <div class="c"><div class="r"><label class="btn plain sm">Kép feltöltése<input type="file" accept="image/*" hidden></label><button type="button" class="btn danger sm" data-clr>Törlés</button></div>
       <input class="inp" type="url" data-url placeholder="…vagy kép URL-je"><span class="hint" data-info></span></div></div></div>`).join('')}`,
     foot: `${f ? '<button class="btn danger l" data-del>Törlés</button>' : ''}<button class="btn plain" data-x>Mégse</button><button class="btn goldb" data-ok>Mentés</button>` });
   const q = n => el.querySelector(`[name=${n}]`);
+  const serUi = () => { const s1 = q('series').value; el.querySelector('#epf').style.display = s1 ? '' : 'none'; q('isser').closest('label').style.display = s1 ? 'none' : ''; };
+  q('series').onchange = () => { const s1 = q('series').value, sr = C.S.videos.find(x => x.id === s1); if (sr && !f) { q('ep').value = epNext(s1); if (!q('kind').value || q('kind').value === 'Film') q('kind').value = sr.kind || 'Sorozat'; } serUi(); };
+  q('isser').onchange = () => { if (q('isser').checked && (!q('kind').value || q('kind').value === 'Film')) q('kind').value = 'Sorozat'; };
+  serUi();
   /* stúdiók: saját nevek begépelése, a korábban használtak felajánlva */
   const studios = Array.isArray(d.studios) ? [...d.studios] : ['HGWS Studios'], stIn = el.querySelector('#stin');
   const known = () => [...new Set(['HGWS Studios', ...C.S.videos.flatMap(x => Array.isArray(x.studios) ? x.studios : [])])].filter(x => !studios.includes(x)).sort((a, b) => a.localeCompare(b, 'hu'));
@@ -441,7 +452,8 @@ async function filmModal(f) {
     const mp4 = q('mp4').value.trim(), vtt = q('vtt').value.trim();
     const data = { title, en: q('en').value.trim(), kind: q('kind').value.trim() || 'Film', year: q('year').value.trim(), len: q('len').value.trim(),
       genre: q('genre').value.trim(), studios: (addSt(), studios.slice(0, 12)), premiere: q('premiere').value, desc: q('desc').value.trim(), status: q('status').value.trim().toUpperCase(), stage,
-      soon: !q('rel').checked, featured: q('feat').checked, visible: q('vis').checked, hasVideo: !!(yt || mp4), poster: imgs.poster, banner: imgs.banner, updatedAt: FB.serverTimestamp() };
+      soon: !q('rel').checked, featured: q('feat').checked, visible: q('vis').checked, promo: q('promo').checked,
+      series: q('series').value, isSeries: !q('series').value && q('isser').checked, season: Math.max(1, parseInt(q('season').value) || 1), ep: Math.max(0, parseInt(q('ep').value) || 0), hasVideo: !!(yt || mp4), poster: imgs.poster, banner: imgs.banner, updatedAt: FB.serverTimestamp() };
     const id = f ? f.id : (() => { let b = slug(title), s = b, n = 2; while (C.S.videos.some(x => x.id === s)) s = b + '-' + n++; return s; })();
     if (!C.can('publishMedia')) {
       const { updatedAt, ...clean } = data;
@@ -803,7 +815,7 @@ async function statsPage(v) {
     const st = { nyitott: ['Nyitott', '#6cc6ff'], folyamatban: ['Folyamatban', '#ffa94d'], kesz: ['Kész', '#5ee08a'], elutasitva: ['Elutasítva', '#ff7a6e'] };
     $('#stIdea').innerHTML = s.size ? hbars(Object.entries(st).map(([k, [l, c]]) => [l, s.docs.filter(d => d.data().status === k).length, c]), ' db') : '<div class="estate"><i class="ic ic-lightbulb"></i><b>Még nincs beküldött ötlet</b></div>';
   }).catch(() => { $('#stIdea').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
-  import('./browse.js?v=202611252221').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
+  import('./browse.js?v=202611252237').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
     .then(l => { $('#stArc').innerHTML = hbars(l, ' játékos'); });
 }
 const lbScores = g => FB.collection(db, 'leaderboards', g, 'scores');

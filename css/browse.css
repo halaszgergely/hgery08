@@ -718,3 +718,58 @@ body.guest [data-nav=chat],body.guest [data-nav=dm],body.guest #navAdmin,body.gu
 .invl .chk{display:flex;align-items:center;gap:.5rem}
 .vp.locked .vp-bar{pointer-events:none;opacity:.6}
 @media (max-width:980px){.party{grid-template-columns:1fr}.pside{position:static;max-height:none}}
+
+/* ---------- sorozatok ---------- */
+.sercount{position:absolute;top:.5rem;right:.5rem;z-index:2;display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:6px;background:rgba(5,8,16,.78);color:#fff;font-size:.75rem;font-weight:800;backdrop-filter:blur(4px)}
+.sercount i{font-size:1em}
+.serlink{display:inline-flex;align-items:center;gap:.45rem;margin:.2rem 0 .5rem;padding:.3rem .75rem;border-radius:999px;background:rgba(232,182,86,.14);border:1px solid rgba(232,182,86,.4);color:#ffe29a;font-weight:700;font-size:.85rem;cursor:pointer}
+.serlink:hover{background:rgba(232,182,86,.24)}
+.eplist{display:grid;gap:.45rem}
+.epseason{margin:.9rem 0 .2rem;font-weight:800;color:#e8b656;letter-spacing:.05em;font-size:.85rem;text-transform:uppercase}
+.ep{display:grid;grid-template-columns:2.2rem 10rem 1fr;gap:.9rem;align-items:center;padding:.55rem .7rem .55rem .3rem;border-radius:10px;text-decoration:none;color:inherit;background:rgba(255,255,255,.025);border:1px solid transparent;transition:background .15s,border-color .15s}
+.ep:hover{background:rgba(255,255,255,.07)}
+.ep.cur{border-color:rgba(232,182,86,.55);background:rgba(232,182,86,.08)}
+.ep .en{text-align:center;font-size:1.35rem;font-weight:800;color:#8e8778}
+.ep .ph{position:relative;aspect-ratio:16/9;border-radius:7px;overflow:hidden;background:#0b1220 center/cover;display:grid;place-items:center}
+.ep .ph .ic-play{font-size:1.6rem;color:#fff;opacity:0;transition:opacity .15s;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
+.ep:hover .ph .ic-play{opacity:1}
+.ep .ph .pb{position:absolute;left:0;bottom:0;height:3px;background:#e50914}
+.ep .et{min-width:0;display:grid;gap:.15rem}
+.ep .et b{font-size:.98rem}
+.ep .et small{color:#9a9385;font-size:.8rem}
+.ep .et em{font-style:normal;color:#c9c2b4;font-size:.84rem;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+@media(max-width:640px){.ep{grid-template-columns:1.5rem 7rem 1fr;gap:.6rem}.ep .et em{display:none}}
+
+/* ---------- animált hirdetés (promo.js) ---------- */
+.promo{position:relative;display:block;overflow:hidden;color:#fff;isolation:isolate}
+.promo .pcv{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:-1}
+.promo.pbig{margin:0 4% 2.4rem;border-radius:16px;min-height:clamp(260px,34vw,420px);box-shadow:0 20px 60px rgba(0,0,0,.5),inset 0 0 0 1px rgba(140,210,255,.18)}
+.promo .pfade{position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(6,8,26,.86) 0%,rgba(6,8,26,.55) 34%,rgba(6,8,26,0) 60%)}
+.promo.pbig .pmin{position:relative;max-width:min(560px,60%);padding:clamp(1.4rem,3.4vw,2.8rem)}
+.promo .ptag{display:inline-flex;align-items:center;gap:.4rem;padding:.3rem .75rem;border-radius:999px;background:linear-gradient(90deg,#3aa6f5,#8b5cf6);font-weight:800;font-size:.75rem;letter-spacing:.12em;box-shadow:0 0 22px rgba(90,170,255,.55);animation:ptag 2.4s ease-in-out infinite}
+@keyframes ptag{50%{box-shadow:0 0 34px rgba(150,110,255,.75)}}
+.promo.pbig h2{margin:.9rem 0 .3rem;font-family:'Cinzel',serif;font-size:clamp(1.5rem,3.3vw,2.6rem);line-height:1.1;text-shadow:0 2px 18px rgba(80,160,255,.55);background:linear-gradient(90deg,#fff,#bfe6ff 40%,#fff 60%,#ffe29a);-webkit-background-clip:text;background-clip:text;color:transparent;background-size:250% 100%;animation:pshine 6s linear infinite}
+@keyframes pshine{to{background-position:-250% 0}}
+.promo .pen{color:#cfd8ff;font-size:clamp(.9rem,1.4vw,1.1rem);opacity:.85}
+.promo.pbig p{margin-top:.8rem;color:#e5e2f5;line-height:1.6;font-size:.98rem;text-shadow:0 1px 8px rgba(0,0,0,.6)}
+.promo.pbig .hbtns{margin-top:1.2rem}
+.pstripw{margin:1rem 0 .2rem}
+.pstripw.arc{margin:0;padding:1rem 4% 0}
+.promo.pstrip{width:100%;height:84px;border-radius:12px;border:0;cursor:pointer;text-align:left;box-shadow:0 8px 28px rgba(0,0,0,.4),inset 0 0 0 1px rgba(140,210,255,.2);transition:transform .2s,box-shadow .2s;font:inherit}
+.promo.pstrip:hover{transform:translateY(-2px);box-shadow:0 14px 36px rgba(40,90,200,.45),inset 0 0 0 1px rgba(140,210,255,.45)}
+.promo.pstrip .pmin{position:absolute;inset:0;display:flex;align-items:center;gap:1rem;padding:0 1.3rem;background:linear-gradient(90deg,rgba(6,8,26,.82),rgba(6,8,26,.25) 55%,rgba(6,8,26,0))}
+.promo.pstrip b{font-family:'Cinzel',serif;font-size:clamp(.95rem,2vw,1.3rem);text-shadow:0 2px 14px rgba(80,160,255,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.promo.pstrip .pgo{margin-left:auto;margin-right:16%;display:inline-flex;align-items:center;gap:.2rem;font-weight:800;font-size:.85rem;padding:.4rem .9rem;border-radius:999px;background:rgba(255,255,255,.14);backdrop-filter:blur(4px);white-space:nowrap}
+@media(max-width:640px){.promo.pbig .pmin{max-width:100%}.promo .pfade{background:linear-gradient(180deg,rgba(6,8,26,.2),rgba(6,8,26,.88) 70%)}.promo.pbig{display:flex;align-items:flex-end}.promo.pstrip .ptag{display:none}.promo.pstrip .pgo{margin-right:18%}}
+
+/* kabala a sarokban */
+.pmascot{position:fixed;right:18px;bottom:-150px;z-index:60;width:110px;cursor:pointer;transition:bottom .6s cubic-bezier(.2,1.4,.4,1);filter:drop-shadow(0 8px 20px rgba(60,150,255,.45))}
+.pmascot.up{bottom:8px}
+.pmascot canvas{width:110px;height:110px;display:block}
+.pmascot .pbub{position:absolute;right:92px;bottom:72px;width:max-content;max-width:220px;padding:.6rem .85rem;border-radius:14px 14px 4px 14px;background:#fff;color:#10204a;font-size:.82rem;line-height:1.35;box-shadow:0 8px 24px rgba(0,0,0,.35);opacity:0;transform:translateY(8px) scale(.9);transition:.35s .45s}
+.pmascot.up .pbub{opacity:1;transform:none}
+.pmascot .pbub b{display:block;color:#2a6fd1}
+.pmascot .px{position:absolute;top:2px;right:0;width:22px;height:22px;border-radius:50%;background:rgba(10,14,30,.75);color:#fff;font-size:.7rem;display:grid;place-items:center;opacity:0;transition:opacity .2s;border:0;cursor:pointer}
+.pmascot:hover .px{opacity:1}
+@media(max-width:640px){.pmascot{right:8px;width:84px}.pmascot canvas{width:84px;height:84px}.pmascot .pbub{right:70px;bottom:56px;max-width:170px}}
+@media(prefers-reduced-motion:reduce){.promo .ptag,.promo.pbig h2{animation:none}}
