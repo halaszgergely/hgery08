@@ -1,7 +1,7 @@
 // HGWS – kezelőfelület: tagok és rangok, tagek, filmek, zenék, csatornák, jóváhagyások, rangok szerkesztése
-import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611252009';
-import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611252009';
-import { githubRepo } from '../firebase-config.js?v=202611252009';
+import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611252025';
+import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611252025';
+import { githubRepo } from '../firebase-config.js?v=202611252025';
 
 let C = null, current = null;
 /* e-mail címek: csak adminok és a tulaj olvashatják (emails/{uid}); a lista megnyitásakor egyszer töltjük be */
@@ -32,7 +32,7 @@ export function render(sub, again) {
   const v = $('#page');
   const ok = {
     tagok: C.can('moderate') || C.can('assignRoles') || C.isOwner(),
-    vendegek: C.isMod(),
+    vendegek: C.isMod(), gyanus: C.isMod(),
     cimkek: C.can('manageTags'),
     filmek: C.can('publishMedia') || C.can('submitMedia'),
     zene: C.can('publishMedia') || C.can('submitMedia'),
@@ -43,14 +43,14 @@ export function render(sub, again) {
     stat: C.isOwner() || C.can('publishMedia'),
     zqszerk: C.isAdmin()
   };
-  if (ok[sub]) return ({ vendegek: guestsPage, tagok: members, cimkek: tagsPage, filmek: films, zene: music, csatornak: channels, jovahagyas: approvals, rangok: rolesPage, naplo: auditPage, stat: statsPage, zqszerk: zqEditor })[sub](v, again);
+  if (ok[sub]) return ({ gyanus: suspectsPage, vendegek: guestsPage, tagok: members, cimkek: tagsPage, filmek: films, zene: music, csatornak: channels, jovahagyas: approvals, rangok: rolesPage, naplo: auditPage, stat: statsPage, zqszerk: zqEditor })[sub](v, again);
   C.setTitle('<i class="ic ic-lock"></i>', 'Nincs jogosultság');
   v.innerHTML = '<div class="full"><div><div class="big"><i class="ic ic-lock"></i></div><h2>Ehhez nincs jogosultságod</h2></div></div>';
 }
 
 function tabList() {
   const n = pendingCount();
-  return [['tagok', '<i class="ic ic-shield"></i> Tagok és rangok', C.can('moderate') || C.can('assignRoles') || C.isOwner()], ['vendegek', '<i class="ic ic-user"></i> Vendégek', C.isMod()], ['cimkek', '<i class="ic ic-tag"></i> Tagek', C.can('manageTags')],
+  return [['tagok', '<i class="ic ic-shield"></i> Tagok és rangok', C.can('moderate') || C.can('assignRoles') || C.isOwner()], ['vendegek', '<i class="ic ic-user"></i> Vendégek', C.isMod()], ['gyanus', '<i class="ic ic-shield"></i> Gyanús eredmények', C.isMod()], ['cimkek', '<i class="ic ic-tag"></i> Tagek', C.can('manageTags')],
     ['filmek', '<i class="ic ic-film"></i> Filmek', C.can('publishMedia') || C.can('submitMedia')], ['zene', '<i class="ic ic-music"></i> Zenék', C.can('publishMedia') || C.can('submitMedia')],
     ['csatornak', '<i class="ic ic-settings"></i> Csatornák', C.can('manageChannels')],
     ['jovahagyas', `<i class="ic ic-circle-check"></i> Jóváhagyások${n ? ` <span class="cnt">${n}</span>` : ''}`, C.can('publishMedia') || C.isOwner() || C.can('submitMedia') || C.can('assignRoles')],
@@ -73,6 +73,19 @@ function zqEditor(v, again) { C.setTitle('<i class="ic ic-pencil"></i>', 'Zero Q
 /* ================= TAGOK ÉS RANGOK ================= */
 let mq = '';
 /* vendégfiókok: a jelenlétüket (guests) és a lefoglalt/moderátor által adott nevüket (guestnames) mutatja; innen át is nevezhetők */
+/* ---------- gyanús eredmények (időmanipuláció stb.): a játék nem engedte ranglistára, itt ellenőrizhetők ---------- */
+const SUS = { list: [], at: 0, fail: false, names: {} };
+async function loadSuspects() { const [s, b] = await Promise.all([FB.getDocs(FB.query(FB.collection(db, 'suspects'), FB.orderBy('at', 'desc'), FB.limit(300))).catch(() => null), import('./browse.js?v=202611252025').catch(() => null)]);
+  SUS.fail = !s; SUS.list = s ? s.docs.map(d => ({ id: d.id, ...d.data() })) : []; if (b) for (const g of b.GAMES) SUS.names[g.id] = g; SUS.at = Date.now(); }
+const WHY = { ido: 'Időmanipuláció (lassítás/gyorsítás)' };
+function suspectsPage(v, again) {
+  C.setTitle('<i class="ic ic-shield"></i>', 'Gyanús eredmények', 'Ranglistára nem került körök ellenőrzésre');
+  const row = x => { const g = SUS.names[x.game], u = !x.guest && C.U(x.uid), fmt = g && g.fmt ? g.fmt(x.score) : Number(x.score).toLocaleString('hu-HU');
+    return `<div class="row" data-sid="${esc(x.id)}"><div style="flex:1;min-width:0"><b>${esc(u ? u.name : x.name || 'Vendég')}</b>${x.guest ? ' <span class="tag">vendég</span>' : ''} · ${esc(g ? g.name : x.game)} · <b>${esc(fmt)}${g && g.unit ? ' ' + esc(g.unit) : ''}</b><br><small style="color:var(--muted)">${esc(WHY[x.why] || x.why)} · ${esc(timeLabel(x.at))}</small></div><div class="ac"><button class="btn plain sm" data-sdel="${esc(x.id)}"><i class="ic ic-check"></i> Rendben, törlés a listáról</button></div></div>`; };
+  v.innerHTML = `${tabs()}${SUS.fail ? '<p class="err">Nem sikerült betölteni (publikáld a friss firestore.rules-t).</p>' : !SUS.list.length && SUS.at ? '<p style="color:var(--muted)">Nincs gyanús eredmény.</p>' : ''}<div class="list">${SUS.list.map(row).join('')}</div>${SUS.list.length > 1 ? '<div style="margin-top:.8rem"><button class="btn plain sm" data-sall>Összes törlése a listáról</button></div>' : ''}`;
+  $$('[data-sdel]', v).forEach(b => b.onclick = async () => { b.disabled = true; try { await FB.deleteDoc(FB.doc(db, 'suspects', b.dataset.sdel)); SUS.list = SUS.list.filter(x => x.id !== b.dataset.sdel); suspectsPage(v, true); } catch (e) { b.disabled = false; toast(errText(e)); } });
+  const all = v.querySelector('[data-sall]'); if (all) all.onclick = async () => { if (!all.classList.contains('sure')) { all.classList.add('sure'); all.textContent = 'Biztos? Mindet törli'; return; } all.disabled = true; await Promise.all(SUS.list.map(x => FB.deleteDoc(FB.doc(db, 'suspects', x.id)).catch(() => null))); await loadSuspects(); suspectsPage(v, true); };
+  if (!again || Date.now() - SUS.at > 30e3) loadSuspects().then(() => { if (current === 'gyanus') suspectsPage(v, true); }); }
 const GST = { list: [], at: 0, q: '', mg: null, mq: '', mt: null };
 async function loadGuests() { const [g, n] = await Promise.all([FB.getDocs(FB.query(FB.collection(db, 'guests'), FB.orderBy('lastSeen', 'desc'), FB.limit(300))).catch(() => null), FB.getDocs(FB.collection(db, 'guestnames')).catch(() => null)]);
   const m = new Map(); if (g) g.docs.forEach(d => m.set(d.id, { id: d.id, nick: d.data().nick || 'Vendég', seen: d.data().lastSeen }));
@@ -778,7 +791,7 @@ async function statsPage(v) {
     const st = { nyitott: ['Nyitott', '#6cc6ff'], folyamatban: ['Folyamatban', '#ffa94d'], kesz: ['Kész', '#5ee08a'], elutasitva: ['Elutasítva', '#ff7a6e'] };
     $('#stIdea').innerHTML = s.size ? hbars(Object.entries(st).map(([k, [l, c]]) => [l, s.docs.filter(d => d.data().status === k).length, c]), ' db') : '<div class="estate"><i class="ic ic-lightbulb"></i><b>Még nincs beküldött ötlet</b></div>';
   }).catch(() => { $('#stIdea').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
-  import('./browse.js?v=202611252009').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
+  import('./browse.js?v=202611252025').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
     .then(l => { $('#stArc').innerHTML = hbars(l, ' játékos'); });
 }
 const lbScores = g => FB.collection(db, 'leaderboards', g, 'scores');

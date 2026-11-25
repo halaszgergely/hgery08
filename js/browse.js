@@ -1,11 +1,11 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611252009';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611252009';
-import * as Player from './player.js?v=202611252009';
-import * as Party from './party.js?v=202611252009';
-import * as VP from './vplayer.js?v=202611252009';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611252009';
-import * as ArcL from './arcade-lista.js?v=202611252009';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611252025';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611252025';
+import * as Player from './player.js?v=202611252025';
+import * as Party from './party.js?v=202611252025';
+import * as VP from './vplayer.js?v=202611252025';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611252025';
+import * as ArcL from './arcade-lista.js?v=202611252025';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -490,6 +490,9 @@ async function delScore(game, uid) {
     toast('Eredmény törölve' + (name ? ': ' + name : ''));
   } catch (e) { console.warn('ranglista-törlés', e); toast('Nem sikerült törölni.'); }
 }
+/* gyanús (pl. időmanipulációs) eredmény: nem kerül ranglistára, csak a moderátori ellenőrző listára */
+async function saveSuspect(game, score, why) { if (!GAMES.some(g => g.id === game) || !(score > 0) || !C.uid()) return; const u = C.U && C.U(C.uid());
+  try { await FB.addDoc(FB.collection(db, 'suspects'), { uid: C.uid(), name: String(guest() ? getNick() || 'Vendég' : (u && u.name) || '').slice(0, 40), guest: !!guest(), game, score: Math.min(+score || 0, 9e15), why: String(why || 'ido').slice(0, 20), at: FB.serverTimestamp() }); } catch (_) {} }
 async function saveScore(game, score, win, sync, lg) {
   if (!GAMES.some(g => g.id === game) || !(score > 0)) return;
   const nick = await nickFor(); if (nick === null) return;
@@ -520,6 +523,7 @@ let synced = false; const syncBest = {}; // az első szinkron (régi helyi rekor
 addEventListener('message', async e => {
   if (e.origin !== location.origin || !e.data?.hgws) return;
   const fr = $('.arcframe'); if (!fr || e.source !== fr.contentWindow) return;
+  if (e.data.hgws === 'suspect') { saveSuspect(e.data.game, e.data.score, e.data.why); return; }
   if (e.data.hgws === 'score') { await saveScore(e.data.game, e.data.score, !!e.data.win, false, typeof e.data.lg === 'number' ? e.data.lg : undefined); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbreq') sendBoards(fr.contentWindow);
   if (e.data.hgws === 'play') countPlay(e.data.game);

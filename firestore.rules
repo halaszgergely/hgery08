@@ -119,6 +119,16 @@ service cloud.firestore {
     }
 
     // ---------- vendégek jelenléte (Online lista) – a vendég csak a saját becenevét és idejét írhatja ----------
+    // ---------- gyanús eredmények (pl. időmanipuláció): bárki beküldheti a sajátját, csak moderátor látja és törli ----------
+    match /suspects/{id} {
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'guest', 'game', 'score', 'why', 'at'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 40 && request.resource.data.guest is bool
+        && request.resource.data.game is string && request.resource.data.game.size() <= 30 && request.resource.data.score is number
+        && request.resource.data.why is string && request.resource.data.why.size() <= 20 && request.resource.data.at == request.time;
+      allow read, delete: if perm('moderate');
+    }
+
     match /guests/{uid} {
       allow read: if signedIn();
       allow create, update: if signedIn() && request.auth.uid == uid && request.auth.token.firebase.sign_in_provider == 'anonymous'
