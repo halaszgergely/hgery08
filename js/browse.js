@@ -1,12 +1,12 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611252246';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611252246';
-import * as Player from './player.js?v=202611252246';
-import * as Party from './party.js?v=202611252246';
-import * as VP from './vplayer.js?v=202611252246';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611252246';
-import * as Promo from './promo.js?v=202611252246';
-import * as ArcL from './arcade-lista.js?v=202611252246';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611252247';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611252247';
+import * as Player from './player.js?v=202611252247';
+import * as Party from './party.js?v=202611252247';
+import * as VP from './vplayer.js?v=202611252247';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611252247';
+import * as Promo from './promo.js?v=202611252247';
+import * as ArcL from './arcade-lista.js?v=202611252247';
 
 let C = null;
 export function init(ctx) { C = ctx; Promo.setup({ videos: () => C.S.videos, open: id => detail(id) }); }
@@ -365,7 +365,7 @@ export function arcade(id) {
   cleanup(); watchForced();
   document.title = 'Arcade · HGWS';
   const [gid, rid] = String(id || '').split('.'), g = [...GAMES, ...extras()].find(x => x.id === gid);
-  if (!g) { playing(''); ArcL.render($('#page'), arcCtx); const ps = Promo.stripHtml(); if (ps) { $('#page').insertAdjacentHTML('afterbegin', `<div class="pstripw arc">${ps}</div>`); Promo.wire(); } awardChampions(); return; } // játék nélkül: az új listaoldal
+  if (!g) { playing(''); ArcL.render($('#page'), arcCtx); const ps = Promo.stripHtml(); if (ps) { ($('#page .arcl') || $('#page')).insertAdjacentHTML('afterbegin', `<div class="pstripw arc">${ps}</div>`); Promo.wire(); } awardChampions(); return; } // játék nélkül: az új listaoldal
   ArcL.played(g.id); playing(g.id);
   $('#page').innerHTML = `<iframe class="arcframe" src="arcade.html${new URL(import.meta.url).search}${g ? '#play=' + g.id + (rid && /^\w+$/.test(rid) ? '.' + rid : '') : ''}" title="HGWS Arcade" allow="autoplay; fullscreen"></iframe>`;
   const f = $('.arcframe');
