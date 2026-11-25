@@ -4,12 +4,14 @@ const Anya = (() => {
   const cm = v => ((+v || 0) / 10).toLocaleString('hu-HU', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const T = 60, MINGAP = 45;
   return {
-    id: 'anya', name: 'ANYAHAJTÓ', lives: 0, unit: ' cm', lb: 'cm', norep: 1, overTitle: 'LEJÁRT AZ IDŐ', sfmt: cm, fmt: cm,
+    id: 'anya', name: 'ANYAHAJTÓ', anykey: 1, lives: 0, unit: ' cm', lb: 'cm', norep: 1, overTitle: 'LEJÁRT AZ IDŐ', sfmt: cm, fmt: cm,
     desc: 'Végtelen menetes szár, egy anya és egy csillagkulcs. Minden húzás negyed fordulat, vagyis egy milliméter. Hány centit hajtasz rajta egy perc alatt?',
-    how: 'SZÓKÖZ / KOPPINTÁS – PÜFÖLD! · 60 MP',
+    how: 'BÁRMELY BILLENTYŰ / KOPPINTÁS – PÜFÖLD! · 60 MP',
     ranks: [[0, 'Betanított szerelő'], [200, 'Csavarozó'], [330, 'Kulcsmester'], [430, 'Racsnikirály'], [530, 'Élő légkulcs']],
     init(G) { this.mm = 0; this.ang = 0; this.s = 0; this.left = T; this.go = 0; this.lt = 0; this.beep = 5; },
-    down(G, x, y, e) {
+    /* újrakezdés gomb a bal alsó sarokban (a koppintás ott nem számít húzásnak) */
+    rb(G) { const d = G.d; return [14 * d, G.H - 60 * d, 168 * d, 44 * d]; },
+    down(G, x, y, e) { const b = this.rb(G); if (e !== true && x >= b[0] && x <= b[0] + b[2] && y >= b[1] && y <= b[1] + b[3]) { if (G.restart) G.restart(); return; }
       const now = performance.now(); if (now - this.lt < MINGAP || this.left <= 0) return; this.lt = now; this.go = 1;
       this.mm++; this.s = 1; G.score = this.mm; hud(); Sfx.blip(600 + Math.random() * 180, .03, 'square', .035);
       if (this.mm % 10 === 0) { G.float(G.W / 2, G.H * .13, this.mm / 10 + ' cm'); Sfx.blip(1320, .06, 'triangle', .05); }
@@ -49,6 +51,7 @@ const Anya = (() => {
       g.beginPath(); g.moveTo(R * 1.25, -R * .3); g.lineTo(R * 3.8, -R * .2); g.arc(R * 3.8, 0, R * .2, -Math.PI / 2, Math.PI / 2); g.lineTo(R * 1.25, R * .3); g.closePath(); g.fill();
       g.strokeStyle = gr; g.lineWidth = R * .4; g.beginPath(); g.arc(0, 0, R * 1.22, 0, 6.283); g.stroke(); g.strokeStyle = 'rgba(20,26,34,.6)'; g.lineWidth = 1.5 * d; g.beginPath(); g.arc(0, 0, R * 1.42, 0, 6.283); g.stroke(); g.beginPath(); g.arc(0, 0, R * 1.02, 0, 6.283); g.stroke();
       g.restore();
+      const b = this.rb(G); g.fillStyle = 'rgba(232,182,86,.14)'; g.strokeStyle = 'rgba(232,182,86,.75)'; g.lineWidth = 1.5 * d; rr(b[0], b[1], b[2], b[3], 10 * d); g.fill(); g.stroke(); g.fillStyle = '#f0d9a6'; g.font = `800 ${15 * d}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('↺  ÚJRAKEZDÉS', b[0] + b[2] / 2, b[1] + b[3] / 2);
     }
   };
 })();

@@ -266,6 +266,7 @@ function openGame(game) {
   game.init(G); hud();
   cancelAnimationFrame(G.raf); G.last = performance.now(); G.raf = requestAnimationFrame(loop);
 }
+G.restart = () => start();
 function start() { UI.pStart.hidden = true; UI.pOver.hidden = true; G.score = 0; G.win = 0; G.lives = G.game.lives || 0; G.fx = []; G.fl = []; G.t = 0; G.game.init(G); G.running = true; hud(); Sfx.blip(660, .1, 'square', .06); }
 function over() {
   if (!G.running) return; G.running = false; G.overAt = performance.now(); Sfx.boom();
@@ -285,7 +286,9 @@ addEventListener('pagehide', () => { try { if (G.running && G.game && !G.game.ex
 $('#pGo').onclick = start; $('#oAgain').onclick = start; $('#oExit').onclick = close; $('#gClose').onclick = close;
 addEventListener('keydown', e => { if (!gEl.classList.contains('open')) return; if (e.key === 'Escape') close();
   // R: teljes újrakezdés (a rövid ügyességi játékoknál); halál után vagy a kezdőképernyőn bármelyik akciógomb indít
-  if (!e.repeat && (e.key === 'r' || e.key === 'R') && G.game && ['locsolo', 'nyomas', 'anya', 'vizagyu', 'csepp', 'ugro'].includes(G.game.id)) { e.preventDefault(); return start(); }
+  if (!e.repeat && (e.key === 'r' || e.key === 'R') && G.game && ['locsolo', 'nyomas', 'vizagyu', 'csepp', 'ugro'].includes(G.game.id)) { e.preventDefault(); return start(); }
+  // anykey: a játékban minden billentyű akció (pl. Anyahajtó: minden gomb egy húzás)
+  if (G.game && G.game.anykey && !['Escape', 'Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'OS'].includes(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); if (e.repeat) return; if (G.running) { if (G.game.down) G.game.down(G, -1, -1, true); return; } if (performance.now() - (G.overAt || 0) < 1500) return; if (!UI.pOver.hidden || !UI.pStart.hidden) return start(); return; }
   if (G.game && G.game.norep && (e.key === ' ' || e.key === 'ArrowUp') && (e.repeat || (!G.running && performance.now() - (G.overAt || 0) < 1500))) { e.preventDefault(); return; }
   if (!e.repeat && !G.running && G.game && (!UI.pOver.hidden || !UI.pStart.hidden) && [' ', 'Enter', 'ArrowUp', 'w', 'W'].includes(e.key)) { e.preventDefault(); return start(); }
   if ((e.key === ' ' || e.key === 'ArrowUp') && G.running && G.game.down) { e.preventDefault(); G.game.down(G, G.W / 2, G.H / 2, true); } });
