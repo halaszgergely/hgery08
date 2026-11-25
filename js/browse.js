@@ -1,12 +1,12 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611252240';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611252240';
-import * as Player from './player.js?v=202611252240';
-import * as Party from './party.js?v=202611252240';
-import * as VP from './vplayer.js?v=202611252240';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611252240';
-import * as Promo from './promo.js?v=202611252240';
-import * as ArcL from './arcade-lista.js?v=202611252240';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611252242';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611252242';
+import * as Player from './player.js?v=202611252242';
+import * as Party from './party.js?v=202611252242';
+import * as VP from './vplayer.js?v=202611252242';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611252242';
+import * as Promo from './promo.js?v=202611252242';
+import * as ArcL from './arcade-lista.js?v=202611252242';
 
 let C = null;
 export function init(ctx) { C = ctx; Promo.setup({ videos: () => C.S.videos, open: id => detail(id) }); }
@@ -32,7 +32,7 @@ const tracks = () => S().music.filter(t => t.visible !== false);
 const cov = t => t.cover ? `background-image:url('${esc(t.cover)}')` : '';
 let unsubs = [], heroTimer = null, countTimer = null, vp = null, ambStop = null, dTimer = null;
 const guest = () => !!S().guest;
-function cleanup() { Promo.mascot(false); unsubs.forEach(u => u()); unsubs = []; clearTimeout(heroTimer); clearInterval(countTimer); stopTrack(); vp?.destroy(); vp = null; ambStop?.(); ambStop = null; }
+function cleanup() { unsubs.forEach(u => u()); unsubs = []; clearTimeout(heroTimer); clearInterval(countTimer); stopTrack(); vp?.destroy(); vp = null; ambStop?.(); ambStop = null; }
 
 /* ===================== kártyák, sorok ===================== */
 function badge(v) {
@@ -202,7 +202,7 @@ export function home() {
     ${tickerHtml()}
   </div>${footHtml()}`;
   C.renderOwnerBar();
-  wireRows(page); heroWire(f); Player.refreshMarks(); applyTint($('#hero'), img(f)); loadPlays(); Promo.wire(page); Promo.mascot(true);
+  wireRows(page); heroWire(f); Player.refreshMarks(); applyTint($('#hero'), img(f)); loadPlays(); Promo.wire(page);
 }
 function heroHtml(v) {
   const future = v.soon && v.premiere && new Date(v.premiere + 'T00:00:00') > new Date();
@@ -365,7 +365,7 @@ export function arcade(id) {
   cleanup(); watchForced();
   document.title = 'Arcade · HGWS';
   const [gid, rid] = String(id || '').split('.'), g = [...GAMES, ...extras()].find(x => x.id === gid);
-  if (!g) { playing(''); ArcL.render($('#page'), arcCtx); const ps = Promo.stripHtml(); if (ps) { $('#page').insertAdjacentHTML('afterbegin', `<div class="pstripw arc">${ps}</div>`); Promo.wire(); } Promo.mascot(true); awardChampions(); return; } // játék nélkül: az új listaoldal
+  if (!g) { playing(''); ArcL.render($('#page'), arcCtx); const ps = Promo.stripHtml(); if (ps) { $('#page').insertAdjacentHTML('afterbegin', `<div class="pstripw arc">${ps}</div>`); Promo.wire(); } awardChampions(); return; } // játék nélkül: az új listaoldal
   ArcL.played(g.id); playing(g.id);
   $('#page').innerHTML = `<iframe class="arcframe" src="arcade.html${new URL(import.meta.url).search}${g ? '#play=' + g.id + (rid && /^\w+$/.test(rid) ? '.' + rid : '') : ''}" title="HGWS Arcade" allow="autoplay; fullscreen"></iframe>`;
   const f = $('.arcframe');
@@ -594,7 +594,7 @@ export function music() {
       ${l.map((t, i) => `<div class="trow" data-track="${esc(t.id)}"><span class="n">${i + 1}</span><span class="pc" style="${cov(t)}"></span><div style="min-width:0"><b>${esc(t.title)}</b><small>${esc(t.artist || 'HGWS')}</small></div>
         <div class="ta"><button data-trackshare="${esc(t.id)}" title="Megosztás"><i class="ic ic-share-2"></i></button></div></div>`).join('')}`
       : `<div class="noresult"><div class="big"><i class="ic ic-music"></i></div>Még nincs zene feltöltve.${C.can('publishMedia') || C.can('submitMedia') ? '<br><br><a class="pbtn info" href="#/admin/zene">Zenék kezelése</a>' : ''}</div>`}</div>`;
-  Player.refreshMarks(); Promo.wire(); Promo.mascot(true);
+  Player.refreshMarks(); Promo.wire();
 }
 
 /* ===================== filmtár, lista, keresés ===================== */
@@ -609,14 +609,14 @@ export function tar(kind) {
     <div class="chipsrow"><button data-k="all" class="${k === 'all' ? 'on' : ''}">Minden</button>${kinds.map(x => `<button data-k="${esc(x)}" class="${k === x ? 'on' : ''}">${esc(PLURAL[x] || x)}</button>`).join('')}
       <span style="width:1px;background:var(--line2);margin:0 .3rem"></span><button data-s="ready" class="${st === 'ready' ? 'on' : ''}"><i class="ic ic-play"></i> Megnézhető</button><button data-s="soon" class="${st === 'soon' ? 'on' : ''}"><i class="ic ic-bell"></i> Hamarosan</button></div>
     ${shown.length ? `<div class="grid">${shown.map(v => tile(v)).join('')}</div>` : '<div class="noresult"><div class="big"><i class="ic ic-clapperboard"></i></div>Nincs ilyen cím.</div>'}</div>${footHtml()}`;
-  Promo.wire(); Promo.mascot(true);
+  Promo.wire();
   $$('[data-k]').forEach(b => b.onclick = () => location.hash = b.dataset.k === 'all' ? '#/tar' : '#/tar/' + encodeURIComponent(b.dataset.k));
   $$('[data-s]').forEach(b => b.onclick = () => { S().tarStatus = S().tarStatus === b.dataset.s ? 'all' : b.dataset.s; tar(kind); });
 }
 export function myList() {
   cleanup();
   const list = S().myList.map(film).filter(v => v && v.visible !== false);
-  document.title = 'Saját lista · HGWS'; setTimeout(() => Promo.mascot(true), 0);
+  document.title = 'Saját lista · HGWS'; 
   $('#page').innerHTML = `<div class="pg"><h1 class="gold">Saját listám</h1><p class="lead">Amit elmentettél későbbre – vagy amire várod a premiert.</p>
     ${list.length ? `<div class="grid">${list.map(v => tile(v)).join('')}</div>` : `<div class="noresult"><div class="big"><i class="ic ic-plus"></i></div>Még üres a listád. A filmeknél a <b><i class="ic ic-plus"></i></b> gombbal tudsz hozzáadni.<br><br><a class="pbtn info" href="#/tar">Filmtár</a></div>`}</div>`;
 }
@@ -626,7 +626,7 @@ export function search(q = '') {
   const n = s => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const nq = n(q).trim();
   const res = nq ? vis().filter(v => [v.title, v.en, v.genre, v.kind, v.desc, v.year, ...(v.studios || [])].some(x => n(x).includes(nq))) : vis();
-  document.title = 'Keresés · HGWS'; setTimeout(() => Promo.mascot(true), 0);
+  document.title = 'Keresés · HGWS'; 
   const had = document.activeElement?.id;
   $('#page').innerHTML = `<div class="pg"><h1 class="gold">Keresés</h1><div class="bigsearch"><input id="bq" type="search" placeholder="Címek, műfajok, évek…" value="${esc(q)}" autocomplete="off"></div>
     ${res.length ? `<p class="lead" style="margin-top:1.2rem">${nq ? `Találatok erre: „${esc(q)}”` : 'Minden cím'}</p><div class="grid">${res.map(v => tile(v)).join('')}</div>` : `<div class="noresult"><div class="big"><i class="ic ic-search"></i></div>Nincs találat erre: „${esc(q)}”.</div>`}</div>`;

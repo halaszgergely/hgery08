@@ -762,14 +762,4 @@ body.guest [data-nav=chat],body.guest [data-nav=dm],body.guest #navAdmin,body.gu
 .promo.pstrip .pgo{margin-left:auto;margin-right:16%;display:inline-flex;align-items:center;gap:.2rem;font-weight:800;font-size:.85rem;padding:.4rem .9rem;border-radius:999px;background:rgba(255,255,255,.14);backdrop-filter:blur(4px);white-space:nowrap}
 @media(max-width:640px){.promo.pbig .pmin{max-width:100%}.promo .pfade{background:linear-gradient(180deg,rgba(6,8,26,.2),rgba(6,8,26,.88) 70%)}.promo.pbig{display:flex;align-items:flex-end}.promo.pstrip .ptag{display:none}.promo.pstrip .pgo{margin-right:18%}}
 
-/* kabala a sarokban */
-.pmascot{position:fixed;right:18px;bottom:-150px;z-index:60;width:110px;cursor:pointer;transition:bottom .6s cubic-bezier(.2,1.4,.4,1);filter:drop-shadow(0 8px 20px rgba(60,150,255,.45))}
-.pmascot.up{bottom:8px}
-.pmascot canvas{width:110px;height:110px;display:block}
-.pmascot .pbub{position:absolute;right:92px;bottom:72px;width:max-content;max-width:220px;padding:.6rem .85rem;border-radius:14px 14px 4px 14px;background:#fff;color:#10204a;font-size:.82rem;line-height:1.35;box-shadow:0 8px 24px rgba(0,0,0,.35);opacity:0;transform:translateY(8px) scale(.9);transition:.35s .45s}
-.pmascot.up .pbub{opacity:1;transform:none}
-.pmascot .pbub b{display:block;color:#2a6fd1}
-.pmascot .px{position:absolute;top:2px;right:0;width:22px;height:22px;border-radius:50%;background:rgba(10,14,30,.75);color:#fff;font-size:.7rem;display:grid;place-items:center;opacity:0;transition:opacity .2s;border:0;cursor:pointer}
-.pmascot:hover .px{opacity:1}
-@media(max-width:640px){.pmascot{right:8px;width:84px}.pmascot canvas{width:84px;height:84px}.pmascot .pbub{right:70px;bottom:56px;max-width:170px}}
 @media(prefers-reduced-motion:reduce){.promo .ptag,.promo.pbig h2{animation:none}}
