@@ -290,6 +290,7 @@ function over() {
   if (cheat) $('#oBest').textContent = '⏱ Időmanipuláció észlelve – ez a kör nem számít';
   setTimeout(() => { UI.pOver.hidden = false; }, 450); hud(); renderCards();
   if (window.top !== window && G.score > 0 && !cheat) parent.postMessage({ hgws: 'score', game: G.game.id, score: G.score, win: !!G.win }, location.origin);
+  if (window.top !== window && G.score > 0 && cheat) parent.postMessage({ hgws: 'suspect', game: G.game.id, score: G.score, why: 'ido' }, location.origin); // moderátori ellenőrzésre
 }
 function close() { if (G.game && G.game.leave) G.game.leave(G); if (G.running && G.score > 0) over(); /* kilépéskor is számít az addig elért pontszám */ G.running = false; cancelAnimationFrame(G.raf); gEl.classList.remove('open'); document.body.classList.remove('locked'); renderCards(); }
 $('#gQuit').onclick = () => { if (G.running) over(); };
