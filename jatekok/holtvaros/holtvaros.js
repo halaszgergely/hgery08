@@ -559,7 +559,7 @@ window.HGZombi = function (env) {
     const pool = UPG.slice().sort(() => Math.random() - .5).slice(0, 3);
     S.phase = 'res'; S.res = { win, why, saved, rec, pct, pts, pool, medal: pct > .8 ? '💎 Gyémánt' : pct > .6 ? '🥇 Arany' : pct > .4 ? '🥈 Ezüst' : '🥉 Bronz' };
     if (win) { let bonus = 0; S.res.q = (S.quests || []).map(q => { const ok = !!q.Q.ok(q, S.res); if (ok) bonus += q.rew; return { t: q.t, ok, rew: q.rew }; }); S.res.bonus = bonus; S.budget += bonus; }
-    if (win) { RUN.total += pts; G.score = RUN.total; hud(); Sfx.perfect(); try { if (store && G.score > store.get('best_holtvaros')) store.set('best_holtvaros', G.score); if (window.top !== window) parent.postMessage({ hgws: 'score', game: 'holtvaros', score: G.score }, location.origin); } catch (e) {} } else Sfx.hit();
+    if (win) { RUN.total += pts; G.score = RUN.total; hud(); Sfx.perfect(); try { if (store && !IdoOr.bad && G.score > store.get('best_holtvaros')) store.set('best_holtvaros', G.score); if (window.top !== window && !IdoOr.bad) parent.postMessage({ hgws: 'score', game: 'holtvaros', score: G.score }, location.origin); } catch (e) {} } else Sfx.hit();
   }
   // járműparancs: útvonal a kijelölt pontig (falon nem megy át, kapun igen)
   function route(a, tgt) { const st = nearNode(a.x, a.y); if (tgt < 0 || st < 0) return null; const F = dij([tgt], e => wallBars(e) ? Infinity : e.len); if (!isFinite(F[st])) return null;

@@ -3,7 +3,7 @@
 const Torony = (() => {
   /* a legmagasabb elért pont azonnal rekord (kilépésnél, lapbezárásnál se vesszen el), a ranglistára legfeljebb 20 mp-enként megy fel */
   let recAt = 0;
-  function recSync() { try { if (G.score > store.get('best_viztorony')) store.set('best_viztorony', G.score); const now = Date.now(); if (now - recAt > 20000 && window.top !== window) { recAt = now; parent.postMessage({ hgws: 'score', game: 'viztorony', score: G.score }, location.origin); } } catch (_) {} }
+  function recSync() { try { if (!IdoOr.bad && G.score > store.get('best_viztorony')) store.set('best_viztorony', G.score); const now = Date.now(); if (now - recAt > 20000 && window.top !== window && !IdoOr.bad) { recAt = now; parent.postMessage({ hgws: 'score', game: 'viztorony', score: G.score }, location.origin); } } catch (_) {} }
   const T = 12, COLS = 40, ROWS = 30, WW = T * COLS, SH = T * ROWS, PW = 14, PH = 18, S2 = Math.SQRT1_2,
     GRAV = 1500, MAXF = 1000, WALK = 95, CHMAX = .62, JV0 = 260, JV1 = 760, JVX = 175, BOUNCE = .5, STEP = 1 / 240, WIND = 240;
   const ZONES = [
