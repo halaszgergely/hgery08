@@ -129,7 +129,7 @@ function loop(now) {
 function kick() { if (!raf && !RM.matches) raf = requestAnimationFrame(loop); }
 function render(o, t) {
   const cv = o.cv, dpr = Math.min(2, devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
-  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); o.sc = scene(w, h, o.compact); }
+  if (!o.sc || cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); o.sc = scene(w, h, o.compact); }
   const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); draw(x, w, h, t, o.sc, o.compact);
 }
 function live(cv, compact) {
