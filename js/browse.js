@@ -1,11 +1,11 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611252025';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611252025';
-import * as Player from './player.js?v=202611252025';
-import * as Party from './party.js?v=202611252025';
-import * as VP from './vplayer.js?v=202611252025';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611252025';
-import * as ArcL from './arcade-lista.js?v=202611252025';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611252221';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611252221';
+import * as Player from './player.js?v=202611252221';
+import * as Party from './party.js?v=202611252221';
+import * as VP from './vplayer.js?v=202611252221';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611252221';
+import * as ArcL from './arcade-lista.js?v=202611252221';
 
 let C = null;
 export function init(ctx) { C = ctx; }
@@ -609,7 +609,7 @@ export function search(q = '') {
   q = decodeURIComponent(q);
   const n = s => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const nq = n(q).trim();
-  const res = nq ? vis().filter(v => [v.title, v.en, v.genre, v.kind, v.desc, v.year].some(x => n(x).includes(nq))) : vis();
+  const res = nq ? vis().filter(v => [v.title, v.en, v.genre, v.kind, v.desc, v.year, ...(v.studios || [])].some(x => n(x).includes(nq))) : vis();
   document.title = 'Keresés · HGWS';
   const had = document.activeElement?.id;
   $('#page').innerHTML = `<div class="pg"><h1 class="gold">Keresés</h1><div class="bigsearch"><input id="bq" type="search" placeholder="Címek, műfajok, évek…" value="${esc(q)}" autocomplete="off"></div>
@@ -639,7 +639,7 @@ export function detail(id) {
     <div class="dbody">
       <div><div class="hmeta" style="margin:0 0 .8rem">${v.soon ? `<span class="soonb">${esc((v.status || 'Hamarosan').toUpperCase())}</span>` : isNew(v) ? '<span class="new">ÚJ</span>' : ''}${[v.year, v.len].filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('')}${v.genre ? `<span class="box">${esc(v.genre)}</span>` : ''}</div>
         ${v.en ? `<p style="font-style:italic;color:#bfb8a9;margin-bottom:.6rem">${esc(v.en)}</p>` : ''}<p class="desc">${esc(v.desc || '')}</p></div>
-      <div class="side2"><div><b>Típus:</b> ${esc(v.kind || 'Film')}</div>${v.genre ? `<div><b>Műfaj:</b> ${esc(v.genre)}</div>` : ''}${v.premiere ? `<div><b>Premier:</b> ${esc(huDate(v.premiere))}</div>` : ''}<div><b>Stúdió:</b> HGWS Studios</div>
+      <div class="side2"><div><b>Típus:</b> ${esc(v.kind || 'Film')}</div>${v.genre ? `<div><b>Műfaj:</b> ${esc(v.genre)}</div>` : ''}${v.premiere ? `<div><b>Premier:</b> ${esc(huDate(v.premiere))}</div>` : ''}${(st => `<div><b>${st.length > 1 ? 'Stúdiók' : 'Stúdió'}:</b> ${st.map(esc).join(', ')}</div>`)(Array.isArray(v.studios) && v.studios.length ? v.studios : ['HGWS Studios'])}
         <div class="dfacts">${RT.avg[v.id] ? `<span>${I('star')} ${RT.avg[v.id].toFixed(1).replace('.', ',')} · ${RT.n[v.id]} értékelés</span>` : ''}${progOf(v.id) ? `<span class="g">${I('history')} ${leftLabel(progOf(v.id))}</span>` : ''}${inList(v.id) ? `<span>${I('check')} A listádon</span>` : ''}</div></div>
       ${v.soon ? `<div class="stagebox"><h4>GYÁRTÁSI ÁLLAPOT</h4>${stageHtml(v.stage ?? 0)}</div>` : ''}
       <div class="sect"><h3>Értékelések és hozzászólások</h3><div class="cmts" id="cmts"></div></div>
