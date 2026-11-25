@@ -1,6 +1,6 @@
 <!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="robots" content="noindex,nofollow"><title>Az Átemelőtelep – HGWS Arcade</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600;700;800&family=Caveat:wght@600&display=swap" rel="stylesheet">
-<link rel="icon" type="image/png" href="../../img/favicon-32.png"><link rel="stylesheet" href="../../css/icons.css?v=202611252025">
+<link rel="icon" type="image/png" href="../../img/favicon-32.png"><link rel="stylesheet" href="../../css/icons.css?v=202611260010">
 <script type="importmap">{ "imports": { "three": "./lib/three.module.min.js" } }</script>
 <style>
 :root{--pn:#0b1119;--pn2:#121b27;--ln:rgba(140,180,230,.16);--ink:#ebeff6;--mut:#93a1b5;--gold:#e8b656;--gold2:#ffe29a;--ok:#5ee08a;--bad:#ff5a4d;--glass:rgba(7,11,17,.66)}
@@ -37,7 +37,7 @@ p{margin:6px 0}.mut{color:var(--mut)}.warn{color:#ff7a6e;font-weight:700}.row{di
 .crt{background:#04110a;color:#7fff9a;font:600 13px/1.5 "Courier New",monospace;border-radius:8px;padding:14px;min-height:160px;box-shadow:inset 0 0 30px rgba(0,255,100,.08)}.crt.off{color:#333}.crt .warn{color:#ff6b5a}.crt b{color:#c8ffd0}
 .syn{display:flex;gap:30px}.tank{position:relative;width:110px;height:200px;border:2px solid #7fff9a;border-top:none}.tank .water{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(#2f7a5a,#1a4a3a)}.tank .mk{position:absolute;right:-110px;width:104px;font-size:10px;border-top:1px dashed rgba(127,255,154,.5)}
 .al td{padding:3px 8px;vertical-align:top}.al td:first-child{color:#ffd84a;white-space:nowrap}
-.prog{display:grid;grid-template-columns:1fr 1fr;gap:16px}.pg label{display:flex;justify-content:space-between;align-items:center;gap:8px;font:600 12px Inter;margin:4px 0}.pg input{width:72px;background:#04110a;color:#7fff9a;border:1px solid #2f6a4a;border-radius:6px;padding:5px 6px;font:700 14px "Courier New"}
+.prog{display:grid;grid-template-columns:1fr 1fr;gap:16px}.pg{display:grid;grid-template-columns:1fr 78px 14px;align-items:center;gap:5px 6px;margin:4px 0}.pg .pl{font:600 12px Inter}.pg .pu{font:600 12px Inter;color:#9fd8b0}.pg input{width:78px;box-sizing:border-box;text-align:right;background:#04110a;color:#7fff9a;border:1px solid #2f6a4a;border-radius:6px;padding:5px 6px;font:700 14px "Courier New"}.pg input.inv{border-color:#ff5a4d;color:#ff8a7d;background:#2a0a08}.strow{display:flex;gap:4px;align-items:center}.strow select.st{flex:1}.ordb{display:flex;flex-direction:column;gap:2px}.ordb .b{padding:0 6px;min-height:0;line-height:1.2}.perr{list-style:none;padding:8px 10px;margin:8px 0;border:1px solid #a33;border-radius:6px;background:#2a0a08}.perr li{font:600 12px Inter;color:#ff8a7d;margin:3px 0}
 pre.st,select.st{display:block;width:100%;background:#04110a;color:#7fff9a;border:1px solid #1f4a33;border-radius:6px;padding:6px 8px;font:600 12px/1.45 "Courier New",monospace;margin:4px 0;white-space:pre-wrap}select.st{cursor:pointer}
 #pgc{width:100%;max-height:220px;border-radius:8px;background:#04110a}.chk{list-style:none;padding:0;margin:8px 0}.chk li{font:600 12px Inter;margin:3px 0}.chk .ok{color:var(--ok)}.chk .bad{color:#ff7a6e}
 .grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}.itm{background:var(--pn2);border:1px solid var(--ln);border-radius:12px;padding:9px 11px;display:flex;align-items:center;gap:10px;justify-content:space-between}.itm .ic{font-size:22px;color:var(--mut)}.itm.got{border-color:rgba(232,182,86,.5)}.itm.got .ic{color:var(--gold)}#end .itm{justify-content:flex-start}#end .itm:not(.got){opacity:.45}
@@ -127,5 +127,5 @@ kbd{font:800 11px Inter;background:linear-gradient(180deg,#f2c76d,#d59d3a);color
 <div class="scr" id="end" hidden><div class="card"><h1>HAJNAL<small>A TELEP ÚJRA A SCADA-N</small></h1><div id="eBody" style="margin-top:14px"></div><div class="row" style="margin-top:14px"><button class="b go" id="eNew">Új játék</button><button class="b" id="eMenu">Menü</button></div></div></div>
 <div id="fade"></div><div id="toast"></div><div id="caps"></div><div id="dbg" hidden></div>
 <script>if (/[?&]debug\b/.test(location.search)) document.getElementById('dbg').hidden = false;</script>
-<script type="module" src="./kliens.js?v=202611252025"></script>
+<script type="module" src="./kliens.js?v=202611260010"></script>
 </body></html>
