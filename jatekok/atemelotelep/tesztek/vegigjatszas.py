@@ -91,6 +91,8 @@ with sync_playwright() as p:
     use('terminal'); click('[data-tab="prog"]')
     for k, v in [('start1', '2.0'), ('start2', '2.6'), ('stop', '1.0'), ('dry', '0.6'), ('alarm', '3.0')]: pg.fill(f'#pn [data-p="{k}"]', v); pg.dispatch_event(f'#pn [data-p="{k}"]', 'change')
     for i in range(4): pg.select_option(f'#pn [data-c="{i}"]', '0')
+    click('[data-a="pord:0:1"]')  # a DRY sor a leállítás elé
+    for i in range(4): pg.select_option(f'#pn [data-c="{i}"]', '0')
     click('[data-a="ptest"]'); pg.wait_for_timeout(300); ok('próbafuttatás: minden ellenőrzés zöld', pg.locator('#pn .chk .bad').count() == 0 and pg.locator('#pn .chk .ok').count() == 5); shot('4_program')
     click('[data-a="pload"]'); close(); ok('program letöltve', S('s.progOK') == 1)
     use('szekreny'); click('[data-tab="mot"]'); click('[data-a="mode:0:A"]'); click('[data-a="mode:1:A"]'); close()

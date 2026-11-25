@@ -1,8 +1,8 @@
 // Az Átemelőtelep – kezelőfelületek (DOM-panelek): kapcsolószekrény, multiméter, sorkapocs, terminál, aggregát, átkapcsoló, modem, dokumentumok, leltár.
-import { X1, LOOSE, CODE, ITEMN, OVER, LSL_H, LSH_H, cabPow, v24, plcRun, lightPow, supply, ltOK, lshOK, lslOK, fbOK, progTest } from './jatek.js?v=202611252025';
+import { X1, LOOSE, CODE, ITEMN, OVER, LSL_H, LSH_H, cabPow, v24, plcRun, lightPow, supply, ltOK, lshOK, lslOK, fbOK, progTest } from './jatek.js?v=202611260010';
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let api = null, cur = null, sub = {}, timer = 0, lastH = '', pdown = false;
-export function initUI(a) { api = a; $('#pn').addEventListener('click', click); $('#pn').addEventListener('change', change); $('#pn').addEventListener('pointerdown', e => { pdown = true; hold(e); }); addEventListener('pointerup', () => { setTimeout(() => pdown = false, 0); release(); }); }
+export function initUI(a) { api = a; $('#pn').addEventListener('click', click); $('#pn').addEventListener('change', change); $('#pn').addEventListener('input', e => { if (e.target.dataset.p) e.target.classList.toggle('inv', pval(e.target.value) == null); }); $('#pn').addEventListener('pointerdown', e => { pdown = true; hold(e); }); addEventListener('pointerup', () => { setTimeout(() => pdown = false, 0); release(); }); }
 export const isOpen = () => !!cur, openId = () => cur;
 export function open(id, arg) { cur = id; sub = { arg, mm: sub.mm || { mode: 'V=', probe: '24' } }; $('#pn').hidden = false; render(); clearInterval(timer); timer = setInterval(() => { if (cur && !pdown && !['doc', 'inv', 'busz', 'fiok'].includes(cur) && !(cur === 'terminal' && sub.tab === 'prog')) render(); }, 300); }
 export function close() { cur = null; lastH = ''; $('#pn').innerHTML = ''; clearInterval(timer); $('#pn').hidden = true; $('#pn').innerHTML = ''; api.closed(); }
@@ -101,18 +101,29 @@ export function alarms(s) { const l = [], t = '03:1' + (Math.floor(s.t / 60) % 1
   for (let i = 0; i < 2; i++) if (s.trip[i] && !(i === 0 && s.clog[0])) l.push([t, `P${i + 1}: motorvédő / nyomásvédelem leoldott.`]);
   if (!s.modem.online) l.push([t, 'Kommunikáció: a VPN-modem nem válaszol.']);
   if (s.alarm) l.push([t, 'MAGAS SZINT RIASZTÁS']); return l; }
-function prog(s) { const p = s.prog, r = sub.test, num = (k, n, u = 'm') => `<label>${n}<input type="number" step="0.1" min="0" max="4" data-p="${k}" value="${p[k]}"> ${u}</label>`;
-  return `<div class="prog"><div><h2>Paraméterek (PUMP_CTRL)</h2><div class="pg">${num('start1', 'P_START_1 – vezető szivattyú indul')}${num('start2', 'P_START_2 – második szivattyú is indul')}${num('stop', 'P_STOP – leállás')}${num('dry', 'P_DRY – szárazfutás-védelem')}${num('alarm', 'P_ALARM – magas szint riasztás')}</div>
+const PN = [['start1', 'P_START_1 – vezető szivattyú indul'], ['start2', 'P_START_2 – második szivattyú is indul'], ['stop', 'P_STOP – leállás'], ['dry', 'P_DRY – szárazfutás-védelem'], ['alarm', 'P_ALARM – magas szint riasztás']];
+const dec = v => Number.isFinite(v) ? String(Math.round(v * 100) / 100).replace('.', ',') : '';
+function prog(s) { const p = s.prog, r = sub.test, ord = p.ord || [1, 0, 2, 3], bad = sub.pbad || {};
+  const num = (k, n) => `<span class="pl">${n}</span><input type="text" inputmode="decimal" data-p="${k}" value="${bad[k] != null ? esc(bad[k]) : dec(p[k])}" class="${bad[k] != null ? 'inv' : ''}"><span class="pu">m</span>`;
+  return `<div class="prog"><div><h2>Paraméterek (PUMP_CTRL)</h2><div class="pg">${PN.map(([k, n]) => num(k, n)).join('')}</div><p class="mut" style="margin:2px 0 8px">LSL1 úszó: ${dec(LSL_H)} m · LSH1 úszó: ${dec(LSH_H)} m · túlfolyás: ${dec(OVER)} m</p>
     <h2>Programsorok (ST)</h2><pre class="st">(* LT1: szint [m], LSL1/LSH1: úszók, TRUE = vízben *)
 IF LT1 >= P_START_1 THEN REQ1 := TRUE; END_IF;
-IF LT1 >= P_START_2 THEN REQ2 := TRUE; END_IF;</pre>${CODE.map((c, i) => `<select data-c="${i}" class="st">${c.o.map((o, j) => `<option value="${j}" ${p.code[i] === j ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`).join('')}<pre class="st">P1 := (REQ1 AND NOT LEAD) OR (REQ2 AND LEAD);
+IF LT1 >= P_START_2 THEN REQ2 := TRUE; END_IF;</pre>${ord.map((ci, pos) => { const c = CODE[ci]; return `<div class="strow"><span class="ordb">${btn('pord:' + pos + ':-1', '▲', 'sm', pos === 0)}${btn('pord:' + pos + ':1', '▼', 'sm', pos === ord.length - 1)}</span><select data-c="${ci}" class="st">${c.o.map((o, j) => `<option value="${j}" ${p.code[ci] === j ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>`; }).join('')}<pre class="st">P1 := (REQ1 AND NOT LEAD) OR (REQ2 AND LEAD);
 P2 := (REQ1 AND LEAD) OR (REQ2 AND NOT LEAD);</pre></div>
-    <div><h2>Próbafuttatás (40 perc szimulált idő, zivatar-hullámmal)</h2><canvas id="pgc" width="460" height="200"></canvas>${r ? `<ul class="chk">${[['over', 'Nincs túlfolyás'], ['dry', 'Nincs szárazfutás (P_DRY ≥ az LSL1 szintje)'], ['hyst', 'Hiszterézis: indulás ≥ 0,5 m-rel a leállás fölött, nem kapcsolgat'], ['alt', 'Váltakozás: mindkét szivattyú vezet'], ['alarm', 'Riasztás időben (P_ALARM a második indulás fölött, a túlfolyás alatt ≥ 0,3 m-rel)']].map(([k, n]) => `<li class="${r.ok[k] ? 'ok' : 'bad'}">${r.ok[k] ? '✓' : '✗'} ${n}</li>`).join('')}</ul>` : ''}
+    <div><h2>Próbafuttatás (40 perc szimulált idő, zivatar-hullámmal)</h2><canvas id="pgc" width="460" height="210"></canvas><h2 style="margin-top:6px">Hibaszcenárió: az LSL1 úszó beragadt (mindig TRUE), az aknát leürítik</h2><canvas id="pgc2" width="460" height="120"></canvas>
+    ${r && (r.errs.length || r.oerr) ? `<ul class="perr">${[...r.errs, ...(r.oerr ? [r.oerr] : [])].map(t => `<li>✗ ${esc(t)}</li>`).join('')}</ul>` : ''}
+    ${r ? `<ul class="chk">${[['over', 'Nincs túlfolyás'], ['dry', 'Nincs szárazfutás (P_DRY a P_STOP alatt; LSL1-hibánál az LT1 < P_DRY is leállít)'], ['hyst', 'Hiszterézis: indulás ≥ 0,5 m-rel a leállás fölött, nem kapcsolgat'], ['alt', 'Váltakozás: mindkét szivattyú vezet'], ['alarm', 'Riasztás: pontosan LT1 ≥ P_ALARM vagy LSH1 esetén, a túlfolyás előtt ≥ 0,3 m-rel']].map(([k, n]) => `<li class="${r.ok[k] ? 'ok' : 'bad'}">${r.ok[k] ? '✓' : '✗'} ${n}</li>`).join('')}</ul>` : ''}
     <div class="row">${btn('ptest', 'Próbafuttatás', 'go')}${btn('pload', 'Letöltés a PLC-be', '', !(r && r.all))}</div>${s.progOK ? '<p style="color:#5ee08a;font-weight:700">A javított program fut a PLC-n.</p>' : ''}</div></div>`; }
-function drawTest() { const cv = document.getElementById('pgc'); if (!cv || !sub.test) return; const g = cv.getContext('2d'), W = cv.width, H = cv.height, tr = sub.test.tr; g.fillStyle = '#04110a'; g.fillRect(0, 0, W, H); const Y = h => H - 10 - h / 4 * (H - 20);
-  g.strokeStyle = 'rgba(255,90,77,.6)'; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(0, Y(OVER)); g.lineTo(W, Y(OVER)); g.stroke(); g.setLineDash([]);
-  tr.forEach((q, i) => { const x = i / tr.length * W; if (q[1]) { g.fillStyle = 'rgba(94,224,138,.35)'; g.fillRect(x, H - 8, W / tr.length + 1, 4); } if (q[2]) { g.fillStyle = 'rgba(108,198,255,.45)'; g.fillRect(x, H - 4, W / tr.length + 1, 4); } if (q[3]) { g.fillStyle = 'rgba(255,90,77,.4)'; g.fillRect(x, 0, W / tr.length + 1, 4); } });
-  g.strokeStyle = '#7fff9a'; g.lineWidth = 2; g.beginPath(); tr.forEach((q, i) => { const x = i / tr.length * W; i ? g.lineTo(x, Y(q[0])) : g.moveTo(x, Y(q[0])); }); g.stroke(); g.fillStyle = '#7fff9a'; g.font = '11px monospace'; g.fillText('LT1 [m]   zöld: P1  kék: P2  piros: riasztás', 8, 16); }
+/* grafikon: szint, szivattyúk, riasztás és minden küszöb felirattal ellátott szaggatott vonallal */
+function plotLevels(cv, tr, pg, flagCol, flagIdx, flagLab) { const g = cv.getContext('2d'), W = cv.width, H = cv.height, top = 4, bot = H - 12, Y = h => bot - Math.max(0, Math.min(4, h)) / 4 * (bot - top - 6);
+  g.fillStyle = '#04110a'; g.fillRect(0, 0, W, H); const bw = W / Math.max(1, tr.length);
+  tr.forEach((q, i) => { const x = i * bw; if (q[flagIdx]) { g.fillStyle = flagCol; g.fillRect(x, 0, bw + 1, H - 12); } if (q[1]) { g.fillStyle = 'rgba(94,224,138,.55)'; g.fillRect(x, H - 10, bw + 1, 4); } if (q[2]) { g.fillStyle = 'rgba(108,198,255,.6)'; g.fillRect(x, H - 5, bw + 1, 4); } });
+  const L = [[OVER, 'túlfolyás', '#ff5a4d'], [pg.alarm, 'P_ALARM', '#ffb24a'], [pg.start2, 'P_START_2', '#6cc6ff'], [pg.start1, 'P_START_1', '#5ee08a'], [pg.stop, 'P_STOP', '#c8d0d8'], [pg.dry, 'P_DRY', '#d58cff'], [LSL_H, 'LSL1', '#8a96a2']].filter(l => Number.isFinite(l[0]));
+  g.font = '10px monospace'; g.textAlign = 'right'; let lastY = -99; L.sort((a, b) => b[0] - a[0]).forEach(([v, n, c]) => { const y = Y(v); g.strokeStyle = c; g.globalAlpha = .85; g.setLineDash([5, 4]); g.lineWidth = 1; g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]); g.globalAlpha = 1; g.fillStyle = c; const ty = Math.max(y - 2, lastY + 10); g.fillText(`${n} ${dec(v)}`, W - 3, ty); lastY = ty; });
+  g.strokeStyle = '#7fff9a'; g.lineWidth = 2; g.beginPath(); tr.forEach((q, i) => { const x = i * bw; i ? g.lineTo(x, Y(q[0])) : g.moveTo(x, Y(q[0])); }); g.stroke();
+  g.textAlign = 'left'; g.fillStyle = '#7fff9a'; g.fillText(`LT1 [m]   zöld: P1  kék: P2  ${flagLab}`, 6, 13); }
+function drawTest() { const t = sub.test, p = S().prog; if (!t) return; const a = document.getElementById('pgc'), b = document.getElementById('pgc2');
+  if (a) plotLevels(a, t.tr, p, 'rgba(255,90,77,.22)', 3, 'piros sáv: riasztás (ALARM_HI)'); if (b) plotLevels(b, t.trb, p, 'rgba(213,140,255,.22)', 3, 'lila sáv: DRY'); }
 function genPanel(s) { const G = s.gen, v = G.run ? Math.round(380 + 20 * G.warm) : 0, hz = G.run ? (48 + 2 * G.warm).toFixed(1) : '0.0';
   return `<div class="card wide"><div class="row"><h1 class="grow">AGGREGÁT – 60 kVA</h1>${btn('doc:gen', 'Indítási utasítás', 'sm')}${btn('close', 'Bezárás', 'go')}</div><div class="row" style="gap:18px;align-items:flex-start">
     <div class="blk"><h2>Üzemanyag</h2><div class="bar"><i style="width:${Math.round(G.fuel * 100)}%;background:${G.fuel < .25 ? '#ff5a4d' : '#e8b656'}"></i></div><p class="mut">${G.fuel < .1 ? 'A tartály szinte üres – valaki leengedte.' : Math.round(G.fuel * 100) + '%'}</p>
@@ -145,7 +156,8 @@ function click(e) { const t = e.target.closest('[data-a],[data-tab]'); if (!t) r
   else if (a === 'wclear') { delete s.wires[sub.wsel]; api.sfx('click'); }
   else if (a === 'cont') { const w = LOOSE.find(q => q.id === sub.wsel); if (cabPow(s) && c.q[1]) sub.cmsg = '<span class="warn">Feszültség alatt nem mérünk folytonosságot (Q2 ki).</span>'; else { sub.cmsg = w.dev === x ? `${w.lab} ↔ ${x}: <b>0,8 Ω ♪ sípol</b> – ez az!` : `${w.lab} ↔ ${x}: OL`; api.sfx(w.dev === x ? 'beep' : 'click'); } }
   else if (a === 'mm') sub.mm.mode = x; else if (a === 'mp') sub.mm.probe = x;
-  else if (a === 'ptest') { sub.test = progTest(s.prog); s.progTested = 1; render(); setTimeout(drawTest); api.sfx('beep'); return; }
+  else if (a === 'pord') { const o = s.prog.ord = [...(s.prog.ord || [1, 0, 2, 3])], i = +x, j = i + +y; if (j >= 0 && j < o.length) { [o[i], o[j]] = [o[j], o[i]]; sub.test = null; } render(); return; }
+  else if (a === 'ptest') { if (sub.pbad && Object.keys(sub.pbad).length) { const pg = { ...s.prog }; for (const k in sub.pbad) pg[k] = NaN; sub.test = progTest(pg); } else sub.test = progTest(s.prog); s.progTested = 1; render(); setTimeout(drawTest); api.sfx('beep'); return; }
   else if (a === 'pload') { if (sub.test && sub.test.all) { s.progOK = 1; api.sfx('relay'); api.msg('Program letöltve. PLC: RUN. Állítsd a szivattyúkat AUTO-ba.'); api.check(); } }
   else if (a === 'modem_pwr') { s.modem.pwr = 1; api.sfx('click'); }
   else if (a === 'ant_fix') { if (s.inv.ncsatl && s.inv.csavar) { s.inv.ncsatl--; s.modem.ant = 1; api.sfx('click'); api.msg('Az új csatlakozó a helyén. Az antenna jele megérkezik a modemhez.'); } }
@@ -154,7 +166,9 @@ function click(e) { const t = e.target.closest('[data-a],[data-tab]'); if (!t) r
   else if (a === 'gstop') { s.gen.run = 0; api.sfx('clunk'); }
   else if (a === 'ats') { const p = ['net', '0', 'gen'], i = p.indexOf(s.ats) + +x; if (i >= 0 && i <= 2) { s.ats = p[i]; api.sfx('clunk'); if (s.ats === 'gen' && !(s.gen.run && s.gen.warm >= 1)) api.msg(s.gen.run ? 'A generátor még nem stabil – a terhelést nem bírja el.' : 'A generátor nem jár.'); } }
   render(); api.check(); }
-function change(e) { const s = S(); const p = e.target.dataset.p, c = e.target.dataset.c; if (p) { const v = Math.max(0, Math.min(4, +e.target.value || 0)); s.prog[p] = Math.round(v * 10) / 10; sub.test = null; } if (c != null) { s.prog.code[+c] = +e.target.value; sub.test = null; } }
+/* tizedesvessző és -pont is jó; az érvénytelen bevitel piros, és nem írja felül az értéket */
+function pval(t) { const v = parseFloat(String(t).trim().replace(',', '.')); return /^\s*\d+([.,]\d+)?\s*$/.test(String(t)) && v >= 0 && v <= 4 ? Math.round(v * 100) / 100 : null; }
+function change(e) { const s = S(); const p = e.target.dataset.p, c = e.target.dataset.c; if (p) { const v = pval(e.target.value); sub.pbad = sub.pbad || {}; if (v == null) { sub.pbad[p] = e.target.value; e.target.classList.add('inv'); } else { delete sub.pbad[p]; s.prog[p] = v; e.target.classList.remove('inv'); e.target.value = dec(v); } sub.test = null; } if (c != null) { s.prog.code[+c] = +e.target.value; sub.test = null; } }
 const wireAtTerm = (s, n) => Object.keys(s.wires).find(k => s.wires[k] === n);
 // tartós gombok (izzítás, indítás)
 let held = null, holdT = 0;

@@ -1,5 +1,5 @@
 // Az Átemelőtelep – a játék állapota, a telep szimulációja (medence, szivattyúk, PLC, gáz, áram), fejezetek, ellenőrzőpontok.
-export const OVER = 3.6, LSL_H = .5, LSH_H = 3.0, PUMP_Q = .0095;
+export const OVER = 3.6, LSL_H = .25, LSH_H = 3.0, PUMP_Q = .0095, SUCT = .2; // SUCT: a szívócsonk szintje – ez alatt a szivattyú szárazon fut
 export const CHAPTERS = ['Kiérkezés', 'A szekrény', 'Az akna', 'A program', 'Szilárd', 'Hajnal'];
 // a sorkapocs (X1) – a kapcsolási rajz szerint; a „?” a jelölés nélküli ér
 export const X1 = [
@@ -14,28 +14,61 @@ export const CODE = [
   { n: 'Váltakozás', o: ['IF F_TRIG(REQ1) THEN LEAD := NOT LEAD; END_IF;', 'LEAD := FALSE;'], bad: 1 },
   { n: 'Riasztás', o: ['ALARM_HI := (LT1 >= P_ALARM) OR LSH1;', 'ALARM_HI := FALSE;'], bad: 1 }
 ];
-export const PROG_BAD = { start1: 3.9, start2: .4, stop: 3.0, dry: 0, alarm: 5.0, code: [1, 1, 1, 1] };
+// ord: a négy választható programsor végrehajtási sorrendje (a CODE indexei) – a gyári hibás változatban a leállítás a DRY kiszámolása előtt fut
+export const PROG_BAD = { start1: 3.9, start2: .4, stop: 3.0, dry: 0, alarm: 5.0, code: [1, 1, 1, 1], ord: [0, 1, 2, 3] };
 
 /* ---------- PLC szintszabályozás (a terminál szimulációja és a telep ugyanezt futtatja) ---------- */
-// m: { req1, req2, lead, prev1 }  →  { p1, p2, alarm, dry }
+// m: { req1, req2, lead, prev1, dry }  →  { p1, p2, alarm, dry }
+// a programsorok a pg.ord sorrendjében futnak; ha a leállítás a DRY kiszámolása előtt jön, az előző ciklus DRY-értékével dolgozik
 export function plcStep(pg, lt, lsl, lsh, m) {
-  const dry = pg.code[1] === 0 ? (lt < pg.dry) || !lsl : (lt < pg.dry) && !lsl;
   if (lt >= pg.start1) m.req1 = true; if (lt >= pg.start2) m.req2 = true;
-  const stop = pg.code[0] === 0 ? lt <= pg.stop : lt >= pg.stop; if (stop || dry) { m.req1 = false; m.req2 = false; }
-  if (pg.code[2] === 0) { if (m.prev1 && !m.req1) m.lead = !m.lead; } else m.lead = false; m.prev1 = m.req1;
+  let dry = !!m.dry, alarm = false;
+  for (const r of pg.ord || [1, 0, 2, 3]) {
+    if (r === 1) dry = m.dry = pg.code[1] === 0 ? (lt < pg.dry) || !lsl : (lt < pg.dry) && !lsl;
+    else if (r === 0) { const stop = pg.code[0] === 0 ? lt <= pg.stop : lt >= pg.stop; if (stop || dry) { m.req1 = false; m.req2 = false; } }
+    else if (r === 2) { if (pg.code[2] === 0) { if (m.prev1 && !m.req1) m.lead = !m.lead; } else m.lead = false; m.prev1 = m.req1; }
+    else alarm = pg.code[3] === 0 ? lt >= pg.alarm || lsh : false; }
   const p1 = (m.req1 && !m.lead) || (m.req2 && m.lead), p2 = (m.req1 && m.lead) || (m.req2 && !m.lead);
-  const alarm = pg.code[3] === 0 ? lt >= pg.alarm || lsh : false;
   return { p1, p2, alarm, dry };
 }
-// a terminál próbafuttatása: 40 perc szimulált idő változó hozzáfolyással; ellenőrzések listája
-export function progTest(pg) {
-  let h = 1.2, m = { req1: false, req2: false, lead: false, prev1: false }, maxH = 0, dryRun = 0, starts = 0, used = [0, 0], alarmAt = null, overAt = null, prev = [0, 0]; const tr = [];
-  for (let s = 0; s < 2400; s++) { const qin = s < 600 ? .0045 : s < 1100 ? .0235 : s < 1500 ? .006 : .002; const o = plcStep(pg, h, h > LSL_H, h > LSH_H, m), run = [o.p1, o.p2];
-    for (let i = 0; i < 2; i++) { if (run[i] && !prev[i]) starts++; if (run[i] && !run[1 - i]) used[i]++; if (run[i] && h < .45) dryRun++; } prev = run;
-    h = Math.max(.15, h + qin - (run[0] ? PUMP_Q * 1.15 : 0) - (run[1] ? PUMP_Q * 1.15 : 0)); maxH = Math.max(maxH, h); if (o.alarm && alarmAt == null) alarmAt = h; if (h >= OVER && overAt == null) overAt = s;
+const fm = v => (Math.round(v * 100) / 100).toLocaleString('hu-HU') + ' m';
+/* paraméter-validáció: kötelező sorrend LSL1 ≤ P_DRY < P_STOP < P_START_1 < P_START_2 < P_ALARM < túlfolyás, és minimális különbségek */
+export function paramErrors(pg) { const E = [], N = { dry: 'P_DRY', stop: 'P_STOP', start1: 'P_START_1', start2: 'P_START_2', alarm: 'P_ALARM' }, e = 1e-9;
+  for (const k in N) if (!Number.isFinite(pg[k])) E.push(`${N[k]}: érvénytelen szám.`); if (E.length) return E;
+  const { dry, stop, start1, start2, alarm } = pg;
+  if (dry < LSL_H - e) E.push(`P_DRY (${fm(dry)}) nem lehet az LSL1 úszó szintje (${fm(LSL_H)}) alatt – az analóg tartalékvédelem csak az úszó után kapcsolna, úszóhibánál a szivattyú szárazon futna.`);
+  if (dry >= stop - e) E.push(`P_DRY (${fm(dry)}) nem lehet a leállási szint (${fm(stop)}) fölött – így a szárazfutás-védelem értelmetlen.`);
+  if (stop >= start1 - e) E.push(`P_STOP (${fm(stop)}) nem lehet a P_START_1 (${fm(start1)}) fölött – a szivattyú a leállás után azonnal újraindulna.`);
+  else if (start1 - stop < .5 - e) E.push(`P_START_1 − P_STOP = ${fm(start1 - stop)} – a hiszterézis legalább 0,5 m legyen, különben a szivattyú percenként kapcsolgat.`);
+  if (start1 >= start2 - e) E.push(`P_START_1 (${fm(start1)}) nem lehet a P_START_2 (${fm(start2)}) fölött – a második szivattyú hamarabb indulna, mint a vezető.`);
+  else if (start2 - start1 < .3 - e) E.push(`P_START_2 − P_START_1 = ${fm(start2 - start1)} – legalább 0,3 m kell, különben a két szivattyú szinte egyszerre indul.`);
+  if (start2 >= alarm - e) E.push(`P_START_2 (${fm(start2)}) nem lehet a P_ALARM (${fm(alarm)}) fölött – a riasztás azelőtt szólna, hogy a második szivattyú egyáltalán elindulna.`);
+  else if (alarm - start2 < .1 - e) E.push(`P_ALARM − P_START_2 = ${fm(alarm - start2)} – legalább 0,1 m kell a második indulás és a riasztás közé.`);
+  if (alarm >= OVER - e) E.push(`P_ALARM (${fm(alarm)}) nem lehet a túlfolyási szint (${fm(OVER)}) fölött – a riasztás csak a kiömlés után szólna.`);
+  else if (OVER - alarm < .3 - e) E.push(`túlfolyás − P_ALARM = ${fm(OVER - alarm)} – legalább 0,3 m tartalék kell, hogy legyen idő beavatkozni.`);
+  return E; }
+/* a programsorok sorrendje: a DRY-t előbb ki kell számolni, mint ahol a leállítás felhasználja */
+export function orderError(pg) { const o = pg.ord || [1, 0, 2, 3]; return o.indexOf(1) > o.indexOf(0) ? 'Programsorok sorrendje: a szárazfutás sor (DRY := …) a leállítás után áll – a DRY-t előbb ki kell számolni, mint ahol felhasználod, különben a leállítás egy ciklussal késve, a régi értékkel dolgozik.' : null; }
+// a terminál próbafuttatása: A) 40 perc szimulált idő zivatar-hullámmal, B) hibaszcenárió: az LSL1 úszó beragad TRUE-ba, az aknát leürítik
+// az ellenőrzések a szimuláció tényleges eredményéből számolódnak
+export function progTest(pg) { const errs = paramErrors(pg), oerr = orderError(pg), fin = errs.length === 0 || Number.isFinite(pg.dry + pg.stop + pg.start1 + pg.start2 + pg.alarm);
+  let h = 1.2, m = { req1: false, req2: false, lead: false, prev1: false, dry: false }, starts = 0, used = [0, 0], alarmAt = null, alarmMis = 0, overAt = null, prev = [0, 0], belowStop = 0, suct = 0; const tr = [];
+  for (let s = 0; s < 2400 && fin; s++) { const qin = s < 600 ? .0045 : s < 1100 ? .0235 : s < 1500 ? .006 : .002, lsh = h > LSH_H, o = plcStep(pg, h, h > LSL_H, lsh, m), run = [o.p1, o.p2];
+    for (let i = 0; i < 2; i++) { if (run[i] && !prev[i]) starts++; if (run[i] && !run[1 - i]) used[i]++; if (run[i] && h < pg.stop - .03) belowStop++; if (run[i] && h < SUCT + .02) suct++; } prev = run;
+    if (o.alarm !== (h >= pg.alarm || lsh)) alarmMis++; if (o.alarm && alarmAt == null) alarmAt = h;
+    h = Math.max(.15, h + qin - (run[0] ? PUMP_Q * 1.15 : 0) - (run[1] ? PUMP_Q * 1.15 : 0)); if (h >= OVER && overAt == null) overAt = s;
     if (s % 8 === 0) tr.push([h, run[0], run[1], o.alarm]); }
-  const ok = { over: overAt == null, dry: dryRun === 0 && pg.dry >= .45, hyst: pg.start1 - pg.stop >= .5 && starts <= 60, alt: used[0] > 0 && used[1] > 0, alarm: alarmAt != null && alarmAt < OVER - .2 && pg.alarm <= OVER - .3 && pg.alarm > pg.start2 };
-  return { ok, all: Object.values(ok).every(Boolean), tr, maxH, starts };
+  // B) LSL1 beragadt TRUE: a védelemnek az analóg LT1 < P_DRY alapján is le kell állítania; az aknát egy leürítő szivattyú szívja le
+  let hb = 1.0, mb = { req1: true, req2: false, lead: false, prev1: true, dry: false }, dryMiss = 0, runLow = 0; const trb = [];
+  for (let s = 0; s < 700 && fin; s++) { const o = plcStep(pg, hb, true, false, mb), run = [o.p1, o.p2];
+    if (hb < pg.dry && !o.dry) dryMiss++; for (let i = 0; i < 2; i++) if (run[i] && (hb < pg.stop - .03 || hb < pg.dry || hb < SUCT + .02)) runLow++;
+    hb = Math.max(.08, hb - .0018 - (run[0] ? PUMP_Q * 1.15 : 0) - (run[1] ? PUMP_Q * 1.15 : 0)); if (s % 3 === 0) trb.push([hb, run[0], run[1], o.dry]); }
+  const ok = { over: fin && overAt == null,
+    dry: fin && pg.dry < pg.stop && pg.dry >= LSL_H - 1e-9 && belowStop === 0 && suct === 0 && dryMiss === 0 && runLow === 0,
+    hyst: fin && pg.start1 - pg.stop >= .5 - 1e-9 && starts <= 60,
+    alt: used[0] > 0 && used[1] > 0,
+    alarm: alarmAt != null && alarmMis === 0 && alarmAt < OVER && pg.alarm > pg.start2 && OVER - pg.alarm >= .3 - 1e-9 };
+  return { ok, errs, oerr, all: !errs.length && !oerr && Object.values(ok).every(Boolean), tr, trb, starts, dryMiss, runLow };
 }
 
 /* ---------- állapot ---------- */
