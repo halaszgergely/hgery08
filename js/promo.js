@@ -4,7 +4,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 
 let G = null;               // { videos: () => [], open: id => void }
 const LIVE = new Set();     // élő canvasok: { cv, mode, vis }
-let raf = 0, mascotEl = null, mascotT = 0, mascotOn = false;
+let raf = 0;
 const RM = matchMedia('(prefers-reduced-motion: reduce)');
 
 export function setup(o) { G = o; }
@@ -155,20 +155,3 @@ export function stripHtml() {
 }
 /* a frissen beillesztett hirdetések élesítése */
 export function wire(root = document) { root.querySelectorAll('.promo .pcv:not([data-on])').forEach(cv => { cv.dataset.on = '1'; live(cv, cv.closest('.pstrip') !== null); }); }
-
-/* ---------- kabala: időnként felbukkanó vízcsepp-lény a sarokban ---------- */
-export function mascot(show) {
-  mascotOn = !!show && !!target() && sessionStorage.getItem('hgws_promo_off') !== '1';
-  if (!mascotOn) { if (mascotEl) mascotEl.classList.remove('up'); clearTimeout(mascotT); return; }
-  if (!mascotEl) {
-    mascotEl = document.createElement('div'); mascotEl.className = 'pmascot'; mascotEl.innerHTML = '<canvas width="140" height="140"></canvas><div class="pbub"></div><button class="px" aria-label="Elrejtés"><i class="ic ic-x"></i></button>';
-    document.body.appendChild(mascotEl); const cv = mascotEl.querySelector('canvas'), x = cv.getContext('2d');
-    const tick = now => { if (mascotEl.classList.contains('up') && !document.hidden) { x.clearRect(0, 0, 140, 140); drawSlime(x, 70, 82, 40, now / 1000); } requestAnimationFrame(tick); }; requestAnimationFrame(tick);
-    mascotEl.addEventListener('click', e => { if (e.target.closest('.px')) { sessionStorage.setItem('hgws_promo_off', '1'); mascotEl.classList.remove('up'); mascotOn = false; return; } const v = target(); if (v) G.open(v.id); mascotEl.classList.remove('up'); });
-  }
-  clearTimeout(mascotT);
-  const cycle = (wait) => { mascotT = setTimeout(() => { if (!mascotOn) return; const v = target(); if (!v) return;
-    mascotEl.querySelector('.pbub').innerHTML = `<b>${v.soon ? 'Hamarosan' : 'Új'} ${esc((v.kind || 'anime').toLowerCase())}!</b><span>${esc(v.en || v.title)}</span>`;
-    mascotEl.classList.add('up'); mascotT = setTimeout(() => { mascotEl.classList.remove('up'); cycle(75000); }, 9000); }, wait); };
-  cycle(mascotEl.classList.contains('up') ? 0 : 7000);
-}
