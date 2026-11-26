@@ -7,7 +7,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;image-rende
 [hidden]{display:none!important}
 .box{background:var(--pn);border:2px solid var(--ln);border-radius:4px}
 .b{background:var(--pn2);border:2px solid var(--ln);color:var(--ink);font:700 13px inherit;font-family:inherit;padding:7px 12px;border-radius:3px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}.b:hover{border-color:var(--acc)}.b.go{background:#5a4a24;border-color:var(--acc);color:var(--acc)}.b[disabled]{opacity:.35;cursor:default}.b.sm{padding:3px 8px;font-size:12px}.b.on{border-color:var(--acc);color:var(--acc)}
-.it{display:inline-block;width:10px;height:10px;border:1px solid rgba(0,0,0,.6);vertical-align:-1px;margin-right:4px}
+.it{display:inline-block;width:10px;height:10px;border:1px solid rgba(0,0,0,.6);vertical-align:-4px;margin-right:3px}
 .bad{color:var(--bad)}.mut{color:var(--mut)}.ok{color:var(--ok)}
 /* HUD */
 #hud{position:fixed;inset:0;pointer-events:none}#hud>*{pointer-events:auto}
@@ -40,9 +40,10 @@ h2{font-size:12px;letter-spacing:.2em;color:var(--mut);text-transform:uppercase;
 .secs{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
 .sec{padding:10px 12px;background:var(--pn2);border:2px solid var(--ln);border-radius:4px;display:flex;flex-direction:column;gap:5px}.sec.cap{border-color:#4c7a45}.sec.lock{opacity:.45}.sec h3{font-size:15px;color:var(--acc);display:flex;justify-content:space-between;gap:6px}.sec .row{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:4px}
 #tech{z-index:6}#tech .card{width:min(1200px,100%);height:100%;display:flex;flex-direction:column}
-#tree{position:relative;flex:1;overflow:auto;background:#15161b;border:2px solid var(--ln);margin-top:8px;cursor:grab}
+#tree{position:relative;flex:1;overflow:auto;background:#0b0c0f;border:2px solid var(--ln);margin-top:8px;cursor:grab}
 #tree svg{position:absolute;left:0;top:0;pointer-events:none}
-.tn{position:absolute;width:102px;padding:5px;background:#1f2027;border:2px solid #30323c;border-radius:3px;font-size:11px;text-align:center;cursor:pointer}.tn img{width:30px;height:30px;image-rendering:pixelated;display:block;margin:0 auto 2px}.tn.done{border-color:#8c7337;background:#2a2619}.tn.av{border-color:#6ab0ff}.tn.lock{opacity:.4;cursor:default}.tn .c{color:var(--mut);font-size:10px;margin-top:2px}.tn .c .bad{color:var(--bad)}
+.tn{position:absolute;width:44px;height:44px;background:#1b1c22;border:2px solid #3b3e4a;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer}.tn img{max-width:34px;max-height:34px;image-rendering:pixelated}.tn.done{border-color:#ffd37f;background:#2a2518}.tn.av{border-color:#8a7340}.tn.can{box-shadow:0 0 0 2px rgba(132,244,145,.55)}.tn.lock{opacity:.42;filter:grayscale(1)}.tn.sel{outline:2px solid #fff;outline-offset:1px}
+#treeIn{position:relative}#tech .card{position:relative}#tinfo{position:absolute;right:30px;bottom:30px;width:290px;padding:10px 12px;font-size:12px;z-index:2}#tinfo h3{font-size:15px;color:var(--acc);margin-bottom:4px}#tinfo .st{color:var(--mut);margin-top:3px}
 .bank{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px}
 .fwrap{display:flex;gap:16px;flex-wrap:wrap}#fOpts{flex:1;min-width:300px}.fo h2{margin:10px 0 5px}.fo .row{display:flex;gap:4px;flex-wrap:wrap}.fside{width:300px;display:flex;flex-direction:column;gap:8px;margin-top:12px}#fPrev{width:100%;image-rendering:pixelated;border:2px solid var(--ln)}
 #end .card{width:min(460px,100%);text-align:center}#end h1{font-size:30px}
@@ -60,12 +61,12 @@ h2{font-size:12px;letter-spacing:.2em;color:var(--mut);text-transform:uppercase;
 <div id="menu" class="scr"><div class="card box">
   <h1>KOHÓVÁR<small>BÁNYÁSZAT · SZÁLLÍTÁS · VÉDELEM</small></h1>
   <div class="mlist"><button class="b go" id="mPlay">Kampány</button><button class="b" id="mFree">Szabad játék</button><button class="b" id="mTech">Kutatás</button></div>
-  <p class="credit">A <a href="https://store.steampowered.com/app/1127400/Mindustry/" target="_blank" rel="noopener">Mindustry</a> (Anuke) alapján készült, saját kóddal és grafikával. Az eredeti játék a Steamen: <a href="https://store.steampowered.com/app/1127400/Mindustry/" target="_blank" rel="noopener">store.steampowered.com/app/1127400/Mindustry</a></p>
+  <p class="credit">A <a href="https://store.steampowered.com/app/1127400/Mindustry/" target="_blank" rel="noopener">Mindustry</a> (Anuke és közreműködők) alapján készült; a blokkok, egységek és a talaj grafikája a Mindustry sprite-jai. Licenc: <a href="LICENSE" target="_blank">GPLv3</a> · <a href="FORRAS.md" target="_blank">forrás és módosítások</a>. Az eredeti játék a Steamen: <a href="https://store.steampowered.com/app/1127400/Mindustry/" target="_blank" rel="noopener">store.steampowered.com/app/1127400/Mindustry</a></p>
 </div></div>
 <div id="secs" class="scr" hidden><div class="card box"><div style="display:flex;justify-content:space-between;align-items:center"><h1 style="font-size:26px">SZEKTOROK</h1><button class="b" id="secBack">Vissza</button></div><h2>Raktár</h2><div class="bank" id="bank1"></div><h2>Kampányok</h2><div class="row" id="camps" style="display:flex;gap:6px;flex-wrap:wrap"></div><p class="mut" id="campD" style="margin:8px 0"></p><div class="secs" id="secList"></div></div></div>
 <div id="free" class="scr" hidden><div class="card box" style="width:min(1000px,100%)"><div style="display:flex;justify-content:space-between;align-items:center"><h1 style="font-size:26px">SZABAD JÁTÉK</h1><button class="b" id="freeBack">Vissza</button></div><div class="fwrap"><div id="fOpts"></div><div class="fside"><canvas id="fPrev"></canvas><div id="fRank"></div><button class="b go" id="fGo">Indítás</button><button class="b" id="fCont" hidden></button></div></div></div></div>
-<div id="tech" class="scr" hidden><div class="card box"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h1 style="font-size:26px">KUTATÁS</h1><div class="bank" id="bank2" style="flex:1"></div><button class="b" id="techBack">Bezár</button></div><div id="tree"></div></div></div>
+<div id="tech" class="scr" hidden><div class="card box"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h1 style="font-size:26px">KUTATÁS</h1><div class="bank" id="bank2" style="flex:1"></div><button class="b" id="techBack">Bezár</button></div><div id="tree"><div id="treeIn"></div></div><div id="tinfo" class="box" hidden></div></div></div>
 <div id="pmenu" class="scr" hidden><div class="card box" style="width:min(340px,100%)"><h1 style="font-size:24px">SZÜNET</h1><div class="mlist"><button class="b go" id="pRes">Folytatás</button><button class="b" id="pTech">Kutatás</button><button class="b" id="pSave">Mentés és kilépés</button><button class="b" id="pAband">Szektor feladása</button></div></div></div>
 <div id="end" class="scr" hidden><div class="card box"><h1 id="endT"></h1><p id="endP" class="mut" style="margin-top:10px"></p><div class="bank" id="endB" style="justify-content:center;margin-top:10px"></div><div class="mlist" style="margin:18px auto 0"><button class="b go" id="endOk">Térkép</button></div></div></div>
-<script type="module" src="fo.js?v=202611261712"></script>
+<script type="module" src="fo.js?v=202611261904"></script>
 </body></html>
