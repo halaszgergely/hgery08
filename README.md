@@ -7,7 +7,7 @@ Statikus oldal (GitHub Pages + Cloudflare), háttér: Firebase (`hgws-7629e`).
 | Hely | Mi van benne |
 |---|---|
 | `index.html`, `app.html`, `belepes.html`, `admin.html` | a közösségi oldal belépési pontjai |
-| `arcade.html` | a HGWS Arcade (az oldal iframe-ben tölti be) |
+| `arcade.html` | a HGWS Arcade játékfuttatója (az oldal iframe-ben tölti be; saját lista nincs, kilépéskor az új Arcade-lista jön) |
 | `404.html`, `offline.html`, `sw.js`, `manifest.webmanifest` | hibaoldal, offline oldal, telepíthető alkalmazás |
 | `css/`, `img/` | stílusok, ikonok, logók, matricák |
 | `js/` | a közösségi oldal moduljai (chat, profil, admin, Firebase…) |

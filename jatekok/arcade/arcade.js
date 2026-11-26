@@ -48,7 +48,10 @@ addEventListener('message', e => { if (e.origin !== location.origin || !e.data) 
   if (e.source === EXF.contentWindow && (h === 'csreq' || h === 'cssave' || h === 'csdel')) { if (window.top !== window) parent.postMessage(e.data, location.origin); else if (h === 'csreq') EXF.contentWindow.postMessage({ hgws: 'cs', game: e.data.game, none: 1 }, location.origin); return; }
   if (window.top !== window && e.source === parent && h === 'cs' && !EXT.hidden && EXF.contentWindow && !GAMES.some(x => !x.ext && x.id === e.data.game)) EXF.contentWindow.postMessage(e.data, location.origin); });
 function openExt(gm) { if (gm.go) { if (window.top !== window) parent.postMessage({ hgws: 'nav', to: gm.go }, location.origin); else location.href = './' + gm.go; return; } if (gm.lock && !window.HGZQ_OK) { zqWait = !window.HGZQ_SEEN; return; } EXF.src = gm.ext + '?v=' + Date.now().toString(36).slice(0, 5) + (gm.room ? '&room=' + encodeURIComponent(gm.room) : ''); gm.room = ''; EXT.hidden = false; document.body.classList.add('locked'); setTimeout(() => { try { EXF.focus(); } catch (_) {} }, 300); }
-function closeExt() { EXT.hidden = true; EXF.src = 'about:blank'; document.body.classList.remove('locked'); }
+/* a régi lista megszűnt: beágyazva kilépéskor (vagy játék nélkül) a főoldal új Arcade-listájára megyünk */
+function toList() { if (/[?&]bo=/.test(location.search)) return; if (window.top !== window) { try { parent.postMessage({ hgws: 'nav', to: '#/arcade' }, location.origin); } catch (_) {} } else if (!/[?&]solo/.test(location.search)) location.replace('./#/arcade'); }
+window.HGWS_TO_LIST = toList;
+function closeExt() { EXT.hidden = true; EXF.src = 'about:blank'; document.body.classList.remove('locked'); toList(); }
 $('#extX').onclick = closeExt;
 const ARTS = {
   boonline: (c, x, t) => { const W = c.width, H = c.height, g = x.createRadialGradient(W * .4, H * .6, 10, W / 2, H / 2, W * .7); g.addColorStop(0, '#12305a'); g.addColorStop(1, '#060c18'); x.fillStyle = g; x.fillRect(0, 0, W, H);
@@ -187,7 +190,7 @@ function renderCards() {
 renderCards();
 $('#yr').textContent = new Date().getFullYear();
 startHero();
-function deep() { const m = location.hash.match(/^#play=(\w+)(?:\.(\w+))?/); const gm = m && GAMES.find(x => x.id === m[1]); if (gm) { gm.room = m[2] || ''; launch(gm); history.replaceState(null, '', location.pathname + location.search); } }
+function deep() { const m = location.hash.match(/^#play=(\w+)(?:\.(\w+))?/); const gm = m && GAMES.find(x => x.id === m[1]); if (!gm && window.top !== window && !/[?&]bo=/.test(location.search)) { toList(); return; } if (gm) { gm.room = m[2] || ''; launch(gm); history.replaceState(null, '', location.pathname + location.search); } }
 deep(); addEventListener('hashchange', deep);
 /* online ranglista: az adatokat a HGWS főoldal küldi (ott van a bejelentkezés) */
 let LB = null, lbt = 'all';
