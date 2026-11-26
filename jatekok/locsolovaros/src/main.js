@@ -1,25 +1,25 @@
 // HGWS: Locsoló Város – főciklus és összekötés
 import * as THREE from 'three';
-import * as W from './world.js?v=202611260118';
-import { initTextures } from './textures.js?v=202611260118';
-import { createRender } from './render.js?v=202611260118';
-import { createCity } from './city.js?v=202611260118';
-import { createInput } from './input.js?v=202611260118';
-import { createPlayer, pose } from './player.js?v=202611260118';
-import { makeVehicle, stepVehicle, syncModel, collidePair, radius } from './physics.js?v=202611260118';
-import { VEH, repair } from './vehicles.js?v=202611260118';
-import { createPeds } from './npc.js?v=202611260118';
-import { createTraffic } from './traffic.js?v=202611260118';
-import { createFX } from './fx.js?v=202611260118';
-import { createWeapons, WEAPONS } from './weapons.js?v=202611260118';
-import { createActors } from './actors.js?v=202611260118';
-import { createWanted } from './wanted.js?v=202611260118';
-import { createAudio } from './audio.js?v=202611260118';
-import { createMarkers, createMissions, MAIN } from './missions.js?v=202611260118';
-import { createJobs } from './jobs.js?v=202611260118';
-import { createUI } from './ui.js?v=202611260118';
-import { createCamera, createCine } from './cine.js?v=202611260118';
-import { createDev } from './dev.js?v=202611260118';
+import * as W from './world.js?v=202611261117';
+import { initTextures } from './textures.js?v=202611261117';
+import { createRender } from './render.js?v=202611261117';
+import { createCity } from './city.js?v=202611261117';
+import { createInput } from './input.js?v=202611261117';
+import { createPlayer, pose, equipWeapons } from './player.js?v=202611261117';
+import { makeVehicle, stepVehicle, syncModel, collidePair, radius } from './physics.js?v=202611261117';
+import { VEH, repair } from './vehicles.js?v=202611261117';
+import { createPeds } from './npc.js?v=202611261117';
+import { createTraffic } from './traffic.js?v=202611261117';
+import { createFX } from './fx.js?v=202611261117';
+import { createWeapons, WEAPONS } from './weapons.js?v=202611261117';
+import { createActors } from './actors.js?v=202611261117';
+import { createWanted } from './wanted.js?v=202611261117';
+import { createAudio } from './audio.js?v=202611261117';
+import { createMarkers, createMissions, MAIN } from './missions.js?v=202611261117';
+import { createJobs } from './jobs.js?v=202611261117';
+import { createUI } from './ui.js?v=202611261117';
+import { createCamera, createCine } from './cine.js?v=202611261117';
+import { createDev } from './dev.js?v=202611261117';
 
 const SAVE_KEY = 'hgws-locsolovaros-v1', SET_KEY = 'hgws-locsolovaros-settings';
 const newSave = () => ({ v: 1, money: 500, mission: 0, props: {}, garage: {}, jumps: {}, zero: 0, stats: { time: 0, dist: 0 }, log: [], weapons: null, pos: { x: 136, z: 27 }, tod: 9, day: 1 });
@@ -65,6 +65,7 @@ ctx.audio.onRadio = e => { if (!ctx.player.veh) return; if (e.type === 'song') c
 ctx.input.onKonami = () => ctx.dev.activate();
 ctx.onWaterGround = (x, z) => ctx.missions.onWater(x, z);
 const pl = ctx.player;
+equipWeapons(pl.model, WEAPONS.map(w => w.id));
 /* ---------- segédek ---------- */
 ctx.money = (d, why) => { S.money = Math.max(0, Math.round(S.money + d)); S.log.push([Math.round(d), why || '']); if (S.log.length > 60) S.log.shift(); if (d > 0) ctx.audio.money(); };
 ctx.stat = k => { S.stats[k] = (S.stats[k] || 0) + 1; };
@@ -200,6 +201,7 @@ function step(dt, wheelHeld) {
     const b = nearestEnterable(); ctx.prompt = b && !cin && !pl.dead ? `[F] ${b.driver?.npc ? 'Elvétel: ' : 'Beszállás: '}${VEH[b.id]?.n}` : '';
     if (W.inRiver(pl.pos.x, pl.pos.z) && pl.pos.y < -.6) pl.wetT = 1;
   }
+  pl.model.userData.setWeapon(v || pl.swim ? -1 : ctx.weapons.st.cur);
   if (v) ctx.prompt = '';
   pl.wetT = Math.max(0, (pl.wetT || 0) - dt * .25); if (!v && pl.hp < 100 && pl.hp > 0) pl.hp = Math.min(100, pl.hp + dt * .4);
   S.stats.time += dt;

@@ -1,8 +1,8 @@
 // Saját járműfizika (árkád, de súlyos): kétnyomú autómodell tapadási határral és sodródással, ballisztikus ugrás, ütközés-impulzus,
 // sérülés (horpadás, szélvédő, füst, tűz), moped dőléssel, koaxiális helikopter, lánctalpas tank forgó toronnyal.
 import * as THREE from 'three';
-import * as W from './world.js?v=202611260118';
-import { VEH, buildVehicle, dent } from './vehicles.js?v=202611260118';
+import * as W from './world.js?v=202611261117';
+import { VEH, buildVehicle, dent } from './vehicles.js?v=202611261117';
 
 const G = 9.81, clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 let UID = 1;
@@ -47,7 +47,12 @@ export function stepVehicle(b, I, dt, env) {
   // függőleges: ballisztikus előrejelzés
   const gy = W.surfaceY(b.pos.x + b.vel.x * dt, b.pos.z + b.vel.z * dt, b.pos.y, b.kind === 'tank' ? 1 : .7);
   if (b.air) { b.vy -= G * dt; const ny = b.pos.y + b.vy * dt; if (ny <= gy) { const imp = -b.vy; b.pos.y = gy; b.vy = 0; b.air = false; env.onLand?.(b, imp, b.airT); b.airT = 0; if (imp > 9) hurt(b, (imp - 9) * 30, env); } else b.pos.y = ny; }
-  else { const yp = b.pos.y + (b.vy - G * dt) * dt; if (yp > gy + .03 && b.vy > -50) { b.air = true; b.vy -= G * dt; b.pos.y = yp; } else { b.vy = clamp((gy - b.pos.y) / dt, -30, 25); b.pos.y = gy; } }
+  else { // a padka / járdaszél lépcső: nem ad függőleges sebességet, csak a rugózás jelzi (látvány)
+    const yp = b.pos.y + (b.vy - G * dt) * dt, d = gy - b.pos.y, hs = Math.hypot(b.vel.x, b.vel.z), slope = hs * dt * .65 + .015;
+    if (yp > gy + .03 && (d < -.35 || b.vy > 1.2)) { b.air = true; b.vy -= G * dt; b.pos.y = yp; }
+    else if (Math.abs(d) > slope) { b.bump = clamp((b.bump || 0) - d, -.35, .35); b.vy = 0; b.pos.y = gy; }
+    else { b.vy = clamp(d / dt, -30, 25); b.pos.y = gy; } }
+  if (b.bump) { b.bump *= Math.max(0, 1 - dt * 9); if (Math.abs(b.bump) < .002) b.bump = 0; }
   b.pos.x += b.vel.x * dt; b.pos.z += b.vel.z * dt;
   // folyó: elsüllyed
   if (W.inRiver(b.pos.x, b.pos.z) && b.pos.y < .5) { b.sink = Math.min(1.2, b.sink + dt * .35); b.vel.multiplyScalar(1 - dt * 2); b.pos.y = Math.max(-1.5 - b.sink * 2, b.pos.y); b.air = false; b.vy = 0; }
@@ -118,7 +123,7 @@ export function collidePair(a, c, env) {
 }
 /* modell szinkronizálása */
 export function syncModel(b, t, dt) {
-  const g = b.model.g; g.position.copy(b.pos); if (b.sink) g.position.y -= b.sink * .8;
+  const g = b.model.g; g.position.copy(b.pos); if (b.sink) g.position.y -= b.sink * .8; if (b.bump) g.position.y += b.bump;
   g.rotation.set(0, 0, 0); g.rotateY(b.yaw); g.rotateX(b.pitch); g.rotateZ(b.roll + b.lean);
   for (const w of b.model.wheels) { if (w.front) w.pivot.rotation.y = b.steer * (b.kind === 'bike' ? .6 : 1); w.mesh.rotation.x -= b.vf * dt / b.J.r; }
   if (b.model.rotors) { b.model.rotors[0].rotation.y += b.rotor * dt * 40; b.model.rotors[1].rotation.y -= b.rotor * dt * 40; }

@@ -1,8 +1,8 @@
 // Teljes modellű szereplők: vízügyi ellenőrök gyalog, Szilárd emberei, a történet alakjai, taxiutasok.
 import * as THREE from 'three';
-import * as W from './world.js?v=202611260118';
-import { buildHuman, pose, LOOKS } from './player.js?v=202611260118';
-import { WEAPONS } from './weapons.js?v=202611260118';
+import * as W from './world.js?v=202611261117';
+import { buildHuman, pose, LOOKS, buildWeapon } from './player.js?v=202611261117';
+import { WEAPONS } from './weapons.js?v=202611261117';
 
 export function createActors(ctx) {
   const list = [], V = new THREE.Vector3();
@@ -10,7 +10,7 @@ export function createActors(ctx) {
     spawn(o) { const look = typeof o.look === 'string' ? LOOKS[o.look] : o.look, m = buildHuman(look || LOOKS.goon); ctx.scene.add(m);
       const a = { model: m, pos: new THREE.Vector3(o.x, W.surfaceY(o.x, o.z, o.y ?? 99, o.y !== undefined ? .6 : 0), o.z), yaw: o.yaw || 0, vel: new THREE.Vector3(), vy: 0, hp: o.hp ?? 60, maxHp: o.hp ?? 60, team: o.team || 'npc', ai: o.ai || 'idle',
         weapon: o.weapon ?? (o.team === 'cop' || o.team === 'goon' ? 1 : 0), cool: Math.random(), state: 'idle', downT: 0, tag: o.tag || '', name: o.name || '', anim: o.anim || 'idle', speed: o.speed || 4.2, target: o.target || null, range: o.range || 40, onDown: o.onDown, life: o.life || 0, held: 0 };
-      m.position.copy(a.pos); m.rotation.y = a.yaw; if (a.weapon) addGun(m, a.team); list.push(a); return a; },
+      m.position.copy(a.pos); m.rotation.y = a.yaw; if (a.weapon) addGun(m, a.team, a.weapon); list.push(a); return a; },
     remove(a) { ctx.scene.remove(a.model); const i = list.indexOf(a); if (i >= 0) list.splice(i, 1); },
     clear(tag) { for (const a of [...list]) if (!tag || a.tag === tag) api.remove(a); },
     damage(a, k, fx, fz, src) { if (a.hp <= 0) return; a.hp -= k; a.hitT = .3; if (a.ai === 'idle' && a.team !== 'npc') a.ai = 'hunt';
@@ -42,5 +42,4 @@ export function createActors(ctx) {
     } };
   return api;
 }
-function addGun(m, team) { const g = m.userData.gun, c = team === 'cop' ? 0x1f8fd6 : 0xff6b2a, b = new THREE.Mesh(new THREE.BoxGeometry(.06, .12, .26), new THREE.MeshStandardMaterial({ color: c, roughness: .4 })); b.position.set(0, -.02, -.1); g.add(b);
-  const t = new THREE.Mesh(new THREE.SphereGeometry(.06, 8, 6), new THREE.MeshStandardMaterial({ color: 0x8fd3ff, transparent: true, opacity: .7 })); t.position.set(0, .07, -.02); g.add(t); }
+function addGun(m, team, w) { m.userData.gun.add(buildWeapon(w === 4 ? 'puska' : 'pisztoly', team === 'cop' ? 0x1f8fd6 : 0xff6b2a)); }
