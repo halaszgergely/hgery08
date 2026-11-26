@@ -1,11 +1,24 @@
-// Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, áram, tornyok, egységek, hullámok, építés.
-import { TS, ITEMS, ITEM_IDS, FLOORS, WALLS, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611261601';
+// Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611261712';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
+const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
 export const FL = Object.keys(FLOORS), FLI = Object.fromEntries(FL.map((k, i) => [k, i]));
 export const WL = Object.keys(WALLS);
-const GAP = .3, BUILD_RANGE = 220, MINE_RANGE = 70, CORE_RANGE = 220, MAX_AMMO = 30, UNIT_CAP = 24, REFUND = .5;
+const GAP = .4, CVCAP = 3, BUILD_RANGE = 220, MINE_RANGE = 70, CORE_RANGE = 220, REFUND = .5;
 export const PLAYER = 1, ENEMY = 2;
+const NONSOLID = new Set(['conveyor', 'sconv', 'conduit', 'junction', 'ljunction', 'mine']);
+export const isSolid = b => !(NONSOLID.has(b.B.type) || (b.B.type === 'lrouter' && b.B.s === 1));
+const UNDER = b => !isSolid(b) || (b.B.type === 'node' && b.B.s === 1);
+const POW_T = new Set(['generator', 'battery', 'node', 'diode']);
+export const isPow = b => POW_T.has(b.B.type) || !!b.B.power;
+const pureCons = b => b.B.power && b.B.type !== 'generator' && b.B.type !== 'battery';
+const wireless = b => b.B.type === 'node' || b.B.type === 'diode';
+export function buildTime(B) { let c = 20; for (const k in B.cost) c += B.cost[k] * ITEMS[k].cost; return c; }
+const wr = w => w.len || (w.k === 'bomb' ? 8 : w.sp * w.life);
+for (const k in UNITS) { const U = UNITS[k]; U.rng = Math.max(0, ...U.w.map(wr)); }
+const sum = o => { let s = 0; for (const k in o) s += o[k]; return s; };
+const lqOk = (b, L) => !L || (b.lt === L[0] && b.lq >= L[1]);
 
 /* ---------- véletlen, zaj ---------- */
 export function rng(seed) { let a = seed >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -14,11 +27,11 @@ function hash2(x, y, s) { let h = Math.imul(x, 374761393) + Math.imul(y, 6682652
 function vn(x, y, s) { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy); const a = hash2(ix, iy, s), b = hash2(ix + 1, iy, s), c = hash2(ix, iy + 1, s), d = hash2(ix + 1, iy + 1, s); return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v; }
 function fbm(x, y, s) { return vn(x, y, s) * .57 + vn(x * 2.1, y * 2.1, s + 7) * .29 + vn(x * 4.3, y * 4.3, s + 13) * .14; }
 
-/* ---------- térkép ---------- */
-const BIOMES = { grass: ['grass', 'stone', 'rock', 'sandf'], ice: ['ice', 'snow', 'snowrock', 'darksand'], stone: ['stone', 'dark', 'rock', 'sandf'], snow: ['snow', 'ice', 'snowrock', 'darksand'], sand: ['darksand', 'sandf', 'sandrock', 'sandf'], dark: ['dark', 'metal', 'darkrock', 'darksand'] };
-export function genMap(sec) {
+/* ---------- régi térképgenerátor (csak a korábbi mentésekhez) ---------- */
+const BIOMES_OLD = { grass: ['grass', 'stone', 'rock', 'sandf'], ice: ['ice', 'snow', 'snowrock', 'darksand'], stone: ['stone', 'dark', 'rock', 'sandf'], snow: ['snow', 'ice', 'snowrock', 'darksand'], sand: ['darksand', 'sandf', 'sandrock', 'sandf'], dark: ['dark', 'metal', 'darkrock', 'darksand'] };
+export function genMapOld(sec) {
   const w = sec.w, h = sec.h, N = w * h, s = hstr(sec.id) % 100000, wq = sec.water || 1, R = rng(hstr(sec.id) ^ 0x9e3779b9);
-  const floor = new Uint8Array(N), ore = new Uint8Array(N), wall = new Uint8Array(N), bio = BIOMES[sec.biome];
+  const floor = new Uint8Array(N), ore = new Uint8Array(N), wall = new Uint8Array(N), bio = BIOMES_OLD[sec.biome];
   const wallT = WL.indexOf(bio[2]) + 1;
   const cx = Math.round(w * .2), cy = Math.round(h * (.5 + (R() - .5) * .25));
   const spawns = [{ x: w - 7, y: Math.round(h * (.3 + R() * .4)) }];
@@ -75,65 +88,189 @@ export function genMap(sec) {
   return { floor, ore, wall, coreAt: { x: cx - 1, y: cy - 1 }, spawns };
 }
 
-/* ---------- segédek ---------- */
-const BSET = (...a) => new Set(a);
-const POWER_T = BSET('generator', 'battery', 'node');
-export const isPow = b => POWER_T.has(b.B.type) || !!b.B.power;
-export function buildTime(B) { let c = 2; for (const k in B.cost) c += B.cost[k] * ITEMS[k].cost; return c * 1.4; }
-const ammoOf = (B, it) => B.ammo && B.ammo[it];
+/* ---------- térképgenerátor: barlangtermek folyosókkal, több biom, ritka ércfoltok ---------- */
+export function genMap(sec) {
+  const w = sec.w, h = sec.h, N = w * h, s = hstr(sec.id) % 100000, R = rng(hstr(sec.id) ^ 0x51ed270b), wq = sec.water || 1;
+  const floor = new Uint8Array(N), ore = new Uint8Array(N), wall = new Uint8Array(N), open = new Uint8Array(N), keep = new Uint8Array(N);
+  const bl = (sec.biomes || [sec.biome]).map(k => BIO[k]), F = i => FLOORS[FL[floor[i]]];
+  // termek
+  const SEP = 30, ms = Math.sqrt(N) * .2, rooms = [];
+  for (let t = 0, T = Math.max(400, N / 30); t < T; t++) {
+    const x = 16 + R() * (w - 32), y = 16 + R() * (h - 32);
+    if (rooms.length > 3 && fbm(x / ms, y / ms, s + 77) < .42) continue;
+    if (rooms.some(r => (r.x - x) ** 2 + (r.y - y) ** 2 < SEP * SEP)) continue;
+    rooms.push({ x, y, r: 9 + R() * 8, ph: R() * 9 });
+  }
+  let mx = 0, my = 0; for (const r of rooms) { mx += r.x; my += r.y; } mx /= rooms.length; my /= rooms.length;
+  const core = rooms.reduce((a, b) => (a.x - mx) ** 2 + (a.y - my) ** 2 > (b.x - mx) ** 2 + (b.y - my) ** 2 ? a : b); core.r = Math.max(core.r, 15);
+  const cx = Math.round(core.x), cy = Math.round(core.y);
+  // feszítőfa + néhány hurok
+  const n = rooms.length, inT = new Uint8Array(n), best = new Float64Array(n).fill(1e18), par = new Int32Array(n).fill(-1), edges = [], has = new Set(); best[0] = 0;
+  for (let k = 0; k < n; k++) {
+    let u = -1; for (let i = 0; i < n; i++) if (!inT[i] && (u < 0 || best[i] < best[u])) u = i; inT[u] = 1; if (par[u] >= 0) { edges.push([u, par[u]]); has.add(Math.min(u, par[u]) * n + Math.max(u, par[u])); }
+    for (let v = 0; v < n; v++) if (!inT[v]) { const d = (rooms[u].x - rooms[v].x) ** 2 + (rooms[u].y - rooms[v].y) ** 2; if (d < best[v]) { best[v] = d; par[v] = u; } }
+  }
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) if (Math.hypot(rooms[i].x - rooms[j].x, rooms[i].y - rooms[j].y) < SEP * 1.7 && !has.has(i * n + j) && R() < .3) edges.push([i, j]);
+  for (const r of rooms) {
+    const q = Math.ceil(r.r * 1.45);
+    for (let y = Math.max(2, Math.floor(r.y - q)); y <= Math.min(h - 3, r.y + q); y++) for (let x = Math.max(2, Math.floor(r.x - q)); x <= Math.min(w - 3, r.x + q); x++) {
+      const a = Math.atan2(y - r.y, x - r.x), e = r.r * (.85 + .2 * Math.sin(a * 3 + r.ph) + .12 * Math.sin(a * 5 + r.ph * 2.3)) + (fbm(x / 6, y / 6, s + 41) - .5) * r.r * .6;
+      if (Math.hypot(x - r.x, y - r.y) < e) open[y * w + x] = 1;
+    }
+  }
+  for (let i = 0; i < N; i++) if (open[i] && fbm((i % w) / 7, Math.floor(i / w) / 7, s + 50) > .73) open[i] = 0;        // sziklatömbök a termekben
+  for (const [a, b] of edges) {
+    const A = rooms[a], Bq = rooms[b], len = Math.hypot(Bq.x - A.x, Bq.y - A.y), nx = -(Bq.y - A.y) / len, ny = (Bq.x - A.x) / len, amp = Math.min(12, len * .12) * (R() - .5) * 2, fr = 1 + Math.floor(R() * 2), wd = 3 + R() * 2.5;
+    for (let t = 0; t <= len; t += .7) {
+      const f = t / len, off = Math.sin(f * Math.PI * fr) * amp * Math.sin(f * Math.PI), px = A.x + (Bq.x - A.x) * f + nx * off, py = A.y + (Bq.y - A.y) * f + ny * off, rr = wd + (fbm(px / 9, py / 9, s + 60) - .5) * 3, q = Math.ceil(rr);
+      for (let y = Math.floor(py - q); y <= py + q; y++) for (let x = Math.floor(px - q); x <= px + q; x++) { if (x < 2 || y < 2 || x >= w - 2 || y >= h - 2) continue; const d = Math.hypot(x - px, y - py); if (d <= rr) { open[y * w + x] = 1; if (d <= 2.2) keep[y * w + x] = 1; } }
+    }
+  }
+  const disc = (x0, y0, r, fn) => { for (let y = y0 - r; y <= y0 + r; y++) for (let x = x0 - r; x <= x0 + r; x++) if (x >= 2 && y >= 2 && x < w - 2 && y < h - 2 && (x - x0) ** 2 + (y - y0) ** 2 <= r * r + r) fn(y * w + x); };
+  disc(cx, cy, 10, i => { open[i] = 1; keep[i] = 1; });
+  // biomok: eltorzított Voronoi-foltok
+  const bs = [[cx, cy, 0]]; if (bl.length > 1) for (let k = 0, K = Math.round(N / 24000) + bl.length; k < K; k++) bs.push([R() * w, R() * h, k % bl.length]);
+  const bioAt = (x, y) => { if (bl.length === 1) return bl[0]; const X = x + (fbm(x / 23, y / 23, s + 800) - .5) * 46, Y = y + (fbm(x / 23, y / 23, s + 801) - .5) * 46; let bi = 0, bd = 1e18; for (let k = 0; k < bs.length; k++) { const d = (X - bs[k][0]) ** 2 + (Y - bs[k][1]) ** 2; if (d < bd) { bd = d; bi = k; } } return bl[bs[bi][2]]; };
+  const near = open.slice(); for (let p = 0; p < 3; p++) { const src = near.slice(); for (let i = w; i < N - w; i++) if (!src[i] && (src[i - 1] || src[i + 1] || src[i - w] || src[i + w])) near[i] = 1; }
+  const w0 = WL.indexOf(bl[0].wall) + 1, f0 = FLI[bl[0].f[0]];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x; if (!near[i]) { wall[i] = w0; floor[i] = f0; continue; }
+    const b = bioAt(x, y); if (!open[i]) { wall[i] = WL.indexOf(b.wall) + 1; floor[i] = FLI[b.f[0]]; continue; }
+    const m = fbm(x / 9, y / 9, s + 101), sd = fbm(x / 11, y / 11, s + 202);
+    let f = m > .58 ? b.f[1] : b.f[0];
+    if (b.x && fbm(x / 8, y / 8, s + 404) > .76 - b.x[1] * .6) f = b.x[0];
+    if (sd > .8 - sec.sand * .3) f = sd > .84 - sec.sand * .3 ? 'sandf' : b.sand;
+    if (b.liq && !keep[i]) { const wa = fbm(x / 17, y / 17, s + 303), q = (b.lq || 1) * wq - 1; if (wa < .27 + q * .09) f = wa < .21 + q * .08 ? b.liq[1] : b.liq[0]; }
+    else if (FLOORS[f].liq && keep[i]) f = b.f[0];
+    floor[i] = FLI[f];
+  }
+  // elérhetőség a magtól, kezdőpontok
+  const dist = new Int32Array(N).fill(-1), qu = new Int32Array(N); let qh = 0, qt = 0; dist[cy * w + cx] = 0; qu[qt++] = cy * w + cx;
+  while (qh < qt) { const i = qu[qh++]; for (const d of [1, -1, w, -w]) { const j = i + d; if (j < 0 || j >= N || dist[j] >= 0 || wall[j] || F(j).deep) continue; dist[j] = dist[i] + 1; qu[qt++] = j; } }
+  const cand = rooms.filter(r => r !== core).map(r => ({ r, d: dist[Math.round(r.y) * w + Math.round(r.x)] })).filter(c => c.d > 40);
+  const maxD = Math.max(60, ...cand.map(c => c.d)), T = Math.min(maxD * .8, 240 + Math.sqrt(N) * .12), spawns = [];
+  if (cand.length) {
+    const first = cand.reduce((a, b) => Math.abs(a.d - T) < Math.abs(b.d - T) ? a : b); spawns.push({ x: Math.round(first.r.x), y: Math.round(first.r.y) });
+    const far = cand.filter(c => c.d >= T * .6 && c.d <= T * 1.25);
+    while (spawns.length < (sec.sp || 1) && far.length) { const sep = c => Math.min(...spawns.map(p => Math.hypot(p.x - c.r.x, p.y - c.r.y))), b = far.reduce((a, c) => sep(a) > sep(c) ? a : c); if (sep(b) < 30) break; spawns.push({ x: Math.round(b.r.x), y: Math.round(b.r.y) }); }
+  } else { let bi = 0; for (let i = 0; i < N; i++) if (dist[i] > dist[bi]) bi = i; spawns.push({ x: bi % w, y: Math.floor(bi / w) }); }
+  for (const sp of spawns) disc(sp.x, sp.y, 6, i => { wall[i] = 0; if (F(i).liq) floor[i] = f0; });
+  // ércfoltok: ritkák, de nagyobbak; a titán és a tórium a magtól távolabb
+  let FA = 0; for (let i = 0; i < N; i++) if (!wall[i] && !F(i).liq) FA++;
+  const ok = i => !wall[i] && !F(i).liq;
+  ITEM_IDS.forEach((id, k) => {
+    const fr = sec.ores[id]; if (!fr || id === 'sand') return;
+    const rare = id === 'titanium' || id === 'thorium', minD = id === 'titanium' ? 34 : id === 'thorium' ? 60 : 13, cnt = Math.max(rare ? 2 : 1, Math.round(FA / 2000 * fr * (id === 'scrap' ? .7 : 1)));
+    for (let q = 0, tries = 0; q < cnt && tries < cnt * 80; tries++) {
+      const x0 = 4 + Math.floor(R() * (w - 8)), y0 = 4 + Math.floor(R() * (h - 8)), i0 = y0 * w + x0;
+      if (!ok(i0) || ore[i0] || Math.hypot(x0 - cx, y0 - cy) < minD || !ok(i0 + 2) || !ok(i0 - 2) || !ok(i0 + 2 * w) || !ok(i0 - 2 * w)) continue;
+      q++; const r = 2.2 + R() * 2.4, rr = Math.ceil(r + 1.5), ph = R() * 9;
+      for (let y = y0 - rr; y <= y0 + rr; y++) for (let x = x0 - rr; x <= x0 + rr; x++) {
+        if (x < 2 || y < 2 || x >= w - 2 || y >= h - 2 || !ok(y * w + x)) continue;
+        const a = Math.atan2(y - y0, x - x0); if (Math.hypot(x - x0, y - y0) <= r * (1 + .28 * Math.sin(a * 3 + ph) + .15 * Math.sin(a * 5 + ph * 2))) ore[y * w + x] = k + 1;
+      }
+    }
+  });
+  const patch = (id, x0, y0, r) => { const k = ITEM_IDS.indexOf(id) + 1; disc(x0, y0, Math.ceil(r), i => { if (Math.hypot(i % w - x0, Math.floor(i / w) - y0) > r + R() * .8) return; wall[i] = 0; if (!F(i).ore || F(i).liq) floor[i] = f0; ore[i] = k; }); };
+  const sd = cy > h / 2 ? -1 : 1;
+  patch('copper', cx + 6, cy + 6 * sd, 2.6); patch('lead', cx + 7, cy - 6 * sd, 2.2); patch('copper', cx - 6, cy - 7 * sd, 2);
+  if (sec.ores.coal) patch('coal', cx - 7, cy + 7 * sd, 2.2);
+  if (sec.ores.scrap) patch('scrap', cx + 11, cy, 1.6);
+  for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx + 11; x <= cx + 14; x++) { const i = y * w + x; if (x < w - 2 && !ore[i]) { wall[i] = 0; floor[i] = FLI.sandf; } }
+  for (const sp of spawns) for (let y = sp.y - 1; y <= sp.y + 1; y++) for (let x = sp.x - 1; x <= sp.x + 1; x++) { floor[y * w + x] = FLI.spawn; ore[y * w + x] = 0; }
+  for (let y = cy - 3; y <= cy + 3; y++) for (let x = cx - 3; x <= cx + 3; x++) ore[y * w + x] = 0;
+  return { floor, ore, wall, coreAt: { x: cx - 1, y: cy - 1 }, spawns };
+}
+
+/* ---------- kupac az útkereséshez ---------- */
+class Heap {
+  constructor(n) { this.k = new Float32Array(n); this.v = new Int32Array(n); this.n = 0; this.top = 0; }
+  push(key, val) { if (this.n === this.k.length) { const k = new Float32Array(this.n * 2), v = new Int32Array(this.n * 2); k.set(this.k); v.set(this.v); this.k = k; this.v = v; } let i = this.n++; const K = this.k, V = this.v; while (i > 0) { const p = (i - 1) >> 1; if (K[p] <= key) break; K[i] = K[p]; V[i] = V[p]; i = p; } K[i] = key; V[i] = val; }
+  pop() { const K = this.k, V = this.v, top = V[0], n = --this.n; this.top = K[0]; if (n > 0) { const key = K[n], val = V[n]; let i = 0; for (;;) { let c = 2 * i + 1; if (c >= n) break; if (c + 1 < n && K[c + 1] < K[c]) c++; if (K[c] >= key) break; K[i] = K[c]; V[i] = V[c]; i = c; } K[i] = key; V[i] = val; } return top; }
+}
+const rle = a => { const o = []; let v = 0, n = 0; for (let i = 0; i < a.length; i++) { if ((a[i] ? 1 : 0) === v) n++; else { o.push(n.toString(36)); v ^= 1; n = 1; } } o.push(n.toString(36)); return o.join('.'); };
+const unrle = (s, a) => { let i = 0, v = 0; for (const p of s.split('.')) { const n = parseInt(p, 36); if (v) a.fill(1, i, i + n); i += n; v ^= 1; } };
 
 export class World {
   constructor(sec, save) {
-    const m = genMap(sec); Object.assign(this, m);
-    this.sec = sec; this.w = sec.w; this.h = sec.h;
-    this.bt = new Array(this.w * this.h).fill(null);
-    this.blds = []; this.units = []; this.bullets = []; this.fx = []; this.plans = []; this.msgs = [];
-    this.wave = 0; this.wtimer = sec.wt * 60 * 1.6; this.tick = 0; this.ver = 1; this.pdirty = 1; this.fdirty = 1; this.flowT = 0;
+    Object.assign(this, sec.gen === 1 ? genMapOld(sec) : genMap(sec));
+    this.sec = sec; this.w = sec.w; this.h = sec.h; const N = this.w * this.h, w = this.w;
+    this.bt = new Array(N).fill(null); this.sol = new Uint8Array(N); this.nearW = new Uint8Array(N);
+    for (let i = 0; i < N; i++) this.sol[i] = this.wall[i] || this.fl(i).deep ? 1 : 0;
+    for (let i = w; i < N - w; i++) if (!this.sol[i] && (this.sol[i - 1] || this.sol[i + 1] || this.sol[i - w] || this.sol[i + w])) this.nearW[i] = 1;
+    this.fog = sec.fog !== 0 && sec.gen !== 1; this.seen = new Uint8Array(N); if (!this.fog) this.seen.fill(1); this.seenNew = [];
+    this.blds = []; this.units = []; this.bullets = []; this.fx = []; this.plans = []; this.msgs = []; this.rebuild = []; this.shields = [];
+    this.wave = 0; this.wtimer = sec.wt * 60 * 1.6; this.tick = 0; this.ver = 1; this.pdirty = 1; this.fdirty = 0; this.flowT = 0; this.fjob = null; this.nEn = 0; this.capV = -1;
     this.won = false; this.lost = false; this.graphs = []; this.flow = null; this.ctl = { mx: 0, my: 0, ax: 0, ay: 0, shoot: false };
     this.stats = { kills: 0, built: 0 };
-    this.core = this.addB('core', this.coreAt.x, this.coreAt.y, 0);
-    this.core.items = {}; for (const k in sec.start) this.core.items[k] = sec.start[k];
+    const ct = save && BLOCKS[save.core] ? save.core : 'core';
+    this.core = this.addB(ct, save && save.cx != null ? save.cx : this.coreAt.x, save && save.cy != null ? save.cy : this.coreAt.y, 0);
+    for (const k in sec.start) this.core.items[k] = sec.start[k];
+    for (const sp of this.spawns) this.reveal((sp.x + .5) * TS, (sp.y + .5) * TS, 7);
     this.player = null; this.respawn = 0;
     if (save) this.load(save);
-    this.spawnPlayer();
-    this.calcFlow();
+    this.spawnPlayer(); this.fjob = this.flowBegin(); this.flowRun(1e9); this.fdirty = 0;
   }
   /* ----- mezők ----- */
   inb(x, y) { return x >= 0 && y >= 0 && x < this.w && y < this.h; }
   tb(x, y) { return this.inb(x, y) ? this.bt[y * this.w + x] : null; }
   fl(i) { return FLOORS[FL[this.floor[i]]]; }
-  solidG(i) { return this.wall[i] || this.fl(i).deep; }
-  mineItem(i, tier = 9) { const o = this.ore[i]; let it = o ? ITEM_IDS[o - 1] : this.fl(i).ore; if (!it || this.wall[i]) return null; return ITEMS[it].h <= tier ? it : null; }
-  tbDir(b, d) { const s = b.B.s; if (s === 1) return this.tb(b.x + DX[d], b.y + DY[d]); return null; }
+  solidG(i) { return this.sol[i]; }
+  mineItem(i, tier = 9) { const o = this.ore[i]; const it = o ? ITEM_IDS[o - 1] : this.fl(i).ore; if (!it || this.wall[i]) return null; return ITEMS[it].h <= tier ? it : null; }
+  front(b, d = b.rot) { const s = b.B.s, o = (s - 1) >> 1; return this.tb(b.x + o + DX[d] * (d === 0 ? s - o : d === 2 ? o + 1 : 0), b.y + o + DY[d] * (d === 1 ? s - o : d === 3 ? o + 1 : 0)); }
   center(b) { return { x: (b.x + b.B.s / 2) * TS, y: (b.y + b.B.s / 2) * TS }; }
   sideOf(t, src) { const dx = (src.x + src.B.s / 2) - (t.x + t.B.s / 2), dy = (src.y + src.B.s / 2) - (t.y + t.B.s / 2); return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 0 : 2) : (dy > 0 ? 1 : 3); }
   nbs(b) {
     if (b.nbv === this.ver) return b.nb;
     const s = b.B.s, set = new Set();
-    for (let k = 0; k < s; k++) { for (const [x, y] of [[b.x + s, b.y + k], [b.x + k, b.y + s], [b.x - 1, b.y + k], [b.x + k, b.y - 1]]) { const o = this.tb(x, y); if (o && o !== b) set.add(o); } }
+    for (let k = 0; k < s; k++) for (const [x, y] of [[b.x + s, b.y + k], [b.x + k, b.y + s], [b.x - 1, b.y + k], [b.x + k, b.y - 1]]) { const o = this.tb(x, y); if (o && o !== b) set.add(o); }
     b.nb = [...set]; b.nbv = this.ver; return b.nb;
   }
   msg(t, c) { this.msgs.push({ t, c: c || '', life: 240 }); }
+  reveal(px, py, r) {
+    if (!this.fog) return; const tx = Math.floor(px / TS), ty = Math.floor(py / TS), w = this.w, S = this.seen, r2 = r * r + r;
+    for (let y = Math.max(0, ty - r); y <= Math.min(this.h - 1, ty + r); y++) for (let x = Math.max(0, tx - r); x <= Math.min(w - 1, tx + r); x++) { const i = y * w + x; if (!S[i] && (x - tx) ** 2 + (y - ty) ** 2 <= r2) { S[i] = 1; this.seenNew.push(i); } }
+  }
+  coreCap() { if (this.capV !== this.ver) { this.capV = this.ver; let c = this.core.B.cap; for (const o of this.nbs(this.core)) if (o.B.type === 'storage') { c += o.B.cap; for (const k in o.items) this.core.items[k] = (this.core.items[k] || 0) + o.items[k]; o.items = {}; } this.capN = c; } return this.capN; }
+  linked(b) { return b.B.type === 'storage' && this.nbs(b).includes(this.core); }
 
   /* ----- épületek ----- */
   addB(t, x, y, rot = 0, cfg = null) {
-    const B = BLOCKS[t], b = { t, B, x, y, rot, i: y * this.w + x, hp: B.hp, items: {}, di: 0, ps: 0, pgen: 0, pneed: 0, cfg, team: PLAYER, work: 0, prog: 0, hit: 0 };
+    const B = BLOCKS[t], b = { t, B, x, y, rot, i: y * this.w + x, hp: B.hp, items: {}, di: 0, ps: 0, pgen: 0, pneed: 0, cfg, work: 0, prog: 0, hit: 0, lq: 0, lt: null, oq: 0, inl: [], odT: 0, odM: 1 };
     switch (B.type) {
       case 'conveyor': b.cv = []; break;
+      case 'sconv': b.st = null; b.cd = 0; break;
       case 'junction': b.jb = [[], [], [], []]; break;
-      case 'router': b.buf = null; b.from = null; b.rt = 0; break;
-      case 'bridge': b.buf = []; b.link = -1; b.indir = -1; break;
-      case 'turret': b.ammo = []; b.ang = -Math.PI / 2; b.rl = 0; b.tgt = null; b.side = 1; b.heat = 0; b.burst = 0; break;
-      case 'generator': b.burn = 0; break;
+      case 'router': b.buf = null; b.rt = 0; break;
+      case 'bridge': case 'lbridge': b.buf = []; b.link = -1; b.indir = -1; break;
+      case 'driver': b.link = -1; b.rl = 0; b.ang = 0; break;
+      case 'turret': b.ammo = []; b.ang = -Math.PI / 2; b.rl = 0; b.tgt = null; b.side = 1; b.heat = 0; b.burst = 0; b.bd = 0; b.chg = 0; b.beamT = 0; break;
+      case 'generator': b.burn = 0; b.bm = 1; b.heat = 0; b.warm = 0; b.ft = 0; break;
       case 'battery': b.pw = 0; break;
       case 'node': b.links = []; break;
       case 'factory': if (cfg == null) b.cfg = 0; break;
-      case 'drill': b.rotA = 0; this.drillScan(b); break;
+      case 'recon': b.pay = null; break;
+      case 'shield': b.sh = 0; b.broken = false; b.bst = 0; break;
+      case 'mender': case 'overdrive': b.bst = 0; break;
+      case 'mine': b.cd = 0; break;
     }
-    b.inl = [];
     for (let yy = 0; yy < B.s; yy++) for (let xx = 0; xx < B.s; xx++) this.bt[(y + yy) * this.w + x + xx] = b;
+    this.scan(b);
     this.blds.push(b); this.ver++; this.pdirty = 1; this.fdirty = 1;
+    if (B.type === 'shield') this.shields.push(b);
+    const c = this.center(b); this.reveal(c.x, c.y, Math.ceil(B.s / 2 + (B.type === 'turret' ? B.range / TS + 2 : B.type === 'core' ? 20 : 6)));
     return b;
+  }
+  scan(b) {           // a blokk alatti talaj: érc, folyadék, hő / spóra / olaj
+    const B = b.B, cnt = {}, lq = {}; let attr = 0;
+    for (let yy = 0; yy < B.s; yy++) for (let xx = 0; xx < B.s; xx++) {
+      const i = (b.y + yy) * this.w + b.x + xx, f = this.fl(i);
+      if (B.type === 'drill') { const it = this.mineItem(i, B.tier); if (it) cnt[it] = (cnt[it] || 0) + 1; }
+      if (f.liq) lq[f.liq] = (lq[f.liq] || 0) + 1;
+      attr += f[B.attr || 'heat'] || 0;
+    }
+    let best = null, n = 0; for (const k in cnt) if (!best || (best === 'sand') > (k === 'sand') || ((best === 'sand') === (k === 'sand') && cnt[k] > n)) { best = k; n = cnt[k]; }
+    b.dItem = best; b.dCnt = n; b.attr = attr; b.pLiq = null; b.pCnt = 0; for (const k in lq) if (lq[k] > b.pCnt) { b.pLiq = k; b.pCnt = lq[k]; }
   }
   remB(b, boom) {
     const B = b.B;
@@ -141,67 +278,71 @@ export class World {
     const k = this.blds.indexOf(b); if (k >= 0) this.blds.splice(k, 1);
     for (const o of b.links || []) o.inl = o.inl.filter(z => z !== b);
     for (const o of b.inl) if (o.links) o.links = o.links.filter(z => z !== b);
+    if (B.type === 'shield') this.shields = this.shields.filter(z => z !== b);
     b.dead = 1; this.ver++; this.pdirty = 1; this.fdirty = 1;
-    if (boom) { const c = this.center(b); this.boom(c.x, c.y, B.s * 7, '#ffb347'); this.fx.push({ k: 'rubble', x: b.x, y: b.y, s: B.s, life: 1800, max: 1800 }); }
+    if (boom) { const c = this.center(b); this.boom(c.x, c.y, B.s * 7, '#ffb347'); this.fx.push({ k: 'rubble', x: b.x, y: b.y, s: B.s, life: 1800, max: 1800 }); if (B.type !== 'core' && this.rebuild.length < 400) this.rebuild.push([b.t, b.x, b.y, b.rot, b.cfg]); }
   }
-  drillScan(b) {
-    const B = b.B, cnt = {};
-    for (let yy = 0; yy < B.s; yy++) for (let xx = 0; xx < B.s; xx++) { const it = this.mineItem((b.y + yy) * this.w + b.x + xx, B.tier); if (it) cnt[it] = (cnt[it] || 0) + 1; }
-    let best = null, n = 0; for (const k in cnt) if (cnt[k] > n || (cnt[k] === n && ITEMS[k].h > ITEMS[best].h)) { best = k; n = cnt[k]; }
-    b.dItem = best; b.dCnt = n;
-  }
-  canPlace(t, x, y, rot) {
-    const B = BLOCKS[t], s = B.s;
+  swap(o, B) { if (o.B === B || o.B.s !== B.s) return false; const g = z => z.type === 'conveyor' || z.type === 'sconv' ? 1 : z.type === 'conduit' ? 2 : z.type === 'wall' ? 3 : 0; return g(o.B) && g(o.B) === g(B); }
+  okTiles(B, x, y, plans) {
+    const s = B.s, isCore = B.type === 'core';
+    if (isCore && !(B.tier > this.core.B.tier && x <= this.core.x && y <= this.core.y && x + s >= this.core.x + this.core.B.s && y + s >= this.core.y + this.core.B.s)) return false;
     for (let yy = 0; yy < s; yy++) for (let xx = 0; xx < s; xx++) {
       const X = x + xx, Y = y + yy; if (!this.inb(X, Y)) return false; const i = Y * this.w + X;
-      if (this.wall[i] || this.fl(i).deep) return false;
-      const o = this.bt[i];
-      if (o && !(s === 1 && o.B.type === 'conveyor' && B.type === 'conveyor' && o.t !== t)) return false;
-      if (this.plans.some(p => !p.brk && X >= p.x && Y >= p.y && X < p.x + p.B.s && Y < p.y + p.B.s)) return false;
+      if (this.wall[i] || (this.fl(i).deep && !B.float) || !this.seen[i]) return false;
+      const o = this.bt[i]; if (o && !(isCore && o === this.core) && !this.swap(o, B)) return false;
+      if (plans && this.plans.some(p => !p.brk && X >= p.x && Y >= p.y && X < p.x + p.B.s && Y < p.y + p.B.s)) return false;
       for (const sp of this.spawns) if ((X - sp.x) ** 2 + (Y - sp.y) ** 2 < 36) return false;
     }
-    if (B.type === 'drill') { let ok = 0; for (let yy = 0; yy < s; yy++) for (let xx = 0; xx < s; xx++) if (this.mineItem((y + yy) * this.w + x + xx, B.tier)) ok = 1; if (!ok) return false; }
     return true;
   }
+  canPlace(t, x, y) {
+    const B = BLOCKS[t], s = B.s; if (!this.okTiles(B, x, y, true)) return false;
+    const any = fn => { for (let yy = 0; yy < s; yy++) for (let xx = 0; xx < s; xx++) if (fn((y + yy) * this.w + x + xx)) return true; return false; };
+    if (B.type === 'drill') return any(i => this.mineItem(i, B.tier));
+    if (B.type === 'pump') return any(i => this.fl(i).liq);
+    if (B.mode === 'thermal') return any(i => this.fl(i).heat);
+    return true;
+  }
+  coreSpot(t) { const d = (BLOCKS[t].s - this.core.B.s) >> 1; return [this.core.x - d, this.core.y - d]; }
   plan(t, x, y, rot, cfg) {
+    const B = BLOCKS[t]; if (B.type === 'core') [x, y] = this.coreSpot(t);
     const o = this.tb(x, y);
-    if (o && o.t === t && BLOCKS[t].type === 'conveyor') { if (o.rot !== rot) { o.rot = rot; this.ver++; } return true; }
-    if (!this.canPlace(t, x, y, rot)) return false;
-    this.plans.push({ t, B: BLOCKS[t], x, y, rot, cfg: cfg ?? null, prog: 0, paid: {}, brk: false });
+    if (o && o.t === t && B.rot && B.s === 1) { if (o.rot !== rot) { o.rot = rot; this.ver++; } return true; }
+    if (!this.canPlace(t, x, y)) return false;
+    this.plans.push({ t, B, x, y, rot, cfg: cfg ?? null, prog: 0, paid: {}, brk: false });
     return true;
   }
   unplan(b) {
-    if (b.t === 'core') return false;
-    if (this.plans.some(p => p.brk && p.b === b)) return false;
+    if (b.B.type === 'core' || this.plans.some(p => p.brk && p.b === b)) return false;
     this.plans.push({ t: b.t, B: b.B, x: b.x, y: b.y, rot: b.rot, b, prog: 0, paid: {}, brk: true }); return true;
   }
-  cancelAt(x, y) { const n = this.plans.length; this.plans = this.plans.filter(p => !(x >= p.x && y >= p.y && x < p.x + p.B.s && y < p.y + p.B.s)); return n !== this.plans.length; }
+  cancelAt(x, y) { const n = this.plans.length; this.plans = this.plans.filter(p => { const hit = x >= p.x && y >= p.y && x < p.x + p.B.s && y < p.y + p.B.s; if (hit) { p.done = 1; for (const k in p.paid) this.addCore(k, p.paid[k]); } return !hit; }); return n !== this.plans.length; }
   finishPlan(p) {
-    if (p.brk) {
-      if (!p.b.dead) { for (const k in p.B.cost) this.addCore(k, Math.floor(p.B.cost[k] * REFUND)); this.remB(p.b); }
-      return;
+    p.done = 1;
+    if (p.brk) { if (!p.b.dead) { for (const k in p.B.cost) this.addCore(k, Math.floor(p.B.cost[k] * REFUND)); this.remB(p.b); } return; }
+    if (p.B.type === 'core') {
+      const old = this.core, items = old.items; this.remB(old); const nb = this.addB(p.t, p.x, p.y, 0); nb.items = items; this.core = nb;
+      const pl = this.player; if (pl && !pl.dead) { pl.t = nb.B.unit; pl.U = UNITS[pl.t]; pl.hp = pl.U.hp; pl.wc = pl.U.w.map(() => 0); } return;
     }
-    const old = this.tb(p.x, p.y);
-    if (old && old.B.type === 'conveyor' && p.B.type === 'conveyor') { for (const k in old.B.cost) this.addCore(k, old.B.cost[k]); const cv = old.cv; this.remB(old); const nb = this.addB(p.t, p.x, p.y, p.rot, p.cfg); nb.cv = cv; return; }
-    const b = this.addB(p.t, p.x, p.y, p.rot, p.cfg); this.stats.built++;
-    if (b.B.type === 'bridge') { const pb = this.lastBridge, d = pb ? Math.abs(pb.x - b.x) + Math.abs(pb.y - b.y) : 0; if (pb && !pb.dead && pb.link < 0 && (pb.x === b.x || pb.y === b.y) && d > 0 && d <= b.B.range) pb.link = b.i; this.lastBridge = b; }
-    if (b.B.type === 'node') this.autoLink(b);
-    else if (isPow(b)) this.linkToNodes(b);
+    const old = this.tb(p.x, p.y); let b;
+    if (old && this.swap(old, p.B)) { for (const k in old.B.cost) this.addCore(k, old.B.cost[k]); this.remB(old); b = this.addB(p.t, p.x, p.y, p.rot, p.cfg); if (old.cv && b.cv) b.cv = old.cv; if (old.lq && b.B.lcap) { b.lq = Math.min(old.lq, b.B.lcap); b.lt = old.lt; } }
+    else b = this.addB(p.t, p.x, p.y, p.rot, p.cfg);
+    this.stats.built++; const T = b.B.type;
+    if (T === 'bridge' || T === 'lbridge') { const pb = this['last_' + b.t], d = pb ? Math.abs(pb.x - b.x) + Math.abs(pb.y - b.y) : 0; if (pb && !pb.dead && pb.link < 0 && (pb.x === b.x || pb.y === b.y) && d > 0 && d <= b.B.range) pb.link = b.i; this['last_' + b.t] = b; }
+    if (T === 'node') this.autoLink(b); else if (isPow(b)) this.linkToNodes(b);
   }
-  addCore(k, n) { const c = this.core.items; c[k] = Math.min(this.core.B.cap, (c[k] || 0) + n); }
+  addCore(k, n) { const c = this.core.items; c[k] = Math.min(this.coreCap(), (c[k] || 0) + n); }
   has(cost, mult = 1) { const c = this.core.items; for (const k in cost) if ((c[k] || 0) < Math.ceil(cost[k] * mult)) return false; return true; }
 
   /* ----- áram ----- */
+  nodeDist(n, b) { const c = this.center(n), d = this.center(b); return Math.hypot(d.x - c.x, d.y - c.y) - (b.B.s + n.B.s) * TS / 2; }
   autoLink(n) {
-    const c = this.center(n), R = n.B.range * TS, cand = [];
-    for (const b of this.blds) { if (b === n || !isPow(b)) continue; const d = Math.hypot(this.center(b).x - c.x, this.center(b).y - c.y) - b.B.s * TS / 2; if (d <= R) cand.push([d, b]); }
+    const R = n.B.range * TS, cand = [];
+    for (const b of this.blds) { if (b === n || !isPow(b) || b.B.type === 'diode') continue; const d = this.nodeDist(n, b); if (d <= R) cand.push([d, b]); }
     cand.sort((a, b) => a[0] - b[0]); this.solvePower();
-    for (const [, b] of cand) { if (n.links.length >= n.B.links) break; if (b.g && n.g && b.g === n.g && b.B.type !== 'node') continue; this.link(n, b); this.solvePower(); }
+    for (const [, b] of cand) { if (n.links.length >= n.B.links) break; if (b.g && n.g && b.g === n.g) continue; this.link(n, b); this.pdirty = 1; this.solvePower(); }
   }
-  linkToNodes(b) {
-    const c = this.center(b);
-    for (const n of this.blds) { if (n.B.type !== 'node' || n.links.length >= n.B.links) continue; const d = Math.hypot(this.center(n).x - c.x, this.center(n).y - c.y) - b.B.s * TS / 2; if (d <= n.B.range * TS) { this.link(n, b); break; } }
-  }
+  linkToNodes(b) { for (const n of this.blds) { if (n.B.type !== 'node' || n === b || n.links.length >= n.B.links) continue; if (this.nodeDist(n, b) <= n.B.range * TS) { this.link(n, b); break; } } }
   link(n, b) { if (n.links.includes(b) || b.links?.includes(n)) return; n.links.push(b); b.inl.push(n); this.pdirty = 1; }
   unlink(n, b) { n.links = n.links.filter(z => z !== b); b.inl = b.inl.filter(z => z !== n); if (b.links) { b.links = b.links.filter(z => z !== n); n.inl = n.inl.filter(z => z !== b); } this.pdirty = 1; }
   toggleLink(n, b) { if (n.links.includes(b) || b.links?.includes(n)) this.unlink(n, b); else if (n.links.length < n.B.links) this.link(n, b); else return false; return true; }
@@ -209,14 +350,13 @@ export class World {
     if (!this.pdirty) return; this.pdirty = 0; this.graphs = [];
     for (const b of this.blds) b.g = null;
     for (const b0 of this.blds) {
-      if (b0.g || !isPow(b0)) continue;
-      const g = { m: [], prod: 0, need: 0, stored: 0, cap: 0, sat: 0 }, st = [b0]; b0.g = g;
+      if (b0.g || !isPow(b0) || b0.B.type === 'diode') continue;
+      const g = { m: [], bat: [], prod: 0, need: 0, stored: 0, cap: 0, sat: 0 }, st = [b0]; b0.g = g;
       while (st.length) {
-        const b = st.pop(); g.m.push(b);
-        const nx = [...(b.links || []), ...b.inl];
-        if (b.B.type === 'battery' || b.B.type === 'node') for (const o of this.nbs(b)) if (isPow(o)) nx.push(o);
-        for (const o of this.nbs(b)) if ((o.B.type === 'battery' || o.B.type === 'node') && isPow(b)) nx.push(o);
-        for (const o of nx) if (!o.g && !o.dead) { o.g = g; st.push(o); }
+        const b = st.pop(); g.m.push(b); if (b.B.type === 'battery') g.bat.push(b);
+        for (const o of b.links || []) if (!o.g && !o.dead) { o.g = g; st.push(o); }
+        for (const o of b.inl) if (!o.g && !o.dead) { o.g = g; st.push(o); }
+        if (!wireless(b)) for (const o of this.nbs(b)) if (!o.g && isPow(o) && !wireless(o) && !(pureCons(b) && pureCons(o))) { o.g = g; st.push(o); }
       }
       this.graphs.push(g);
     }
@@ -225,29 +365,43 @@ export class World {
     this.solvePower();
     for (const g of this.graphs) {
       let prod = 0, need = 0, stored = 0, cap = 0;
-      for (const b of g.m) { prod += b.pgen; need += b.pneed; if (b.B.type === 'battery') { stored += b.pw; cap += b.B.capP; } }
+      for (const b of g.m) { prod += b.pgen; need += b.pneed; } for (const b of g.bat) { stored += b.pw; cap += b.B.capP; }
       let sat = 1;
-      if (prod >= need) { let sur = prod - need; for (const b of g.m) if (b.B.type === 'battery' && sur > 0) { const a = Math.min(sur, b.B.capP - b.pw); b.pw += a; sur -= a; } }
-      else { let def = need - prod, got = 0; for (const b of g.m) if (b.B.type === 'battery' && def > 0) { const a = Math.min(def, b.pw); b.pw -= a; def -= a; got += a; } sat = need > 0 ? Math.min(1, (prod + got) / need) : 1; }
+      if (prod >= need) { let sur = prod - need; for (const b of g.bat) { if (sur <= 0) break; const a = Math.min(sur, b.B.capP - b.pw); b.pw += a; sur -= a; } }
+      else { let def = need - prod, got = 0; for (const b of g.bat) { if (def <= 0) break; const a = Math.min(def, b.pw); b.pw -= a; def -= a; got += a; } sat = need > 0 ? Math.min(1, (prod + got) / need) : 1; }
       for (const b of g.m) b.ps = sat;
-      Object.assign(g, { prod, need, stored, cap, sat });
+      g.prod = prod; g.need = need; g.stored = stored; g.cap = cap; g.sat = sat;
     }
-    for (const b of this.blds) if (!b.g) b.ps = 0;
+    for (const b of this.blds) {
+      if (!b.g) b.ps = 0;
+      if (b.B.type === 'diode') {          // egyirányú töltéskiegyenlítés hátulról előre
+        const bk = this.tb(b.x - DX[b.rot], b.y - DY[b.rot]), fr = this.tb(b.x + DX[b.rot], b.y + DY[b.rot]), g1 = bk && bk.g, g2 = fr && fr.g;
+        if (g1 && g2 && g1 !== g2 && g1.cap && g2.cap && g1.stored / g1.cap > g2.stored / g2.cap) {
+          let amt = (g1.stored / g1.cap - g2.stored / g2.cap) * Math.min(g1.cap, g2.cap) / 2, a2 = amt;
+          for (const o of g1.bat) { const a = Math.min(amt, o.pw); o.pw -= a; amt -= a; } for (const o of g2.bat) { const a = Math.min(a2, o.B.capP - o.pw); o.pw += a; a2 -= a; }
+        }
+      }
+    }
   }
 
   /* ----- tárgyátadás ----- */
   offer(t, it, src, d = 0) {
     if (!t || t === src || d > 8 || t.dead) return false;
-    const B = t.B;
+    const B = t.B, I = t.items, cap = B.icap || 10;
     switch (B.type) {
       case 'conveyor': {
         const side = this.sideOf(t, src); if (side === t.rot) return false;
-        const L = t.cv; if (L.length >= 4) return false;
-        let p0 = 0;
-        if (side !== (t.rot + 2) % 4) { const bk = this.tb(t.x - DX[t.rot], t.y - DY[t.rot]); if (bk && (bk.B.type !== 'conveyor' || bk.rot === t.rot)) p0 = .5; }
-        for (const e of L) if (Math.abs(e.p - p0) < GAP) return false;
-        let k = 0; while (k < L.length && L[k].p > p0) k++;
-        L.splice(k, 0, { it, p: p0 }); return true;
+        if (B.armored && src.B.type !== 'conveyor' && src.B.type !== 'sconv') return false;
+        const L = t.cv; if (L.length >= CVCAP) return false;
+        const back = side === (t.rot + 2) % 4, min = L.length ? L[L.length - 1].p : 9;
+        if (back ? min < GAP : min <= .7) return false;
+        L.push({ it, p: back ? 0 : .5 }); return true;
+      }
+      case 'sconv': {
+        if (src.B.type === 'sconv' || this.nbs(t).some(o => o.B.type === 'sconv' && this.front(o) === t)) return false;
+        if (this.sideOf(t, src) === t.rot) return false;
+        if (t.st && (t.st.it !== it || t.st.n >= 10)) return false;
+        if (t.st) t.st.n++; else t.st = { it, n: 1, age: 0 }; return true;
       }
       case 'junction': {
         const dir = (this.sideOf(t, src) + 2) % 4, q = t.jb[dir]; if (q.length >= 6) return false;
@@ -255,25 +409,31 @@ export class World {
       }
       case 'router': if (t.buf) return false; t.buf = it; t.from = src; t.rt = 0; return true;
       case 'sorter': case 'overflow': {
-        const dir = (this.sideOf(t, src) + 2) % 4, fwd = this.tbDir(t, dir);
-        const pass = B.type === 'sorter' ? ((it === t.cfg) !== !!B.inv) : true;
-        if (pass && this.offer(fwd, it, t, d + 1)) return true;
-        if (B.type === 'sorter' && pass) return false;
-        const a = this.tbDir(t, (dir + 1) % 4), c = this.tbDir(t, (dir + 3) % 4); t.flip = !t.flip;
-        const [f1, f2] = t.flip ? [a, c] : [c, a];
-        return (f1 !== src && this.offer(f1, it, t, d + 1)) || (f2 !== src && this.offer(f2, it, t, d + 1));
+        if (src.B.type === 'sorter' || src.B.type === 'overflow') return false;
+        const dir = (this.sideOf(t, src) + 2) % 4, fwd = this.tb(t.x + DX[dir], t.y + DY[dir]), a = this.tb(t.x + DX[(dir + 1) % 4], t.y + DY[(dir + 1) % 4]), c = this.tb(t.x + DX[(dir + 3) % 4], t.y + DY[(dir + 3) % 4]);
+        const sides = () => { t.flip = !t.flip; const [f1, f2] = t.flip ? [a, c] : [c, a]; return this.offer(f1, it, t, d + 1) || this.offer(f2, it, t, d + 1); };
+        if (B.type === 'sorter') return ((it === t.cfg) !== !!B.inv) ? this.offer(fwd, it, t, d + 1) : sides();
+        return B.inv ? sides() || this.offer(fwd, it, t, d + 1) : this.offer(fwd, it, t, d + 1) || sides();
       }
-      case 'bridge': { if (t.buf.length >= 10) return false; const L = this.linkB(t); if (!L || src === L) return false; t.buf.push(it); return true; }
+      case 'bridge': { if (t.buf.length >= 12) return false; const L = this.linkB(t); if (!L || src === L) return false; t.buf.push(it); return true; }
+      case 'driver': if (this.linkB(t) && sum(I) < B.cap) { I[it] = (I[it] || 0) + 1; return true; } return false;
       case 'core': this.addCore(it, 1); return true;
-      case 'storage': if ((t.items[it] || 0) >= B.cap) return false; t.items[it] = (t.items[it] || 0) + 1; return true;
-      case 'crafter': if (!B.inp[it] || (t.items[it] || 0) >= 10) return false; t.items[it] = (t.items[it] || 0) + 1; return true;
-      case 'generator': if (!B.burn || !ITEMS[it].f || (t.items[it] || 0) >= 10) return false; t.items[it] = (t.items[it] || 0) + 1; return true;
+      case 'storage': if (this.linked(t)) { this.addCore(it, 1); return true; } if ((I[it] || 0) >= B.cap) return false; I[it] = (I[it] || 0) + 1; return true;
+      case 'launchpad': if (sum(I) >= B.cap) return false; I[it] = (I[it] || 0) + 1; return true;
+      case 'incinerator': return t.ps > .5;
+      case 'crafter': if (!B.inp || !B.inp[it] || (I[it] || 0) >= Math.max(cap, B.inp[it] * 2)) return false; I[it] = (I[it] || 0) + 1; return true;
+      case 'generator': {
+        const ok = B.mode === 'burn' ? ITEMS[it].f >= .2 && !(ITEMS[it].ex > .5) : B.mode === 'rtg' ? ITEMS[it].rad > 0 : B.fuel === it;
+        if (!ok || (I[it] || 0) >= cap) return false; I[it] = (I[it] || 0) + 1; return true;
+      }
       case 'turret': {
-        const a = ammoOf(B, it); if (!a) return false; const tot = t.ammo.reduce((s, e) => s + e.n, 0); if (tot + a.n > MAX_AMMO) return false;
-        const last = t.ammo[t.ammo.length - 1]; if (last && last.it === it) last.n += a.n; else { t.ammo = t.ammo.filter(e => e.it !== it); t.ammo.push({ it, n: a.n }); }
+        const a = B.ammo && B.ammo[it]; if (!a) return false; const n = a.n || 2, tot = t.ammo.reduce((s, e) => s + e.n, 0); if (tot + n > (B.maxAmmo || 30)) return false;
+        const last = t.ammo[t.ammo.length - 1]; if (last && last.it === it) last.n += n; else { const old = t.ammo.find(e => e.it === it); t.ammo = t.ammo.filter(e => e.it !== it); t.ammo.push({ it, n: n + (old ? old.n : 0) }); }
         return true;
       }
-      case 'factory': { const U = UNITS[B.plans[t.cfg || 0]], need = U.cost[it]; if (!need || (t.items[it] || 0) >= need * 2) return false; t.items[it] = (t.items[it] || 0) + 1; return true; }
+      case 'factory': { const need = UNITS[B.plans[t.cfg || 0]].cost[it]; if (!need || (I[it] || 0) >= need * 2) return false; I[it] = (I[it] || 0) + 1; return true; }
+      case 'recon': { const need = B.inp[it]; if (!need || (I[it] || 0) >= need * 2) return false; I[it] = (I[it] || 0) + 1; return true; }
+      case 'mender': case 'overdrive': case 'shield': if (!(B.bItem === it || (B.need && B.need[it])) || (I[it] || 0) >= 10) return false; I[it] = (I[it] || 0) + 1; return true;
     }
     return false;
   }
@@ -288,297 +448,529 @@ export class World {
   }
   linkB(t) {
     if (t.link < 0) return null; const o = this.bt[t.link];
-    if (!o || o === t || o.B.type !== 'bridge' || (o.x !== t.x && o.y !== t.y) || Math.abs(o.x - t.x) + Math.abs(o.y - t.y) > t.B.range) { t.link = -1; return null; }
+    if (!o || o === t || o.dead || o.t !== t.t) { t.link = -1; return null; }
+    if (t.B.type === 'driver') { if (Math.hypot(o.x - t.x, o.y - t.y) * TS > t.B.range) { t.link = -1; return null; } return o; }
+    if ((o.x !== t.x && o.y !== t.y) || Math.abs(o.x - t.x) + Math.abs(o.y - t.y) > t.B.range) { t.link = -1; return null; }
     return o;
+  }
+
+  /* ----- folyadékok ----- */
+  lqAccept(t, liq, src) {
+    const B = t.B; if (t.lq > .01 && t.lt !== liq) return B.type === 'incinerator';
+    switch (B.type) {
+      case 'conduit': return this.front(t) !== src && (!B.armored || src.B.type === 'conduit' || this.sideOf(t, src) === (t.rot + 2) % 4);
+      case 'lrouter': case 'lbridge': return true;
+      case 'incinerator': return t.ps > .5;
+      case 'turret': return B.lammo ? liq in B.lammo : !!(B.cool || B.coolReq) && LIQUIDS[liq].hc > 0;
+      case 'drill': return liq === 'water';
+    }
+    return !!B.inL && B.inL[0] === liq;
+  }
+  // forrásból (mennyiség, kapacitás) a t célba; a szállítóelemek között a töltöttség egyenlítődik ki
+  lqPush(t, liq, have, scap, src, share = 1) {
+    if (!t || t.dead || have <= 0) return 0;
+    if (t.B.type === 'ljunction') { const d = (this.sideOf(t, src) + 2) % 4; return this.lqPush(this.tb(t.x + DX[d], t.y + DY[d]), liq, have, scap, t, share); }
+    const cap = t.B.lcap || 10; if (!this.lqAccept(t, liq, src)) return 0;
+    if (t.B.type === 'incinerator') return Math.min(have, 2);
+    let flow;
+    if (t.B.lmove) { const tf = t.lq / cap, sf = have / scap; if (tf >= sf) return 0; flow = Math.min(Math.max(have - tf * scap, 0) * share, have, cap - t.lq); }
+    else flow = Math.min(have, cap - t.lq, Math.max(.5, cap / 10));
+    if (flow <= 0) return 0; t.lt = liq; t.lq += flow; return flow;
+  }
+  lqDump(b, key = 'lq', liq = b.lt, skip = null) {
+    const nb = this.nbs(b), n = nb.length; if (!n || b[key] <= .001 || !liq) return;
+    for (let k = 0; k < n; k++) { const t = nb[(b.di + k) % n]; if (t === skip) continue; const f = this.lqPush(t, liq, b[key], b.B.lcap || 10, b, .5); if (f > 0) { b[key] -= f; b.di = (b.di + k + 1) % n; return; } }
+    b.di = (b.di + 1) % n;
   }
 
   /* ----- épület-frissítés ----- */
   updB(b) {
-    const B = b.B; b.pgen = 0; b.pneed = 0; if (b.hit > 0) b.hit--;
+    const B = b.B, I = b.items; b.pgen = 0; b.pneed = 0; if (b.hit > 0) b.hit--;
+    const ts = b.odT > this.tick ? b.odM : 1;
     switch (B.type) {
       case 'conveyor': {
-        const L = b.cv, v = B.speed * GAP / 60;
+        const L = b.cv, v = B.mv * ts;
         for (let k = 0; k < L.length; k++) { const e = L[k], lim = k === 0 ? 1 : L[k - 1].p - GAP; e.p = Math.min(e.p + v, Math.max(e.p, lim)); }
         if (L.length && L[0].p >= 1 && this.offer(this.tb(b.x + DX[b.rot], b.y + DY[b.rot]), L[0].it, b)) L.shift();
         break;
       }
-      case 'junction': for (let d = 0; d < 4; d++) { const q = b.jb[d]; if (q.length && this.tick - q[0].tm >= 20 && this.offer(this.tb(b.x + DX[d], b.y + DY[d]), q[0].it, b)) q.shift(); } break;
-      case 'router': if (b.buf && ++b.rt >= 6) { const nb = this.nbs(b), n = nb.length; for (let k = 0; k < n; k++) { const t = nb[(b.di + k) % n]; if (t === b.from && n > 1) continue; if (this.offer(t, b.buf, b)) { b.buf = null; b.di = (b.di + k + 1) % n; break; } } } break;
+      case 'sconv': {
+        if (b.cd > 0) b.cd -= ts; const s = b.st; if (!s) break; s.age = (s.age || 0) + 1; if (b.cd > 0) break;
+        const nx = this.tb(b.x + DX[b.rot], b.y + DY[b.rot]);
+        if (nx && nx.B.type === 'sconv' && this.front(nx) !== b) { if (!nx.st && (s.n >= 10 || s.age > 40 || s.moved)) { s.moved = 1; nx.st = s; b.st = null; nx.cd = 15; } }
+        else if (nx && this.offer(nx, s.it, b) && --s.n <= 0) b.st = null;
+        break;
+      }
+      case 'junction': for (let d = 0; d < 4; d++) { const q = b.jb[d]; if (q.length && this.tick - q[0].tm >= 26 / ts && this.offer(this.tb(b.x + DX[d], b.y + DY[d]), q[0].it, b)) q.shift(); } break;
+      case 'router': if (b.buf && (b.rt += ts) >= 8) { const nb = this.nbs(b), n = nb.length; for (let k = 0; k < n; k++) { const t = nb[(b.di + k) % n]; if (t === b.from && t.B.type === 'overflow') continue; if (this.offer(t, b.buf, b)) { b.buf = null; b.di = (b.di + k + 1) % n; break; } } } break;
       case 'bridge': {
-        const L = this.linkB(b);
-        if (L) { if (this.tick % 4 === 0 && b.buf.length && L.buf.length < 10) L.buf.push(b.buf.shift()); }
+        const L = this.linkB(b); let e = 1; if (B.power) { b.pneed = B.power; e = b.ps; }
+        if (L) { if (e > .1 && this.tick % B.tt === 0 && b.buf.length && L.buf.length < 12) L.buf.push(b.buf.shift()); }
         else if (b.buf.length) {
-          if (this.tick % 30 === 0 || b.indir < 0) { b.indir = -1; for (let d = 0; d < 4 && b.indir < 0; d++) for (let r = 1; r <= B.range; r++) { const o = this.tb(b.x + DX[d] * r, b.y + DY[d] * r); if (o && o.B.type === 'bridge' && this.linkB(o) === b) { b.indir = d; break; } } }
+          if (this.tick % 30 === 0 || b.indir < 0) { b.indir = -1; for (let d = 0; d < 4 && b.indir < 0; d++) for (let r = 1; r <= B.range; r++) { const o = this.tb(b.x + DX[d] * r, b.y + DY[d] * r); if (o && o.t === b.t && this.linkB(o) === b) { b.indir = d; break; } } }
           for (let k = 0; k < 4; k++) { const d = (b.di + k) % 4; if (d === b.indir) continue; const t = this.tb(b.x + DX[d], b.y + DY[d]); if (t && t.B.type !== 'bridge' && this.offer(t, b.buf[0], b)) { b.buf.shift(); b.di = (d + 1) % 4; break; } }
         }
         break;
       }
-      case 'unloader': if (this.tick % 9 === 0) {
-        const nb = this.nbs(b), src = nb.filter(o => o.B.type === 'core' || o.B.type === 'storage'), dst = nb.filter(o => o.B.type !== 'core' && o.B.type !== 'storage');
+      case 'lbridge': {
+        const L = this.linkB(b); let e = 1; if (B.power) { b.pneed = B.power; e = b.ps; }
+        if (L) { if (e > .1 && b.lq > 0) { const f = this.lqPush(L, b.lt, b.lq, B.lcap, b); b.lq -= f; } }
+        else if (b.lq > 0) { let inc = null; for (const o of this.blds) if (o.t === b.t && o.link === b.i) { inc = o; break; } this.lqDump(b, 'lq', b.lt, inc); }
+        break;
+      }
+      case 'unloader': if (this.tick % 5 === 0) {
+        const nb = this.nbs(b), src = [], dst = []; for (const o of nb) { if (o.B.type === 'core' || o.B.type === 'storage') src.push(this.linked(o) ? this.core : o); else dst.push(o); }
         if (!src.length || !dst.length) break;
         let it = b.cfg;
-        if (!it) { for (let k = 0; k < ITEM_IDS.length; k++) { const c = ITEM_IDS[(b.di + k) % ITEM_IDS.length]; if (src.some(s => (s.items[c] || 0) > 0)) { it = c; b.di = (b.di + k + 1) % ITEM_IDS.length; break; } } }
-        if (!it) break;
-        const s = src.find(o => (o.items[it] || 0) > 0); if (!s) break;
+        if (!it) for (let k = 0; k < ITEM_IDS.length; k++) { const c = ITEM_IDS[(b.di + k) % ITEM_IDS.length]; if (src.some(s => (s.items[c] || 0) > 0)) { it = c; b.di = (b.di + k + 1) % ITEM_IDS.length; break; } }
+        if (!it) break; const s = src.find(o => (o.items[it] || 0) > 0); if (!s) break;
         for (let k = 0; k < dst.length; k++) { const t = dst[(b.dj = ((b.dj || 0) + 1) % dst.length)]; if (this.offer(t, it, b)) { s.items[it]--; break; } }
         break;
       }
+      case 'driver': {
+        b.pneed = B.power; const L = this.linkB(b), tot = sum(I); if (b.rl > 0) b.rl -= b.ps * ts;
+        if (L) {
+          const c = this.center(b), lc = this.center(L); b.ang = Math.atan2(lc.y - c.y, lc.x - c.x);
+          if (tot >= 10 && b.rl <= 0 && b.ps > .5 && !L.incoming && sum(L.items) + tot <= L.B.cap) { const d = Math.hypot(lc.x - c.x, lc.y - c.y), sp = 5.5; this.bullets.push({ k: 'drv', x: c.x, y: c.y, vx: (lc.x - c.x) / d * sp, vy: (lc.y - c.y) / d * sp, life: d / sp, items: b.items, tgt: L, team: PLAYER, c: '#ffd37f', d: 0 }); b.items = {}; b.rl = B.reload; L.incoming = 1; }
+        } else if (tot > 0) this.dump(b);
+        break;
+      }
       case 'drill': {
-        if (!b.dItem) break;
-        const tot = b.items[b.dItem] || 0;
-        if (tot < 10) {
-          const eff = B.power ? b.ps : 1; if (B.power) b.pneed = B.power;
-          b.prog += eff; b.work = Math.min(1, b.work + .02 * eff); b.rotA += .08 * eff * (B.s / 2);
+        if (!b.dItem) break; const cap = B.icap || 10, tot = I[b.dItem] || 0;
+        if (tot < cap) {
+          let e = (B.power ? b.ps : 1) * ts; if (B.power) b.pneed = B.power;
+          if (b.lq >= B.boostL && b.lt === 'water') { b.lq -= B.boostL; e *= B.boost * B.boost; }
+          b.prog += e; b.work = Math.min(1, b.work + .02 * e); b.rotA = (b.rotA || 0) + .08 * e * (2 / B.s);
           const tm = (B.time + 50 * ITEMS[b.dItem].h) / b.dCnt;
-          if (b.prog >= tm) { b.prog -= tm; b.items[b.dItem] = tot + 1; }
+          if (b.prog >= tm) { b.prog -= tm; I[b.dItem] = tot + 1; }
         } else b.work *= .96;
-        if (b.items[b.dItem] > 0) this.dump(b, [b.dItem]);
+        if (I[b.dItem] > 0) this.dump(b, [b.dItem]);
         break;
       }
+      case 'pump': {
+        if (!b.pLiq) break; let e = ts; if (B.power) { b.pneed = B.power; e *= b.ps; }
+        b.oq = Math.min(B.lcap, b.oq + B.amt * b.pCnt * e); b.work = e; this.lqDump(b, 'oq', b.pLiq);
+        break;
+      }
+      case 'conduit': if (b.lq > .001) { const f = this.lqPush(this.tb(b.x + DX[b.rot], b.y + DY[b.rot]), b.lt, b.lq, B.lcap, b); b.lq -= f; } break;
+      case 'lrouter': this.lqDump(b); break;
       case 'crafter': {
-        const outK = Object.keys(B.out)[0];
-        const can = (b.items[outK] || 0) < 10 && Object.entries(B.inp).every(([k, n]) => (b.items[k] || 0) >= n);
-        if (can) {
-          if (B.power) b.pneed = B.power; const eff = B.power ? b.ps : 1;
-          b.prog += eff / B.time; b.work = Math.min(1, b.work + .03 * eff);
-          if (b.prog >= 1) { b.prog = 0; for (const k in B.inp) b.items[k] -= B.inp[k]; b.items[outK] = (b.items[outK] || 0) + B.out[outK]; if (Math.random() < .5) { const c = this.center(b); this.fx.push({ k: 'puff', x: c.x, y: c.y, life: 30, max: 30, c: ITEMS[outK].c }); } }
+        const cap = B.icap || 10, lcap = B.lcap || 10, outK = B.out ? Object.keys(B.out)[0] : null; let ok = lqOk(b, B.inL);
+        if (B.inp) for (const k in B.inp) if ((I[k] || 0) < B.inp[k]) ok = false;
+        if (outK && (I[outK] || 0) + B.out[outK] > cap) ok = false;
+        if (B.sep) { let o = 0; for (const k in B.sep) o += I[k] || 0; if (o >= cap) ok = false; }
+        if (B.outL && b.oq >= lcap - .01) ok = false;
+        const am = B.attr ? (B.aBase ?? 1) + Math.min(B.aMax ?? 9, (B.aScale ?? 1) * b.attr / (B.aAvg ? B.s * B.s : 1)) : 1;
+        if (ok && am > 0) {
+          if (B.power) b.pneed = B.power; const e = (B.power ? b.ps : 1) * ts;
+          if (B.inL) b.lq -= B.inL[1] * e;
+          if (B.outL) b.oq = Math.min(lcap, b.oq + B.outL[1] * e * am);
+          b.work = Math.min(1, b.work + .03 * e);
+          if (B.time && (b.prog += e * (B.outL ? 1 : am) / B.time) >= 1) {
+            b.prog = 0; for (const k in B.inp) I[k] -= B.inp[k];
+            if (outK) I[outK] = (I[outK] || 0) + B.out[outK];
+            if (B.sep) { let r = Math.random() * sum(B.sep); for (const k in B.sep) if ((r -= B.sep[k]) < 0) { I[k] = (I[k] || 0) + 1; break; } }
+            if (outK && Math.random() < .5) { const c = this.center(b); this.fx.push({ k: 'puff', x: c.x, y: c.y, life: 30, max: 30, c: ITEMS[outK].c }); }
+          }
         } else b.work *= .95;
-        if (b.items[outK] > 0) this.dump(b, [outK]);
+        if (outK && I[outK] > 0) this.dump(b, [outK]);
+        if (B.sep) this.dump(b, Object.keys(B.sep));
+        if (B.outL) this.lqDump(b, 'oq', B.outL[0]);
         break;
       }
-      case 'generator':
-        if (B.burn) { if (b.burn <= 0) { const f = Object.keys(b.items).find(k => b.items[k] > 0); if (f) { b.items[f]--; b.burn = B.burn; } } if (b.burn > 0) { b.burn--; b.pgen = B.gen; b.work = Math.min(1, b.work + .05); } else b.work *= .95; }
-        else b.pgen = B.gen;
+      case 'incinerator': b.pneed = B.power; b.lq = 0; break;
+      case 'generator': this.updGen(b, ts); break;
+      case 'mender': {
+        b.pneed = B.power; if (b.bst > 0) b.bst--; else if (I[B.bItem] > 0) { I[B.bItem]--; b.bst = 400; }
+        if ((b.prog += b.ps * ts) >= B.reload) {
+          b.prog = 0; const c = this.center(b), R = B.range + (b.bst > 0 ? B.bRange : 0), hl = (B.heal + (b.bst > 0 ? B.bHeal : 0)) / 100 * b.ps;
+          this.fx.push({ k: 'ring', x: c.x, y: c.y, r: R, life: 30, max: 30, c: '#84f491' });
+          for (const o of this.blds) if (o.hp < o.B.hp) { const oc = this.center(o); if (Math.hypot(oc.x - c.x, oc.y - c.y) <= R + o.B.s * 4) o.hp = Math.min(o.B.hp, o.hp + o.B.hp * hl); }
+        }
         break;
-      case 'mender': b.pneed = B.power; b.prog += b.ps; if (b.prog >= 200) {
-        b.prog = 0; const c = this.center(b), R = B.range * TS; this.fx.push({ k: 'ring', x: c.x, y: c.y, r: R, life: 30, max: 30, c: '#84f491' });
-        for (const o of this.blds) if (o.hp < o.B.hp) { const oc = this.center(o); if (Math.hypot(oc.x - c.x, oc.y - c.y) <= R) o.hp = Math.min(o.B.hp, o.hp + o.B.hp * .12); }
+      }
+      case 'overdrive': {
+        b.pneed = B.power; let on = b.ps > .5;
+        if (B.need) { if (b.bst > 0) b.bst--; else if (Object.keys(B.need).every(k => (I[k] || 0) >= B.need[k])) { for (const k in B.need) I[k] -= B.need[k]; b.bst = B.useT; } on = on && b.bst > 0; }
+        else if (b.bst > 0) b.bst--; else if (I[B.bItem] > 0) { I[B.bItem]--; b.bst = 400; }
+        b.work = on ? 1 : 0;
+        if (on && this.tick % 60 === (b.i % 60)) {
+          const c = this.center(b), bo = !B.need && b.bst > 0, R = B.range + (bo ? B.bRange : 0), m = B.od + (bo ? B.bOd : 0);
+          for (const o of this.blds) if (o.B.type !== 'overdrive') { const oc = this.center(o); if (Math.hypot(oc.x - c.x, oc.y - c.y) <= R + o.B.s * 4 && !(o.odT > this.tick && o.odM > m)) { o.odT = this.tick + 62; o.odM = m; } }
+        }
+        break;
+      }
+      case 'shield': {
+        b.pneed = B.power; if (b.bst > 0) b.bst--; else if (I[B.bItem] > 0) { I[B.bItem]--; b.bst = 350; }
+        b.on = b.ps > .5 && !b.broken; b.rad = B.radius + (b.bst > 0 ? B.bRadius : 0);
+        if (b.sh > 0) b.sh = Math.max(0, b.sh - (b.broken ? B.broken : B.regen) * (b.ps > .5 ? 1 : 0));
+        if (b.broken && b.sh <= 0) b.broken = false;
+        break;
+      }
+      case 'mine': if (b.cd > 0) b.cd--; else if (this.tick % 4 === 0) {
+        const c = this.center(b); for (const u of this.units) if (u.team === ENEMY && !u.dead && !u.U.air && Math.abs(u.x - c.x) < 6 + u.U.r && Math.abs(u.y - c.y) < 6 + u.U.r) { for (let k = 0; k < B.cnt; k++) this.lightning(c.x, c.y, Math.random() * 7, B.d, PLAYER); b.cd = 80; this.dmgB(b, 7); break; }
       } break;
+      case 'launchpad': {
+        b.pneed = B.power; if ((b.prog += b.ps * ts) >= B.time) { b.prog = 0; if (sum(I) > 0) { const c = this.center(b); this.fx.push({ k: 'launch', x: c.x, y: c.y, life: 60, max: 60, c: '#ffd37f' }); if (this.onLaunch) this.onLaunch(I); b.items = {}; } }
+        break;
+      }
       case 'factory': {
-        const ut = B.plans[b.cfg || 0], U = UNITS[ut]; let ok = true; for (const k in U.cost) if ((b.items[k] || 0) < U.cost[k]) ok = false;
-        if (ok && this.units.filter(u => u.team === PLAYER && u.t !== 'alpha').length < UNIT_CAP) {
-          b.pneed = B.power; b.prog += b.ps / (U.time * 60); b.work = Math.min(1, b.work + .03);
-          if (b.prog >= 1) { b.prog = 0; for (const k in U.cost) b.items[k] -= U.cost[k]; const c = this.center(b); const u = this.spawnU(ut, PLAYER, c.x + DX[b.rot] * 20, c.y + DY[b.rot] * 20); u.home = { x: c.x + DX[b.rot] * 40, y: c.y + DY[b.rot] * 40 }; }
+        const ut = B.plans[b.cfg || 0], U = UNITS[ut]; let ok = true; for (const k in U.cost) if ((I[k] || 0) < U.cost[k]) ok = false;
+        if (ok && this.countU(ut) < this.core.B.ucap) {
+          b.pneed = B.power; b.prog += b.ps * ts / (U.time * 60); b.work = Math.min(1, b.work + .03);
+          if (b.prog >= 1) { b.prog = 0; for (const k in U.cost) I[k] -= U.cost[k]; this.outUnit(b, ut); }
         } else b.work *= .95;
         break;
       }
-      case 'turret': this.updTurret(b); break;
+      case 'recon': {
+        if (!b.pay) { b.work *= .95; break; } let ok = lqOk(b, B.inL); for (const k in B.inp) if ((I[k] || 0) < B.inp[k]) ok = false;
+        if (ok) { b.pneed = B.power; const e = b.ps * ts; if (B.inL) b.lq -= B.inL[1] * e; b.work = Math.min(1, b.work + .03); if ((b.prog += e / B.time) >= 1) { b.prog = 0; for (const k in B.inp) I[k] -= B.inp[k]; const to = B.up[b.pay]; b.pay = null; this.outUnit(b, to); } } else b.work *= .95;
+        break;
+      }
+      case 'repair': {
+        b.pneed = B.power; const c = this.center(b); if (this.tick % 20 === (b.i % 20) || (b.tgt && (b.tgt.dead || b.tgt.hp >= b.tgt.U.hp))) { b.tgt = null; let bd = B.range; for (const u of this.units) if (u.team === PLAYER && !u.dead && u.hp < u.U.hp) { const d = Math.hypot(u.x - c.x, u.y - c.y); if (d < bd) { bd = d; b.tgt = u; } } }
+        if (b.tgt && b.ps > .1) { b.tgt.hp = Math.min(b.tgt.U.hp, b.tgt.hp + B.rep * b.ps * ts); b.ang = Math.atan2(b.tgt.y - c.y, b.tgt.x - c.x); }
+        break;
+      }
+      case 'turret': this.updTurret(b, ts); break;
     }
   }
-  updTurret(b) {
-    const B = b.B, c = this.center(b);
+  updGen(b, ts) {
+    const B = b.B, I = b.items; let p = 0;
+    switch (B.mode) {
+      case 'solar': p = B.gen; break;
+      case 'thermal': p = B.gen * b.attr; break;
+      case 'burn': case 'item': case 'rtg': {
+        const L = lqOk(b, B.inL);
+        if (b.burn <= 0 && L) { const it = Object.keys(I).find(k => I[k] > 0); if (it) { I[it]--; b.burn = B.dur * (B.mode === 'rtg' && it === 'phase' ? 15 : B.mode === 'burn' && it === 'pyratite' ? 3 : 1); b.bm = B.mode === 'burn' ? ITEMS[it].f : B.mode === 'rtg' ? ITEMS[it].rad : 1; } }
+        if (b.burn > 0 && L) { b.burn -= ts; if (B.inL) b.lq -= B.inL[1] * ts; p = B.gen * b.bm; }
+        break;
+      }
+      case 'reactor': {
+        const fuel = I.thorium || 0, full = fuel / B.icap;
+        if (fuel > 0) { b.heat += full * .005 * ts; if ((b.ft += ts) >= B.dur) { b.ft = 0; I.thorium--; } p = B.gen * full; } else b.heat = Math.max(0, b.heat - 1 / 1200);
+        if (b.heat > 0 && b.lq > 0 && b.lt === 'cryo') { const used = Math.min(b.lq, b.heat / .125); b.heat -= used * .125; b.lq -= used; }
+        if (b.heat >= 1) { const c = this.center(b); this.remB(b, 1); this.msg('Egy tóriumreaktor túlhevült és felrobbant!', 'bad'); this.splashAll(c.x, c.y, 150, 5000); return; }
+        break;
+      }
+      case 'impact': {
+        b.pneed = B.power; const L = lqOk(b, B.inL);
+        if (b.burn <= 0 && L && b.ps >= .99 && I.blast > 0) { I.blast--; b.burn = B.dur; }
+        if (b.burn > 0 && L && b.ps >= .99) { b.burn -= ts; b.lq -= B.inL[1] * ts; b.warm += (1 - b.warm) * .001 * ts; if (b.warm > .999) b.warm = 1; } else b.warm += (0 - b.warm) * .01;
+        p = B.gen * b.warm ** 5; break;
+      }
+    }
+    b.pgen = p; b.work = p > 0 ? Math.min(1, b.work + .05) : b.work * .95;
+  }
+  countU(t) { let n = 0; for (const u of this.units) if (u.team === PLAYER && u.t === t && !u.dead) n++; return n; }
+  outUnit(b, ut) {
+    const fb = this.front(b);
+    if (fb && fb.B.type === 'recon' && fb.B.up[ut] && !fb.pay && !fb.dead) { fb.pay = ut; fb.prog = 0; return; }
+    const c = this.center(b), d = b.B.s * 4 + UNITS[ut].r + 4, u = this.spawnU(ut, PLAYER, c.x + DX[b.rot] * d, c.y + DY[b.rot] * d); u.home = { x: c.x + DX[b.rot] * (d + 26), y: c.y + DY[b.rot] * (d + 26) };
+  }
+
+  /* ----- tornyok ----- */
+  updTurret(b, ts) {
+    const B = b.B, c = this.center(b), pw = B.power ? b.ps : 1;
     if (b.heat > 0) b.heat -= .05;
+    const am = B.ammo ? b.ammo[b.ammo.length - 1] : null, st = am ? B.ammo[am.it] : null, range = B.range + (st && st.rg || 0);
+    if (B.pd) {                       // pontvédelem: az ellenséges lövedékeket lövi le
+      b.pneed = B.power; if (b.rl > 0) { b.rl -= pw * ts; return; } if (pw < .5) return;
+      let best = null, bd = range; for (const q of this.bullets) if (q.team === ENEMY && !q.k) { const d = Math.hypot(q.x - c.x, q.y - c.y); if (d < bd) { bd = d; best = q; } }
+      if (best) { b.ang = Math.atan2(best.y - c.y, best.x - c.x); best.d -= B.pd; if (best.d <= 0) best.life = 0; this.fx.push({ k: 'laser', x: c.x, y: c.y, x2: best.x, y2: best.y, life: 6, max: 6, c: '#ffe39a', w: 1 }); b.rl = B.reload; b.heat = 1; }
+      return;
+    }
     if (this.tick % 8 === (b.i & 7) || (b.tgt && b.tgt.dead)) {
       let best = null, bd = 1e9;
-      const range = B.range + this.rangeBonus(b);
-      for (const u of this.units) { if (u.team !== ENEMY || u.dead) continue; if (u.U.air ? !B.air : !B.ground) continue; const d = Math.hypot(u.x - c.x, u.y - c.y); if (d < range && d < bd) { bd = d; best = u; } }
+      for (const u of this.units) { if (u.team !== ENEMY || u.dead) continue; if (u.U.air ? !B.air : !B.ground) continue; const d = Math.hypot(u.x - c.x, u.y - c.y) - u.U.r; if (d < range && d < bd) { bd = d; best = u; } }
       b.tgt = best;
     }
-    const pw = !!B.power;
-    if (pw) { b.rl = Math.max(0, b.rl - b.ps); if (b.tgt) b.pneed = B.power; }
-    else b.rl = Math.max(0, b.rl - 1);
-    const u = b.tgt; if (!u) return;
-    const ta = Math.atan2(u.y - c.y, u.x - c.x); let da = ((ta - b.ang + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-    b.ang += Math.max(-.12, Math.min(.12, da));
-    if (Math.abs(da) > .25) return;
-    if (b.burst > 0) { if (this.tick % 4 === 0) { this.shootAmmo(b, c); b.burst--; } return; }
+    const u = b.tgt; let rate = pw * ts;
+    if (B.power && (u || b.rl > 0 || b.beamT > 0)) b.pneed = B.power;
+    if (B.coolReq) { rate = 0; if (b.rl > 0 && b.lq > 0 && LIQUIDS[b.lt].hc) { const used = Math.min(b.lq, B.coolReq * ts); b.lq -= used; rate = used * LIQUIDS[b.lt].hc * 5 * pw; } }
+    else if (B.cool && b.rl > 0 && b.lq > .01 && u) { const used = Math.min(b.lq, B.cool * ts); b.lq -= used; rate += used * LIQUIDS[b.lt].hc * (B.coolM || 5); }
+    b.rl = Math.max(0, b.rl - rate);
+    if (b.beamT > 0) {                // folyamatos lézer (Olvadás)
+      b.beamT--; if (u) { const ta = Math.atan2(u.y - c.y, u.x - c.x), da = ((ta - b.ang + Math.PI * 3) % (Math.PI * 2)) - Math.PI; b.ang += Math.max(-.02, Math.min(.02, da)); }
+      if (this.tick % 5 === 0) { const e = this.lineDmg(c.x, c.y, b.ang, B.beam.len, B.beam.d * pw, PLAYER, { air: 1, ground: 1, wide: 5 }); b.bx = e.x; b.by = e.y; }
+      b.heat = 1; if (b.beamT <= 0) b.rl = B.reload; return;
+    }
+    if (!u) { b.chg = 0; b.beam = null; return; }
+    const lead = st && st.sp && st.k !== 'art' ? Math.hypot(u.x - c.x, u.y - c.y) / st.sp : 0, tx = u.x + u.vx * lead * .8, ty = u.y + u.vy * lead * .8;
+    const ta = Math.atan2(ty - c.y, tx - c.x), da = ((ta - b.ang + Math.PI * 3) % (Math.PI * 2)) - Math.PI, rs = .14 * ts / Math.sqrt(B.s);
+    b.ang += Math.max(-rs, Math.min(rs, da));
+    if (Math.abs(da) > .3) return;
+    if (B.tractor) { b.beam = null; if (pw < .1) return; const d = Math.hypot(u.x - c.x, u.y - c.y) || 1, f = B.tractor.force * pw / (1 + u.U.r / 12); u.x -= (u.x - c.x) / d * f; u.y -= (u.y - c.y) / d * f; u.vx *= .9; u.vy *= .9; this.dmgU(u, B.tractor.d * pw, 1); b.beam = u; return; }
+    if (b.burst > 0) { if (--b.bd <= 0) { this.fireAmmo(b, c); b.burst--; b.bd = B.sd; } return; }
     if (b.rl > 0) return;
-    if (B.laser) { if (b.ps < .1) return; this.laser(b, c); b.rl = B.reload; return; }
-    if (B.arcd) { if (b.ps < .1) return; this.lightning(c.x, c.y, b.ang, B.arcd); b.rl = B.reload; return; }
-    const am = b.ammo[b.ammo.length - 1]; if (!am) return;
-    const st = B.ammo[am.it]; b.rl = B.reload * (st.rl || 1);
-    if (B.burst) { b.burst = B.burst - 1; }
-    this.shootAmmo(b, c);
+    if (B.laser) { if (pw < .1) return; if (b.chg < B.laser.charge) { b.chg += ts; b.heat = b.chg / B.laser.charge; return; } b.chg = 0; this.lineDmg(c.x, c.y, b.ang, B.laser.len, B.laser.d, PLAYER, { air: 0, ground: 1, pierce: B.laser.pierce, fx: '#a9d8ff', wide: 4 }); b.rl = B.reload; b.heat = 1; return; }
+    if (B.arcd) { if (pw < .1) return; this.lightning(c.x, c.y, b.ang, B.arcd, PLAYER); b.rl = B.reload; b.heat = 1; return; }
+    if (B.beam) { if (pw >= .5) b.beamT = B.beam.dur; return; }
+    if (B.lammo) {
+      if (!(b.lt in B.lammo) || b.lq < 1 / B.lam) return;
+      for (let k = 0; k < (B.shots || 1) && b.lq >= 1 / B.lam; k++) { b.lq -= 1 / B.lam; const a = b.ang + (Math.random() - .5) * .12, mz = B.s * 4 + 2, o = (k - ((B.shots || 1) - 1) / 2) * 4; this.bullets.push({ k: 'liq', x: c.x + Math.cos(a) * mz - Math.sin(a) * o, y: c.y + Math.sin(a) * mz + Math.cos(a) * o, vx: Math.cos(a) * B.lsp, vy: Math.sin(a) * B.lsp, life: range / B.lsp + 3, d: B.lammo[b.lt], team: PLAYER, air: 1, ground: 1, st: LIQUIDS[b.lt].st, stT: 240, liq: b.lt, c: LIQUIDS[b.lt].c }); }
+      b.rl = B.reload; return;
+    }
+    if (!st || (st.k === 'rail' && pw < .5)) return;
+    b.rl = B.reload / (st.rlm || 1);
+    const shots = B.shots || 1; this.fireAmmo(b, c);
+    if (shots > 1) { if (B.sd) { b.burst = shots - 1; b.bd = B.sd; } else for (let k = 1; k < shots; k++) this.fireAmmo(b, c, k); }
   }
   rangeBonus(b) { const am = b.ammo && b.ammo[b.ammo.length - 1]; return am && b.B.ammo[am.it].rg || 0; }
-  shootAmmo(b, c) {
-    const am = b.ammo[b.ammo.length - 1]; if (!am) { b.burst = 0; return; }
-    const B = b.B, st = B.ammo[am.it], range = B.range + (st.rg || 0); am.n--; if (am.n <= 0) b.ammo.pop();
-    b.heat = 1;
-    let ox = 0, oy = 0; if (B.alt) { b.side = -b.side; ox = -Math.sin(b.ang) * 2 * b.side; oy = Math.cos(b.ang) * 2 * b.side; }
-    const mz = B.s * 4 + 3, x = c.x + Math.cos(b.ang) * mz + ox, y = c.y + Math.sin(b.ang) * mz + oy;
-    if (B.art) { const u = b.tgt; const tx = u ? u.x + u.vx * 20 : x, ty = u ? u.y + u.vy * 20 : y, d = Math.hypot(tx - x, ty - y); this.bullets.push({ x, y, sx: x, sy: y, tx, ty, vx: (tx - x) / d * st.sp, vy: (ty - y) / d * st.sp, life: d / st.sp, d: st.d, team: PLAYER, art: 1, spl: st.spl, ground: 1, c: ITEMS[am.it].c, hom: st.hom ? u : null }); return; }
-    const a = b.ang + (Math.random() - .5) * .06;
-    this.bullets.push({ x, y, vx: Math.cos(a) * st.sp, vy: Math.sin(a) * st.sp, life: range / st.sp + 4, d: st.d, team: PLAYER, air: B.air, ground: B.ground, fl: st.fl, spl: st.spl, hom: st.hom ? b.tgt : null, c: ITEMS[am.it].c });
-    this.fx.push({ k: 'flash', x, y, a: b.ang, life: 6, max: 6, c: ITEMS[am.it].c });
+  fireAmmo(b, c, idx = 0) {
+    const B = b.B, am = b.ammo[b.ammo.length - 1]; if (!am) { b.burst = 0; return; }
+    const st = B.ammo[am.it], range = B.range + (st.rg || 0), col = ITEMS[am.it].c;
+    if (B.each || (idx === 0 && b.burst === 0)) { if (--am.n <= 0) b.ammo.pop(); }
+    b.heat = 1; let off = 0; if (B.alt) { b.side = -b.side; off = B.s * 1.6 * b.side; } else if (B.shots > 1) off = ((b.burst + idx) % 4 - 1.5) * B.s * .9;
+    const mz = B.s * 4 + 3, x = c.x + Math.cos(b.ang) * mz - Math.sin(b.ang) * off, y = c.y + Math.sin(b.ang) * mz + Math.cos(b.ang) * off, u = b.tgt;
+    const base = { team: PLAYER, c: col, st: st.st, stT: st.stT, spl: st.spl, splR: st.splR, frag: st.frag, zap: st.zap, zapD: st.zapD, d: st.d };
+    switch (st.k) {
+      case 'shrap': { const n = B.spread || 1; for (let k = 0; k < n; k++) this.lineDmg(c.x, c.y, b.ang + (k - (n - 1) / 2) * .35, st.len, st.d, PLAYER, { air: 1, ground: 1, fx: col, wide: 5 }); return; }
+      case 'rail': { this.lineDmg(c.x, c.y, b.ang, range, st.d, PLAYER, { air: 1, ground: 1, rail: 1, fx: '#f3e979', wide: 5 }); return; }
+      case 'art': {
+        const sc = B.scat || 0, tx = (u ? u.x + u.vx * 24 : x) + (Math.random() - .5) * sc * 2, ty = (u ? u.y + u.vy * 24 : y) + (Math.random() - .5) * sc * 2, d = Math.hypot(tx - x, ty - y) || 1;
+        this.bullets.push({ ...base, k: 'art', x, y, sx: x, sy: y, tx, ty, vx: (tx - x) / d * st.sp, vy: (ty - y) / d * st.sp, life: d / st.sp, ground: 1, hom: st.hom ? u : null, hp: st.hom }); return;
+      }
+      case 'flame': { for (let k = 0; k < 2; k++) { const a = b.ang + (Math.random() - .5) * .25; this.bullets.push({ ...base, k: 'flame', x, y, vx: Math.cos(a) * st.sp, vy: Math.sin(a) * st.sp, life: range / st.sp, d: st.d / 2, air: 0, ground: 1, pierce: 99 }); } return; }
+    }
+    const a = b.ang + (Math.random() - .5) * (st.k === 'missile' ? .25 : .06), hom = st.k === 'missile' ? st.hom || .08 : st.hom;
+    this.bullets.push({ ...base, k: st.k === 'flak' || st.k === 'missile' ? st.k : undefined, x, y, vx: Math.cos(a) * st.sp, vy: Math.sin(a) * st.sp, life: range / st.sp + 4, air: B.air, ground: st.k === 'flak' ? st.gnd : B.ground, hom: hom ? u : null, hp: hom, pierce: st.pierce });
+    this.fx.push({ k: 'flash', x, y, a: b.ang, life: 6, max: 6, c: col });
   }
-  laser(b, c) {
-    const B = b.B, a = b.ang, L = B.range, x2 = c.x + Math.cos(a) * L, y2 = c.y + Math.sin(a) * L;
-    for (const u of this.units) { if (u.team !== ENEMY || u.U.air || u.dead) continue; const t = Math.max(0, Math.min(1, ((u.x - c.x) * (x2 - c.x) + (u.y - c.y) * (y2 - c.y)) / (L * L))); if (Math.hypot(u.x - (c.x + (x2 - c.x) * t), u.y - (c.y + (y2 - c.y) * t)) < u.U.r + 4) this.dmgU(u, B.laser.d); }
-    this.fx.push({ k: 'laser', x: c.x, y: c.y, x2, y2, life: 16, max: 16, c: '#a9d8ff' });
+  // egyenes mentén sebez (lézer, repesz, sínágyú, szívósugár); visszaadja a végpontot
+  lineDmg(x, y, a, len, d, team, o) {
+    const foe = team === PLAYER ? ENEMY : PLAYER, ca = Math.cos(a), sa = Math.sin(a), hits = []; let end = len;
+    if (foe === PLAYER) {                 // az ellenség sugara az első tömör épületig hatol (a plasztánium-fal elnyeli)
+      for (let t = 4; t < len; t += 4) { const bl = this.tb(Math.floor((x + ca * t) / TS), Math.floor((y + sa * t) / TS)); if (bl && !UNDER(bl)) { this.dmgB(bl, d); if (bl.B.insul || !o.pierce) { end = t; break; } t += bl.B.s * TS; } }
+    }
+    for (const u of this.units) { if (u.team !== foe || u.dead || (u.U.air ? !o.air : !o.ground)) continue; const t = (u.x - x) * ca + (u.y - y) * sa; if (t < -u.U.r || t > end + u.U.r) continue; if (Math.abs((u.x - x) * sa - (u.y - y) * ca) < u.U.r + (o.wide || 3)) hits.push([t, u]); }
+    hits.sort((p, q) => p[0] - q[0]); let left = d, n = 0;
+    for (const [t, u] of hits) { if (o.rail) { const hp = u.hp + (u.sh || 0); this.dmgU(u, left, 1); left -= hp; if (left <= 0) { end = t; break; } } else { this.dmgU(u, d); if (o.st) u.st[o.st] = 120; if (o.pierce && ++n >= o.pierce) { end = t; break; } } }
+    const ex = x + ca * end, ey = y + sa * end;
+    if (o.fx) this.fx.push({ k: 'laser', x, y, x2: ex, y2: ey, life: 16, max: 16, c: o.fx, w: o.wide || 3 });
+    return { x: ex, y: ey, n: hits.length };
   }
-  lightning(x, y, a, d) {
-    const pts = [[x, y]]; let px = x, py = y, hit = new Set();
-    for (let k = 0; k < 9; k++) {
-      let near = null, nd = 40; for (const u of this.units) { if (u.team !== ENEMY || u.U.air || hit.has(u) || u.dead) continue; const dd = Math.hypot(u.x - px, u.y - py); if (dd < nd) { nd = dd; near = u; } }
+  lightning(x, y, a, d, team, segs = 9) {
+    const foe = team === PLAYER ? ENEMY : PLAYER, pts = [[x, y]], hit = new Set(); let px = x, py = y;
+    for (let k = 0; k < segs; k++) {
+      let near = null, nd = 40; for (const u of this.units) { if (u.team !== foe || u.U.air || hit.has(u) || u.dead) continue; const dd = Math.hypot(u.x - px, u.y - py); if (dd < nd) { nd = dd; near = u; } }
       if (near && k > 0) { px = near.x; py = near.y; hit.add(near); this.dmgU(near, d); }
-      else { a += (Math.random() - .5) * 1.2; px += Math.cos(a) * 12; py += Math.sin(a) * 12; }
+      else { a += (Math.random() - .5) * 1.2; px += Math.cos(a) * 12; py += Math.sin(a) * 12; if (foe === PLAYER) { const bl = this.tb(Math.floor(px / TS), Math.floor(py / TS)); if (bl && !hit.has(bl) && !UNDER(bl)) { hit.add(bl); this.dmgB(bl, d); if (bl.B.insul) break; } } }
       pts.push([px, py]);
     }
-    this.fx.push({ k: 'bolt', pts, life: 10, max: 10, c: '#a9d8ff' });
+    this.fx.push({ k: 'bolt', pts, life: 10, max: 10, c: team === PLAYER ? '#a9d8ff' : '#ff9a8a' });
   }
 
   /* ----- egységek ----- */
   spawnU(t, team, x, y) {
-    const U = UNITS[t], u = { t, U, team, x, y, vx: 0, vy: 0, hp: U.hp, rot: 0, rl: 0, tgt: null, id: this.tick * 1000 + this.units.length, walk: 0, stack: null, mt: 0 };
+    const U = UNITS[t], u = { t, U, team, x, y, vx: 0, vy: 0, hp: U.hp, sh: 0, rot: 0, wc: U.w.map(() => 0), tgt: null, id: this.tick * 1000 + this.units.length, walk: 0, stack: null, mt: 0, st: {}, ffh: U.ab && U.ab.ff ? U.ab.ff[2] : 0, ffb: 0 };
     this.units.push(u); return u;
   }
-  spawnPlayer() { const c = this.center(this.core); this.player = this.spawnU('alpha', PLAYER, c.x, c.y); this.player.ctl = 1; }
-  dmgU(u, d) {
-    if (u.dead) return; u.hp -= d; u.hit = 6;
+  spawnPlayer() { const c = this.center(this.core); this.player = this.spawnU(this.core.B.unit, PLAYER, c.x, c.y); this.player.ctl = 1; }
+  dmgU(u, d, raw) {
+    if (u.dead) return; if (!raw) d = Math.max(d - u.U.armor, d * .25); if (u.st.freeze) d *= 1.25;
+    if (u.sh > 0) { const a = Math.min(u.sh, d); u.sh -= a; d -= a; }
+    u.hp -= d; u.hit = 6;
     if (u.hp <= 0) {
       u.dead = 1; this.boom(u.x, u.y, u.U.r * 2.2, u.team === ENEMY ? '#f25555' : '#ffd37f');
       if (u.team === ENEMY) this.stats.kills++;
-      if (u.U.boom) this.splash(u.x, u.y, 22, u.U.d * .5, PLAYER, 0, 1, 1);
       if (u === this.player) { this.respawn = 150; this.msg('Az egységed megsemmisült – újraéledés a magnál', 'bad'); }
     }
   }
-  dmgB(b, d) {
-    if (b.dead) return; b.hp -= d; b.hit = 8;
-    if (b.hp <= 0) { if (b === this.core) { this.lost = true; this.boom(this.center(b).x, this.center(b).y, 40, '#ffb347'); return; } this.remB(b, 1); }
+  dmgB(b, d, src) {
+    if (b.dead) return;
+    if (b.B.zap && src && Math.random() < b.B.zap) { const c = this.center(b); this.lightning(c.x, c.y, Math.atan2(src.y - c.y, src.x - c.x), 20, PLAYER); }
+    b.hp -= d; b.hit = 8;
+    if (b.hp <= 0) { if (b === this.core) { this.lost = true; const c = this.center(b); this.boom(c.x, c.y, 40, '#ffb347'); return; } this.remB(b, 1); }
   }
-  splash(x, y, r, d, victimTeam, air, ground, blds) {
-    for (const u of this.units) if (u.team === victimTeam && !u.dead && (u.U.air ? air : ground)) { const dd = Math.hypot(u.x - x, u.y - y); if (dd < r + u.U.r) this.dmgU(u, d * (1 - dd / (r + u.U.r) * .5)); }
-    if (blds && victimTeam === PLAYER) { const R = Math.ceil(r / TS), tx = Math.floor(x / TS), ty = Math.floor(y / TS), seen = new Set(); for (let yy = ty - R; yy <= ty + R; yy++) for (let xx = tx - R; xx <= tx + R; xx++) { const b = this.tb(xx, yy); if (b && !seen.has(b) && Math.hypot((xx + .5) * TS - x, (yy + .5) * TS - y) <= r + 4) { seen.add(b); this.dmgB(b, d); } } }
+  splash(x, y, r, d, victim, air, ground, blds, st) {
+    for (const u of this.units) if (u.team === victim && !u.dead && (u.U.air ? air : ground)) { const dd = Math.hypot(u.x - x, u.y - y); if (dd < r + u.U.r) { this.dmgU(u, d * (1 - dd / (r + u.U.r) * .5)); if (st) u.st[st] = 240; } }
+    if (blds && victim === PLAYER) { const R = Math.ceil(r / TS), tx = Math.floor(x / TS), ty = Math.floor(y / TS), seen = new Set(); for (let yy = ty - R; yy <= ty + R; yy++) for (let xx = tx - R; xx <= tx + R; xx++) { const b = this.tb(xx, yy); if (b && !seen.has(b) && Math.hypot((xx + .5) * TS - x, (yy + .5) * TS - y) <= r + 4) { seen.add(b); this.dmgB(b, d); } } }
     this.boom(x, y, r * .8, '#ffcf7a');
   }
+  splashAll(x, y, r, d) { for (const u of this.units) { const dd = Math.hypot(u.x - x, u.y - y); if (dd < r) this.dmgU(u, d * (1 - dd / r)); } for (const b of [...this.blds]) { const c = this.center(b), dd = Math.hypot(c.x - x, c.y - y); if (dd < r) this.dmgB(b, d * (1 - dd / r)); } this.boom(x, y, r, '#ff8a5a'); }
+  healB(x, y, r, pct) { for (const b of this.blds) if (b.hp < b.B.hp) { const c = this.center(b); if (Math.hypot(c.x - x, c.y - y) <= r + b.B.s * 4) { b.hp = Math.min(b.B.hp, b.hp + b.B.hp * pct / 100); b.heal = 12; } } }
   boom(x, y, r, c) { this.fx.push({ k: 'boom', x, y, r, life: 22, max: 22, c }); }
-  nearestB(x, y, r, pref) {
+  nearestB(x, y, r, fn) {
     let best = null, bd = r;
-    for (const b of this.blds) { const c = this.center(b), d = Math.hypot(c.x - x, c.y - y) - b.B.s * 4; if (d < bd) { const w = pref && pref(b) ? 0 : 0; bd = d; best = b; } }
+    for (const b of this.blds) { if (b.B.type === 'mine' || (fn && !fn(b))) continue; const d = Math.hypot((b.x + b.B.s / 2) * TS - x, (b.y + b.B.s / 2) * TS - y) - b.B.s * 4; if (d < bd) { bd = d; best = b; } }
     return best;
   }
   nearestU(x, y, r, team, air, ground) {
     let best = null, bd = r;
-    for (const u of this.units) { if (u.team !== team || u.dead) continue; if (u.U.air ? !air : !ground) continue; const d = Math.hypot(u.x - x, u.y - y); if (d < bd) { bd = d; best = u; } }
+    for (const u of this.units) { if (u.team !== team || u.dead) continue; if (u.U.air ? !air : !ground) continue; const d = Math.hypot(u.x - x, u.y - y) - u.U.r; if (d < bd) { bd = d; best = u; } }
     return best;
   }
-  fire(u, tx, ty, team) {
-    const U = u.U, a = Math.atan2(ty - u.y, tx - u.x);
-    if (U.flame) { for (let k = 0; k < 2; k++) this.bullets.push({ x: u.x, y: u.y, vx: Math.cos(a + (Math.random() - .5) * .3) * 2.6, vy: Math.sin(a + (Math.random() - .5) * .3) * 2.6, life: U.rng / 2.6, d: U.d, team, air: 1, ground: 1, pierce: 1, flame: 1, c: '#ffa04a' }); return; }
-    if (U.art) { const d = Math.hypot(tx - u.x, ty - u.y); this.bullets.push({ x: u.x, y: u.y, sx: u.x, sy: u.y, tx, ty, vx: (tx - u.x) / d * 2.4, vy: (ty - u.y) / d * 2.4, life: d / 2.4, d: U.d, team, art: 1, spl: 22, ground: 1, c: team === ENEMY ? '#ff7a6a' : '#ffd37f' }); return; }
-    const sp = 3.2; this.bullets.push({ x: u.x + Math.cos(a) * U.r, y: u.y + Math.sin(a) * U.r, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: U.rng / sp + 6, d: U.d, team, air: 1, ground: 1, c: team === ENEMY ? '#ff7a6a' : '#ffe39a' });
-  }
+  free(x, y, team) { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (!this.inb(tx, ty)) return false; const i = ty * this.w + tx; if (this.sol[i]) return false; const b = this.bt[i]; return !b || !isSolid(b) || (b.open && team === PLAYER); }
   moveU(u, dx, dy) {
-    const U = u.U, nx = u.x + dx, ny = u.y + dy;
-    if (U.air) { u.x = Math.max(0, Math.min(this.w * TS, nx)); u.y = Math.max(0, Math.min(this.h * TS, ny)); return; }
-    const free = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (!this.inb(tx, ty)) return false; const i = ty * this.w + tx; return !this.solidG(i) && !this.bt[i]; };
-    if (free(nx, u.y)) u.x = nx; if (free(u.x, ny)) u.y = ny;
+    const nx = u.x + dx, ny = u.y + dy;
+    if (u.U.air || u.U.legs) { u.x = Math.max(4, Math.min(this.w * TS - 4, nx)); u.y = Math.max(4, Math.min(this.h * TS - 4, ny)); return; }
+    if (this.free(nx, u.y, u.team)) u.x = nx; if (this.free(u.x, ny, u.team)) u.y = ny;
+  }
+  // egy fegyver elsütése; t: célegység vagy épület, tc: a cél pontja
+  fireW(u, w, tc, t) {
+    const team = u.team, foe = team === PLAYER ? ENEMY : PLAYER, a = Math.atan2(tc.y - u.y, tc.x - u.x), dm = u.st.od ? 1.3 : 1, col = team === ENEMY ? '#ff7a6a' : w.heal ? '#84f491' : '#ffe39a';
+    const air = w.air !== 0 ? 1 : 0, base = { team, c: col, d: (w.d || 0) * dm, spl: w.spl && w.spl * dm, splR: w.splR, st: w.st, stT: w.stT, frag: w.frag, zap: w.zap, zapD: w.zapD, heal: w.heal, ab: t && !t.U ? t : null };
+    switch (w.k) {
+      case 'laser': case 'shrap': { const e = this.lineDmg(u.x, u.y, a, w.len, w.d * dm, team, { air: 1, ground: 1, pierce: w.k === 'laser' ? 6 : 0, fx: col, wide: w.wide ? 9 : 4 }); if (w.heal && team === PLAYER) this.healB((u.x + e.x) / 2, (u.y + e.y) / 2, w.len / 2, w.heal); return; }
+      case 'sap': { const d = Math.hypot(tc.x - u.x, tc.y - u.y); if (t && t.U) { this.dmgU(t, w.d * dm); t.st.sap = 180; } else if (t) this.dmgB(t, w.d * dm, u); u.hp = Math.min(u.U.hp, u.hp + w.d * w.sap); this.fx.push({ k: 'laser', x: u.x, y: u.y, x2: u.x + Math.cos(a) * Math.min(d, w.len + 8), y2: u.y + Math.sin(a) * Math.min(d, w.len + 8), life: 10, max: 10, c: '#bf92f9', w: 2 }); return; }
+      case 'arc': for (let k = 0; k < (w.n || 1); k++) this.lightning(u.x, u.y, a + (k - ((w.n || 1) - 1) / 2) * .3, w.d * dm, team, 6); if (w.heal && team === PLAYER) this.healB(u.x, u.y, w.len, w.heal); return;
+      case 'beam': u.beam = { w, t: w.dur, a }; return;
+      case 'bomb': this.splash(u.x, u.y, w.splR, w.spl * dm, foe, 0, 1, 1); if (w.heal && team === PLAYER) this.healB(u.x, u.y, w.splR, w.heal); return;
+      case 'boom': this.splash(u.x, u.y, w.splR, w.spl * dm, foe, 1, 1, 1); u.dead = 1; this.boom(u.x, u.y, 12, '#ffb347'); return;
+      case 'art': { const d = Math.hypot(tc.x - u.x, tc.y - u.y) || 1; this.bullets.push({ ...base, k: 'art', x: u.x, y: u.y, sx: u.x, sy: u.y, tx: tc.x, ty: tc.y, vx: (tc.x - u.x) / d * w.sp, vy: (tc.y - u.y) / d * w.sp, life: d / w.sp, ground: 1 }); return; }
+      case 'flame': for (let k = 0; k < 2; k++) { const q = a + (Math.random() - .5) * .3; this.bullets.push({ ...base, k: 'flame', d: base.d / 2, x: u.x, y: u.y, vx: Math.cos(q) * w.sp, vy: Math.sin(q) * w.sp, life: w.life, air: 0, ground: 1, pierce: 99, pb: 1 }); } return;
+    }
+    const n = w.n || 1;
+    for (let k = 0; k < n; k++) {
+      const q = a + (n > 1 ? (k - (n - 1) / 2) * .12 : 0) + (Math.random() - .5) * .04, hom = w.k === 'missile' ? .08 : w.hom;
+      this.bullets.push({ ...base, k: w.k === 'missile' || w.k === 'flak' || w.k === 'acid' ? w.k : undefined, x: u.x + Math.cos(q) * u.U.r, y: u.y + Math.sin(q) * u.U.r, vx: Math.cos(q) * w.sp, vy: Math.sin(q) * w.sp, life: w.life + 4, air, ground: w.k === 'flak' ? w.gnd : 1, hom: hom && t && t.U ? t : null, hp: hom, pierce: w.pierce, bolt: w.k === 'bolt' });
+    }
+  }
+  // a hatótávon belüli célra minden kész fegyverrel tüzel
+  attack(u, t) {
+    const tc = t.U ? t : this.center(t), d = Math.hypot(tc.x - u.x, tc.y - u.y) - (t.U ? t.U.r : t.B.s * 4), W = u.U.w; let shot = false;
+    for (let i = 0; i < W.length; i++) { const w = W[i]; if (u.wc[i] > 0 || (t.U && t.U.air && w.air === 0) || d > wr(w)) continue; this.fireW(u, w, tc, t); u.wc[i] = w.rl; shot = true; if (u.dead) break; }
+    return shot;
   }
   updUnit(u) {
-    const U = u.U; if (u.hit > 0) u.hit--; if (u.rl > 0) u.rl--;
+    const U = u.U; if (u.hit > 0) u.hit--;
+    let spm = 1; for (const k in u.st) { const S = STATUS[k]; if (--u.st[k] <= 0) { delete u.st[k]; continue; } if (S.sp) spm *= S.sp; if (S.dps) { u.hp -= S.dps; if (u.hp <= 0) { this.dmgU(u, 1, 1); return; } } }
+    u.spm = spm; const wsp = u.st.od ? 1.6 : 1; for (let i = 0; i < u.wc.length; i++) if (u.wc[i] > 0) u.wc[i] -= wsp;
+    const A = U.ab;
+    if (A) {
+      if (A.regen && this.tick % A.regen[2] === u.id % A.regen[2]) for (const o of this.units) if (o.team === u.team && !o.dead && Math.hypot(o.x - u.x, o.y - u.y) < A.regen[3] + o.U.r) o.sh = Math.max(o.sh, Math.min(A.regen[1], o.sh + A.regen[0]));
+      if (A.rep && this.tick % A.rep[1] === u.id % A.rep[1]) for (const o of this.units) if (o.team === u.team && !o.dead && o.hp < o.U.hp && Math.hypot(o.x - u.x, o.y - u.y) < A.rep[2]) o.hp = Math.min(o.U.hp, o.hp + A.rep[0]);
+      if (A.ff) { if (u.ffb > 0) u.ffb--; else u.ffh = Math.min(A.ff[2], u.ffh + A.ff[1]); }
+    }
+    if (u.beam) { const bm = u.beam; if (u.aim != null) { const da = ((u.aim - bm.a + Math.PI * 3) % (Math.PI * 2)) - Math.PI; bm.a += Math.max(-.025, Math.min(.025, da)); } if (this.tick % 5 === 0) { const e = this.lineDmg(u.x, u.y, bm.a, bm.w.len, bm.w.d, u.team, { air: 1, ground: 1, pierce: 9, wide: 5 }); bm.x = e.x; bm.y = e.y; } if (--bm.t <= 0) u.beam = null; }
+    if (this.fog && u.team === PLAYER && this.tick % 30 === u.id % 30) this.reveal(u.x, u.y, 9);
     if (u === this.player) return this.updPlayer(u);
     if (u.team === ENEMY) return U.air ? this.aiAir(u) : this.aiGround(u);
     if (U.miner) return this.aiMiner(u);
+    if (U.rebuild && this.aiBuilder(u)) return;
     return this.aiDefend(u);
   }
   steer(u, tx, ty, stop = 0) {
-    const d = Math.hypot(tx - u.x, ty - u.y), U = u.U;
-    if (d > stop) { const sp = Math.min(U.sp, d - stop); u.vx += ((tx - u.x) / d * sp - u.vx) * .2; u.vy += ((ty - u.y) / d * sp - u.vy) * .2; }
+    const d = Math.hypot(tx - u.x, ty - u.y), sp = u.U.sp * (u.spm || 1);
+    if (d > stop) { const v = Math.min(sp, d - stop); u.vx += ((tx - u.x) / d * v - u.vx) * .2; u.vy += ((ty - u.y) / d * v - u.vy) * .2; }
     else { u.vx *= .8; u.vy *= .8; }
     this.moveU(u, u.vx, u.vy);
     if (Math.hypot(u.vx, u.vy) > .05) { u.rot = Math.atan2(u.vy, u.vx); u.walk += Math.hypot(u.vx, u.vy); }
   }
   aiGround(u) {
-    const U = u.U;
-    if (this.tick % 15 === (u.id % 15) || (u.tgt && u.tgt.dead)) {
-      u.tgt = this.nearestU(u.x, u.y, U.rng + 16, PLAYER, 1, 1) || this.nearestB(u.x, u.y, U.boom ? 40 : U.rng + 4);
-    }
-    const tx = Math.floor(u.x / TS), ty = Math.floor(u.y / TS);
+    const U = u.U, boom = U.w[0] && U.w[0].k === 'boom', groundOnly = U.w.every(w => w.air === 0);
+    if (this.tick % 15 === (u.id % 15) || (u.tgt && u.tgt.dead)) u.tgt = this.nearestU(u.x, u.y, U.rng + 16, PLAYER, !groundOnly, 1) || this.nearestB(u.x, u.y, boom ? 40 : U.rng + 4, isSolid);
     let nx = null, block = null;
-    if (this.flow && this.inb(tx, ty)) {
-      let bd = this.flow[ty * this.w + tx], bi = -1;
-      for (let k = 0; k < 8; k++) {
-        const ddx = [1, 0, -1, 0, 1, 1, -1, -1][k], ddy = [0, 1, 0, -1, 1, -1, 1, -1][k], X = tx + ddx, Y = ty + ddy; if (!this.inb(X, Y)) continue;
-        const i = Y * this.w + X; if (k > 3 && (this.solidG(ty * this.w + X) || this.solidG(Y * this.w + tx) || this.bt[ty * this.w + X] || this.bt[Y * this.w + tx])) continue;
-        if (this.flow[i] < bd) { bd = this.flow[i]; bi = i; }
+    if (!U.legs) {
+      const tx = Math.floor(u.x / TS), ty = Math.floor(u.y / TS), w = this.w;
+      if (this.flow && this.inb(tx, ty)) {
+        let bd = this.flow[ty * w + tx], bi = -1;
+        for (let k = 0; k < 8; k++) {
+          const X = tx + NX[k], Y = ty + NY[k]; if (!this.inb(X, Y)) continue; const i = Y * w + X;
+          if (k > 3) { const a = ty * w + X, b = Y * w + tx; if (this.sol[a] || this.sol[b] || (this.bt[a] && isSolid(this.bt[a])) || (this.bt[b] && isSolid(this.bt[b]))) continue; }
+          if (this.flow[i] < bd) { bd = this.flow[i]; bi = i; }
+        }
+        if (bi >= 0) { const b = this.bt[bi]; if (b && isSolid(b)) block = b; else nx = { x: (bi % w + .5) * TS, y: (Math.floor(bi / w) + .5) * TS }; }
       }
-      if (bi >= 0) { if (this.bt[bi]) block = this.bt[bi]; else nx = { x: (bi % this.w + .5) * TS, y: (Math.floor(bi / this.w) + .5) * TS }; }
     }
     if (block && (!u.tgt || u.tgt.U)) u.tgt = block;
     const t = u.tgt, tc = t ? (t.U ? t : this.center(t)) : null;
-    if (U.boom && tc && Math.hypot(tc.x - u.x, tc.y - u.y) < (t.U ? 10 : t.B.s * 4 + 8)) { this.splash(u.x, u.y, 24, U.d, PLAYER, 0, 1, 1); u.dead = 1; return; }
-    if (U.boom && tc && !block) this.steer(u, tc.x, tc.y);
-    else if (nx) this.steer(u, nx.x, nx.y); else { u.vx *= .8; u.vy *= .8; }
-    if (tc && !U.boom) { const d = Math.hypot(tc.x - u.x, tc.y - u.y); u.aim = Math.atan2(tc.y - u.y, tc.x - u.x); if (d < U.rng + (t.U ? 0 : t.B.s * 4) && u.rl <= 0) { this.fire(u, tc.x, tc.y, ENEMY); u.rl = U.rl; } }
+    if (boom) { if (tc && Math.hypot(tc.x - u.x, tc.y - u.y) < (t.U ? 10 : t.B.s * 4 + 8)) { this.fireW(u, U.w[0], tc, t); return; } if (tc && !block) this.steer(u, tc.x, tc.y); else if (nx) this.steer(u, nx.x, nx.y); return; }
+    const inR = tc && Math.hypot(tc.x - u.x, tc.y - u.y) - (t.U ? 0 : t.B.s * 4) < U.rng * .9, cc = this.center(this.core), atCore = Math.hypot(cc.x - u.x, cc.y - u.y) < U.rng * .5 + this.core.B.s * 4;
+    if (U.legs) { if (inR && !t.U) { u.vx *= .8; u.vy *= .8; } else this.steer(u, (tc || cc).x, (tc || cc).y); }
+    else if (nx && !atCore) this.steer(u, nx.x, nx.y); else { u.vx *= .8; u.vy *= .8; }
+    if (tc) { u.aim = Math.atan2(tc.y - u.y, tc.x - u.x); this.attack(u, t); } else u.aim = null;
   }
   aiAir(u) {
-    const U = u.U;
+    const U = u.U, sp = U.sp * (u.spm || 1);
     if (this.tick % 20 === (u.id % 20) || !u.tgt || u.tgt.dead) {
-      if (U.bomber) { const l = this.blds.filter(b => b.B.type !== 'wall' && b.B.type !== 'conveyor'); u.tgt = l.length ? l.reduce((a, b) => { const ca = this.center(a), cb = this.center(b); return Math.hypot(ca.x - u.x, ca.y - u.y) < Math.hypot(cb.x - u.x, cb.y - u.y) ? a : b; }) : this.core; }
-      else u.tgt = this.nearestU(u.x, u.y, 260, PLAYER, 1, 1) || this.nearestB(u.x, u.y, 1e9, null);
+      const pick = fn => this.nearestB(u.x, u.y, 1e9, fn);
+      if (U.bomber) u.tgt = pick(b => b.B.type !== 'wall' && isSolid(b)) || this.core;
+      else if (U.tier === 1) u.tgt = this.nearestU(u.x, u.y, 200, PLAYER, 0, 1) || pick(b => b.B.type === 'generator') || this.nearestU(u.x, u.y, 260, PLAYER, 1, 1) || pick(isSolid);
+      else u.tgt = this.nearestU(u.x, u.y, U.rng, PLAYER, 1, 1) || pick(b => b.B.type === 'turret') || pick(isSolid);
     }
     const t = u.tgt; if (!t) return;
-    const tc = t.U ? t : this.center(t), d = Math.hypot(tc.x - u.x, tc.y - u.y);
-    if (U.bomber) {
-      const a = Math.atan2(tc.y - u.y, tc.x - u.x); u.vx += (Math.cos(a) * U.sp - u.vx) * .05; u.vy += (Math.sin(a) * U.sp - u.vy) * .05; this.moveU(u, u.vx, u.vy); u.rot = Math.atan2(u.vy, u.vx);
-      const b = this.tb(Math.floor(u.x / TS), Math.floor(u.y / TS)); if (b && u.rl <= 0) { this.splash(u.x, u.y, 14, U.d, PLAYER, 0, 1, 1); u.rl = U.rl; }
+    const tc = t.U ? t : this.center(t), d = Math.hypot(tc.x - u.x, tc.y - u.y), a = Math.atan2(tc.y - u.y, tc.x - u.x);
+    if (U.bomber || U.circle) {          // rárepül a célra, túlszalad, visszafordul
+      if (d > (U.circle || 40) || Math.cos(a - u.rot) > 0) { u.vx += (Math.cos(a) * sp - u.vx) * .05; u.vy += (Math.sin(a) * sp - u.vy) * .05; }
+      this.moveU(u, u.vx, u.vy); u.rot = Math.atan2(u.vy, u.vx);
+      if (U.bomber) { const b = this.tb(Math.floor(u.x / TS), Math.floor(u.y / TS)); if (b && u.wc[0] <= 0) { this.fireW(u, U.w[0], u, b); u.wc[0] = U.w[0].rl; } }
+      else if (d < U.rng && Math.cos(a - u.rot) > .7) this.attack(u, t);
       return;
     }
-    if (d > U.rng * .7) { const a = Math.atan2(tc.y - u.y, tc.x - u.x); u.vx += (Math.cos(a) * U.sp - u.vx) * .06; u.vy += (Math.sin(a) * U.sp - u.vy) * .06; }
-    else { u.vx *= .97; u.vy *= .97; u.vx += Math.cos(u.id) * .02; }
-    this.moveU(u, u.vx, u.vy); u.rot = Math.atan2(tc.y - u.y, tc.x - u.x);
-    if (d < U.rng && u.rl <= 0) { this.fire(u, tc.x, tc.y, ENEMY); u.rl = U.rl; }
+    if (d > U.rng * .8) { u.vx += (Math.cos(a) * sp - u.vx) * .06; u.vy += (Math.sin(a) * sp - u.vy) * .06; } else { u.vx *= .95; u.vy *= .95; }
+    this.moveU(u, u.vx, u.vy); u.rot = a; u.aim = a; this.attack(u, t);
   }
   aiDefend(u) {
-    const U = u.U, home = u.home || this.center(this.core);
-    if (this.tick % 15 === (u.id % 15) || (u.tgt && u.tgt.dead)) u.tgt = this.nearestU(home.x, home.y, 260, ENEMY, 1, !U.air || 1);
+    const U = u.U, home = u.home || this.center(this.core), W0 = U.w[0];
+    if (this.tick % 15 === (u.id % 15) || (u.tgt && u.tgt.dead)) u.tgt = U.rng ? this.nearestU(home.x, home.y, 300, ENEMY, 1, 1) : null;
     const t = u.tgt;
     if (t && !t.dead) {
       const d = Math.hypot(t.x - u.x, t.y - u.y);
-      if (U.boom) { this.steer(u, t.x, t.y); if (d < 10) { this.splash(u.x, u.y, 24, U.d, ENEMY, 0, 1, 0); u.dead = 1; } return; }
-      this.steer(u, t.x, t.y, U.rng * .75);
-      if (d < U.rng && u.rl <= 0) { this.fire(u, t.x, t.y, PLAYER); u.rl = U.rl; }
-      u.aim = Math.atan2(t.y - u.y, t.x - u.x);
-    } else this.steer(u, home.x + Math.cos(u.id) * 16, home.y + Math.sin(u.id) * 16, 4);
+      if (W0.k === 'boom') { this.steer(u, t.x, t.y); if (d < 12) this.fireW(u, W0, t, t); return; }
+      this.steer(u, t.x, t.y, U.bomber ? 0 : U.rng * .75); u.aim = Math.atan2(t.y - u.y, t.x - u.x);
+      if (U.bomber) { if (d < W0.splR * .6 && u.wc[0] <= 0) { this.fireW(u, W0, t, t); u.wc[0] = W0.rl; } } else this.attack(u, t);
+      return;
+    }
+    u.aim = null;
+    if (W0 && W0.heal && this.tick % 30 === u.id % 30) { const c = this.nearestB(u.x, u.y, 400, b => b.hp < b.B.hp); u.fix = c; }
+    if (u.fix && !u.fix.dead && u.fix.hp < u.fix.B.hp) { const c = this.center(u.fix), d = Math.hypot(c.x - u.x, c.y - u.y); this.steer(u, c.x, c.y, Math.max(20, U.rng * .6)); if (d < Math.max(30, U.rng) && u.wc[0] <= 0) { u.fix.hp = Math.min(u.fix.B.hp, u.fix.hp + u.fix.B.hp * W0.heal / 100); u.fix.heal = 12; u.wc[0] = W0.rl; this.fx.push({ k: 'laser', x: u.x, y: u.y, x2: c.x, y2: c.y, life: 8, max: 8, c: '#84f491', w: 1.5 }); } return; }
+    this.steer(u, home.x + Math.cos(u.id) * (16 + U.r), home.y + Math.sin(u.id) * (16 + U.r), 4);
+  }
+  aiBuilder(u) {
+    if (!this.plans.length && this.rebuild.length && !this.nEn && this.tick % 20 === u.id % 20) { const [t, x, y, rot, cfg] = this.rebuild.shift(); this.plan(t, x, y, rot, cfg); }
+    const pl = this.plans.find(p => !p.stall) || this.plans[0]; if (!pl || this.nearestU(u.x, u.y, 120, ENEMY, 1, 1)) return false;
+    const px = (pl.x + pl.B.s / 2) * TS, py = (pl.y + pl.B.s / 2) * TS; this.steer(u, px, py, 60);
+    if (Math.hypot(px - u.x, py - u.y) < BUILD_RANGE) this.buildPlan(u, pl);
+    return true;
   }
   aiMiner(u) {
-    const c = this.center(this.core);
-    if (u.stack && u.stack.n >= 20) { this.steer(u, c.x, c.y, 18); if (Math.hypot(c.x - u.x, c.y - u.y) < 40) { this.addCore(u.stack.it, u.stack.n); this.fx.push({ k: 'xfer', x: u.x, y: u.y, x2: c.x, y2: c.y, life: 14, max: 14, c: ITEMS[u.stack.it].c }); u.stack = null; } u.mine = -1; return; }
-    if (u.mine == null || u.mine < 0 || this.tick % 300 === 0) {
-      const want = (this.core.items.copper || 0) <= (this.core.items.lead || 0) ? 'copper' : 'lead', w = u.stack ? u.stack.it : want;
-      let bi = -1, bd = 1e9; const step = 1;
-      for (let i = 0; i < this.ore.length; i += step) { if (this.mineItem(i, 1) !== w || this.bt[i]) continue; const x = (i % this.w + .5) * TS, y = (Math.floor(i / this.w) + .5) * TS, d = Math.hypot(x - c.x, y - c.y); if (d < bd) { bd = d; bi = i; } }
+    const c = this.center(this.core), w = this.w;
+    if (u.stack && u.stack.n >= 20) { this.steer(u, c.x, c.y, 18); if (Math.hypot(c.x - u.x, c.y - u.y) < 40 + this.core.B.s * 4) { this.addCore(u.stack.it, u.stack.n); this.fx.push({ k: 'xfer', x: u.x, y: u.y, x2: c.x, y2: c.y, life: 14, max: 14, c: ITEMS[u.stack.it].c }); u.stack = null; } u.mine = -1; return; }
+    if ((u.mine == null || u.mine < 0) && this.tick >= (u.scanT || 0)) {
+      u.scanT = this.tick + 240; const want = u.stack ? u.stack.it : (this.core.items.copper || 0) <= (this.core.items.lead || 0) ? 'copper' : 'lead';
+      let bi = -1, bd = 1e9; const cx = Math.floor(c.x / TS), cy = Math.floor(c.y / TS), R = 70;
+      for (let y = Math.max(2, cy - R); y < Math.min(this.h - 2, cy + R); y++) for (let x = Math.max(2, cx - R); x < Math.min(w - 2, cx + R); x++) { const i = y * w + x; if (!this.ore[i] || !this.seen[i] || this.bt[i] || this.mineItem(i, u.U.mineT) !== want) continue; const d = (x - cx) ** 2 + (y - cy) ** 2; if (d < bd) { bd = d; bi = i; } }
       u.mine = bi;
     }
-    if (u.mine < 0) return this.steer(u, c.x, c.y, 30);
-    const mx = (u.mine % this.w + .5) * TS, my = (Math.floor(u.mine / this.w) + .5) * TS;
+    if (u.mine == null || u.mine < 0) return this.steer(u, c.x, c.y, 40);
+    const mx = (u.mine % w + .5) * TS, my = (Math.floor(u.mine / w) + .5) * TS, it = this.mineItem(u.mine, u.U.mineT);
+    if (!it || this.bt[u.mine]) { u.mine = -1; return; }
     this.steer(u, mx, my, 30);
-    if (Math.hypot(mx - u.x, my - u.y) < MINE_RANGE) { const it = this.mineItem(u.mine, 1); u.mining = 1; u.mt += .7; if (u.mt > 50 + ITEMS[it].h * 15) { u.mt = 0; if (!u.stack) u.stack = { it, n: 0 }; u.stack.n++; } } else u.mining = 0;
+    if (Math.hypot(mx - u.x, my - u.y) < MINE_RANGE) { u.mining = 1; u.mt += u.U.mine / 10; if (u.mt > 50 + ITEMS[it].h * 15) { u.mt = 0; if (!u.stack) u.stack = { it, n: 0 }; u.stack.n++; } } else u.mining = 0;
   }
   updPlayer(p) {
-    const U = p.U, c = this.ctl;
+    const U = p.U, c = this.ctl, W0 = U.w[0];
     const len = Math.hypot(c.ax, c.ay) || 1, ts = U.sp * Math.min(1, Math.hypot(c.ax, c.ay));
     p.vx += (c.ax / len * ts - p.vx) * .18; p.vy += (c.ay / len * ts - p.vy) * .18;
     this.moveU(p, p.vx, p.vy);
-    if (c.shoot) { p.rot = Math.atan2(c.my - p.y, c.mx - p.x); if (p.rl <= 0) { const a = p.rot, sp = 3.4; for (const s of [-1, 1]) this.bullets.push({ x: p.x + Math.cos(a) * 5 - Math.sin(a) * 3 * s, y: p.y + Math.sin(a) * 5 + Math.cos(a) * 3 * s, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: U.rng / sp + 8, d: U.d / 2, team: PLAYER, air: 1, ground: 1, c: '#ffe39a' }); p.rl = U.rl; } }
+    if (this.fog && this.tick % 6 === 0) this.reveal(p.x, p.y, 16);
+    if (c.shoot) { p.rot = Math.atan2(c.my - p.y, c.mx - p.x); if (p.wc[0] <= 0) { this.fireW(p, W0, { x: c.mx, y: c.my }, this.nearestU(c.mx, c.my, 40, ENEMY, 1, 1)); p.wc[0] = W0.rl; } }
     else if (Math.hypot(p.vx, p.vy) > .2) p.rot = Math.atan2(p.vy, p.vx);
-    // bányászat
     p.mining = 0;
     if (p.mine >= 0 && p.mine != null) {
-      const mx = (p.mine % this.w + .5) * TS, my = (Math.floor(p.mine / this.w) + .5) * TS, it = this.mineItem(p.mine, 1);
+      const mx = (p.mine % this.w + .5) * TS, my = (Math.floor(p.mine / this.w) + .5) * TS, it = this.mineItem(p.mine, U.mineT);
       if (!it || this.bt[p.mine]) p.mine = -1;
       else if (Math.hypot(mx - p.x, my - p.y) < MINE_RANGE) {
-        p.mining = 1; p.mt += .5 * 1.0;
-        if (p.mt >= 50 + ITEMS[it].h * 15) { p.mt = 0; const cc = this.center(this.core);
+        p.mining = 1; p.mt += U.mine / 10;
+        if (p.mt >= 50 + ITEMS[it].h * 15) {
+          p.mt = 0; const cc = this.center(this.core);
           if (Math.hypot(cc.x - p.x, cc.y - p.y) < CORE_RANGE) { this.addCore(it, 1); this.fx.push({ k: 'xfer', x: mx, y: my, x2: cc.x, y2: cc.y, life: 16, max: 16, c: ITEMS[it].c }); }
-          else if (!p.stack || p.stack.it === it) { p.stack = p.stack || { it, n: 0 }; if (p.stack.n < 30) p.stack.n++; } }
+          else if (!p.stack || p.stack.it === it) { p.stack = p.stack || { it, n: 0 }; if (p.stack.n < 30) p.stack.n++; }
+        }
       }
     }
     if (p.stack) { const cc = this.center(this.core); if (Math.hypot(cc.x - p.x, cc.y - p.y) < CORE_RANGE) { this.addCore(p.stack.it, p.stack.n); p.stack = null; } }
-    this.buildStep(p);
+    p.building = null; if (!this.plans.length || c.noBuild) return;
+    let pl = null; for (const q of this.plans) if (Math.hypot((q.x + q.B.s / 2) * TS - p.x, (q.y + q.B.s / 2) * TS - p.y) <= BUILD_RANGE) { pl = q; break; }
+    if (pl) this.buildPlan(p, pl);
   }
-  buildStep(p) {
-    p.building = null; if (!this.plans.length || c_noBuild(this)) return;
-    let k = 0, pl = null;
-    for (; k < this.plans.length; k++) { const q = this.plans[k], qx = (q.x + q.B.s / 2) * TS, qy = (q.y + q.B.s / 2) * TS; if (Math.hypot(qx - p.x, qy - p.y) <= BUILD_RANGE) { pl = q; break; } }
-    if (!pl) return;
-    if (k > 0) { this.plans.splice(k, 1); this.plans.unshift(pl); }
-    if (!pl.brk && !this.canPlaceAgain(pl)) { this.plans.shift(); return; }
-    if (pl.brk && pl.b.dead) { this.plans.shift(); return; }
-    p.building = pl;
-    const dp = p.U.build / buildTime(pl.B);
-    if (pl.brk) { pl.prog += dp * 1.5; }
+  buildPlan(u, pl) {
+    if (pl.done) return; const drop = () => { pl.done = 1; const k = this.plans.indexOf(pl); if (k >= 0) this.plans.splice(k, 1); for (const it in pl.paid) this.addCore(it, pl.paid[it]); };
+    if (pl.brk ? pl.b.dead : !this.okTiles(pl.B, pl.x, pl.y, false)) return drop();
+    u.building = pl; const dp = u.U.build / buildTime(pl.B);
+    if (pl.brk) pl.prog += dp * 2;
     else {
       const np = Math.min(1, pl.prog + dp), c = this.core.items; let ok = true; const pay = {};
       for (const it in pl.B.cost) { const owe = Math.floor(pl.B.cost[it] * np + 1e-9) - (pl.paid[it] || 0); if (owe > 0) { if ((c[it] || 0) < owe) ok = false; pay[it] = owe; } }
@@ -586,79 +978,93 @@ export class World {
       for (const it in pay) { c[it] -= pay[it]; pl.paid[it] = (pl.paid[it] || 0) + pay[it]; }
       pl.prog = np;
     }
-    if (pl.prog >= 1) { this.plans.shift(); this.finishPlan(pl); }
+    if (pl.prog >= 1) { const k = this.plans.indexOf(pl); if (k >= 0) this.plans.splice(k, 1); this.finishPlan(pl); }
   }
-  canPlaceAgain(pl) {
-    for (let yy = 0; yy < pl.B.s; yy++) for (let xx = 0; xx < pl.B.s; xx++) { const o = this.tb(pl.x + xx, pl.y + yy); if (o && !(pl.B.type === 'conveyor' && o.B.type === 'conveyor')) return false; }
-    return true;
-  }
+  rally(x, y) { let n = 0; for (const u of this.units) if (u.team === PLAYER && u !== this.player && !u.U.miner) { u.home = { x: x + Math.cos(n * 2.4) * Math.sqrt(n) * 9, y: y + Math.sin(n * 2.4) * Math.sqrt(n) * 9 }; n++; } return n; }
 
-  /* ----- útkeresés ----- */
-  calcFlow() {
-    const w = this.w, h = this.h, N = w * h, dist = new Float32Array(N).fill(1e9), heap = [];
-    const push = (i, d) => { heap.push([d, i]); let k = heap.length - 1; while (k > 0) { const p = (k - 1) >> 1; if (heap[p][0] <= heap[k][0]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
-    const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let k = 0; for (;;) { const l = 2 * k + 1, r = l + 1; let m = k; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === k) break; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; } } return top; };
-    const co = this.core; for (let y = co.y; y < co.y + 3; y++) for (let x = co.x; x < co.x + 3; x++) { dist[y * w + x] = 0; push(y * w + x, 0); }
-    while (heap.length) {
-      const [d, i] = pop(); if (d > dist[i]) continue; const x = i % w, y = (i - x) / w;
+  /* ----- útkeresés: időszeletelt Dijkstra a magtól ----- */
+  flowBegin() {
+    const dist = new Float32Array(this.w * this.h).fill(1e9), hp = new Heap(8192), co = this.core;
+    for (let y = co.y; y < co.y + co.B.s; y++) for (let x = co.x; x < co.x + co.B.s; x++) { dist[y * this.w + x] = 0; hp.push(0, y * this.w + x); }
+    return { dist, hp };
+  }
+  flowRun(budget) {
+    const { dist, hp } = this.fjob, w = this.w, h = this.h, sol = this.sol, bt = this.bt, co = this.core, nw = this.nearW; let n = 0;
+    while (hp.n && n++ < budget) {
+      const i = hp.pop(), d = hp.top; if (d > dist[i]) continue; const x = i % w, y = (i - x) / w;
       for (let k = 0; k < 8; k++) {
-        const ddx = [1, 0, -1, 0, 1, 1, -1, -1][k], ddy = [0, 1, 0, -1, 1, -1, 1, -1][k], X = x + ddx, Y = y + ddy;
-        if (X < 0 || Y < 0 || X >= w || Y >= h) continue; const j = Y * w + X; if (this.solidG(j)) continue;
-        if (k > 3 && (this.solidG(y * w + X) || this.solidG(Y * w + x))) continue;
-        const b = this.bt[j]; const c = (k > 3 ? 1.414 : 1) + (b && b !== co ? (b.B.type === 'wall' ? 70 : 40) : 0);
-        let near = 0; for (let q = 0; q < 4; q++) { const XX = X + [1, 0, -1, 0][q], YY = Y + [0, 1, 0, -1][q]; if (XX >= 0 && YY >= 0 && XX < w && YY < h && this.solidG(YY * w + XX)) near = 1; }
-        const nd = d + c + near * 2; if (nd < dist[j]) { dist[j] = nd; push(j, dist[j]); }
+        const X = x + NX[k], Y = y + NY[k]; if (X < 0 || Y < 0 || X >= w || Y >= h) continue; const q = Y * w + X; if (sol[q]) continue;
+        if (k > 3 && (sol[y * w + X] || sol[Y * w + x])) continue;
+        const b = bt[q], nd = d + (k > 3 ? 1.414 : 1) + (b && b !== co && isSolid(b) ? (b.B.type === 'wall' ? 70 : 40) : 0) + nw[q] * 2;
+        if (nd < dist[q]) { dist[q] = nd; hp.push(nd, q); }
       }
     }
-    this.flow = dist; this.fdirty = 0;
+    if (!hp.n) { this.flow = dist; this.fjob = null; }
   }
 
   /* ----- hullámok ----- */
   nextWave() {
     const list = waveUnits(this.wave + 1, this.sec); this.wave++;
-    list.forEach((t, k) => { const sp = this.spawns[k % this.spawns.length], a = Math.random() * Math.PI * 2, r = Math.random() * 14; this.spawnU(t, ENEMY, (sp.x + .5) * TS + Math.cos(a) * r, (sp.y + .5) * TS + Math.sin(a) * r); });
+    list.forEach(([t, sh, eff], k) => { const sp = this.spawns[k % this.spawns.length], a = Math.random() * Math.PI * 2, r = Math.random() * 18 + UNITS[t].r, u = this.spawnU(t, ENEMY, (sp.x + .5) * TS + Math.cos(a) * r, (sp.y + .5) * TS + Math.sin(a) * r); u.sh = sh; if (eff) u.st[eff] = 1e9; });
     this.wtimer = this.sec.wt * 60;
     for (const sp of this.spawns) this.fx.push({ k: 'ring', x: (sp.x + .5) * TS, y: (sp.y + .5) * TS, r: 48, life: 40, max: 40, c: '#f25555' });
-    this.onWave && this.onWave(this.wave);
+    if (this.onWave) this.onWave(this.wave);
   }
-  enemies() { let n = 0; for (const u of this.units) if (u.team === ENEMY && !u.dead) n++; return n; }
+  enemies() { return this.nEn; }
 
   /* ----- lépés ----- */
   step() {
     if (this.lost || this.won) return;
     this.tick++;
-    if (this.fdirty && this.tick - this.flowT > 20) { this.flowT = this.tick; this.calcFlow(); }
+    let ne = 0; for (const u of this.units) if (u.team === ENEMY && !u.dead) ne++; this.nEn = ne;
+    if (this.fdirty && !this.fjob && this.tick - this.flowT > 30 && (ne || this.wtimer < 900)) { this.fdirty = 0; this.flowT = this.tick; this.fjob = this.flowBegin(); }
+    if (this.fjob) this.flowRun(30000);
     this.powerTick();
     for (let k = 0; k < this.blds.length; k++) this.updB(this.blds[k]);
     if (!this.player || this.player.dead) { if (this.respawn-- <= 0) this.spawnPlayer(); }
     for (const u of this.units) if (!u.dead) this.updUnit(u);
-    // egymás taszítása
     if (this.tick % 2 === 0) { const L = this.units; for (let a = 0; a < L.length; a++) { const u = L[a]; if (u.dead || u === this.player) continue; for (let b = a + 1; b < L.length; b++) { const v = L[b]; if (v.dead || v === this.player || !!u.U.air !== !!v.U.air) continue; const dx = v.x - u.x, dy = v.y - u.y, r = u.U.r + v.U.r, d2 = dx * dx + dy * dy; if (d2 < r * r && d2 > .01) { const d = Math.sqrt(d2), f = (r - d) / d * .25; this.moveU(u, -dx * f, -dy * f); this.moveU(v, dx * f, dy * f); } } } }
     this.units = this.units.filter(u => !u.dead || u === this.player);
-    if (this.player && this.player.dead && !this.units.includes(this.player)) {}
     this.updBullets();
     for (const f of this.fx) f.life--; this.fx = this.fx.filter(f => f.life > 0);
     for (const m of this.msgs) m.life--; this.msgs = this.msgs.filter(m => m.life > 0);
-    // hullámidő
     if (!this.sec.win || this.wave < this.sec.win) { this.wtimer--; if (this.wtimer <= 0) this.nextWave(); }
-    if (this.sec.win && this.wave >= this.sec.win && this.enemies() === 0) { this.won = true; }
+    if (this.sec.win && this.wave >= this.sec.win) { this.calm = ne === 0 ? (this.calm || 0) + 1 : 0; if (this.calm > 90) this.won = true; }
+  }
+  hitFx(b) { this.fx.push({ k: 'hit', x: b.x, y: b.y, life: 8, max: 8, c: b.c }); }
+  burst(b, foe) {        // becsapódás: területi sebzés, repeszek, villámok
+    if (b.spl) this.splash(b.x, b.y, b.splR, b.spl, foe, b.k === 'art' ? 0 : 1, b.k === 'flak' ? !!b.ground : 1, foe === PLAYER, b.st);
+    if (b.heal && b.team === PLAYER) this.healB(b.x, b.y, (b.splR || 8) + 6, b.heal);
+    if (b.zap) for (let k = 0; k < b.zap; k++) this.lightning(b.x, b.y, Math.random() * 7, b.zapD, b.team, 5);
+    const f = b.frag; if (f) for (let k = 0; k < f.n; k++) { const a = Math.random() * 7, sp = f.sp * (.6 + Math.random() * .6); this.bullets.push(f.k === 'art' ? { k: 'art', x: b.x, y: b.y, sx: b.x, sy: b.y, tx: b.x + Math.cos(a) * sp * f.life, ty: b.y + Math.sin(a) * sp * f.life, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: f.life, d: f.d, spl: f.spl, splR: f.splR, team: b.team, ground: 1, c: b.c } : { x: b.x, y: b.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: f.life, d: f.d, spl: f.spl, splR: f.splR, team: b.team, air: f.air !== 0, ground: f.ground !== 0, c: b.c }); }
   }
   updBullets() {
-    const out = [];
+    const out = [], w = this.w;
     for (const b of this.bullets) {
-      if (b.hom && !b.hom.dead && !b.art) { const a = Math.atan2(b.hom.y - b.y, b.hom.x - b.x), sp = Math.hypot(b.vx, b.vy), ca = Math.atan2(b.vy, b.vx); let da = ((a - ca + Math.PI * 3) % (Math.PI * 2)) - Math.PI; const na = ca + Math.max(-.08, Math.min(.08, da)); b.vx = Math.cos(na) * sp; b.vy = Math.sin(na) * sp; }
+      if (b.hom && !b.hom.dead && b.k !== 'art') { const a = Math.atan2(b.hom.y - b.y, b.hom.x - b.x), sp = Math.hypot(b.vx, b.vy), ca = Math.atan2(b.vy, b.vx), da = ((a - ca + Math.PI * 3) % (Math.PI * 2)) - Math.PI, na = ca + Math.max(-b.hp, Math.min(b.hp, da)); b.vx = Math.cos(na) * sp; b.vy = Math.sin(na) * sp; }
       b.x += b.vx; b.y += b.vy; b.life--;
       const foe = b.team === PLAYER ? ENEMY : PLAYER;
-      if (b.art) { if (b.life <= 0) { this.splash(b.x, b.y, b.spl || 20, b.d, foe, 0, 1, foe === PLAYER); continue; } out.push(b); continue; }
+      if (b.k === 'drv') { if (b.life <= 0) { const t = b.tgt; t.incoming = 0; if (!t.dead) for (const k in b.items) t.items[k] = (t.items[k] || 0) + b.items[k]; continue; } out.push(b); continue; }
+      if (b.k === 'art') { if (b.life <= 0) { this.burst(b, foe); continue; } out.push(b); continue; }
+      if (foe === PLAYER && !b.k) { let ab = false; for (const s of this.shields) if (s.on && Math.hypot(b.x - (s.x + 1.5) * TS, b.y - (s.y + 1.5) * TS) < s.rad) { s.sh += b.d + (b.spl || 0); s.hit = 6; if (s.sh >= s.B.shp) { s.broken = true; s.on = false; } ab = true; break; } if (ab) { this.hitFx(b); continue; } }
       let hit = false;
-      if (b.fl) { for (const u of this.units) if (u.team === foe && u.U.air && !u.dead && Math.hypot(u.x - b.x, u.y - b.y) < b.fl * .45) { hit = true; break; } if (hit || b.life <= 0) { this.splash(b.x, b.y, b.fl, b.d, foe, 1, 0, 0); continue; } out.push(b); continue; }
       for (const u of this.units) {
-        if (u.team !== foe || u.dead) continue; if (u.U.air ? !b.air : !b.ground) continue;
-        if (Math.abs(u.x - b.x) < u.U.r + 2 && Math.abs(u.y - b.y) < u.U.r + 2) { this.dmgU(u, b.d); hit = true; if (b.spl) this.splash(b.x, b.y, b.spl, b.d * .5, foe, 1, 1, 0); this.fx.push({ k: 'hit', x: b.x, y: b.y, life: 8, max: 8, c: b.c }); break; }
+        if (u.team !== foe || u.dead) continue;
+        if (u.ffh > 0 && Math.hypot(u.x - b.x, u.y - b.y) < u.U.ab.ff[0]) { u.ffh -= b.d + (b.spl || 0); if (u.ffh <= 0) u.ffb = u.U.ab.ff[3]; hit = true; b.pierce = 0; break; }
+        if (u.U.air ? !b.air : !b.ground) continue;
+        const R = u.U.r + 2 + (b.k === 'flak' ? b.splR * .5 : 0);
+        if (Math.abs(u.x - b.x) < R && Math.abs(u.y - b.y) < R) {
+          if (b.seen && b.seen.includes(u)) continue;
+          this.dmgU(u, b.d); if (b.st) u.st[b.st] = b.stT || 240; if (b.liq === 'water') { u.vx += b.vx * .25; u.vy += b.vy * .25; }
+          hit = true; if (b.pierce > 0) (b.seen = b.seen || []).push(u); break;
+        }
       }
-      if (!hit && foe === PLAYER) { const bl = this.tb(Math.floor(b.x / TS), Math.floor(b.y / TS)); if (bl) { this.dmgB(bl, b.d); hit = true; this.fx.push({ k: 'hit', x: b.x, y: b.y, life: 8, max: 8, c: b.c }); } }
-      if (!hit && !b.flame) { const tx = Math.floor(b.x / TS), ty = Math.floor(b.y / TS); if (this.inb(tx, ty) && this.wall[ty * this.w + tx]) hit = true; }
-      if ((hit && !b.pierce) || b.life <= 0) continue;
+      if (!hit && foe === PLAYER) { const bl = this.tb(Math.floor(b.x / TS), Math.floor(b.y / TS)); if (bl && (!UNDER(bl) || bl === b.ab) && !(bl.open) && !(b.seen && b.seen.includes(bl))) {
+        if (bl.B.deflect && !b.k && Math.random() < bl.B.deflect / Math.max(1, b.d)) { b.vx = -b.vx; b.vy = -b.vy; b.team = PLAYER; b.c = '#f4ba6e'; b.life += 20; out.push(b); continue; }
+        this.dmgB(bl, b.d, b); hit = true; if (b.pierce > 0 && b.pb) (b.seen = b.seen || []).push(bl); else b.pierce = 0;
+      } }
+      if (hit) { if (b.k !== 'flame') this.hitFx(b); if (b.pierce > 0) { b.pierce--; out.push(b); continue; } this.burst(b, foe); continue; }
+      if (b.life <= 0) { if (b.k === 'flak' || b.k === 'missile') this.burst(b, foe); continue; }
       out.push(b);
     }
     this.bullets = out;
@@ -666,24 +1072,26 @@ export class World {
 
   /* ----- mentés ----- */
   save() {
+    const st = b => { const o = {}; if (sum(b.items) > 0) o.i = b.items; if (b.ammo && b.ammo.length) o.a = b.ammo; if (b.lq > .5) o.l = [b.lt, Math.round(b.lq)]; if (b.oq > .5) o.o = Math.round(b.oq); if (b.pw > 1) o.p = Math.round(b.pw); if (b.burn > 0) o.b = [Math.round(b.burn), b.bm]; if (b.heat > .01 && b.B.mode) o.h = +b.heat.toFixed(2); if (b.warm > .01) o.w = +b.warm.toFixed(3); if (b.pay) o.y = b.pay; if (b.open) o.d = 1; return Object.keys(o).length ? o : 0; };
     return {
-      v: 1, wave: this.wave, wt: Math.round(this.wtimer), items: this.core.items, chp: Math.round(this.core.hp), kills: this.stats.kills,
-      b: this.blds.filter(b => b !== this.core).map(b => [b.t, b.x, b.y, b.rot, Math.round(b.hp), b.cfg ?? null, b.link ?? -1, b.links ? b.links.map(l => l.i) : 0]),
+      v: 2, gv: this.sec.gen === 1 ? undefined : 2, wave: this.wave, wt: Math.round(this.wtimer), items: this.core.items, chp: Math.round(this.core.hp), kills: this.stats.kills,
+      core: this.core.t, cx: this.core.x, cy: this.core.y, seen: this.fog ? rle(this.seen) : undefined, rb: this.rebuild.slice(0, 200),
+      b: this.blds.filter(b => b !== this.core).map(b => { const a = [b.t, b.x, b.y, b.rot, Math.round(b.hp), b.cfg ?? null, b.link ?? -1, b.links ? b.links.map(l => l.i) : 0], s = st(b); if (s) a.push(s); return a; }),
       p: this.plans.map(p => [p.t, p.x, p.y, p.rot, p.brk ? 1 : 0, p.cfg ?? null]),
       u: this.units.filter(u => u.team === PLAYER && u !== this.player).map(u => [u.t, Math.round(u.x), Math.round(u.y), Math.round(u.hp)]),
     };
   }
   load(s) {
-    this.wave = s.wave || 0; this.wtimer = s.wt || this.wtimer; this.core.items = s.items || {}; this.core.hp = s.chp || this.core.hp; this.stats.kills = s.kills || 0;
+    this.wave = s.wave || 0; this.wtimer = s.wt || this.wtimer; this.core.items = s.items || {}; this.core.hp = Math.min(this.core.B.hp, s.chp || this.core.hp); this.stats.kills = s.kills || 0;
+    if (s.seen && this.fog) unrle(s.seen, this.seen); this.rebuild = s.rb || [];
     const links = [];
-    for (const [t, x, y, rot, hp, cfg, link, lk] of s.b || []) {
-      if (!BLOCKS[t] || !this.canPlaceLoad(t, x, y)) continue;
-      const b = this.addB(t, x, y, rot, cfg); b.hp = Math.min(b.B.hp, hp || b.B.hp); if (b.link !== undefined) b.link = link; if (lk) links.push([b, lk]);
+    for (const [t, x, y, rot, hp, cfg, link, lk, st] of s.b || []) {
+      const B = BLOCKS[t]; if (!B) continue; let ok = true; for (let yy = 0; yy < B.s; yy++) for (let xx = 0; xx < B.s; xx++) if (!this.inb(x + xx, y + yy) || this.bt[(y + yy) * this.w + x + xx] || this.wall[(y + yy) * this.w + x + xx]) ok = false; if (!ok) continue;
+      const b = this.addB(t, x, y, rot, cfg); b.hp = Math.min(B.hp, hp || B.hp); if (b.link !== undefined) b.link = link; if (lk) links.push([b, lk]);
+      if (st) { if (st.i) b.items = st.i; if (st.a && b.ammo) b.ammo = st.a.filter(a => B.ammo && B.ammo[a.it]); if (st.l && LIQUIDS[st.l[0]]) { b.lt = st.l[0]; b.lq = st.l[1]; } if (st.o) b.oq = st.o; if (st.p) b.pw = st.p; if (st.b) { b.burn = st.b[0]; b.bm = st.b[1]; } if (st.h) b.heat = st.h; if (st.w) b.warm = st.w; if (st.y && UNITS[st.y]) b.pay = st.y; if (st.d) b.open = true; }
     }
     for (const [b, lk] of links) for (const i of lk) { const o = this.bt[i]; if (o && o.i === i) this.link(b, o); }
     for (const [t, x, y, rot, brk, cfg] of s.p || []) { if (!BLOCKS[t]) continue; if (brk) { const b = this.tb(x, y); if (b) this.unplan(b); } else this.plan(t, x, y, rot, cfg); }
     for (const [t, x, y, hp] of s.u || []) { if (!UNITS[t]) continue; const u = this.spawnU(t, PLAYER, x, y); u.hp = hp; }
   }
-  canPlaceLoad(t, x, y) { const s = BLOCKS[t].s; for (let yy = 0; yy < s; yy++) for (let xx = 0; xx < s; xx++) { if (!this.inb(x + xx, y + yy) || this.bt[(y + yy) * this.w + x + xx]) return false; } return true; }
 }
-function c_noBuild(w) { return w.ctl.noBuild; }
