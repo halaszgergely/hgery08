@@ -34,6 +34,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;image-rende
 .card{width:min(860px,100%);padding:18px 20px;max-height:100%;overflow:auto}
 h1{font:900 44px/1 inherit;font-family:inherit;letter-spacing:.12em;color:var(--acc);text-shadow:0 3px 0 #6b4a12}h1 small{display:block;font-size:12px;letter-spacing:.3em;color:var(--mut);margin-top:8px;text-shadow:none}
 h2{font-size:12px;letter-spacing:.2em;color:var(--mut);text-transform:uppercase;margin:14px 0 8px}
+.modr{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:8px 0;border-bottom:1px solid var(--ln)}.modr label{flex:1;cursor:pointer}.modr .mut{width:100%;font-size:12px}
 .mlist{display:flex;flex-direction:column;gap:8px;margin-top:22px;max-width:300px}.mlist .b{padding:11px 14px;font-size:15px}
 .credit{margin-top:26px;color:var(--mut);font-size:12px}.credit a{color:var(--acc)}
 #menu{background:radial-gradient(ellipse at 70% 40%,rgba(255,179,71,.08),rgba(10,11,14,.95) 60%)}#menu .card{background:none;border:0}
@@ -60,13 +61,14 @@ h2{font-size:12px;letter-spacing:.2em;color:var(--mut);text-transform:uppercase;
 </div>
 <div id="menu" class="scr"><div class="card box">
   <h1>KOHÓVÁR<small>BÁNYÁSZAT · SZÁLLÍTÁS · VÉDELEM</small></h1>
-  <div class="mlist"><button class="b go" id="mPlay">Kampány</button><button class="b" id="mFree">Szabad játék</button><button class="b" id="mTech">Kutatás</button></div>
+  <div class="mlist"><button class="b go" id="mPlay">Kampány</button><button class="b" id="mFree">Szabad játék</button><button class="b" id="mTech">Kutatás</button><button class="b" id="mMods">Modok</button></div>
   <p class="credit">A <a href="https://store.steampowered.com/app/1127400/Mindustry/" target="_blank" rel="noopener">Mindustry</a> (Anuke és közreműködők) alapján készült; a blokkok, egységek és a talaj grafikája a Mindustry sprite-jai. Licenc: <a href="LICENSE" target="_blank">GPLv3</a> · <a href="FORRAS.md" target="_blank">forrás és módosítások</a>. Az eredeti játék a Steamen: <a href="https://store.steampowered.com/app/1127400/Mindustry/" target="_blank" rel="noopener">store.steampowered.com/app/1127400/Mindustry</a></p>
 </div></div>
 <div id="secs" class="scr" hidden><div class="card box"><div style="display:flex;justify-content:space-between;align-items:center"><h1 style="font-size:26px">SZEKTOROK</h1><button class="b" id="secBack">Vissza</button></div><h2>Raktár</h2><div class="bank" id="bank1"></div><h2>Kampányok</h2><div class="row" id="camps" style="display:flex;gap:6px;flex-wrap:wrap"></div><p class="mut" id="campD" style="margin:8px 0"></p><div class="secs" id="secList"></div></div></div>
 <div id="free" class="scr" hidden><div class="card box" style="width:min(1000px,100%)"><div style="display:flex;justify-content:space-between;align-items:center"><h1 style="font-size:26px">SZABAD JÁTÉK</h1><button class="b" id="freeBack">Vissza</button></div><div class="fwrap"><div id="fOpts"></div><div class="fside"><canvas id="fPrev"></canvas><div id="fRank"></div><button class="b go" id="fGo">Indítás</button><button class="b" id="fCont" hidden></button></div></div></div></div>
 <div id="tech" class="scr" hidden><div class="card box"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h1 style="font-size:26px">KUTATÁS</h1><div class="bank" id="bank2" style="flex:1"></div><button class="b" id="techBack">Bezár</button></div><div id="tree"><div id="treeIn"></div></div><div id="tinfo" class="box" hidden></div></div></div>
+<div id="mods" class="scr" hidden><div class="card box" style="width:min(640px,100%)"><div style="display:flex;justify-content:space-between;align-items:center"><h1 style="font-size:26px">MODOK</h1><button class="b" id="modBack">Vissza</button></div><div id="modList" style="margin-top:12px"></div><div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><label class="b" style="cursor:pointer">Mod betöltése (.zip)<input type="file" id="modFile" accept=".zip" hidden></label><button class="b go" id="modApply" hidden>Újratöltés</button></div><div id="modMsg" style="margin-top:10px"></div></div></div>
 <div id="pmenu" class="scr" hidden><div class="card box" style="width:min(340px,100%)"><h1 style="font-size:24px">SZÜNET</h1><div class="mlist"><button class="b go" id="pRes">Folytatás</button><button class="b" id="pTech">Kutatás</button><button class="b" id="pSave">Mentés és kilépés</button><button class="b" id="pAband">Szektor feladása</button></div></div></div>
 <div id="end" class="scr" hidden><div class="card box"><h1 id="endT"></h1><p id="endP" class="mut" style="margin-top:10px"></p><div class="bank" id="endB" style="justify-content:center;margin-top:10px"></div><div class="mlist" style="margin:18px auto 0"><button class="b go" id="endOk">Térkép</button></div></div></div>
-<script type="module" src="fo.js?v=202611261904"></script>
+<script type="module" src="fo.js?v=202611262023"></script>
 </body></html>

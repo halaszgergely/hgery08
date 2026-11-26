@@ -1,5 +1,6 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611261904';
+import { genMapSerpulo } from './terkep.js?v=202611262023';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611262023';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -16,8 +17,20 @@ const pureCons = b => b.B.power && b.B.type !== 'generator' && b.B.type !== 'bat
 const wireless = b => b.B.type === 'node' || b.B.type === 'diode';
 export function buildTime(B) { let c = 20; for (const k in B.cost) c += B.cost[k] * ITEMS[k].cost; return c; }
 const wr = w => w.len || (w.k === 'bomb' ? 8 : w.sp * w.life);
-for (const k in UNITS) { const U = UNITS[k]; U.rng = Math.max(0, ...U.w.map(wr)); }
+// származtatott értékek (a modok betöltése után újra lefut)
+export function prepContent() {
+  for (const k in UNITS) { const U = UNITS[k]; U.rng = Math.max(0, ...U.w.map(wr)); U.lob = U.w.length > 0 && U.w.every(w => w.k === 'art' || w.k === 'bomb'); }
+  for (const k in BLOCKS) { const B = BLOCKS[k]; B.id = k; if (B.ammo && Object.values(B.ammo).some(a => a.k === 'art')) B.lob = 1; }   // a tüzérség íves pályán a falak fölött lő
+}
+prepContent();
 const sum = o => { let s = 0; for (const k in o) s += o[k]; return s; };
+// Mindustry blokkcsoportok (BlockGroup) a ráépítéshez
+const GRP = { conveyor: 'tr', sconv: 'tr', junction: 'tr', bridge: 'tr', sorter: 'tr', router: 'tr', overflow: 'tr', storage: 'tr', pump: 'lq', conduit: 'lq', lrouter: 'lq', ljunction: 'lq', lbridge: 'lq', node: 'pw', diode: 'pw', battery: 'pw', generator: 'pw', drill: 'dr', wall: 'wl', mender: 'pj', overdrive: 'pj', shield: 'pj', repair: 'pj', turret: 'tu', factory: 'un', recon: 'un' };
+// a Mindustry tárgyazonosítói (döntetlennél a fúró a nagyobbat választja)
+const MID = { copper: 0, lead: 1, metaglass: 2, graphite: 3, sand: 4, coal: 5, titanium: 6, thorium: 7, scrap: 8, silicon: 9, plastanium: 10, phase: 11, surge: 12, spore: 13, blast: 14, pyratite: 15 };
+const ANYREP = new Set(['tr', 'lq', 'wl', 'pj', 'tu']);
+const grpOf = B => B.type === 'crafter' ? (B.id === 'wextract' || B.id === 'oilext' ? 'lq' : null) : GRP[B.type] || null;
+const clsOf = B => B.type + ':' + (B.mode || '');
 const lqOk = (b, L) => !L || (b.lt === L[0] && b.lq >= L[1]);
 
 /* ---------- véletlen, zaj ---------- */
@@ -89,6 +102,8 @@ export function genMapOld(sec) {
 }
 
 /* ---------- térképgenerátor: barlangtermek folyosókkal, több biom, ritka ércfoltok ---------- */
+// térképváltozatok: 1 = legelső, 2 = barlangos (2026-11-26), 3 = a Mindustry Serpulo-generátora szerint (a mentés gv mezője dönt)
+export const genFor = sec => sec.gen === 1 ? genMapOld(sec) : sec.gen === 2 ? genMap(sec) : genMapSerpulo(sec, hstr, rng);
 export function genMap(sec) {
   const w = sec.w, h = sec.h, N = w * h, s = hstr(sec.id) % 100000, R = rng(hstr(sec.id) ^ 0x51ed270b), wq = sec.water || 1;
   const floor = new Uint8Array(N), ore = new Uint8Array(N), wall = new Uint8Array(N), open = new Uint8Array(N), keep = new Uint8Array(N);
@@ -193,7 +208,7 @@ const unrle = (s, a) => { let i = 0, v = 0; for (const p of s.split('.')) { cons
 
 export class World {
   constructor(sec, save) {
-    Object.assign(this, sec.gen === 1 ? genMapOld(sec) : genMap(sec));
+    Object.assign(this, genFor(sec));
     this.sec = sec; this.w = sec.w; this.h = sec.h; const N = this.w * this.h, w = this.w;
     this.bt = new Array(N).fill(null); this.sol = new Uint8Array(N); this.nearW = new Uint8Array(N);
     for (let i = 0; i < N; i++) this.sol[i] = this.wall[i] || this.fl(i).deep ? 1 : 0;
@@ -216,7 +231,7 @@ export class World {
   tb(x, y) { return this.inb(x, y) ? this.bt[y * this.w + x] : null; }
   fl(i) { return FLOORS[FL[this.floor[i]]]; }
   solidG(i) { return this.sol[i]; }
-  mineItem(i, tier = 9) { const o = this.ore[i]; const it = o ? ITEM_IDS[o - 1] : this.fl(i).ore; if (!it || this.wall[i]) return null; return ITEMS[it].h <= tier ? it : null; }
+  mineItem(i, tier = 9, unit) { const o = this.ore[i]; const it = o ? ITEM_IDS[o - 1] : unit ? null : this.fl(i).ore; if (!it || this.wall[i]) return null; return ITEMS[it].h <= tier ? it : null; }   // a homokos talaj egységgel nem bányászható (playerUnmineable)
   front(b, d = b.rot) { const s = b.B.s, o = (s - 1) >> 1; return this.tb(b.x + o + DX[d] * (d === 0 ? s - o : d === 2 ? o + 1 : 0), b.y + o + DY[d] * (d === 1 ? s - o : d === 3 ? o + 1 : 0)); }
   center(b) { return { x: (b.x + b.B.s / 2) * TS, y: (b.y + b.B.s / 2) * TS }; }
   sideOf(t, src) { const dx = (src.x + src.B.s / 2) - (t.x + t.B.s / 2), dy = (src.y + src.B.s / 2) - (t.y + t.B.s / 2); return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 0 : 2) : (dy > 0 ? 1 : 3); }
@@ -269,7 +284,7 @@ export class World {
       if (f.liq) lq[f.liq] = (lq[f.liq] || 0) + 1;
       attr += f[B.attr || 'heat'] || 0;
     }
-    let best = null, n = 0; for (const k in cnt) if (!best || (best === 'sand') > (k === 'sand') || ((best === 'sand') === (k === 'sand') && cnt[k] > n)) { best = k; n = cnt[k]; }
+    let best = null, n = 0; for (const k in cnt) { const lo = k === 'sand', blo = best === 'sand'; if (!best || (blo && !lo) || (lo === blo && (cnt[k] > n || (cnt[k] === n && MID[k] > MID[best])))) { best = k; n = cnt[k]; } }
     b.dItem = best; b.dCnt = n; b.attr = attr; b.pLiq = null; b.pCnt = 0; for (const k in lq) if (lq[k] > b.pCnt) { b.pLiq = k; b.pCnt = lq[k]; }
   }
   remB(b, boom) {
@@ -282,14 +297,20 @@ export class World {
     b.dead = 1; this.ver++; this.pdirty = 1; this.fdirty = 1;
     if (boom) { const c = this.center(b); this.boom(c.x, c.y, B.s * 7, '#ffb347'); this.fx.push({ k: 'rubble', x: b.x, y: b.y, s: B.s, life: 1800, max: 1800 }); if (B.type !== 'core' && this.rebuild.length < 400) this.rebuild.push([b.t, b.x, b.y, b.rot, b.cfg]); }
   }
-  swap(o, B) { if (o.B === B || o.B.s !== B.s) return false; const g = z => z.type === 'conveyor' || z.type === 'sconv' ? 1 : z.type === 'conduit' ? 2 : z.type === 'wall' ? 3 : 0; return g(o.B) && g(o.B) === g(B); }
+  // ráépítés a Mindustry szabálya szerint (Block.canReplace): azonos csoportba tartozó blokk lecserélhető;
+  // a „bármit cserélő” csoportokban (szállítás, folyadék, fal, torony, kivetítő) a nagyobb a kisebbet is, a többiben csak azonos méret vagy azonos fajta
+  swap(o, B) {
+    if (o.B.type === 'core' || o.B === B) return false;
+    const g = grpOf(o.B); if (!g || g !== grpOf(B)) return false;
+    return B.s === o.B.s || (B.s >= o.B.s && (ANYREP.has(g) || clsOf(B) === clsOf(o.B)));
+  }
   okTiles(B, x, y, plans) {
     const s = B.s, isCore = B.type === 'core';
     if (isCore && !(B.tier > this.core.B.tier && x <= this.core.x && y <= this.core.y && x + s >= this.core.x + this.core.B.s && y + s >= this.core.y + this.core.B.s)) return false;
     for (let yy = 0; yy < s; yy++) for (let xx = 0; xx < s; xx++) {
       const X = x + xx, Y = y + yy; if (!this.inb(X, Y)) return false; const i = Y * this.w + X;
       if (this.wall[i] || (this.fl(i).deep && !B.float) || !this.seen[i] || (B.water && this.fl(i).liq !== 'water')) return false;
-      const o = this.bt[i]; if (o && !(isCore && o === this.core) && !this.swap(o, B)) return false;
+      const o = this.bt[i]; if (o && !(isCore && o === this.core) && (!this.swap(o, B) || o.x < x || o.y < y || o.x + o.B.s > x + s || o.y + o.B.s > y + s)) return false;
       if (plans && this.plans.some(p => !p.brk && X >= p.x && Y >= p.y && X < p.x + p.B.s && Y < p.y + p.B.s)) return false;
       for (const sp of this.spawns) if ((X - sp.x) ** 2 + (Y - sp.y) ** 2 < 36) return false;
     }
@@ -307,7 +328,7 @@ export class World {
   plan(t, x, y, rot, cfg) {
     const B = BLOCKS[t]; if (B.type === 'core') [x, y] = this.coreSpot(t);
     const o = this.tb(x, y);
-    if (o && o.t === t && B.rot && B.s === 1) { if (o.rot !== rot) { o.rot = rot; this.ver++; } return true; }
+    if (o && o.t === t && B.rot && B.type !== 'turret' && o.x === x && o.y === y) { if (o.rot !== rot) { o.rot = rot; this.ver++; this.pdirty = 1; } return true; }   // azonos blokk: csak elforgatja
     if (!this.canPlace(t, x, y)) return false;
     this.plans.push({ t, B, x, y, rot, cfg: cfg ?? null, prog: 0, paid: {}, brk: false });
     return true;
@@ -324,12 +345,23 @@ export class World {
       const old = this.core, items = old.items; this.remB(old); const nb = this.addB(p.t, p.x, p.y, 0); nb.items = items; this.core = nb;
       const pl = this.player; if (pl && !pl.dead) { pl.t = nb.B.unit; pl.U = UNITS[pl.t]; pl.hp = pl.U.hp; pl.wc = pl.U.w.map(() => 0); } return;
     }
-    const old = this.tb(p.x, p.y); let b;
-    if (old && this.swap(old, p.B)) { for (const k in old.B.cost) this.addCore(k, old.B.cost[k]); this.remB(old); b = this.addB(p.t, p.x, p.y, p.rot, p.cfg); if (old.cv && b.cv) b.cv = old.cv; if (old.lq && b.B.lcap) { b.lq = Math.min(old.lq, b.B.lcap); b.lt = old.lt; } }
-    else b = this.addB(p.t, p.x, p.y, p.rot, p.cfg);
+    this.clearFor(p); const b = this.addB(p.t, p.x, p.y, p.rot, p.cfg), pv = p.prev || [];
+    // amit a felülírt épület átad (Mindustry: overwrote): szalag tartalma, raktár készlete, akku töltése, folyadék
+    for (const o of pv) {
+      if (o.cv && b.cv && pv.length === 1) b.cv = o.cv;
+      if (b.B.type === 'storage' && o.items) { for (const k in o.items) b.items[k] = Math.min(b.B.cap || 1e9, (b.items[k] || 0) + o.items[k]); }
+      if (b.B.type === 'battery' && o.pw) b.pw = Math.min(b.B.cap || 1e9, (b.pw || 0) + o.pw);
+      if (o.lq && b.B.lcap && 'lq' in b) { b.lq = Math.min(b.B.lcap, (b.lq || 0) + o.lq); b.lt = o.lt; }
+      if (b.B.type === 'recon' && o.t === b.t && o.items) b.items = { ...o.items };
+    }
     this.stats.built++; const T = b.B.type;
     if (T === 'bridge' || T === 'lbridge') { const pb = this['last_' + b.t], d = pb ? Math.abs(pb.x - b.x) + Math.abs(pb.y - b.y) : 0; if (pb && !pb.dead && pb.link < 0 && (pb.x === b.x || pb.y === b.y) && d > 0 && d <= b.B.range) pb.link = b.i; this['last_' + b.t] = b; }
     if (T === 'node') this.autoLink(b); else if (isPow(b)) this.linkToNodes(b);
+  }
+  // építés kezdetekor a felülírt épületek eltűnnek (nem jár értük visszatérítés, mint a Mindustryban)
+  clearFor(p) {
+    if (p.cleared) return; p.cleared = 1; p.prev = p.prev || [];
+    for (let yy = 0; yy < p.B.s; yy++) for (let xx = 0; xx < p.B.s; xx++) { const o = this.tb(p.x + xx, p.y + yy); if (o && !o.dead && o.B.type !== 'core' && !p.prev.includes(o)) { p.prev.push(o); this.remB(o); } }
   }
   addCore(k, n) { const c = this.core.items; c[k] = Math.min(this.coreCap(), (c[k] || 0) + n); }
   has(cost, mult = 1) { const c = this.core.items; for (const k in cost) if ((c[k] || 0) < Math.ceil(cost[k] * mult)) return false; return true; }
@@ -431,7 +463,7 @@ export class World {
         const last = t.ammo[t.ammo.length - 1]; if (last && last.it === it) last.n += n; else { const old = t.ammo.find(e => e.it === it); t.ammo = t.ammo.filter(e => e.it !== it); t.ammo.push({ it, n: n + (old ? old.n : 0) }); }
         return true;
       }
-      case 'factory': { const need = UNITS[B.plans[t.cfg || 0]].cost[it]; if (!need || (I[it] || 0) >= need * 2) return false; I[it] = (I[it] || 0) + 1; return true; }
+      case 'factory': { const pu = B.plans[t.cfg || 0], need = ((B.pcost && B.pcost[pu]) || UNITS[pu]).cost[it]; if (!need || (I[it] || 0) >= need * 2) return false; I[it] = (I[it] || 0) + 1; return true; }
       case 'recon': { const need = B.inp[it]; if (!need || (I[it] || 0) >= need * 2) return false; I[it] = (I[it] || 0) + 1; return true; }
       case 'mender': case 'overdrive': case 'shield': if (!(B.bItem === it || (B.need && B.need[it])) || (I[it] || 0) >= 10) return false; I[it] = (I[it] || 0) + 1; return true;
     }
@@ -536,14 +568,19 @@ export class World {
         break;
       }
       case 'drill': {
-        if (!b.dItem) break; const cap = B.icap || 10, tot = I[b.dItem] || 0;
-        if (tot < cap) {
-          let e = (B.power ? b.ps : 1) * ts; if (B.power) b.pneed = B.power;
-          if (b.lq >= B.boostL && b.lt === 'water') { b.lq -= B.boostL; e *= B.boost * B.boost; }
-          b.prog += e; b.work = Math.min(1, b.work + .02 * e); b.rotA = (b.rotA || 0) + .08 * e * (2 / B.s);
-          const tm = (B.time + 50 * ITEMS[b.dItem].h) / b.dCnt;
-          if (b.prog >= tm) { b.prog -= tm; I[b.dItem] = tot + 1; }
-        } else b.work *= .96;
+        // Mindustry Drill.updateTile: a melegedés (warmup) a sebességhez közelít, a haladás = darabszám · sebesség · melegedés
+        if (!b.dItem) break; const cap = B.icap || 10, tot = I[b.dItem] || 0, wsp = (B.warm || .015) * ts;
+        b.warm = b.warm || 0; b.rotA = (b.rotA || 0) + b.warm * ts * (B.rotS || 2) * Math.PI / 180;
+        if (B.power) b.pneed = B.power;
+        const eff = B.power ? b.ps : 1;
+        if (tot < cap && b.dCnt > 0 && eff > 0) {
+          let opt = 0; if (b.lq >= B.boostL * ts && b.lt === 'water') { b.lq -= B.boostL * ts; opt = 1; }
+          const speed = (1 + (B.boost - 1) * opt) * eff;
+          b.warm = b.warm < speed ? Math.min(speed, b.warm + wsp) : Math.max(speed, b.warm - wsp);
+          b.prog += ts * b.dCnt * speed * b.warm; b.work = Math.min(1, b.warm);
+          const delay = B.time + 50 * ITEMS[b.dItem].h;
+          if (b.prog >= delay) { const n = Math.floor(b.prog / delay); I[b.dItem] = Math.min(cap, tot + n); b.prog %= delay; }
+        } else { b.warm = Math.max(0, b.warm - wsp); b.work = b.warm; }
         if (I[b.dItem] > 0) this.dump(b, [b.dItem]);
         break;
       }
@@ -616,7 +653,7 @@ export class World {
         break;
       }
       case 'factory': {
-        const ut = B.plans[b.cfg || 0], U = UNITS[ut]; let ok = true; for (const k in U.cost) if ((I[k] || 0) < U.cost[k]) ok = false;
+        const ut = B.plans[b.cfg || 0], U0 = UNITS[ut]; if (!U0) break; const pc = B.pcost && B.pcost[ut], U = pc ? { cost: pc.cost, time: pc.time } : U0; let ok = true; for (const k in U.cost) if ((I[k] || 0) < U.cost[k]) ok = false;
         if (ok && this.canUnit(ut) && this.countU(ut) < this.core.B.ucap) {
           b.pneed = B.power; b.prog += b.ps * ts / (U.time * 60); b.work = Math.min(1, b.work + .03);
           if (b.prog >= 1) { b.prog = 0; for (const k in U.cost) I[k] -= U.cost[k]; this.outUnit(b, ut); }
@@ -664,6 +701,25 @@ export class World {
     b.pgen = p; b.work = p > 0 ? Math.min(1, b.work + .05) : b.work * .95;
   }
   canUnit() { return true; }
+  losB(u, b) { const c = this.center(b), s = b.B.s * 4 - 1; return this.losT(u.x, u.y, Math.max(c.x - s, Math.min(c.x + s, u.x)), Math.max(c.y - s, Math.min(c.y + s, u.y))); }
+  // szabad-e a lövésvonal a térkép falain át (a sziklafal megállít minden lövedéket, kivéve az íves tüzérséget)
+  losT(x0, y0, x1, y1) {
+    const w = this.w; let tx = Math.floor(x0 / TS), ty = Math.floor(y0 / TS); const ex = Math.floor(x1 / TS), ey = Math.floor(y1 / TS), dx = x1 - x0, dy = y1 - y0;
+    const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1, ddx = dx ? Math.abs(TS / dx) : 1e9, ddy = dy ? Math.abs(TS / dy) : 1e9;
+    let mx = dx ? ((sx > 0 ? (tx + 1) * TS - x0 : x0 - tx * TS) / Math.abs(dx)) : 1e9, my = dy ? ((sy > 0 ? (ty + 1) * TS - y0 : y0 - ty * TS) / Math.abs(dy)) : 1e9;
+    for (let k = 0; k < 400; k++) {
+      if (tx === ex && ty === ey) return true;
+      if (mx < my) { mx += ddx; tx += sx; } else { my += ddy; ty += sy; }
+      if (!this.inb(tx, ty) || this.wall[ty * w + tx]) return tx === ex && ty === ey && this.inb(tx, ty) ? true : false;
+    }
+    return true;
+  }
+  // robbanás → épület: a sziklafal és a közelebbi tömör épület (pl. fal) eltakarja a mögötte állót
+  shielded(x, y, b) {
+    const c = this.center(b), d = Math.hypot(c.x - x, c.y - y), n = Math.floor(d / 3);
+    for (let k = 1; k < n; k++) { const px = x + (c.x - x) * k / n, py = y + (c.y - y) * k / n, tx = Math.floor(px / TS), ty = Math.floor(py / TS); if (!this.inb(tx, ty)) return true; const i = ty * this.w + tx; if (this.wall[i]) return true; const o = this.bt[i]; if (o && o !== b && !o.dead && !UNDER(o) && Math.hypot(px - x, py - y) > o.B.s * 4) return true; }
+    return false;
+  }
   wet(x, y) { const tx = Math.floor(x / TS), ty = Math.floor(y / TS), i = ty * this.w + tx; return this.inb(tx, ty) && !this.wall[i] && this.fl(i).liq === 'water'; }
   countU(t) { let n = 0; for (const u of this.units) if (u.team === PLAYER && u.t === t && !u.dead) n++; return n; }
   outUnit(b, ut) {
@@ -678,6 +734,7 @@ export class World {
   updTurret(b, ts) {
     const B = b.B, c = this.center(b), pw = B.power ? b.ps : 1;
     if (b.heat > 0) b.heat -= .05;
+    if (B.pam) { b.ammo = pw > .1 ? [{ it: '_p', n: 1e9 }] : []; if (b.tgt) b.pneed = B.power; }   // modbeli áramtorony: az áram a lőszer
     const am = B.ammo ? b.ammo[b.ammo.length - 1] : null, st = am ? B.ammo[am.it] : null, range = B.range + (st && st.rg || 0);
     if (B.pd) {                       // pontvédelem: az ellenséges lövedékeket lövi le
       b.pneed = B.power; if (b.rl > 0) { b.rl -= pw * ts; return; } if (pw < .5) return;
@@ -687,7 +744,7 @@ export class World {
     }
     if (this.tick % 8 === (b.i & 7) || (b.tgt && b.tgt.dead)) {
       let best = null, bd = 1e9;
-      for (const u of this.units) { if (u.team !== ENEMY || u.dead) continue; if (u.U.air ? !B.air : !B.ground) continue; const d = Math.hypot(u.x - c.x, u.y - c.y) - u.U.r; if (d < range && d < bd) { bd = d; best = u; } }
+      for (const u of this.units) { if (u.team !== ENEMY || u.dead) continue; if (u.U.air ? !B.air : !B.ground) continue; const d = Math.hypot(u.x - c.x, u.y - c.y) - u.U.r; if (d < range && d < bd && (B.lob || this.losT(c.x, c.y, u.x, u.y))) { bd = d; best = u; } }
       b.tgt = best;
     }
     const u = b.tgt; let rate = pw * ts;
@@ -724,7 +781,7 @@ export class World {
   rangeBonus(b) { const am = b.ammo && b.ammo[b.ammo.length - 1]; return am && b.B.ammo[am.it].rg || 0; }
   fireAmmo(b, c, idx = 0) {
     const B = b.B, am = b.ammo[b.ammo.length - 1]; if (!am) { b.burst = 0; return; }
-    const st = B.ammo[am.it], range = B.range + (st.rg || 0), col = ITEMS[am.it].c;
+    const st = B.ammo[am.it], range = B.range + (st.rg || 0), col = ITEMS[am.it] ? ITEMS[am.it].c : '#ffe39a';
     if (B.each || (idx === 0 && b.burst === 0)) { if (--am.n <= 0) b.ammo.pop(); }
     b.heat = 1; let off = 0; if (B.alt) { b.side = -b.side; off = B.s * 1.6 * b.side; } else if (B.shots > 1) off = ((b.burst + idx) % 4 - 1.5) * B.s * .9;
     const mz = B.s * 4 + 3, x = c.x + Math.cos(b.ang) * mz - Math.sin(b.ang) * off, y = c.y + Math.sin(b.ang) * mz + Math.cos(b.ang) * off, u = b.tgt;
@@ -745,8 +802,9 @@ export class World {
   // egyenes mentén sebez (lézer, repesz, sínágyú, szívósugár); visszaadja a végpontot
   lineDmg(x, y, a, len, d, team, o) {
     const foe = team === PLAYER ? ENEMY : PLAYER, ca = Math.cos(a), sa = Math.sin(a), hits = []; let end = len;
-    if (foe === PLAYER) {                 // az ellenség sugara az első tömör épületig hatol (a plasztánium-fal elnyeli)
-      for (let t = 4; t < len; t += 4) { const bl = this.tb(Math.floor((x + ca * t) / TS), Math.floor((y + sa * t) / TS)); if (bl && !UNDER(bl)) { this.dmgB(bl, d); if (bl.B.insul || !o.pierce) { end = t; break; } t += bl.B.s * TS; } }
+    for (let t = 2; t < len; t += 2) { const tx = Math.floor((x + ca * t) / TS), ty = Math.floor((y + sa * t) / TS); if (!this.inb(tx, ty) || this.wall[ty * this.w + tx]) { end = t; break; } }   // a sziklafalon nem megy át
+    if (foe === PLAYER) {                 // az ellenség sugara csak az első tömör épületet éri; ami mögötte van, azt az még takarja
+      for (let t = 4; t < end; t += 4) { const bl = this.tb(Math.floor((x + ca * t) / TS), Math.floor((y + sa * t) / TS)); if (bl && !UNDER(bl)) { this.dmgB(bl, d); end = t; break; } }
     }
     for (const u of this.units) { if (u.team !== foe || u.dead || (u.U.air ? !o.air : !o.ground)) continue; const t = (u.x - x) * ca + (u.y - y) * sa; if (t < -u.U.r || t > end + u.U.r) continue; if (Math.abs((u.x - x) * sa - (u.y - y) * ca) < u.U.r + (o.wide || 3)) hits.push([t, u]); }
     hits.sort((p, q) => p[0] - q[0]); let left = d, n = 0;
@@ -759,8 +817,8 @@ export class World {
     const foe = team === PLAYER ? ENEMY : PLAYER, pts = [[x, y]], hit = new Set(); let px = x, py = y;
     for (let k = 0; k < segs; k++) {
       let near = null, nd = 40; for (const u of this.units) { if (u.team !== foe || u.U.air || hit.has(u) || u.dead) continue; const dd = Math.hypot(u.x - px, u.y - py); if (dd < nd) { nd = dd; near = u; } }
-      if (near && k > 0) { px = near.x; py = near.y; hit.add(near); this.dmgU(near, d); }
-      else { a += (Math.random() - .5) * 1.2; px += Math.cos(a) * 12; py += Math.sin(a) * 12; if (foe === PLAYER) { const bl = this.tb(Math.floor(px / TS), Math.floor(py / TS)); if (bl && !hit.has(bl) && !UNDER(bl)) { hit.add(bl); this.dmgB(bl, d); if (bl.B.insul) break; } } }
+      if (near && k > 0 && this.losT(px, py, near.x, near.y)) { px = near.x; py = near.y; hit.add(near); this.dmgU(near, d); }
+      else { a += (Math.random() - .5) * 1.2; const qx = px + Math.cos(a) * 12, qy = py + Math.sin(a) * 12; if (!this.losT(px, py, qx, qy)) break; px = qx; py = qy; if (foe === PLAYER) { const bl = this.tb(Math.floor(px / TS), Math.floor(py / TS)); if (bl && !hit.has(bl) && !UNDER(bl)) { hit.add(bl); this.dmgB(bl, d); pts.push([px, py]); break; } } }
       pts.push([px, py]);
     }
     this.fx.push({ k: 'bolt', pts, life: 10, max: 10, c: team === PLAYER ? '#a9d8ff' : '#ff9a8a' });
@@ -789,11 +847,11 @@ export class World {
     if (b.hp <= 0) { if (b === this.core) { this.lost = true; const c = this.center(b); this.boom(c.x, c.y, 40, '#ffb347'); return; } this.remB(b, 1); }
   }
   splash(x, y, r, d, victim, air, ground, blds, st) {
-    for (const u of this.units) if (u.team === victim && !u.dead && (u.U.air ? air : ground)) { const dd = Math.hypot(u.x - x, u.y - y); if (dd < r + u.U.r) { this.dmgU(u, d * (1 - dd / (r + u.U.r) * .5)); if (st) u.st[st] = 240; } }
-    if (blds && victim === PLAYER) { const R = Math.ceil(r / TS), tx = Math.floor(x / TS), ty = Math.floor(y / TS), seen = new Set(); for (let yy = ty - R; yy <= ty + R; yy++) for (let xx = tx - R; xx <= tx + R; xx++) { const b = this.tb(xx, yy); if (b && !seen.has(b) && Math.hypot((xx + .5) * TS - x, (yy + .5) * TS - y) <= r + 4) { seen.add(b); this.dmgB(b, d); } } }
+    for (const u of this.units) if (u.team === victim && !u.dead && (u.U.air ? air : ground)) { const dd = Math.hypot(u.x - x, u.y - y); if (dd < r + u.U.r && this.losT(x, y, u.x, u.y)) { this.dmgU(u, d * (1 - dd / (r + u.U.r) * .5)); if (st) u.st[st] = 240; } }
+    if (blds && victim === PLAYER) { const R = Math.ceil(r / TS), tx = Math.floor(x / TS), ty = Math.floor(y / TS), seen = new Set(); for (let yy = ty - R; yy <= ty + R; yy++) for (let xx = tx - R; xx <= tx + R; xx++) { const b = this.tb(xx, yy); if (b && !seen.has(b) && Math.hypot((xx + .5) * TS - x, (yy + .5) * TS - y) <= r + 4) { seen.add(b); if (!this.shielded(x, y, b)) this.dmgB(b, d); } } }
     this.boom(x, y, r * .8, '#ffcf7a');
   }
-  splashAll(x, y, r, d) { for (const u of this.units) { const dd = Math.hypot(u.x - x, u.y - y); if (dd < r) this.dmgU(u, d * (1 - dd / r)); } for (const b of [...this.blds]) { const c = this.center(b), dd = Math.hypot(c.x - x, c.y - y); if (dd < r) this.dmgB(b, d * (1 - dd / r)); } this.boom(x, y, r, '#ff8a5a'); }
+  splashAll(x, y, r, d) { for (const u of this.units) { const dd = Math.hypot(u.x - x, u.y - y); if (dd < r && this.losT(x, y, u.x, u.y)) this.dmgU(u, d * (1 - dd / r)); } for (const b of [...this.blds]) { const c = this.center(b), dd = Math.hypot(c.x - x, c.y - y); if (dd < r && (dd < b.B.s * 6 || !this.shielded(x, y, b))) this.dmgB(b, d * (1 - dd / r)); } this.boom(x, y, r, '#ff8a5a'); }
   healB(x, y, r, pct) { for (const b of this.blds) if (b.hp < b.B.hp) { const c = this.center(b); if (Math.hypot(c.x - x, c.y - y) <= r + b.B.s * 4) { b.hp = Math.min(b.B.hp, b.hp + b.B.hp * pct / 100); b.heal = 12; } } }
   boom(x, y, r, c) { this.fx.push({ k: 'boom', x, y, r, life: 22, max: 22, c }); }
   nearestB(x, y, r, fn) {
@@ -801,9 +859,9 @@ export class World {
     for (const b of this.blds) { if (b.B.type === 'mine' || (fn && !fn(b))) continue; const d = Math.hypot((b.x + b.B.s / 2) * TS - x, (b.y + b.B.s / 2) * TS - y) - b.B.s * 4; if (d < bd) { bd = d; best = b; } }
     return best;
   }
-  nearestU(x, y, r, team, air, ground) {
+  nearestU(x, y, r, team, air, ground, los) {
     let best = null, bd = r;
-    for (const u of this.units) { if (u.team !== team || u.dead) continue; if (u.U.air ? !air : !ground) continue; const d = Math.hypot(u.x - x, u.y - y) - u.U.r; if (d < bd) { bd = d; best = u; } }
+    for (const u of this.units) { if (u.team !== team || u.dead) continue; if (u.U.air ? !air : !ground) continue; const d = Math.hypot(u.x - x, u.y - y) - u.U.r; if (d < bd && (!los || this.losT(x, y, u.x, u.y))) { bd = d; best = u; } }
     return best;
   }
   free(x, y, team) { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (!this.inb(tx, ty)) return false; const i = ty * this.w + tx; if (this.sol[i]) return false; const b = this.bt[i]; return !b || !isSolid(b) || (b.open && team === PLAYER); }
@@ -867,7 +925,7 @@ export class World {
   }
   aiGround(u) {
     const U = u.U, boom = U.w[0] && U.w[0].k === 'boom', groundOnly = U.w.every(w => w.air === 0);
-    if (this.tick % 15 === (u.id % 15) || (u.tgt && u.tgt.dead)) u.tgt = this.nearestU(u.x, u.y, U.rng + 16, PLAYER, !groundOnly, 1) || this.nearestB(u.x, u.y, boom ? 40 : U.rng + 4, isSolid);
+    if (this.tick % 15 === (u.id % 15) || (u.tgt && u.tgt.dead)) u.tgt = this.nearestU(u.x, u.y, U.rng + 16, PLAYER, !groundOnly, 1, !U.lob) || this.nearestB(u.x, u.y, boom ? 40 : U.rng + 4, b => isSolid(b) && (U.lob || this.losB(u, b)));
     let nx = null, block = null;
     if (!U.legs) {
       const tx = Math.floor(u.x / TS), ty = Math.floor(u.y / TS), w = this.w;
@@ -906,18 +964,18 @@ export class World {
       else if (d < U.rng && Math.cos(a - u.rot) > .7) this.attack(u, t);
       return;
     }
-    if (d > U.rng * .8) { u.vx += (Math.cos(a) * sp - u.vx) * .06; u.vy += (Math.sin(a) * sp - u.vy) * .06; } else { u.vx *= .95; u.vy *= .95; }
+    if (d > U.rng * .8 || !this.losT(u.x, u.y, tc.x, tc.y)) { u.vx += (Math.cos(a) * sp - u.vx) * .06; u.vy += (Math.sin(a) * sp - u.vy) * .06; } else { u.vx *= .95; u.vy *= .95; }
     this.moveU(u, u.vx, u.vy); u.rot = a; u.aim = a; this.attack(u, t);
   }
   aiDefend(u) {
     const U = u.U, home = u.home || this.center(this.core), W0 = U.w[0];
-    if (this.tick % 15 === (u.id % 15) || (u.tgt && u.tgt.dead)) u.tgt = U.rng ? this.nearestU(home.x, home.y, 300, ENEMY, 1, 1) : null;
+    if (this.tick % 15 === (u.id % 15) || (u.tgt && u.tgt.dead)) u.tgt = U.rng ? this.nearestU(home.x, home.y, 300, ENEMY, 1, 1) : null;   // a célpontot a lőhelyzetig követi (a fal mögé nem lő)
     const t = u.tgt;
     if (t && !t.dead) {
       const d = Math.hypot(t.x - u.x, t.y - u.y);
       if (W0.k === 'boom') { this.steer(u, t.x, t.y); if (d < 12) this.fireW(u, W0, t, t); return; }
-      this.steer(u, t.x, t.y, U.bomber ? 0 : U.rng * .75); u.aim = Math.atan2(t.y - u.y, t.x - u.x);
-      if (U.bomber) { if (d < W0.splR * .6 && u.wc[0] <= 0) { this.fireW(u, W0, t, t); u.wc[0] = W0.rl; } } else this.attack(u, t);
+      const see = U.lob || this.losT(u.x, u.y, t.x, t.y); this.steer(u, t.x, t.y, U.bomber || !see ? 0 : U.rng * .75); u.aim = Math.atan2(t.y - u.y, t.x - u.x);
+      if (U.bomber) { if (d < W0.splR * .6 && u.wc[0] <= 0) { this.fireW(u, W0, t, t); u.wc[0] = W0.rl; } } else if (see) this.attack(u, t);
       return;
     }
     u.aim = null;
@@ -932,21 +990,45 @@ export class World {
     if (Math.hypot(px - u.x, py - u.y) < BUILD_RANGE) this.buildPlan(u, pl);
     return true;
   }
+  // Mindustry MinerAI: azt az ércet bányássza, amelyikből a magban a legkevesebb van (4 mp-enként dönt), a maghoz legközelebbi lelőhelyen;
+  // ha megtelt, visszaviszi a maghoz (a hatótávján belül adja le), aztán újra bányászik
   aiMiner(u) {
-    const c = this.center(this.core), w = this.w;
-    if (u.stack && u.stack.n >= 20) { this.steer(u, c.x, c.y, 18); if (Math.hypot(c.x - u.x, c.y - u.y) < 40 + this.core.B.s * 4) { this.addCore(u.stack.it, u.stack.n); this.fx.push({ k: 'xfer', x: u.x, y: u.y, x2: c.x, y2: c.y, life: 14, max: 14, c: ITEMS[u.stack.it].c }); u.stack = null; } u.mine = -1; return; }
-    if ((u.mine == null || u.mine < 0) && this.tick >= (u.scanT || 0)) {
-      u.scanT = this.tick + 240; const want = u.stack ? u.stack.it : (this.core.items.copper || 0) <= (this.core.items.lead || 0) ? 'copper' : 'lead';
-      let bi = -1, bd = 1e9; const cx = Math.floor(c.x / TS), cy = Math.floor(c.y / TS), R = 70;
-      for (let y = Math.max(2, cy - R); y < Math.min(this.h - 2, cy + R); y++) for (let x = Math.max(2, cx - R); x < Math.min(w - 2, cx + R); x++) { const i = y * w + x; if (!this.ore[i] || !this.seen[i] || this.bt[i] || this.mineItem(i, u.U.mineT) !== want) continue; const d = (x - cx) ** 2 + (y - cy) ** 2; if (d < bd) { bd = d; bi = i; } }
-      u.mine = bi;
+    const U = u.U, c = this.center(this.core), w = this.w, cap = U.icap || 20, rng = U.range || 50;
+    if (u.miningMode !== 0) {
+      if (this.tick >= (u.itT || 0) || !u.want) {
+        u.itT = this.tick + 240; let best = null;
+        for (const it of ['copper', 'lead', 'titanium', 'thorium']) { if (ITEMS[it].h > U.mineT || !this.hasOre(it)) continue; if (!best || (this.core.items[it] || 0) < (this.core.items[best] || 0)) best = it; }
+        u.want = best;
+      }
+      if (u.want && (this.core.items[u.want] || 0) >= this.coreCap()) { u.stack = null; u.mine = -1; u.mining = 0; return this.steer(u, c.x, c.y, 40); }
+      if (u.stack && (u.stack.n >= cap || u.stack.it !== u.want)) u.miningMode = 0;
+      else {
+        if (this.tick >= (u.oreT || 0) && u.want) { u.oreT = this.tick + 60; u.mine = this.closestOre(u.want, c.x, c.y); }
+        u.mining = 0;
+        if (u.mine >= 0 && u.mine != null) {
+          const mx = (u.mine % w + .5) * TS, my = (Math.floor(u.mine / w) + .5) * TS, it = this.mineItem(u.mine, U.mineT);
+          this.steer(u, mx, my, MINE_RANGE / 2);
+          if (it && !this.bt[u.mine] && Math.hypot(mx - u.x, my - u.y) < MINE_RANGE) {
+            u.mining = 1; u.mt += U.mine;
+            if (u.mt >= 50 + ITEMS[it].h * 15) { u.mt = 0; if (!u.stack) u.stack = { it, n: 0 }; if (u.stack.it === it) u.stack.n++; }
+          }
+        } else this.steer(u, c.x, c.y, 40);
+      }
+      return;
     }
-    if (u.mine == null || u.mine < 0) return this.steer(u, c.x, c.y, 40);
-    const mx = (u.mine % w + .5) * TS, my = (Math.floor(u.mine / w) + .5) * TS, it = this.mineItem(u.mine, u.U.mineT);
-    if (!it || this.bt[u.mine]) { u.mine = -1; return; }
-    this.steer(u, mx, my, 30);
-    if (Math.hypot(mx - u.x, my - u.y) < MINE_RANGE) { u.mining = 1; u.mt += u.U.mine / 10; if (u.mt > 50 + ITEMS[it].h * 15) { u.mt = 0; if (!u.stack) u.stack = { it, n: 0 }; u.stack.n++; } } else u.mining = 0;
+    u.mine = -1; u.mining = 0;
+    if (!u.stack || !u.stack.n) { u.stack = null; u.miningMode = 1; return; }
+    if (Math.hypot(c.x - u.x, c.y - u.y) < rng + this.core.B.s * 4) { this.addCore(u.stack.it, u.stack.n); this.fx.push({ k: 'xfer', x: u.x, y: u.y, x2: c.x, y2: c.y, life: 14, max: 14, c: ITEMS[u.stack.it].c }); u.stack = null; u.miningMode = 1; }
+    else this.steer(u, c.x, c.y, rng / 1.8);
   }
+  oreList(it) { this.oreL = this.oreL || {}; if (!this.oreL[it]) { const k = ITEM_IDS.indexOf(it) + 1, a = []; for (let i = 0; i < this.ore.length; i++) if (this.ore[i] === k && !this.wall[i]) a.push(i); this.oreL[it] = Int32Array.from(a); } return this.oreL[it]; }
+  hasOre(it) { return this.oreList(it).length > 0; }
+  closestOre(it, x, y) {
+    const L = this.oreList(it), w = this.w, cx = x / TS - .5, cy = y / TS - .5; let bi = -1, bd = 1e18;
+    for (let k = 0; k < L.length; k++) { const i = L[k]; if (this.bt[i] || !this.seen[i]) continue; const d = (i % w - cx) ** 2 + (Math.floor(i / w) - cy) ** 2; if (d < bd) { bd = d; bi = i; } }
+    return bi;
+  }
+
   updPlayer(p) {
     const U = p.U, c = this.ctl, W0 = U.w[0];
     const len = Math.hypot(c.ax, c.ay) || 1, ts = U.sp * Math.min(1, Math.hypot(c.ax, c.ay));
@@ -955,20 +1037,23 @@ export class World {
     if (this.fog && this.tick % 6 === 0) this.reveal(p.x, p.y, 16);
     if (c.shoot) { p.rot = Math.atan2(c.my - p.y, c.mx - p.x); if (p.wc[0] <= 0) { this.fireW(p, W0, { x: c.mx, y: c.my }, this.nearestU(c.mx, c.my, 40, ENEMY, 1, 1)); p.wc[0] = W0.rl; } }
     else if (Math.hypot(p.vx, p.vy) > .2) p.rot = Math.atan2(p.vy, p.vx);
+    // Mindustry MinerComp: időzítő += bányászsebesség; tárgyanként 50 + 15·keménység. A játékos tárgya a mag hatókörén (220) belül
+    // azonnal a magba kerül, azon kívül a rakományba; ha az megtelt vagy más tárgy van benne, a bányászat leáll. Építés közben szünetel.
     p.mining = 0;
     if (p.mine >= 0 && p.mine != null) {
-      const mx = (p.mine % this.w + .5) * TS, my = (Math.floor(p.mine / this.w) + .5) * TS, it = this.mineItem(p.mine, U.mineT);
-      if (!it || this.bt[p.mine]) p.mine = -1;
-      else if (Math.hypot(mx - p.x, my - p.y) < MINE_RANGE) {
-        p.mining = 1; p.mt += U.mine / 10;
+      const mx = (p.mine % this.w + .5) * TS, my = (Math.floor(p.mine / this.w) + .5) * TS, it = this.mineItem(p.mine, U.mineT, 1);
+      if (!it || this.bt[p.mine] || Math.hypot(mx - p.x, my - p.y) > MINE_RANGE) { if (!it || this.bt[p.mine]) p.mine = -1; }
+      else if (!p.building) {
+        p.mining = 1; p.mt += U.mine * (this.tsc || 1);
         if (p.mt >= 50 + ITEMS[it].h * 15) {
-          p.mt = 0; const cc = this.center(this.core);
-          if (Math.hypot(cc.x - p.x, cc.y - p.y) < CORE_RANGE) { this.addCore(it, 1); this.fx.push({ k: 'xfer', x: mx, y: my, x2: cc.x, y2: cc.y, life: 16, max: 16, c: ITEMS[it].c }); }
-          else if (!p.stack || p.stack.it === it) { p.stack = p.stack || { it, n: 0 }; if (p.stack.n < 30) p.stack.n++; }
+          p.mt = 0; const cc = this.center(this.core), cap = U.icap || 30;
+          if (Math.hypot(cc.x - p.x, cc.y - p.y) < CORE_RANGE && (this.core.items[it] || 0) < this.coreCap()) { this.addCore(it, 1); this.fx.push({ k: 'xfer', x: mx, y: my, x2: cc.x, y2: cc.y, life: 16, max: 16, c: ITEMS[it].c }); }
+          else if ((!p.stack || p.stack.it === it) && (!p.stack || p.stack.n < cap)) { p.stack = p.stack || { it, n: 0 }; p.stack.n++; }
+          else { p.mine = -1; p.mt = 0; }
         }
       }
     }
-    if (p.stack) { const cc = this.center(this.core); if (Math.hypot(cc.x - p.x, cc.y - p.y) < CORE_RANGE) { this.addCore(p.stack.it, p.stack.n); p.stack = null; } }
+    if (p.stack) { const cc = this.center(this.core); if (Math.hypot(cc.x - p.x, cc.y - p.y) < CORE_RANGE) { this.addCore(p.stack.it, p.stack.n); this.fx.push({ k: 'xfer', x: p.x, y: p.y, x2: cc.x, y2: cc.y, life: 14, max: 14, c: ITEMS[p.stack.it].c }); p.stack = null; } }
     p.building = null; if (!this.plans.length || c.noBuild) return;
     let pl = null; for (const q of this.plans) if (Math.hypot((q.x + q.B.s / 2) * TS - p.x, (q.y + q.B.s / 2) * TS - p.y) <= BUILD_RANGE) { pl = q; break; }
     if (pl) this.buildPlan(p, pl);
@@ -977,6 +1062,7 @@ export class World {
     if (pl.done) return; const drop = () => { pl.done = 1; const k = this.plans.indexOf(pl); if (k >= 0) this.plans.splice(k, 1); for (const it in pl.paid) this.addCore(it, pl.paid[it]); };
     if (pl.brk ? pl.b.dead : !this.okTiles(pl.B, pl.x, pl.y, false)) return drop();
     u.building = pl; const dp = u.U.build / buildTime(pl.B);
+    if (!pl.brk && pl.B.type !== 'core') this.clearFor(pl);
     if (pl.brk) pl.prog += dp * 2;
     else {
       const np = Math.min(1, pl.prog + dp), c = this.core.items; let ok = true; const pay = {};
@@ -1049,8 +1135,18 @@ export class World {
     const out = [], w = this.w;
     for (const b of this.bullets) {
       if (b.hom && !b.hom.dead && b.k !== 'art') { const a = Math.atan2(b.hom.y - b.y, b.hom.x - b.x), sp = Math.hypot(b.vx, b.vy), ca = Math.atan2(b.vy, b.vx), da = ((a - ca + Math.PI * 3) % (Math.PI * 2)) - Math.PI, na = ca + Math.max(-b.hp, Math.min(b.hp, da)); b.vx = Math.cos(na) * sp; b.vy = Math.sin(na) * sp; }
-      b.x += b.vx; b.y += b.vy; b.life--;
       const foe = b.team === PLAYER ? ENEMY : PLAYER;
+      if (b.k !== 'drv' && b.k !== 'art') {          // a sziklafal megállítja a lövedéket; gyors lövedéknél résztávolságonként vizsgálva
+        const n = Math.max(1, Math.ceil(Math.hypot(b.vx, b.vy) / 4)); let nx = b.x + b.vx, ny = b.y + b.vy, wallHit = false;
+        for (let k = 1; k <= n; k++) {
+          const px = b.x + b.vx * k / n, py = b.y + b.vy * k / n, tx = Math.floor(px / TS), ty = Math.floor(py / TS);
+          if (!this.inb(tx, ty) || this.wall[ty * w + tx]) { nx = b.x + b.vx * (k - 1) / n; ny = b.y + b.vy * (k - 1) / n; wallHit = true; break; }
+          if (foe === PLAYER) { const bl = this.bt[ty * w + tx]; if (bl && !UNDER(bl) && !bl.open && !(b.seen && b.seen.includes(bl))) { nx = px; ny = py; break; } }   // az első épületnél megáll
+        }
+        b.x = nx; b.y = ny;
+        if (wallHit) { if (b.k !== 'flame') this.hitFx(b); if (b.spl || b.k === 'flak' || b.k === 'missile') this.burst(b, foe); continue; }
+      } else { b.x += b.vx; b.y += b.vy; }
+      b.life--;
       if (b.k === 'drv') { if (b.life <= 0) { const t = b.tgt; t.incoming = 0; if (!t.dead) for (const k in b.items) t.items[k] = (t.items[k] || 0) + b.items[k]; continue; } out.push(b); continue; }
       if (b.k === 'art') { if (b.life <= 0) { this.burst(b, foe); continue; } out.push(b); continue; }
       if (foe === PLAYER && !b.k) { let ab = false; for (const s of this.shields) if (s.on && Math.hypot(b.x - (s.x + 1.5) * TS, b.y - (s.y + 1.5) * TS) < s.rad) { s.sh += b.d + (b.spl || 0); s.hit = 6; if (s.sh >= s.B.shp) { s.broken = true; s.on = false; } ab = true; break; } if (ab) { this.hitFx(b); continue; } }
@@ -1081,7 +1177,7 @@ export class World {
   save() {
     const st = b => { const o = {}; if (sum(b.items) > 0) o.i = b.items; if (b.ammo && b.ammo.length) o.a = b.ammo; if (b.lq > .5) o.l = [b.lt, Math.round(b.lq)]; if (b.oq > .5) o.o = Math.round(b.oq); if (b.pw > 1) o.p = Math.round(b.pw); if (b.burn > 0) o.b = [Math.round(b.burn), b.bm]; if (b.heat > .01 && b.B.mode) o.h = +b.heat.toFixed(2); if (b.warm > .01) o.w = +b.warm.toFixed(3); if (b.pay) o.y = b.pay; if (b.open) o.d = 1; return Object.keys(o).length ? o : 0; };
     return {
-      v: 2, gv: this.sec.gen === 1 ? undefined : 2, wave: this.wave, wt: Math.round(this.wtimer), items: this.core.items, chp: Math.round(this.core.hp), kills: this.stats.kills,
+      v: 2, gv: this.sec.gen === 1 ? undefined : this.sec.gen === 2 ? 2 : 3, wave: this.wave, wt: Math.round(this.wtimer), items: this.core.items, chp: Math.round(this.core.hp), kills: this.stats.kills,
       core: this.core.t, cx: this.core.x, cy: this.core.y, seen: this.fog ? rle(this.seen) : undefined, rb: this.rebuild.slice(0, 200),
       b: this.blds.filter(b => b !== this.core).map(b => { const a = [b.t, b.x, b.y, b.rot, Math.round(b.hp), b.cfg ?? null, b.link ?? -1, b.links ? b.links.map(l => l.i) : 0], s = st(b); if (s) a.push(s); return a; }),
       p: this.plans.map(p => [p.t, p.x, p.y, p.rot, p.brk ? 1 : 0, p.cfg ?? null]),

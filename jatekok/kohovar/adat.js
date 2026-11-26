@@ -137,7 +137,7 @@ export const BLOCKS = {
   mdrill:     B('Mechanikus fúró', 'prod', 2, 160, { copper: 12 }, 'drill', { tier: 2, time: 600, boostL: .05, boost: 1.6 }),
   pdrill:     B('Pneumatikus fúró', 'prod', 2, 160, { copper: 18, graphite: 10 }, 'drill', { tier: 3, time: 400, boostL: 3.5 / 60, boost: 1.6 }),
   ldrill:     B('Lézerfúró', 'prod', 3, 360, { copper: 35, graphite: 30, silicon: 30, titanium: 20 }, 'drill', { tier: 4, time: 280, power: 1.1, boostL: .08, boost: 1.6 }),
-  bdrill:     B('Légsűrítéses fúró', 'prod', 4, 640, { copper: 65, silicon: 60, titanium: 50, thorium: 75 }, 'drill', { tier: 5, time: 280, power: 3, boostL: .1, boost: 1.8, icap: 20 }),
+  bdrill:     B('Légsűrítéses fúró', 'prod', 4, 640, { copper: 65, silicon: 60, titanium: 50, thorium: 75 }, 'drill', { tier: 5, time: 280, power: 3, boostL: .1, boost: 1.8, icap: 20, warm: .01, rotS: 6 }),
   wextract:   B('Vízkinyerő', 'prod', 2, 160, { metaglass: 30, graphite: 30, lead: 30, copper: 30 }, 'crafter', { outL: ['water', .11], power: 1.5, lcap: 40 }),
   cultivator: B('Spóratenyésztő', 'prod', 2, 160, { copper: 25, lead: 25, silicon: 10 }, 'crafter', { out: { spore: 1 }, time: 100, power: 80 / 60, inL: ['water', .3], lcap: 80, attr: 'spores', aScale: 1, aMax: 2 }),
   oilext:     B('Olajkút', 'prod', 3, 360, { copper: 150, graphite: 175, lead: 115, thorium: 115, silicon: 75 }, 'crafter', { inp: { sand: 1 }, time: 60, outL: ['oil', .25], power: 3, inL: ['water', .15], lcap: 40, attr: 'oil', aBase: 0, aAvg: 1 }),
@@ -241,9 +241,9 @@ export const BUILD_ORDER = {
 const U = (n, fam, tier, hp, sp, r, armor, o) => ({ n, fam, tier, hp, sp, r, armor, air: fam === 'air' || fam === 'sup' ? 1 : 0, legs: fam === 'legs' ? 1 : 0, naval: fam === 'naval' ? 1 : 0, w: [], ...o });
 const mis = (rl, d, spl, splR, o) => ({ k: 'missile', rl, d, spl, splR, sp: 3, life: 50, ...o });
 export const UNITS = {
-  alpha:    U('Alfa', 'air', 1, 350, 3, 4, 0, { core: 1, mine: 6.5, mineT: 1, build: .5, w: [{ rl: 17, d: 11, sp: 2.5, life: 60, hom: .02 }] }),
-  beta:     U('Béta', 'air', 2, 500, 3.3, 4.5, 0, { core: 1, mine: 7, mineT: 1, build: .75, w: [{ rl: 20, n: 2, d: 11, sp: 3, life: 60, hom: .03 }] }),
-  gamma:    U('Gamma', 'air', 3, 700, 3.55, 5.5, 0, { core: 1, mine: 8, mineT: 2, build: 1, w: [{ rl: 15, n: 2, d: 11, sp: 3.5, life: 70, hom: .04 }] }),
+  alpha:    U('Alfa', 'air', 1, 350, 3, 4, 0, { core: 1, mine: 6.5, mineT: 1, icap: 30, build: .5, w: [{ rl: 17, d: 11, sp: 2.5, life: 60, hom: .02 }] }),
+  beta:     U('Béta', 'air', 2, 500, 3.3, 4.5, 0, { core: 1, mine: 7, mineT: 1, icap: 50, build: .75, w: [{ rl: 20, n: 2, d: 11, sp: 3, life: 60, hom: .03 }] }),
+  gamma:    U('Gamma', 'air', 3, 700, 3.55, 5.5, 0, { core: 1, mine: 8, mineT: 2, icap: 70, build: 1, w: [{ rl: 15, n: 2, d: 11, sp: 3.5, life: 70, hom: .04 }] }),
   dagger:   U('Tőr', 'mech', 1, 150, .5, 4, 0, { cost: { silicon: 10, lead: 10 }, time: 15, w: [{ rl: 13, d: 9, sp: 2.5, life: 60 }] }),
   mace:     U('Buzogány', 'mech', 2, 550, .5, 5, 4, { w: [{ k: 'flame', rl: 22, d: 74, sp: 4.2, life: 13, st: 'burn', stT: 240, air: 0 }] }),
   fortress: U('Erőd', 'mech', 3, 900, .43, 6.5, 9, { w: [{ k: 'art', rl: 60, d: 20, spl: 80, splR: 35, sp: 2, life: 106, air: 0 }] }),
@@ -264,7 +264,7 @@ export const UNITS = {
   zenith:   U('Zenit', 'air', 3, 700, 1.7, 10, 5, { w: [mis(40, 14, 15, 25, { n: 2 })] }),
   antumbra: U('Antumbra', 'air', 4, 7200, .8, 23, 17, { w: [mis(20, 18, 37, 20, { sp: 2.7 }), mis(35, 18, 37, 20, { sp: 2.7 }), { rl: 12, d: 55, sp: 7, life: 25 }] }),
   eclipse:  U('Napfogyatkozás', 'air', 5, 22000, .54, 29, 22, { w: [{ k: 'laser', rl: 45, d: 115, len: 230 }, { k: 'flak', rl: 9, d: 15, spl: 65, splR: 25, sp: 4, life: 47, gnd: 1 }, { k: 'flak', rl: 12, d: 15, spl: 65, splR: 25, sp: 4, life: 47, gnd: 1 }] }),
-  mono:     U('Mono', 'sup', 1, 100, 1.5, 4, 0, { cost: { silicon: 30, lead: 15 }, time: 35, miner: 1, mine: 2.5, mineT: 1 }),
+  mono:     U('Mono', 'sup', 1, 100, 1.5, 4, 0, { cost: { silicon: 30, lead: 15 }, time: 35, miner: 1, mine: 2.5, mineT: 1, icap: 20, range: 50 }),
   poly:     U('Poly', 'sup', 2, 400, 2.6, 4.5, 0, { build: .4, rebuild: 1, ab: { rep: [10, 480, 50] }, w: [mis(30, 12, 0, 0, { sp: 4, heal: 5.5 })] }),
   mega:     U('Mega', 'sup', 3, 460, 2.5, 8, 3, { build: 2.6, rebuild: 1, w: [{ k: 'bolt', rl: 24, d: 10, sp: 5.2, life: 35, heal: 5.5 }, { k: 'bolt', rl: 15, d: 8, sp: 5.2, life: 35, heal: 3 }] }),
   quad:     U('Quad', 'sup', 4, 6000, 1.2, 18, 10, { build: 2.5, rebuild: 1, bomber: 1, w: [{ k: 'bomb', rl: 55, spl: 220, splR: 80, heal: 15, air: 0 }] }),
@@ -291,10 +291,10 @@ const TT = 'conveyor<core junction<conveyor router<junction launchpad<router dis
   + ' i:copper<core l:water<i:copper i:lead<i:copper i:titanium<i:lead l:cryo<i:titanium i:thorium<i:titanium i:surge<i:thorium i:phase<i:thorium i:metaglass<i:lead i:sand<i:copper i:scrap<i:sand l:slag<i:scrap i:coal<i:sand i:graphite<i:coal i:silicon<i:graphite i:pyratite<i:coal i:blast<i:pyratite i:spore<i:coal l:oil<i:spore i:plastanium<l:oil';
 const FREE = ['core', 'conveyor', 'mdrill', 'duo'];
 // kutatási ár: a Mindustry képlete (60 + mennyiség^1,11 · 20) negyedelve és anyagonként 10 000-nél levágva, mert itt nincs háttérben termelő szektor
-const rcost = c => Object.fromEntries(Object.entries(c).map(([k, v]) => [k, Math.min(10000, Math.max(10, Math.round((15 + Math.pow(v, 1.11) * 5) / 10) * 10))]));
+export const rcost = c => Object.fromEntries(Object.entries(c).map(([k, v]) => [k, Math.min(10000, Math.max(10, Math.round((15 + Math.pow(v, 1.11) * 5) / 10) * 10))]));
 // csomópontfajták: b blokk, u egység (kutatni kell), i/l anyag és folyadék (magától nyílik, ha megtermelted), s szektor (elfoglalással)
 // egység ára: a Mindustry képlete (mennyiség^1,1 · 50) negyedelve; need: az építő blokk, amelyet előbb ki kell kutatni
-const ucost = c => Object.fromEntries(Object.entries(c).map(([k, v]) => [k, Math.min(10000, Math.max(10, Math.round(Math.pow(v, 1.1) * 12.5 / 10) * 10))]));
+export const ucost = c => Object.fromEntries(Object.entries(c).map(([k, v]) => [k, Math.min(10000, Math.max(10, Math.round(Math.pow(v, 1.1) * 12.5 / 10) * 10))]));
 const maker = u => Object.keys(BLOCKS).find(b => (BLOCKS[b].plans || []).includes(u) || Object.values(BLOCKS[b].up || {}).includes(u));
 export const TECH = [{ id: 'core', k: 'b', key: 'core', req: null, cost: {} }, ...TT.split(' ').map(s => {
   const [id, req] = s.split('<'), k = id[1] === ':' ? id[0] : 'b', key = k === 'b' ? id : id.slice(2);
@@ -382,8 +382,9 @@ export const FREE_OPTS = {
 };
 export const FREE_DEF = { map: 'vadon', size: 'l', diff: 'norm', wt: 120, win: 0, sp: 1, ore: 1, start: 'base', res: 'own', fog: 1 };
 export const freeRanked = o => o.win === 0 && o.diff !== 'easy' && o.start === 'base' && o.res === 'own' && o.wt <= 120;
+export const EXTRA_ORES = [];
 export function freeSector(o, seed) {
   const F = k => FREE_OPTS[k].find(x => x[0] === o[k]) || FREE_OPTS[k][0], M = MAPS.find(m => m.id === o.map) || MAPS[0], [w, h] = F('size')[2];
-  const ores = {}; for (const k in M.ores) ores[k] = M.ores[k] * o.ore;
+  const ores = {}; for (const k in M.ores) ores[k] = M.ores[k] * o.ore; for (const k of EXTRA_ORES) ores[k] = .7 * o.ore;   // a modok ércei a szabad játék térképein
   return { id: 'free_' + seed, free: 1, n: 'Szabad játék – ' + M.n, d: '', w, h, ores, sand: M.sand, biome: M.biome, biomes: M.biomes, water: M.water, win: o.win, wt: o.wt, threat: F('diff')[2], wo: F('diff')[3], sp: o.sp, start: F('start')[2], endless: o.win === 0, unlockAll: o.res === 'all', fog: o.fog, ranked: freeRanked(o) };
 }

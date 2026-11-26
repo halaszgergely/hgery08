@@ -1,8 +1,8 @@
 // Kohóvár – kirajzolás. A blokkok, egységek, anyagok és a talaj képei a Mindustry (Anuke és közreműködők, GPLv3) sprite-jai,
 // a kepek/atlasz.png atlaszból; a lövedékek, hatások, köd és kisérkép kódból rajzoltak.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, BLOCKS, UNITS } from './adat.js?v=202611261904';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611261904';
-import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611261904';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, BLOCKS, UNITS } from './adat.js?v=202611262023';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611262023';
+import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611262023';
 
 const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555' };
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -17,18 +17,25 @@ export function loadAtlas(base = 'kepek/') {
   return fetch(base + 'atlasz.json' + AV).then(r => r.json()).then(j => new Promise((ok, no) => { const im = new Image(); im.onload = () => { AT = j; IMG = im; ok(); }; im.onerror = no; im.src = base + 'atlasz.png' + AV; }));
 }
 export const has = n => !!(AT && AT[n]);
+// modbeli sprite: külön képként kerül az atlasz mellé ([x, y, w, h, kép, url])
+const PEND = [];
+export function addSprite(n, png) {
+  const url = URL.createObjectURL(new Blob([png], { type: 'image/png' })), im = new Image();
+  PEND.push(new Promise(ok => { im.onload = () => { AT[n] = [0, 0, im.naturalWidth, im.naturalHeight, im, url]; TC.clear(); ok(); }; im.onerror = () => ok(); im.src = url; }));
+}
+export const spritesReady = () => Promise.all(PEND.splice(0));
 // n: atlasznév; x, y: középpont világegységben; rot: radián; sx, sy: tükrözés / nyújtás; w, h: méret (alap: képpont / 4)
 export function spr(g, n, x, y, rot, sx, sy, w, h, src) {
-  const r = AT[n]; if (!r) return; const im = src || IMG, ox = src ? 0 : r[0], oy = src ? 0 : r[1], W_ = w ?? r[2] / 4, H_ = h ?? r[3] / 4;
+  const r = AT[n]; if (!r) return; const im = src || r[4] || IMG, ox = src ? 0 : r[0], oy = src ? 0 : r[1], W_ = w ?? r[2] / 4, H_ = h ?? r[3] / 4;
   if (!rot && sx == null) { g.drawImage(im, ox, oy, r[2], r[3], x - W_ / 2, y - H_ / 2, W_, H_); return; }
   g.save(); g.translate(x, y); if (rot) g.rotate(rot); if (sx != null) g.scale(sx, sy ?? 1); g.drawImage(im, ox, oy, r[2], r[3], -W_ / 2, -H_ / 2, W_, H_); g.restore();
 }
 // átszínezett sprite (mul: szorzás – a fehér részek veszik fel a színt; különben egyszínű kitöltés), gyorsítótárazva
 function tint(n, col, mul) {
   const key = n + col + (mul ? 'm' : ''); let c = TC.get(key); if (c !== undefined) return c; const r = AT[n]; if (!r) { TC.set(key, null); return null; }
-  c = document.createElement('canvas'); c.width = r[2]; c.height = r[3]; const x = c.getContext('2d'); x.drawImage(IMG, r[0], r[1], r[2], r[3], 0, 0, r[2], r[3]);
+  c = document.createElement('canvas'); c.width = r[2]; c.height = r[3]; const x = c.getContext('2d'); x.drawImage(r[4] || IMG, r[0], r[1], r[2], r[3], 0, 0, r[2], r[3]);
   x.globalCompositeOperation = mul ? 'multiply' : 'source-in'; x.fillStyle = col; x.fillRect(0, 0, r[2], r[3]);
-  if (mul) { x.globalCompositeOperation = 'destination-in'; x.drawImage(IMG, r[0], r[1], r[2], r[3], 0, 0, r[2], r[3]); }
+  if (mul) { x.globalCompositeOperation = 'destination-in'; x.drawImage(r[4] || IMG, r[0], r[1], r[2], r[3], 0, 0, r[2], r[3]); }
   TC.set(key, c); return c;
 }
 const sprT = (g, n, col, mul, x, y, rot, sx, sy, w, h) => { const c = tint(n, col, mul); if (c) spr(g, n, x, y, rot, sx, sy, w, h, c); };
@@ -41,7 +48,7 @@ export function makeTerrain(W) {
   const w = W.w, h = W.h, N = w * h, depth = new Uint8Array(N), cache = new Map();
   { const q = new Int32Array(N); let qh = 0, qt = 0; for (let i = 0; i < N; i++) if (!W.wall[i]) q[qt++] = i; else depth[i] = 255;
     while (qh < qt) { const i = q[qh++], d = depth[i]; if (d >= 5) continue; const x = i % w, y = (i - x) / w; for (let k = 0; k < 8; k++) { const X = x + NX[k], Y = y + NY[k]; if (X < 0 || Y < 0 || X >= w || Y >= h) continue; const j = Y * w + X; if (depth[j] === 255) { depth[j] = d + 1; q[qt++] = j; } } } }
-  const wname = i => WSPR[WL[W.wall[i] - 1]], img = (g, n, X, Y, T) => { const r = AT[n]; if (r) g.drawImage(IMG, r[0], r[1], r[2], r[3], X, Y, T, T); };
+  const wname = i => WSPR[WL[W.wall[i] - 1]], img = (g, n, X, Y, T) => { const r = AT[n]; if (r) g.drawImage(r[4] || IMG, r[0], r[1], r[2], r[3], X, Y, T, T); };
   const big = (x, y) => { const i = y * w + x; return x + 1 < w && y + 1 < h && depth[i] && depth[i] < 4 && W.wall[i + 1] === W.wall[i] && W.wall[i + w] === W.wall[i] && W.wall[i + w + 1] === W.wall[i] && hash(x, y, 71) < .5; };
   function tile(g, x, y, X, Y, T) {
     const i = y * w + x, d = depth[i];
@@ -176,7 +183,7 @@ function drawB(g, W, b, t) {
 }
 
 /* ---------- egységek (a sprite-ok felfelé néznek) ---------- */
-const seg = (g, n, x1, y1, x2, y2) => { const r = AT[n]; if (!r) return; g.save(); g.translate(x1, y1); g.rotate(Math.atan2(y2 - y1, x2 - x1)); g.drawImage(IMG, r[0], r[1], r[2], r[3], 0, -r[3] / 8, Math.hypot(x2 - x1, y2 - y1), r[3] / 4); g.restore(); };
+const seg = (g, n, x1, y1, x2, y2) => { const r = AT[n]; if (!r) return; g.save(); g.translate(x1, y1); g.rotate(Math.atan2(y2 - y1, x2 - x1)); g.drawImage(r[4] || IMG, r[0], r[1], r[2], r[3], 0, -r[3] / 8, Math.hypot(x2 - x1, y2 - y1), r[3] / 4); g.restore(); };
 export function drawUnit(g, t, team, x, y, a, walk, sc = 1) {
   const U = UNITS[t], W_ = UW[t] || [];
   g.save(); g.translate(x, y); g.rotate(a + Math.PI / 2); if (sc !== 1) g.scale(sc, sc);
@@ -296,5 +303,5 @@ export function minimap(c, W, ter, cam, vw, vh) {
   g.strokeStyle = '#fff'; g.lineWidth = 1; g.strokeRect((cam.x - vw / 2 / cam.z) / TS * sx, (cam.y - vh / 2 / cam.z) / TS * sy, vw / cam.z / TS * sx, vh / cam.z / TS * sy);
 }
 // CSS-háttér egy atlaszelemből (ikonokhoz a kezelőfelületen)
-export const icoCss = (n, px = 16) => { const r = AT && AT[n]; if (!r) return ''; const k = px / r[2]; return `width:${px}px;height:${Math.round(r[3] * k)}px;background:url(kepek/atlasz.png${AV}) ${-r[0] * k}px ${-r[1] * k}px / ${IMG.width * k}px ${IMG.height * k}px no-repeat;border:0;image-rendering:pixelated`; };
+export const icoCss = (n, px = 16) => { const r = AT && AT[n]; if (!r) return ''; const k = px / r[2]; if (r[4]) return `width:${px}px;height:${Math.round(r[3] * k)}px;background:url(${r[5]}) 0 0 / 100% 100% no-repeat;border:0;image-rendering:pixelated`; return `width:${px}px;height:${Math.round(r[3] * k)}px;background:url(kepek/atlasz.png${AV}) ${-r[0] * k}px ${-r[1] * k}px / ${IMG.width * k}px ${IMG.height * k}px no-repeat;border:0;image-rendering:pixelated`; };
 export const sprSize = n => AT && AT[n] ? [AT[n][2], AT[n][3]] : null;
