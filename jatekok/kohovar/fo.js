@@ -1,9 +1,10 @@
 // Kohóvár – főprogram: menük, kampány, szabad játék, kutatás, irányítás, kezelőfelület, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, SECTORS, CAMPAIGNS, LEGACY_SIZE, FREE_OPTS, FREE_DEF, freeSector, freeRanked } from './adat.js?v=202611261904';
-import { World, PLAYER, isPow, genMap } from './vilag.js?v=202611261904';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611261904';
-import { ISN, LSN, SECSPR } from './kepadat.js?v=202611261904';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, SECTORS, CAMPAIGNS, LEGACY_SIZE, FREE_OPTS, FREE_DEF, freeSector, freeRanked } from './adat.js?v=202611262023';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611262023';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611262023';
+import { MODS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip, installMod } from './modok.js?v=202611262023';
+import { ISN, LSN, SECSPR } from './kepadat.js?v=202611262023';
 
 const $ = s => document.querySelector(s), cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar';
@@ -41,7 +42,7 @@ const cam = { x: 0, y: 0, z: 4, free: null }, keys = new Set(), M = { x: 0, y: 0
 let selBlock = null, rot = 0, cat = 'turret', selB = null, hoverBlock = null, saveT = 0, bigMap = false;
 
 /* ---------- képernyők ---------- */
-const scr = id => { for (const s of ['#menu', '#secs', '#free', '#tech', '#pmenu', '#end']) $(s).hidden = s !== id; };
+const scr = id => { for (const s of ['#menu', '#secs', '#free', '#tech', '#pmenu', '#end', '#mods']) $(s).hidden = s !== id; };
 function bankHtml(extra) { const tot = { ...S.bank }; if (extra) for (const k in extra) tot[k] = (tot[k] || 0) + (extra[k] || 0); const l = ITEM_IDS.filter(k => tot[k] > 0); return l.length ? l.map(k => `<span>${itI(k)}${Math.floor(tot[k])} ${ITEMS[k].n}</span>`).join('') : '<span class="mut">üres</span>'; }
 const campOpen = c => !c.req || S.cap[c.req];
 function secState(s) { if (S.cap[s.id]) return 'cap'; if (!campOpen(CAMPAIGNS.find(c => c.id === s.camp)) || (s.req && !S.cap[s.req])) return 'lock'; return 'open'; }
@@ -71,7 +72,7 @@ let techBack = '#menu', tsel = null, tzoom = 1, TPOS = null;
 const campRun = () => W && !W.sec.free;
 function techAvail() { const a = { ...S.bank }; if (campRun()) for (const k in W.core.items) a[k] = (a[k] || 0) + W.core.items[k]; return a; }
 function techSpend(cost) { for (const k in cost) { let n = cost[k]; if (campRun()) { const c = Math.min(n, W.core.items[k] || 0); W.core.items[k] = (W.core.items[k] || 0) - c; n -= c; } S.bank[k] = (S.bank[k] || 0) - n; } }
-const NODE = Object.fromEntries(TECH.map(t => [t.id, t]));
+let NODE = Object.fromEntries(TECH.map(t => [t.id, t]));
 const nDone = t => t.k === 'b' || t.k === 'u' ? S.research.includes(t.id) : t.k === 's' ? !!S.cap[t.key] : !!S.seen[t.id];
 const nOpen = t => (!t.req || nDone(NODE[t.req])) && (!t.need || S.research.includes(t.need));
 const nName = t => t.k === 'b' ? BLOCKS[t.key].n : t.k === 'u' ? UNITS[t.key].n : t.k === 'i' ? ITEMS[t.key].n : t.k === 'l' ? LIQUIDS[t.key].n : SECTORS.find(s => s.id === t.key).n;
@@ -126,8 +127,10 @@ $('#techBack').onclick = () => { $('#tech').hidden = true; if (techBack === '#me
 
 /* ---------- indítás, mentés, vége ---------- */
 function start(sec, save) {
+  if (save && save.gv === 2) sec = { ...sec, gen: 2 };   // a korábbi barlangos térkép
   if (save && !save.gv) sec = { ...sec, gen: 1, ...(LEGACY_SIZE[sec.id] ? { w: LEGACY_SIZE[sec.id][0], h: LEGACY_SIZE[sec.id][1] } : {}) };   // régi mentés: a régi térképével töltjük vissza
   SEC = sec; W = new World(sec, save); TER = makeTerrain(W); selB = null; selBlock = null; paused = false; cam.free = null; cam.z = 4;
+  if (MODS.length) sec.ranked = 0;   // modokkal nincs ranglista
   W.onWave = n => { W.msg(`${n}. hullám`); if (sec.free && sec.ranked) { if (n > (S.best || 0)) { S.best = n; persist(); } try { if (window.top !== window) parent.postMessage({ hgws: 'score', game: GAME, score: n }, location.origin); } catch (_) { } } };
   W.canUnit = t => !!sec.unlockAll || S.research.includes('u:' + t);
   W.onLaunch = items => { if (sec.free) return; let n = 0; for (const k in items) { S.bank[k] = (S.bank[k] || 0) + items[k]; n += items[k]; } W.msg(`Kilövés: ${n} tárgy a raktárba`); persist(); };
@@ -154,10 +157,10 @@ function showFree() {
   scr('#free'); const o = S.free, run = S.runs.free;
   $('#fOpts').innerHTML = Object.entries(FREE_OPTS).map(([k, l]) => `<div class="fo"><h2>${FLAB[k]}</h2><div class="row">${l.map(x => `<button class="b sm ${o[k] === x[0] ? 'on' : ''}" data-k="${k}" data-v="${x[0]}">${esc(x[1])}${k === 'size' ? ` <span class="mut">${x[2][0]}×${x[2][1]}</span>` : ''}</button>`).join('')}</div></div>`).join('')
     + `<div class="fo"><h2>Térképkód</h2><div class="row"><span>${S.seed}</span><button class="b sm" id="fSeed">Új térkép</button></div></div>`;
-  $('#fRank').innerHTML = freeRanked(o) ? `<span class="ok">Ranglistás</span> · rekord: ${S.best || 0}. hullám` : '<span class="mut">Nem ranglistás</span>';
+  $('#fRank').innerHTML = freeRanked(o) && !MODS.length ? `<span class="ok">Ranglistás</span> · rekord: ${S.best || 0}. hullám` : '<span class="mut">Nem ranglistás</span>';
   $('#fCont').hidden = !run; if (run && S.freeSec) $('#fCont').textContent = `Folytatás (${S.freeSec.n}, ${run.wave}. hullám)`;
   clearTimeout(prevT); prevT = setTimeout(() => {          // előnézet: a teljes térkép, a mag és a kezdőpontok
-    const sec = freeSector(o, S.seed), m = genMap(sec), ter = makeTerrain({ ...m, w: sec.w, h: sec.h }), pc = $('#fPrev'), k = Math.max(1, Math.round(600 / sec.w)); pc.width = sec.w * k; pc.height = sec.h * k;
+    const sec = freeSector(o, S.seed), m = genFor(sec), ter = makeTerrain({ ...m, w: sec.w, h: sec.h }), pc = $('#fPrev'), k = Math.max(1, Math.round(600 / sec.w)); pc.width = sec.w * k; pc.height = sec.h * k;
     const pg = pc.getContext('2d'); pg.imageSmoothingEnabled = false; pg.drawImage(ter.mini, 0, 0, pc.width, pc.height); pg.fillStyle = '#ffd37f'; pg.fillRect(m.coreAt.x * k - 2, m.coreAt.y * k - 2, 3 * k + 4, 3 * k + 4); pg.fillStyle = '#ff4a3d'; for (const sp of m.spawns) pg.fillRect(sp.x * k - 3, sp.y * k - 3, 7, 7);
   }, 30);
 }
@@ -230,7 +233,7 @@ function selHtml() {
   if (b.lq > .1) h += `<div>${lqI(b.lt)}${LIQUIDS[b.lt].n}: ${b.lq.toFixed(0)} / ${B.lcap || 10}</div>`;
   if (b.oq > .1) { const k = B.outL ? B.outL[0] : b.pLiq; h += `<div>${lqI(k)}${LIQUIDS[k].n}: ${b.oq.toFixed(0)} / ${B.lcap || 10}</div>`; }
   if (B.ammo) h += `<div>Lőszer: ${b.ammo.map(a => itI(a.it) + a.n).join(' ') || '<span class="bad">nincs</span>'}</div>`;
-  if (B.type === 'drill') h += `<div>${b.dItem ? `${itI(b.dItem)} ${(60 / ((B.time + 50 * ITEMS[b.dItem].h) / b.dCnt) * (B.power ? b.ps : 1)).toFixed(2)}/mp` : ''}</div>`;
+  if (B.type === 'drill') h += `<div>${b.dItem ? `${itI(b.dItem)} ${(60 * b.dCnt * (b.warm || 0) / (B.time + 50 * ITEMS[b.dItem].h)).toFixed(2)}/mp` : ''}</div>`;
   if (B.type === 'generator') h += `<div>Termel: ${Math.round(b.pgen * 60)}/mp${B.mode === 'reactor' ? ` · hő ${Math.round(b.heat * 100)}%` : B.mode === 'impact' ? ` · felfűtés ${Math.round(b.warm * 100)}%` : ''}</div>`;
   if (B.type === 'shield') h += `<div>Pajzs: ${Math.round(B.shp - b.sh)} / ${B.shp}${b.broken ? ' <span class="bad">összeomlott</span>' : ''}</div>`;
   if (b.g) h += `<div class="mut">Hálózat: +${Math.round(b.g.prod * 60)} / −${Math.round(b.g.need * 60)}${b.g.cap ? ` · akku ${num(b.g.stored)}/${num(b.g.cap)}` : ''}</div><div class="bar"><i style="width:${b.g.sat * 100}%"></i></div>`;
@@ -260,7 +263,10 @@ function linePlans(t, a, b) {
   for (let k = 0; k < pts.length; k++) {
     let r = rot;
     if (B.rot && s === 1 && pts.length > 1) { const [px, py] = pts[k], [qx, qy] = k + 1 < pts.length ? pts[k + 1] : pts[k - 1]; const ddx = k + 1 < pts.length ? qx - px : px - qx, ddy = k + 1 < pts.length ? qy - py : py - qy; r = ddx > 0 ? 0 : ddx < 0 ? 2 : ddy > 0 ? 1 : 3; }
-    const [ox, oy] = originOf(t, pts[k][0], pts[k][1]); out.push({ t, x: ox, y: oy, rot: r });
+    const [ox, oy] = originOf(t, pts[k][0], pts[k][1]); let tt = t;
+    // Mindustry: a vonalban húzott szalag a keresztben futó szalagra csomópontot tesz, a cső a keresztező csőre folyadék-csomópontot
+    if (s === 1 && k > 0 && k < pts.length - 1 && (B.type === 'conveyor' || B.type === 'conduit')) { const o = W.tb(ox, oy); if (o && o.B.type === B.type && (o.rot - r + 4) % 2 === 1) tt = B.type === 'conveyor' ? 'junction' : 'ljunction'; }
+    out.push({ t: tt, x: ox, y: oy, rot: r });
   }
   return out;
 }
@@ -278,7 +284,7 @@ cv.addEventListener('pointerdown', e => {
   if (b && b.B.door) { b.open = !b.open; W.fdirty = 1; return; }
   if (b) { selB = b; selHtml(); return; }
   const i = ty * W.w + tx, p = W.player;
-  if (W.inb(tx, ty) && W.seen[i] && p && W.mineItem(i, p.U.mineT)) { p.mine = p.mine === i ? -1 : i; return; }
+  if (W.inb(tx, ty) && W.seen[i] && p && W.mineItem(i, p.U.mineT, 1)) { p.mine = p.mine === i ? -1 : i; return; }
   selB = null; $('#sel').hidden = true; M.l = true;
 });
 window.addEventListener('pointermove', e => { updMouse(e); });
@@ -358,7 +364,7 @@ function overlay(gx, z) {
   if (selBlock) {
     const [ox0, oy0] = originOf(selBlock, tx, ty), list = M.drag ? linePlans(selBlock, M.drag, [tx, ty]) : [{ t: selBlock, x: ox0, y: oy0, rot }];
     for (const p of list) {
-      const B = BLOCKS[p.t], o = W.tb(p.x, p.y), ok = W.canPlace(p.t, p.x, p.y) || (o && o.t === p.t && B.rot && B.s === 1), s = B.s * TS;
+      const B = BLOCKS[p.t], o = W.tb(p.x, p.y), ok = W.canPlace(p.t, p.x, p.y) || (o && o.t === p.t && B.rot && B.type !== 'turret' && o.x === p.x && o.y === p.y), s = B.s * TS;
       gx.globalAlpha = .55; drawB(gx, null, ghostOf(p), T); gx.globalAlpha = 1;
       gx.strokeStyle = ok ? '#84f491' : '#ff5a4d'; gx.lineWidth = lw; gx.strokeRect(p.x * TS, p.y * TS, s, s);
       if (B.rot) { const cx = (p.x + B.s / 2) * TS, cy = (p.y + B.s / 2) * TS; gx.fillStyle = ok ? '#84f491' : '#ff5a4d'; gx.save(); gx.translate(cx, cy); gx.rotate(p.rot * Math.PI / 2); gx.beginPath(); gx.moveTo(s / 2 + 2.5, 0); gx.lineTo(s / 2, -2); gx.lineTo(s / 2, 2); gx.fill(); gx.restore(); }
@@ -371,7 +377,7 @@ function overlay(gx, z) {
     const R = RANGE(B) + (B.type === 'turret' ? W.rangeBonus(selB) : 0); if (R) ring(c.x, c.y, R, B.type === 'bridge' || B.type === 'lbridge');
     if (B.type === 'driver' && selB.link >= 0 && W.bt[selB.link]) { const o = W.center(W.bt[selB.link]); gx.strokeStyle = 'rgba(255,211,127,.8)'; gx.lineWidth = lw; gx.beginPath(); gx.moveTo(c.x, c.y); gx.lineTo(o.x, o.y); gx.stroke(); }
   } else if (!selBlock && W.inb(tx, ty)) {
-    const i = ty * W.w + tx; if (!W.tb(tx, ty) && W.seen[i] && W.player && W.mineItem(i, W.player.U.mineT)) { gx.strokeStyle = 'rgba(255,255,255,.5)'; gx.lineWidth = lw; gx.strokeRect(tx * TS, ty * TS, TS, TS); }
+    const i = ty * W.w + tx; if (!W.tb(tx, ty) && W.seen[i] && W.player && W.mineItem(i, W.player.U.mineT, 1)) { gx.strokeStyle = 'rgba(255,255,255,.5)'; gx.lineWidth = lw; gx.strokeRect(tx * TS, ty * TS, TS, TS); }
   }
 }
 function frame(now) {
@@ -389,8 +395,31 @@ function frame(now) {
   if (now - saveT > 60000) { saveT = now; saveRun(); }
   if (T % 6 === 0 || paused) hud();
 }
+/* ---------- modok ---------- */
+let modDirty = false;
+async function showMods() {
+  scr('#mods'); const pref = modPrefs(), list = await builtinList(); let loc = []; try { loc = await localMods(); } catch (_) {}
+  const on = (key, def) => pref[key] === undefined ? def : pref[key], loaded = src => MODS.find(m => m.src === src);
+  const row = (key, title, isOn, local) => { const m = loaded(key); return `<div class="modr"><label><input type="checkbox" data-k="${esc(key)}" ${isOn ? 'checked' : ''}> <b>${esc(m ? m.name : title)}</b>${m && m.version ? ' <span class="mut">' + esc(m.version) + '</span>' : ''}${m && m.author ? ' <span class="mut">· ' + esc(m.author) + '</span>' : ''}</label>${m ? `<div class="mut">${m.added.blocks} blokk · ${m.added.units} egység · ${m.added.items} anyag · ${m.added.liquids} folyadék${m.warn.length ? ` · <span class="bad" title="${esc(m.warn.join('\n'))}">${m.warn.length} kihagyott elem</span>` : ''}</div>` : ''}${local ? `<button class="b sm" data-del="${esc(local)}">Törlés</button>` : ''}</div>`; };
+  $('#modList').innerHTML = (list.map(m => row(m.file, m.name || m.file, on(m.file, !!m.on))).join('') + loc.map(n => row('local:' + n, n, on('local:' + n, true), n)).join('')) || '<p class="mut">Nincs mod.</p>';
+  $('#modMsg').innerHTML = modErrs.map(e => `<div class="bad">${esc(e)}</div>`).join('');
+  $('#modApply').hidden = !modDirty;
+}
+$('#mMods').onclick = showMods; $('#modBack').onclick = () => scr('#menu'); $('#modApply').onclick = () => location.reload();
+$('#modList').onchange = e => { const k = e.target.dataset.k; if (!k) return; const p = modPrefs(); p[k] = e.target.checked; setModPrefs(p); modDirty = true; $('#modApply').hidden = false; };
+$('#modList').onclick = async e => { const n = e.target.dataset.del; if (!n) return; await deleteLocalMod(n); const p = modPrefs(); delete p['local:' + n]; setModPrefs(p); modDirty = true; showMods(); };
+$('#modFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try { const buf = await f.arrayBuffer(), files = await readZip(buf); if (!files.has('mod.hjson') && !files.has('mod.json')) throw new Error('nincs benne mod.hjson / mod.json'); await saveLocalMod(f.name, buf); modDirty = true; showMods(); }
+  catch (err) { $('#modMsg').innerHTML = `<div class="bad">${esc(f.name)}: ${esc(err.message)}</div>`; }
+};
+
 requestAnimationFrame(frame);
 scr('#menu');
-for (const b of ['#mPlay', '#mFree', '#mTech']) $(b).disabled = true;
-loadAtlas().then(() => { for (const b of ['#mPlay', '#mFree', '#mTech']) $(b).disabled = false; }, () => { $('.credit').insertAdjacentHTML('beforebegin', '<p class="bad" style="margin-top:14px">A grafika betöltése nem sikerült – frissítsd az oldalt.</p>'); });
+const MB = ['#mPlay', '#mFree', '#mTech', '#mMods']; for (const b of MB) $(b).disabled = true;
+let modErrs = [];
+loadAtlas().then(() => loadMods()).then(errs => {
+  modErrs = errs; prepContent(); NODE = Object.fromEntries(TECH.map(t => [t.id, t])); TPOS = null;
+  for (const b of MB) $(b).disabled = false;
+}, () => { $('.credit').insertAdjacentHTML('beforebegin', '<p class="bad" style="margin-top:14px">A grafika betöltése nem sikerült – frissítsd az oldalt.</p>'); });
 window.__KV = { get W() { return W; }, S, start, SECTORS, freeSector, BL: BLOCKS, UN: UNITS, cam, retex() { TER = makeTerrain(W); } };

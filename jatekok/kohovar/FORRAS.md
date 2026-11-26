@@ -15,8 +15,11 @@ Ez a mappa (`jatekok/kohovar/`) a **GNU General Public License 3-as verziója** 
 - Számértékek és szerkezet: a blokkok, tornyok, egységek adatai, a kutatási fa és az alap hullámtábla a Mindustry
   forrásának adatait követik (`adat.js`).
 
+- A térképgenerátor (`terkep.js`) a Mindustry `SerpuloPlanetGenerator` lépéseit követi (ridged zaj, sejtautomata, termek és A*-utak, folyók, zajalapú ércek, medián simítás); a kód saját.
+- A modbetöltő (`modok.js`) a Mindustry modformátumát (mod.hjson, content/, sprites/, bundles/) olvassa és a Kohóvár blokkfajtáira fordítja.
+
 ## Mi saját
 
 A játék teljes programkódja (`*.js`, `index.html`) saját, nulláról írt megvalósítás; a Mindustry kódjából nem tartalmaz részletet.
-A térképgenerátor, a felfedezési köd, a lövedékek és hatások rajza, a kezelőfelület és a kampány szektorai saját munka.
+A felfedezési köd, a lövedékek és hatások rajza, a kezelőfelület és a kampány szektorai saját munka.
 A forráskód ebben a mappában olvasható formában érhető el, és a GPLv3 feltételei szerint szabadon továbbadható és módosítható.
