@@ -1,6 +1,6 @@
 // Procedurális textúrák (vásznon): homlokzatok éjszakai ablakfénnyel, tetők, aszfalt, útburkolati jelek, járda, fű, víz
 import * as THREE from 'three';
-import { rng } from './world.js?v=202611262220';
+import { rng } from './world.js?v=202611262244';
 
 const cv = (w, h = w) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; };
 const tex = (c, rep = true, srgb = true) => { const t = new THREE.CanvasTexture(c); if (rep) t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; return t; };

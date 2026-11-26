@@ -2,10 +2,10 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, rcost, ucost } from './adat.js?v=202611262220';
-import { SN, ISN, LSN, UW } from './kepadat.js?v=202611262220';
-import { parseHjson } from './hjson.js?v=202611262220';
-import { addSprite, spritesReady } from './rajz.js?v=202611262220';
+import { ITEMS, ITEM_IDS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, rcost, ucost } from './adat.js?v=202611262244';
+import { SN, ISN, LSN, UW } from './kepadat.js?v=202611262244';
+import { parseHjson } from './hjson.js?v=202611262244';
+import { addSprite, spritesReady } from './rajz.js?v=202611262244';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [];   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
