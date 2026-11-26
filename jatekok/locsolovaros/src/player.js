@@ -1,6 +1,6 @@
 // Procedurális emberalak (ízületes, animált) és a gyalogos játékos-irányítás.
 import * as THREE from 'three';
-import * as W from './world.js?v=202611260114';
+import * as W from './world.js?v=202611260118';
 
 const MC = new Map(), M = (c, r = .7) => { const k = c + '|' + r; if (!MC.has(k)) MC.set(k, new THREE.MeshStandardMaterial({ color: c, roughness: r })); return MC.get(k); };
 const cap = (r, l) => new THREE.CapsuleGeometry(r, l, 4, 10);
