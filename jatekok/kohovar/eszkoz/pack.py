@@ -20,7 +20,7 @@ for n in BN.values():
     for k in idx:
         if (k == n or k.startswith(n + '-')) and not k.endswith('-icon') and not k.endswith('-bg') and not k.endswith('-bg-line'): plain.add(k)
 plain |= {k for k in idx if re.match(r'scrap-wall\d$', k)} | {'block-1', 'block-2', 'block-3', 'block-4', 'spawn', 'naval-factory', 'illuminator', 'illuminator-top'}
-TUR = [BN[k] for k in 'breach diffuse sublimate duo scatter scorch hail wave lancet arc parallax swarmer salvo segment tsunami fuse ripple cyclone foreshadow spectre meltdown'.split()]
+TUR = [BN[k] for k in 'breach diffuse sublimate disperse titan afflict lustre smite scathe malign duo scatter scorch hail wave lancet arc parallax swarmer salvo segment tsunami fuse ripple cyclone foreshadow spectre meltdown'.split()]
 for t in TUR: outl.add(t + '-preview' if t + '-preview' in idx else t)
 outl |= {'mass-driver', 'repair-point', 'repair-turret'}
 for u in UN:

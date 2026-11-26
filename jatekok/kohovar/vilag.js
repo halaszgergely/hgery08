@@ -1,7 +1,7 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611262157';
-import { toWorld } from './msav.js?v=202611262157';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611262157';
+import { genMapSerpulo } from './terkep.js?v=202611262220';
+import { toWorld } from './msav.js?v=202611262220';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611262220';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -255,7 +255,7 @@ export class World {
     if (!this.fog) return; const tx = Math.floor(px / TS), ty = Math.floor(py / TS), w = this.w, S = this.seen, r2 = r * r + r;
     for (let y = Math.max(0, ty - r); y <= Math.min(this.h - 1, ty + r); y++) for (let x = Math.max(0, tx - r); x <= Math.min(w - 1, tx + r); x++) { const i = y * w + x; if (!S[i] && (x - tx) ** 2 + (y - ty) ** 2 <= r2) { S[i] = 1; this.seenNew.push(i); } }
   }
-  coreCap() { if (this.capV !== this.ver) { this.capV = this.ver; let c = this.core.B.cap; for (const o of this.nbs(this.core)) if (o.B.type === 'storage' && !o.B.noMerge) { c += o.B.cap; for (const k in o.items) this.core.items[k] = (this.core.items[k] || 0) + o.items[k]; o.items = {}; } this.capN = c; } return this.capN; }
+  coreCap() { if (this.capV !== this.ver) { this.capV = this.ver; let c = this.core.B.cap; for (const o of this.blds) if (o.B.type === 'core' && o !== this.core && o.team === PLAYER) c += o.B.cap; for (const o of this.nbs(this.core)) if (o.B.type === 'storage' && !o.B.noMerge) { c += o.B.cap; for (const k in o.items) this.core.items[k] = (this.core.items[k] || 0) + o.items[k]; o.items = {}; } this.capN = c; } return this.capN; }
   linked(b) { return b.B.type === 'storage' && !b.B.noMerge && this.nbs(b).includes(this.core); }
 
   /* ----- épületek ----- */
@@ -324,8 +324,8 @@ export class World {
     return B.s === o.B.s || (B.s >= o.B.s && (ANYREP.has(g) || clsOf(B) === clsOf(o.B)));
   }
   okTiles(B, x, y, plans) {
-    const s = B.s, isCore = B.type === 'core';
-    if (isCore && !(B.tier > this.core.B.tier && x <= this.core.x && y <= this.core.y && x + s >= this.core.x + this.core.B.s && y + s >= this.core.y + this.core.B.s)) return false;
+    const s = B.s, isCore = B.type === 'core', onZone = isCore && this.zoneOk(B, x, y);
+    if (isCore && !onZone && !(B.tier > this.core.B.tier && x <= this.core.x && y <= this.core.y && x + s >= this.core.x + this.core.B.s && y + s >= this.core.y + this.core.B.s)) return false;
     for (let yy = 0; yy < s; yy++) for (let xx = 0; xx < s; xx++) {
       const X = x + xx, Y = y + yy; if (!this.inb(X, Y)) return false; const i = Y * this.w + X;
       if (this.wall[i] || (this.fl(i).deep && !B.float) || !this.seen[i] || (B.water && this.fl(i).liq !== 'water') || !this.inA(X, Y)) return false;
@@ -338,6 +338,8 @@ export class World {
     if (this.ecores && this.rules.enemyCoreBuildRadius) { const r = this.rules.enemyCoreBuildRadius / TS + s / 2, cx = x + s / 2, cy = y + s / 2; for (const o of this.blds) if (o.team === ENEMY && o.B.type === 'core' && Math.hypot(o.x + o.B.s / 2 - cx, o.y + o.B.s / 2 - cy) < r) return false; }
     return true;
   }
+  // Erekir: új mag csak magzónára tehető (Mindustry CoreBlock.requiresCoreZone)
+  zoneOk(B, x, y) { if (!B.zone) return false; const z = FL.indexOf('core-zone'); for (let yy = 0; yy < B.s; yy++) for (let xx = 0; xx < B.s; xx++) { if (!this.inb(x + xx, y + yy)) return false; const i = (y + yy) * this.w + x + xx; if (this.floor[i] !== z || (this.bt[i] && this.bt[i].team === PLAYER)) return false; } return true; }
   canPlace(t, x, y) {
     const B = BLOCKS[t], s = B.s; if (!this.okTiles(B, x, y, true)) return false;
     const any = fn => { for (let yy = 0; yy < s; yy++) for (let xx = 0; xx < s; xx++) if (fn((y + yy) * this.w + x + xx)) return true; return false; };
@@ -349,7 +351,7 @@ export class World {
   }
   coreSpot(t) { const d = (BLOCKS[t].s - this.core.B.s) >> 1; return [this.core.x - d, this.core.y - d]; }
   plan(t, x, y, rot, cfg) {
-    const B = BLOCKS[t]; if (B.type === 'core') [x, y] = this.coreSpot(t);
+    const B = BLOCKS[t]; if (B.type === 'core' && !this.zoneOk(B, x, y)) [x, y] = this.coreSpot(t);
     const o = this.tb(x, y);
     if (o && o.t === t && B.rot && B.type !== 'turret' && o.x === x && o.y === y) { if (o.rot !== rot) { o.rot = rot; this.ver++; this.pdirty = 1; if (B.type === 'beamdrill' || B.type === 'wcrafter') this.scan(o); } return true; }   // azonos blokk: csak elforgatja
     if (!this.canPlace(t, x, y)) return false;
@@ -364,6 +366,7 @@ export class World {
   finishPlan(p) {
     p.done = 1;
     if (p.brk) { if (!p.b.dead) { if (p.b.team === PLAYER) for (const k in p.B.cost) this.addCore(k, Math.floor(p.B.cost[k] * REFUND)); this.remB(p.b); } return; }
+    if (p.B.type === 'core' && this.zoneOk(p.B, p.x, p.y) && !(p.x <= this.core.x && p.y <= this.core.y && p.x + p.B.s >= this.core.x + this.core.B.s && p.y + p.B.s >= this.core.y + this.core.B.s)) { this.clearFor(p); this.addB(p.t, p.x, p.y, 0); this.capV = -1; return; }   // új mellékmag a magzónán
     if (p.B.type === 'core') {
       const old = this.core, items = old.items; this.remB(old); const nb = this.addB(p.t, p.x, p.y, 0); nb.items = items; this.core = nb;
       const pl = this.player; if (pl && !pl.dead) { pl.t = nb.B.unit; pl.U = UNITS[pl.t]; pl.hp = pl.U.hp; pl.wc = pl.U.w.map(() => 0); } return;
@@ -433,7 +436,7 @@ export class World {
       for (const b of g.m) b.ps = sat;
       g.prod = prod; g.need = need; g.stored = stored; g.cap = cap; g.sat = sat;
     }
-    for (const b of this.blds) {
+    for (const b of this.teamB(PLAYER)) {
       if (!b.g) b.ps = 0;
       if (b.B.type === 'diode') {          // egyirányú töltéskiegyenlítés hátulról előre
         const bk = this.tb(b.x - DX[b.rot], b.y - DY[b.rot]), fr = this.tb(b.x + DX[b.rot], b.y + DY[b.rot]), g1 = bk && bk.g, g2 = fr && fr.g;
@@ -480,8 +483,9 @@ export class World {
       case 'driver': if (this.linkB(t) && sum(I) < B.cap) { I[it] = (I[it] || 0) + 1; return true; } return false;
       case 'core': this.addCore(it, 1); return true;
       case 'storage': if (this.linked(t)) { this.addCore(it, 1); return true; } if ((I[it] || 0) >= B.cap) return false; I[it] = (I[it] || 0) + 1; return true;
+      case 'heater': if (B.fuel !== it || (I[it] || 0) >= (B.icap || 10)) return false; I[it] = (I[it] || 0) + 1; return true;
       case 'launchpad': if (sum(I) >= B.cap) return false; I[it] = (I[it] || 0) + 1; return true;
-      case 'incinerator': return t.ps > .5;
+      case 'incinerator': return t.ps > .5 || !!B.free;
       case 'crafter': if (!B.inp || !B.inp[it] || (I[it] || 0) >= Math.max(cap, B.inp[it] * 2)) return false; I[it] = (I[it] || 0) + 1; return true;
       case 'generator': {
         const ok = B.mode === 'burn' ? ITEMS[it].f >= .2 && !(ITEMS[it].ex > .5) : B.mode === 'rtg' ? ITEMS[it].rad > 0 : B.fuel === it;
@@ -521,7 +525,7 @@ export class World {
     switch (B.type) {
       case 'conduit': return this.front(t) !== src && (!B.armored || src.B.type === 'conduit' || this.sideOf(t, src) === (t.rot + 2) % 4);
       case 'lrouter': case 'lbridge': return true;
-      case 'incinerator': return t.ps > .5;
+      case 'incinerator': return t.ps > .5 || !!B.free;
       case 'turret': return B.lammo ? liq in B.lammo : !!(B.cool || B.coolReq) && LIQUIDS[liq].hc > 0;
       case 'drill': case 'beamdrill': return liq === (B.needL ? B.needL[0] : B.boostLiq || 'water');
       case 'pump': return !!B.needL && liq === B.needL[0];
@@ -666,7 +670,25 @@ export class World {
         if ((I.sand || 0) < cap && eff > 0) { b.prog += ts * eff; b.work = Math.min(1, b.work + .05); if (b.prog >= B.time) { b.prog %= B.time; I.sand = (I.sand || 0) + 1; } } else b.work *= .95;
         if (I.sand > 0) this.dump(b, ['sand']); break;
       }
-      case 'heater': b.pneed = B.power; b.hOut = (b.hOut || 0) + (B.heatOut * b.ps - (b.hOut || 0)) * .02 * ts; b.work = b.ps; break;
+      case 'heater': {
+        let e = 1; if (B.power) { b.pneed = B.power; e = b.ps; }
+        if (B.inL) { if (b.lt === B.inL[0] && b.lq >= B.inL[1] * ts) b.lq -= B.inL[1] * ts; else e = 0; }
+        if (B.fuel && e > 0) { if ((b.burn || 0) > 0) b.burn -= ts; else if (I[B.fuel] > 0) { I[B.fuel]--; b.burn = B.dur; } else e = 0; }
+        b.hOut = (b.hOut || 0) + (B.heatOut * e - (b.hOut || 0)) * .02 * ts; b.work = e; break;
+      }
+      case 'radar': b.pneed = B.power; b.rotA = (b.rotA || 0) + .02 * b.ps; if (b.ps > .5 && this.tick % 30 === (b.i % 30)) { const c = this.center(b); this.reveal(c.x, c.y, B.range); } break;
+      case 'btower': {           // építőtorony: a hatótávján belüli terveket építi, a lerombolt épületeket újraépíti
+        b.pneed = B.power; const ok = b.ps > .5 && lqOk(b, [B.inL[0], B.inL[1] * ts]); b.work = ok ? 1 : 0; if (!ok) break; const c = this.center(b);
+        if (!this.plans.length && this.rebuild.length && !this.nEn && this.tick % 30 === b.i % 30) { const [t, x, y, rot, cfg] = this.rebuild.shift(); this.plan(t, x, y, rot, cfg); }
+        const pl = this.plans.find(p => !p.stall && Math.hypot((p.x + p.B.s / 2) * TS - c.x, (p.y + p.B.s / 2) * TS - c.y) <= B.range);
+        if (pl) { b.lq -= B.inL[1] * ts; b.fu = b.fu || { U: { build: B.build }, x: c.x, y: c.y }; this.buildPlan(b.fu, pl); b.tgtP = pl; } else b.tgtP = null; break;
+      }
+      case 'shock': {            // lökéshullám-torony: időnként minden ellenséges lövedéket gyengít a hatótávján belül
+        b.pneed = B.power; if (b.ps < .5 || !lqOk(b, [B.inL[0], .01])) break;
+        if ((b.prog += ts) < B.reload) break; const c = this.center(b); let n = 0;
+        for (const q of this.bullets) if (q.team !== PLAYER && Math.hypot(q.x - c.x, q.y - c.y) < B.range) { q.d -= B.bulletDmg; if (q.d <= 0) q.life = 0; n++; }
+        if (n) { b.prog = 0; b.lq -= B.inL[1] * B.reload; this.fx.push({ k: 'ring', x: c.x, y: c.y, r: B.range, life: 20, max: 20, c: '#ffd37f' }); } else b.prog = B.reload; break;
+      }
       case 'heatcond': b.hOut = (b.hOut || 0) + ((b.hIn || 0) - (b.hOut || 0)) * .1 * ts; break;
       case 'lamp': b.pneed = B.power; break;
       case 'generator': this.updGen(b, ts); break;
@@ -730,7 +752,14 @@ export class World {
     switch (B.mode) {
       case 'solar': p = B.gen; break;
       case 'thermal': p = b.attr >= (B.aMin || 0) - .001 ? B.gen * b.attr : 0; if (B.outL && p > 0) { b.oq = Math.min(B.lcap || 10, (b.oq || 0) + B.outL[1] * b.attr * ts); this.madeL[B.outL[0]] = 1; } if (B.outL) this.lqDump(b, 'oq', B.outL[0]); break;
-      case 'liq': if (lqOk(b, [B.inL[0], B.inL[1] * ts]) && (b.lq2 || 0) >= B.inL2[1] * ts) { b.lq -= B.inL[1] * ts; b.lq2 -= B.inL2[1] * ts; p = B.gen; } break;   // több folyadékot égető generátor
+      case 'liq': {
+        let run = lqOk(b, [B.inL[0], B.inL[1] * ts]) && (b.lq2 || 0) >= B.inL2[1] * ts;
+        if (run && B.fuel) { if ((b.burn || 0) > 0) b.burn -= ts; else if (I[B.fuel] > 0) { I[B.fuel]--; b.burn = B.dur; } else run = false; }
+        if (run) { b.lq -= B.inL[1] * ts; b.lq2 -= B.inL2[1] * ts; p = B.gen; if (B.outL) { b.oq = Math.min(B.lcap || 10, (b.oq || 0) + B.outL[1] * ts); this.madeL[B.outL[0]] = 1; } }
+        if (B.heatOut) b.hOut = (b.hOut || 0) + ((run ? B.heatOut : 0) - (b.hOut || 0)) * .02 * ts;
+        if (B.outL) this.lqDump(b, 'oq', B.outL[0]); break;
+      }
+      case 'flux': if (lqOk(b, [B.inL[0], B.inL[1] * ts])) { b.lq -= B.inL[1] * ts; p = B.gen * Math.min(1, (b.hIn || 0) / B.heatReq); } break;   // fluxusreaktor: a teljesítmény a kapott hővel arányos   // több folyadékot égető generátor
       case 'burn': case 'item': case 'rtg': {
         const L = lqOk(b, B.inL);
         if (b.burn <= 0 && L) { const it = Object.keys(I).find(k => I[k] > 0); if (it) { I[it]--; b.burn = B.dur * (B.mode === 'rtg' && it === 'phase' ? 15 : B.mode === 'burn' && it === 'pyratite' ? 3 : 1); b.bm = B.mode === 'burn' ? ITEMS[it].f : B.mode === 'rtg' ? ITEMS[it].rad : 1; } }
@@ -798,7 +827,7 @@ export class World {
     if (this.tick % 8 === (b.i & 7) || (b.tgt && b.tgt.dead)) {
       let best = null, bd = 1e9;
       for (const u of this.units) { if (u.team !== foe || u.dead) continue; if (u.U.air ? !B.air : !B.ground) continue; const d = Math.hypot(u.x - c.x, u.y - c.y) - u.U.r; if (d < range && d < bd && (B.lob || this.losT(c.x, c.y, u.x, u.y))) { bd = d; best = u; } }
-      if (!best && B.ground && (this.tick % 32 === (b.i & 31) || (b.tgt && b.tgt.bl))) { const o = this.nearestB(c.x, c.y, range, q => q.team === foe && (B.lob || this.losB({ x: c.x, y: c.y }, q)), 1); if (o) best = this.bref(o); }   // épületre is lő (Mindustry: targetGround)
+      if (!best && B.ground && (this.tick % 32 === (b.i & 31) || (b.tgt && b.tgt.bl))) { let o = null, od = range; for (const q of this.teamB(foe)) { if (q.B.type === 'mine') continue; const d = Math.hypot((q.x + q.B.s / 2) * TS - c.x, (q.y + q.B.s / 2) * TS - c.y) - q.B.s * 4; if (d < od && (B.lob || this.losB({ x: c.x, y: c.y }, q))) { od = d; o = q; } } if (o) best = this.bref(o); }   // épületre is lő (Mindustry: targetGround)
       b.tgt = best;
     }
     const u = b.tgt; let rate = pw * ts;
@@ -824,7 +853,7 @@ export class World {
     if (B.arcd) { if (pw < .1) return; this.lightning(c.x, c.y, b.ang, B.arcd, b.team); b.rl = B.reload; b.heat = 1; return; }
     if (B.beam) { if (pw >= .5) b.beamT = B.beam.dur; return; }
     if (B.lflame) {                 // folyamatos láng folyadék-lőszerrel (Szublimáló): 5 lépésenként sebez a vonalán
-      const L = B.lflame[b.lt]; if (!L || b.lq < .05) return; b.lq = Math.max(0, b.lq - B.luse * B.reload); b.rl = B.reload; b.heat = 1;
+      const L = B.pam ? (pw > .5 ? B.lflame._p : null) : B.lflame[b.lt]; if (!L || (!B.pam && b.lq < .05)) return; if (!B.pam) b.lq = Math.max(0, b.lq - B.luse * B.reload); b.rl = B.reload; b.heat = 1;
       this.lineDmg(c.x, c.y, b.ang, L.len, L.d, b.team, { air: 1, ground: 1, pierce: L.pierce, fx: L.c, wide: 5, bdm: .3 }); return;
     }
     if (B.lammo) {
@@ -905,7 +934,7 @@ export class World {
     if (b.B.zap && src && Math.random() < b.B.zap) { const c = this.center(b); this.lightning(c.x, c.y, Math.atan2(src.y - c.y, src.x - c.x), 20, b.team || PLAYER); }
     if (b.B.armor) d = Math.max(d - b.B.armor, d * .1);   // páncél (Damage.applyArmor)
     b.hp -= d; b.hit = 8;
-    if (b.hp <= 0) { if (b.team === ENEMY) this.stats.ekill = (this.stats.ekill || 0) + 1; if (b === this.core) { this.lost = true; const c = this.center(b); this.boom(c.x, c.y, 40, '#ffb347'); return; } this.remB(b, 1); }
+    if (b.hp <= 0) { if (b.team === ENEMY) this.stats.ekill = (this.stats.ekill || 0) + 1; if (b === this.core) { const alt = this.blds.find(o => o !== b && o.team === PLAYER && o.B.type === 'core'); if (alt) { alt.items = b.items; this.core = alt; this.remB(b, 1); this.capV = -1; this.fdirty = 1; this.msg('A fő mag megsemmisült – a tartalék mag vette át', 'bad'); return; } this.lost = true; const c = this.center(b); this.boom(c.x, c.y, 40, '#ffb347'); return; } this.remB(b, 1); }
   }
   splash(x, y, r, d, victim, air, ground, blds, st) {
     for (const u of this.units) if (u.team === victim && !u.dead && (u.U.air ? air : ground)) { const dd = Math.hypot(u.x - x, u.y - y); if (dd < r + u.U.r && this.losT(x, y, u.x, u.y)) { this.dmgU(u, d * (1 - dd / (r + u.U.r) * .5)); if (st) u.st[st] = 240; } }
@@ -915,11 +944,12 @@ export class World {
   splashAll(x, y, r, d) { for (const u of this.units) { const dd = Math.hypot(u.x - x, u.y - y); if (dd < r && this.losT(x, y, u.x, u.y)) this.dmgU(u, d * (1 - dd / r)); } for (const b of [...this.blds]) { const c = this.center(b), dd = Math.hypot(c.x - x, c.y - y); if (dd < r && (dd < b.B.s * 6 || !this.shielded(x, y, b))) this.dmgB(b, d * (1 - dd / r)); } this.boom(x, y, r, '#ff8a5a'); }
   healB(x, y, r, pct, team = PLAYER) { for (const b of this.blds) if (b.team === team && b.hp < b.B.hp) { const c = this.center(b); if (Math.hypot(c.x - x, c.y - y) <= r + b.B.s * 4) { b.hp = Math.min(b.B.hp, b.hp + b.B.hp * pct / 100); b.heal = 12; } } }
   boom(x, y, r, c) { this.fx.push({ k: 'boom', x, y, r, life: 22, max: 22, c }); }
+  teamB(t) { if (this.tbV !== this.ver) { this.tbV = this.ver; this.tbL = {}; for (const b of this.blds) (this.tbL[b.team] = this.tbL[b.team] || []).push(b); } return this.tbL[t] || []; }   // épületek csapatonként (gyorsítótár)
   bref(b) { return b.ref || (b.ref = { bl: b, get x() { return (b.x + b.B.s / 2) * TS; }, get y() { return (b.y + b.B.s / 2) * TS; }, vx: 0, vy: 0, U: { r: b.B.s * 4 }, get dead() { return !!b.dead; } }); }
   // a legközelebbi épület; alapból csak a játékosé (ezt támadja az ellenség, ezt javítják a javítók)
   nearestB(x, y, r, fn, any) {
     let best = null, bd = r;
-    for (const b of this.blds) { if (b.B.type === 'mine' || (!any && b.team !== PLAYER) || (fn && !fn(b))) continue; const d = Math.hypot((b.x + b.B.s / 2) * TS - x, (b.y + b.B.s / 2) * TS - y) - b.B.s * 4; if (d < bd) { bd = d; best = b; } }
+    for (const b of any ? this.blds : this.teamB(PLAYER)) { if (b.B.type === 'mine' || (fn && !fn(b))) continue; const d = Math.hypot((b.x + b.B.s / 2) * TS - x, (b.y + b.B.s / 2) * TS - y) - b.B.s * 4; if (d < bd) { bd = d; best = b; } }
     return best;
   }
   nearestU(x, y, r, team, air, ground, los) {
@@ -1200,9 +1230,12 @@ export class World {
     if (this.fdirty && !this.fjob && this.tick - this.flowT > 30 && (ne || this.wtimer < 900)) { this.fdirty = 0; this.flowT = this.tick; this.fjob = this.flowBegin(); }
     if (this.fjob) this.flowRun(30000);
     this.powerTick();
-    for (const b of this.blds) if (b.B.heatReq || b.B.type === 'heatcond') b.hIn = 0;          // hőátadás: a hőtermelő az előtte álló épületnek adja
-    for (const b of this.blds) if (b.hOut > .001 && b.team === PLAYER) { const f = this.front(b); if (f && f !== b && (f.B.heatReq || f.B.type === 'heatcond')) f.hIn += b.hOut; }
-    for (let k = 0; k < this.blds.length; k++) { const b = this.blds[k]; if (b.off) continue; if (b.team === PLAYER) this.updB(b); else if (b.team === ENEMY && b.B.type === 'turret') this.updFoeTurret(b); }
+    const PB = this.teamB(PLAYER); for (const b of PB) if (b.B.heatReq || b.B.type === 'heatcond') b.hIn = 0;          // hőátadás: a hőtermelő az előtte álló épületnek adja
+    for (const b of PB) if (b.hOut > .001) {
+      if (b.B.split) { const T = this.nbs(b).filter(o => (o.B.heatReq || o.B.type === 'heatcond') && this.front(o) !== b); for (const o of T) o.hIn += b.hOut / T.length; continue; }   // hőelosztó: a szomszédok között szétosztja
+      const f = this.front(b); if (f && f !== b && (f.B.heatReq || f.B.type === 'heatcond')) f.hIn += b.hOut; }
+    if (this.actV !== this.ver) { this.actV = this.ver; this.act = [...this.teamB(PLAYER), ...this.teamB(ENEMY).filter(b => b.B.type === 'turret')]; }   // csak a játékos épületei és az ellenséges tornyok frissülnek
+    for (const b of this.act) { if (b.off || b.dead) continue; if (b.team === PLAYER) this.updB(b); else if (b.team === ENEMY) this.updFoeTurret(b); }
     if (this.tick % 10 === 0) { const c = this.core.items, l = this.lastCore, S = this.stats.coreIn; for (const k in c) { const d = (c[k] || 0) - (l[k] || 0); if (d > 0) S[k] = (S[k] || 0) + d; l[k] = c[k]; } }
     for (const u of this.units) if (u.carrier) { if (u.carrier.dead) u.carrier = null; else { u.x = u.carrier.x; u.y = u.carrier.y; } }
     if (this.onTick) this.onTick();
@@ -1223,7 +1256,7 @@ export class World {
     if (B.lammo && b.lq < 5) { b.lt = Object.keys(B.lammo)[0]; b.lq = B.lcap || 10; }
     if (b.hit > 0) b.hit--; this.updTurret(b, 1);
   }
-  derelictAll() { for (const b of this.blds) if (b.team === ENEMY) { b.team = DERELICT; b.tgt = null; } for (const u of this.units) if (u.team === ENEMY) u.dead = 1; this.fdirty = 1; }
+  derelictAll() { this.ver++; for (const b of this.blds) if (b.team === ENEMY) { b.team = DERELICT; b.tgt = null; } for (const u of this.units) if (u.team === ENEMY) u.dead = 1; this.fdirty = 1; }
   hitFx(b) { this.fx.push({ k: 'hit', x: b.x, y: b.y, life: 8, max: 8, c: b.c }); }
   burst(b, foe) {        // becsapódás: területi sebzés, repeszek, villámok
     if (b.spl) this.splash(b.x, b.y, b.splR, b.spl, foe, b.k === 'art' ? 0 : 1, b.k === 'flak' ? !!b.ground : 1, b.k !== 'flak' || !!b.ground, b.st);

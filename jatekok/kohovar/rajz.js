@@ -1,8 +1,8 @@
 // Kohóvár – kirajzolás. A blokkok, egységek, anyagok és a talaj képei a Mindustry (Anuke és közreműködők, GPLv3) sprite-jai,
 // a kepek/atlasz.png atlaszból; a lövedékek, hatások, köd és kisérkép kódból rajzoltak.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611262157';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611262157';
-import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611262157';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611262220';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611262220';
+import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611262220';
 
 const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555', 0: '#4d4e58' };
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -12,7 +12,7 @@ const circ = (g, x, y, r) => { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); };
 
 /* ---------- atlasz ---------- */
 let AT = null, IMG = null; const TC = new Map();
-const AV = '?a=3';   // az atlasz verziója: újracsomagolás után növelni kell, hogy a kép és a térképe együtt frissüljön
+const AV = '?a=4';   // az atlasz verziója: újracsomagolás után növelni kell, hogy a kép és a térképe együtt frissüljön
 export function loadAtlas(base = 'kepek/') {
   return fetch(base + 'atlasz.json' + AV).then(r => r.json()).then(j => new Promise((ok, no) => { const im = new Image(); im.onload = () => { AT = j; IMG = im; ok(); }; im.onerror = no; im.src = base + 'atlasz.png' + AV; }));
 }
@@ -140,7 +140,11 @@ function drawB(g, W, b, t) {
     }
     case 'lrouter': spr(g, n + '-bottom', cx, cy); liqRect(b.lt, b.lq / B.lcap); spr(g, n, cx, cy); break;
     case 'diode': spr(g, n, cx, cy); spr(g, n + '-arrow', cx, cy, R); break;
-    case 'router': spr(g, n, cx, cy); if (B.fwd) spr(g, n + '-top', cx, cy, R); break;
+    case 'router': spr(g, n, cx, cy); if (B.fwd) spr(g, n + '-top', cx, cy, R); else if (has(n + '-top')) spr(g, n + '-top', cx, cy); break;
+    case 'radar': spr(g, n + '-base', cx, cy); spr(g, n, cx, cy, b.rotA || 0); glow(g, n + '-glow', cx, cy, b.ps || 0, b.rotA || 0); break;
+    case 'btower': { spr(g, n + '-base', cx, cy); const p = b.tgtP, a = p ? Math.atan2((p.y + p.B.s / 2) * TS - cy, (p.x + p.B.s / 2) * TS - cx) : (b.ang || 0); b.ang = a; spr(g, n, cx, cy, a + Math.PI / 2); glow(g, n + '-glow', cx, cy, wk, a + Math.PI / 2);
+      if (p) { g.strokeStyle = 'rgba(255,211,127,.6)'; g.lineWidth = 1; g.beginPath(); g.moveTo(cx, cy); g.lineTo((p.x + p.B.s / 2) * TS, (p.y + p.B.s / 2) * TS); g.stroke(); } break; }
+    case 'shock': spr(g, n, cx, cy); glow(g, n + '-heat', cx, cy, 1 - (b.prog || 0) / B.reload); break;
     case 'beamdrill': {
       spr(g, n, cx, cy); if (b.lasers && wk > .02) { g.strokeStyle = `rgba(255,140,110,${.35 + .4 * wk})`; g.lineWidth = 1.2; for (const [ax, ay, bx2, by2] of b.lasers) { g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx2, by2); g.stroke(); } }
       glow(g, n + '-glow', cx, cy, wk); spr(g, n + '-top', cx, cy, R); break;
@@ -166,6 +170,7 @@ function drawB(g, W, b, t) {
       if (has(n + '-middle')) glow(g, n + '-middle', cx, cy, wk);
       if (B.rot && has(n + '-top1')) spr(g, n + (b.rot % 2 ? '-top2' : '-top1'), cx, cy, b.rot >= 2 ? R - Math.PI : R);
       if (B.heatOut && has(n + '-heat')) glow(g, n + '-heat', cx, cy, Math.min(1, (b.hOut || 0) / B.heatOut));
+      if (B.heatReq && has(n + '-heat')) glow(g, n + '-heat', cx, cy, Math.min(1, (b.hIn || 0) / B.heatReq));
       if (GLOWTOP.has(id)) glow(g, n + '-top', cx, cy, wk * (.7 + .3 * Math.sin(t * .25 + b.x))); else if (has(n + '-top')) spr(g, n + '-top', cx, cy);
       if (id === 'incinerator' && b.ps > .5) { g.fillStyle = `rgba(255,${150 + 60 * Math.sin(t * .3)},70,.9)`; circ(g, cx, cy, 1.6); }
       break;
@@ -189,9 +194,9 @@ function drawB(g, W, b, t) {
       g.fillStyle = TEAM[PLAYER]; g.fillRect(cx + DX[b.rot] * (s / 2 - .6) - (DX[b.rot] ? .4 : 3), cy + DY[b.rot] * (s / 2 - .6) - (DY[b.rot] ? .4 : 3), DX[b.rot] ? .8 : 6, DY[b.rot] ? .8 : 6);
       break;
     }
-    case 'repair': spr(g, id === 'repairpt' ? 'repair-point-base' : 'block-2', cx, cy); spr(g, n + '@o', cx, cy, (b.ang ?? -Math.PI / 2) + Math.PI / 2); break;
+    case 'repair': if (id === 'urepair') { spr(g, n, cx, cy); glow(g, n + '-glow', cx, cy, b.ps || 0); break; } spr(g, id === 'repairpt' ? 'repair-point-base' : 'block-2', cx, cy); spr(g, n + '@o', cx, cy, (b.ang ?? -Math.PI / 2) + Math.PI / 2); break;
     case 'turret': {
-      spr(g, (B.ebase ? 'reinforced-block-' : 'block-') + B.s, cx, cy); const a = (b.ang ?? -Math.PI / 2), rec = (b.heat || 0) * (B.s > 2 ? 2 : 1), hx = cx - Math.cos(a) * rec, hy = cy - Math.sin(a) * rec, hn = HEADS[id] || n + '@o';
+      spr(g, (B.ebase ? 'reinforced-block-' : 'block-') + B.s, cx, cy); const a = (b.ang ?? -Math.PI / 2), rec = (b.heat || 0) * (B.s > 2 ? 2 : 1), hx = cx - Math.cos(a) * rec, hy = cy - Math.sin(a) * rec, hn = HEADS[id] || (B.ebase && has(n + '-preview@o') ? n + '-preview@o' : n + '@o');
       if (B.lammo && b.lq > .2) { g.globalAlpha = Math.min(1, b.lq / B.lcap + .2); sprT(g, n + '-liquid', LIQUIDS[b.lt].c, 0, hx, hy, a + Math.PI / 2); g.globalAlpha = 1; }
       spr(g, hn, hx, hy, a + Math.PI / 2); if (B.lammo) spr(g, n + '-top', hx, hy, a + Math.PI / 2);
       if (b.heat > .05 && has(n + '-heat')) { g.globalCompositeOperation = 'lighter'; glow(g, n + '-heat', hx, hy, b.heat, a + Math.PI / 2); g.globalCompositeOperation = 'source-over'; }
