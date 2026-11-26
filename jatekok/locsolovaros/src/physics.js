@@ -1,8 +1,8 @@
 // Saját járműfizika (árkád, de súlyos): kétnyomú autómodell tapadási határral és sodródással, ballisztikus ugrás, ütközés-impulzus,
 // sérülés (horpadás, szélvédő, füst, tűz), moped dőléssel, koaxiális helikopter, lánctalpas tank forgó toronnyal.
 import * as THREE from 'three';
-import * as W from './world.js?v=202611262157';
-import { VEH, buildVehicle, dent } from './vehicles.js?v=202611262157';
+import * as W from './world.js?v=202611262220';
+import { VEH, buildVehicle, dent } from './vehicles.js?v=202611262220';
 
 const G = 9.81, clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 let UID = 1;
