@@ -1,8 +1,8 @@
 // A város megjelenítése: domborzat, folyó, utak, járdák, épületek (chunkonként, LOD-dal), utcabútor (instancing, a játékos körül újratöltve)
 import * as THREE from 'three';
-import { mergeGeometries } from '../lib/addons/utils/BufferGeometryUtils.js?v=202611260118';
-import * as W from './world.js?v=202611260118';
-import { facadeMat, FACADE, groundMats, signTex, graffitiTex } from './textures.js?v=202611260118';
+import { mergeGeometries } from '../lib/addons/utils/BufferGeometryUtils.js?v=202611261117';
+import * as W from './world.js?v=202611261117';
+import { facadeMat, FACADE, groundMats, signTex, graffitiTex } from './textures.js?v=202611261117';
 
 const V3 = THREE.Vector3;
 function quad(pos, uv, nrm, a, b, c, d, ua, ub, uc, ud, n) { pos.push(...a, ...b, ...c, ...a, ...c, ...d); uv.push(...ua, ...ub, ...uc, ...ua, ...uc, ...ud); for (let i = 0; i < 6; i++) nrm.push(...n); }

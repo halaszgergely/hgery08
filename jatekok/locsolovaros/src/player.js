@@ -1,6 +1,6 @@
 // Procedurális emberalak (ízületes, animált) és a gyalogos játékos-irányítás.
 import * as THREE from 'three';
-import * as W from './world.js?v=202611260118';
+import * as W from './world.js?v=202611261117';
 
 const MC = new Map(), M = (c, r = .7) => { const k = c + '|' + r; if (!MC.has(k)) MC.set(k, new THREE.MeshStandardMaterial({ color: c, roughness: r })); return MC.get(k); };
 const cap = (r, l) => new THREE.CapsuleGeometry(r, l, 4, 10);
@@ -89,4 +89,44 @@ export function createPlayer(scene) {
     pose(model, P.state, hs, dt, aiming && !P.swim ? 1 : 0); P.aimT = Math.max(0, P.aimT - dt);
   };
   return P;
+}
+
+/* ---------- fegyvermodellek (a kéz koordináta-rendszerében: −Z a cső iránya, +Y felfelé) ---------- */
+const WM = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: .4, metalness: .1, ...o });
+function wp(g, geo, m, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); o.castShadow = true; g.add(o); return o; }
+const cyl = (r1, r2, l, n = 12) => new THREE.CylinderGeometry(r1, r2, l, n).rotateX(Math.PI / 2);
+export function buildWeapon(id, tint) {
+  const g = new THREE.Group(), water = WM(0x7fd0ff, { transparent: true, opacity: .75, roughness: .05, metalness: 0 }), dark = WM(0x24272c, { roughness: .6 }), metal = WM(0xc8ccd2, { roughness: .2, metalness: .9 });
+  if (id === 'pisztoly') { const body = WM(tint ?? 0xff7a1a), acc = WM(0x1f8fd6);
+    wp(g, new THREE.BoxGeometry(.055, .1, .24), body, 0, .045, -.07); wp(g, new THREE.BoxGeometry(.05, .13, .06), body, 0, -.03, .01, -.25);
+    wp(g, cyl(.018, .024, .1), acc, 0, .065, -.23); wp(g, new THREE.SphereGeometry(.055, 14, 10), water, 0, .13, -.04).scale.set(.9, .8, 1.3);
+    wp(g, new THREE.TorusGeometry(.025, .007, 6, 12, Math.PI), dark, 0, -.005, -.05, 0, Math.PI / 2, 0); }
+  else if (id === 'tomlo') { const green = WM(0x2e9d4a, { roughness: .7 });
+    wp(g, new THREE.BoxGeometry(.045, .12, .05), WM(0xf2c230), 0, -.03, .02, -.2); wp(g, cyl(.028, .022, .12), WM(0xf2c230), 0, .03, -.04); wp(g, cyl(.016, .03, .2), metal, 0, .03, -.19);
+    const pts = [new THREE.Vector3(0, .03, .03), new THREE.Vector3(0, -.05, .2), new THREE.Vector3(.05, -.25, .3), new THREE.Vector3(.1, -.45, .25), new THREE.Vector3(.12, -.6, .1)];
+    wp(g, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 20, .018, 6), green); }
+  else if (id === 'bomba') { const b = wp(g, new THREE.SphereGeometry(.085, 16, 12), WM(0x2a7fff, { roughness: .15, transparent: true, opacity: .9 }), 0, .02, -.08); b.scale.set(1, 1, 1.2);
+    wp(g, new THREE.ConeGeometry(.02, .04, 8), WM(0x2a7fff), 0, .02, .02, -Math.PI / 2); }
+  else if (id === 'puska') { const body = WM(0x2f7d4a), wood = WM(0x8a5a32, { roughness: .8 });
+    wp(g, new THREE.BoxGeometry(.06, .08, .52), body, 0, .05, -.2); wp(g, new THREE.BoxGeometry(.05, .12, .2), wood, 0, 0, .16, .25); wp(g, new THREE.BoxGeometry(.045, .1, .05), wood, 0, -.03, .0, -.2);
+    wp(g, cyl(.03, .03, .4), metal, 0, .07, -.62); wp(g, new THREE.ConeGeometry(.07, .1, 14).rotateX(-Math.PI / 2), metal, 0, .07, -.86);
+    wp(g, cyl(.04, .04, .2), WM(0xd8d0b8), 0, -.01, -.36); wp(g, cyl(.045, .045, .26), water, 0, .14, -.18); }
+  else if (id === 'agyu') { const y = WM(0xf2c230, { metalness: .3 }), red = WM(0xc0392b);
+    wp(g, cyl(.07, .08, .7), y, 0, .07, -.3); wp(g, cyl(.05, .07, .22), metal, 0, .07, -.75); wp(g, new THREE.TorusGeometry(.075, .015, 6, 16), red, 0, .07, -.62);
+    wp(g, new THREE.BoxGeometry(.05, .14, .06), dark, 0, -.04, .02, -.2); wp(g, new THREE.BoxGeometry(.04, .12, .05), dark, 0, -.03, -.35, .3);
+    const pts = [new THREE.Vector3(0, .07, .05), new THREE.Vector3(0, .1, .25), new THREE.Vector3(-.15, -.05, .4), new THREE.Vector3(-.3, -.35, .35)];
+    wp(g, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, .025, 6), dark); }
+  return g;
+}
+/* háti tartály a tömlőhöz és a vízágyúhoz */
+export function buildBackpack(big) { const g = new THREE.Group(), t = WM(big ? 0xf2c230 : 0x2e9d4a, { metalness: .3 }), strap = WM(0x24272c, { roughness: .8 });
+  for (const s of big ? [-1, 1] : [0]) { wp(g, new THREE.CylinderGeometry(.1, .1, .46, 14), t, s * .1, .36, .2); wp(g, new THREE.SphereGeometry(.1, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), t, s * .1, .59, .2); }
+  for (const s of [-1, 1]) wp(g, new THREE.BoxGeometry(.04, .5, .02), strap, s * .14, .4, -.12);
+  wp(g, new THREE.BoxGeometry(big ? .36 : .22, .06, .14), strap, 0, .15, .2); return g; }
+/* a játékos fegyvereinek felszerelése: mind a kézben, csak az aktuális látszik */
+export function equipWeapons(model, ids) {
+  const u = model.userData, list = ids.map(id => id === 'kez' ? null : buildWeapon(id)); list.forEach(w => w && u.gun.add(w));
+  const bp = [buildBackpack(false), buildBackpack(true)]; bp.forEach(b => { u.torso.add(b); b.visible = false; });
+  u.setWeapon = i => { list.forEach((w, k) => { if (w) w.visible = k === i; }); bp[0].visible = ids[i] === 'tomlo'; bp[1].visible = ids[i] === 'agyu'; };
+  u.setWeapon(-1);
 }
