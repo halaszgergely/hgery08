@@ -2,9 +2,9 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, rcost, ucost } from './adat.js?v=202611262023';
-import { SN, ISN, LSN, UW } from './kepadat.js?v=202611262023';
-import { addSprite, spritesReady } from './rajz.js?v=202611262023';
+import { ITEMS, ITEM_IDS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, rcost, ucost } from './adat.js?v=202611262058';
+import { SN, ISN, LSN, UW } from './kepadat.js?v=202611262058';
+import { addSprite, spritesReady } from './rajz.js?v=202611262058';
 
 export const MODS = [];          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
 

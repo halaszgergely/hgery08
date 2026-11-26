@@ -1,8 +1,8 @@
 // Kohóvár – kirajzolás. A blokkok, egységek, anyagok és a talaj képei a Mindustry (Anuke és közreműködők, GPLv3) sprite-jai,
 // a kepek/atlasz.png atlaszból; a lövedékek, hatások, köd és kisérkép kódból rajzoltak.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, BLOCKS, UNITS } from './adat.js?v=202611262023';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611262023';
-import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611262023';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, BLOCKS, UNITS } from './adat.js?v=202611262058';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611262058';
+import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611262058';
 
 const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555' };
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -271,7 +271,7 @@ export function render(g, W, R) {
     else { g.fillStyle = b.c; g.beginPath(); g.ellipse(0, 0, 3 * big, 1.1 * big, 0, 0, 7); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.ellipse(.4, 0, 1.8 * big, .55 * big, 0, 0, 7); g.fill(); }
     g.restore();
   }
-  for (const f of W.fx) {
+  if (!R.nofx) for (const f of W.fx) {
     const k = f.life / f.max;
     switch (f.k) {
       case 'boom': g.fillStyle = f.c; g.globalAlpha = k * .7; circ(g, f.x, f.y, f.r * (1.2 - k * .6)); g.globalAlpha = k; g.fillStyle = '#fff3d0'; circ(g, f.x, f.y, f.r * .35 * k); g.globalAlpha = 1; break;
