@@ -1,10 +1,10 @@
 // Megjelenítés: renderer, ég (napszakciklus), nap + árnyék (a kamerát követő kaszkád), köd, eső, utófeldolgozás (bloom, GTAO), minőségi szintek
 import * as THREE from 'three';
-import { EffectComposer } from '../lib/addons/postprocessing/EffectComposer.js?v=202611262244';
-import { RenderPass } from '../lib/addons/postprocessing/RenderPass.js?v=202611262244';
-import { UnrealBloomPass } from '../lib/addons/postprocessing/UnrealBloomPass.js?v=202611262244';
-import { OutputPass } from '../lib/addons/postprocessing/OutputPass.js?v=202611262244';
-import { GTAOPass } from '../lib/addons/postprocessing/GTAOPass.js?v=202611262244';
+import { EffectComposer } from '../lib/addons/postprocessing/EffectComposer.js?v=202611262304';
+import { RenderPass } from '../lib/addons/postprocessing/RenderPass.js?v=202611262304';
+import { UnrealBloomPass } from '../lib/addons/postprocessing/UnrealBloomPass.js?v=202611262304';
+import { OutputPass } from '../lib/addons/postprocessing/OutputPass.js?v=202611262304';
+import { GTAOPass } from '../lib/addons/postprocessing/GTAOPass.js?v=202611262304';
 
 export const QUALITY = {
   alacsony: { px: .75, shadow: 0, bloom: 0, ao: 0, far: 900, detail: 170, props: 150, peds: 18, cars: 12 },
