@@ -7,10 +7,14 @@ idx = {}
 for d, _, fs in os.walk(R):
     for f in fs:
         if f.endswith('.png'): idx[f[:-4]] = os.path.join(d, f)
-ENV_F = 'stone dacite sand-floor darksand snow ice grass metal-floor shallow-water deep-water moss spore-moss dirt shale basalt hotrock magmarock char molten-slag tar salt'.split()
-ENV_W = 'stone-wall snow-wall sand-wall dacite-wall dirt-wall spore-wall carbon-wall ferric-stone-wall'.split()
+ENV_F = ('stone dacite sand-floor darksand snow ice grass metal-floor shallow-water deep-water moss spore-moss dirt shale basalt hotrock magmarock char molten-slag tar salt '
+         'crater-stone core-zone dark-panel-1 dark-panel-2 dark-panel-3 dark-panel-4 dark-panel-5 dark-panel-6 darksand-tainted-water darksand-water deep-tainted-water ice-snow '
+         'metal-floor-2 metal-floor-3 metal-floor-4 metal-floor-5 metal-floor-damaged sand-water tainted-water mud pebbles tendrils').split()
+AUTO = 'metal-tiles-1 metal-tiles-2 metal-tiles-3 metal-tiles-4 metal-tiles-5 metal-tiles-6 metal-tiles-7 metal-tiles-8 metal-tiles-9 metal-tiles-10 metal-tiles-11 metal-tiles-12 metal-tiles-13'.split()
+PROPS = 'boulder snow-boulder sand-boulder dacite-boulder shale-boulder basalt-boulder spore-cluster white-tree white-tree-dead snow-pine spore-pine pine'.split()
+ENV_W = 'stone-wall snow-wall sand-wall dacite-wall dirt-wall spore-wall carbon-wall ferric-stone-wall dune-wall ice-wall salt-wall shale-wall red-ice-wall red-stone-wall crystalline-stone-wall dark-metal'.split()
 ORES = 'copper lead scrap coal titanium thorium'.split()
-SECT = 'groundZero frozenForest crateredBattleground stainedMountains desolateRift ruinousShores windsweptIslands tarFields nuclearComplex fungalPass saltFlats overgrowth coastline'.split()
+SECT = [k[len('sector-'):] for k in idx if k.startswith('sector-') and not k.endswith('-erekir')]
 plain, outl = set(), set()
 for n in BN.values():
     for k in idx:
@@ -32,6 +36,8 @@ for v in LQ.values(): plain.add('liquid-' + v)
 for f in ENV_F: plain |= {k for k in idx if re.fullmatch(re.escape(f) + r'\d?', k)}
 for f in ENV_W: plain |= {k for k in idx if re.fullmatch(re.escape(f) + r'(\d|-large)', k)}
 for o in ORES: plain |= {f'ore-{o}{i}' for i in (1, 2, 3)}
+for p in PROPS: plain |= {k for k in idx if re.fullmatch(re.escape(p) + r'\d?', k)}
+plain |= {'metal-wall-1', 'metal-wall-2', 'metal-wall-3'}
 for s in SECT:
     if 'sector-' + s in idx: plain.add('sector-' + s)
 def outline(im, r=3, col=(0x40, 0x40, 0x49)):
@@ -46,6 +52,13 @@ for k in sorted(plain):
     if k in idx: ims.append((k, Image.open(idx[k]).convert('RGBA')))
 for k in sorted(outl):
     if k in idx: ims.append((k + '@o', outline(Image.open(idx[k]).convert('RGBA'))))
+# az autotile-lapok (4×4 cella) celláit külön elemként tároljuk: <név>-a<oszlop><sor>
+for a in AUTO:
+    src = idx.get(a + '-autotile') or idx.get(a + '-autotile1')
+    if src:
+        im = Image.open(src).convert('RGBA')
+        for cy in range(4):
+            for cx in range(4): ims.append((f'{a}-a{cx}{cy}', im.crop((cx * 32, cy * 32, cx * 32 + 32, cy * 32 + 32))))
 big = [k for k, im in ims if k.startswith('sector-')]
 ims = [(k, im.resize((64, 64), Image.LANCZOS) if k.startswith('sector-') else im) for k, im in ims]
 ims.sort(key=lambda t: (-t[1].height, -t[1].width))

@@ -19,10 +19,17 @@ Ez a mappa (`jatekok/kohovar/`) a **GNU General Public License 3-as verziója** 
   forrásának adatait követik (`adat.js`).
 
 - A térképgenerátor (`terkep.js`) a Mindustry `SerpuloPlanetGenerator` lépéseit követi (ridged zaj, sejtautomata, termek és A*-utak, folyók, zajalapú ércek, medián simítás); a kód saját.
-- A modbetöltő (`modok.js`) a Mindustry modformátumát (mod.hjson, content/, sprites/, bundles/) olvassa és a Kohóvár blokkfajtáira fordítja.
+- A modbetöltő (`modok.js`) a Mindustry modformátumát (mod.hjson, content/, sprites/, bundles/) olvassa és a Kohóvár blokkfajtáira fordítja;
+  a modok JSON-ban megadott bolygóit és szektorait (content/planets, content/sectors, maps/*.msav) is betölti.
+- `palyak/serpulo/*.msav`: a Mindustry Serpulo-hadjáratának eredeti pályái (`core/assets/maps/serpulo`, változatlanul).
+- `palyak/serpulo.json`: a bolygórács (a `PlanetGrid` algoritmusával 3-as szinten előállítva), a szektorok adatai (`SectorPresets`),
+  a technológiafa (`SerpuloTechTree`) és a hadjárat szövegei a Mindustry magyar (és angol) nyelvi fájljából (`bundle_hu.properties`).
+  Előállító: `eszkoz/serpulo.py`.
+- A pályaolvasó (`msav.js`) a Mindustry mentésformátumát (`SaveVersion`, `MapIO`) olvassa; a célkitűzések (`logika.js`) a `MapObjectives`,
+  a világprocesszorok értelmezője az mlog utasításkészlet (`LExecutor`) viselkedését követi. A kód saját.
 
 ## Mi saját
 
 A játék teljes programkódja (`*.js`, `index.html`) saját, nulláról írt megvalósítás; a Mindustry kódjából nem tartalmaz részletet.
-A felfedezési köd, a lövedékek és hatások rajza, a kezelőfelület és a kampány szektorai saját munka.
+A felfedezési köd, a lövedékek és hatások rajza és a kezelőfelület saját munka.
 A forráskód ebben a mappában olvasható formában érhető el, és a GPLv3 feltételei szerint szabadon továbbadható és módosítható.

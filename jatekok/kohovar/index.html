@@ -1,7 +1,7 @@
 <!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="robots" content="noindex,nofollow"><title>Kohóvár – HGWS Arcade</title>
 <link rel="icon" type="image/png" href="../../img/favicon-32.png">
-<link rel="stylesheet" href="kepek/ui/elemek.css?v=202611262058">
-<link rel="stylesheet" href="felulet.css?v=202611262058">
+<link rel="stylesheet" href="kepek/ui/elemek.css?v=202611262133">
+<link rel="stylesheet" href="felulet.css?v=202611262133">
 </head><body>
 <canvas id="c"></canvas>
 
@@ -12,10 +12,13 @@
     <div class="gline"></div>
     <div id="wbox"><div id="wtxt" class="np-wavepane"></div><button id="skip" class="np-button-right" title="A következő hullám azonnal"><i class="ic s ic-play"></i></button></div>
     <div id="items" class="blk6"></div>
+    <div id="obj" class="blk6" hidden></div>
   </div>
   <div id="tr"><div id="minibox" class="np-pane"><canvas id="mini" width="240" height="200"></canvas></div><div id="fps" class="blk3 oline" hidden></div></div>
   <div id="pbar" class="blk6 oline" hidden>&lt; Szünet &gt;</div>
   <div id="msgs"></div>
+  <div id="annc" hidden></div>
+  <div id="toast" class="np-pane" hidden></div>
   <div id="sel" class="np-pane" hidden></div>
   <div id="pal"><div id="binfo" class="np-button-edge-2" hidden></div><div class="gline"></div><div id="prow"><div id="blks" class="np-pane-2"></div><div id="cats"></div></div></div>
 </div>
@@ -32,6 +35,7 @@
   <canvas id="pcv"></canvas>
   <div id="pcamps"></div>
   <div id="pinfo" class="np-pane" hidden></div>
+  <div id="ptabs" hidden></div>
   <div id="pbank" class="np-pane"></div>
   <div id="pbtm"><button class="b np-button" data-back><i class="ic ic-left"></i>Vissza</button><button class="b np-button" id="pTree"><i class="ic ic-tree"></i>Technológiafa</button><button class="b np-button go" id="pGo" disabled><i class="ic ic-play"></i><span>Kilövés</span></button></div>
 </div>
@@ -58,5 +62,5 @@
 </div></div></div>
 <div id="dEnd" class="dlg" hidden><div class="tt" id="endT"></div><div class="bd" style="justify-content:center"><div class="endst" id="endP"></div><div id="endB" style="display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:12px;font-size:16px"></div></div><div class="ft"><button class="b np-button" id="endOk"><i class="ic ic-ok"></i>OK</button></div></div>
 
-<script type="module" src="fo.js?v=202611262058"></script>
+<script type="module" src="fo.js?v=202611262133"></script>
 </body></html>

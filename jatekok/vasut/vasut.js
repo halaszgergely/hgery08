@@ -597,7 +597,7 @@
   function toggle3D(on) { if (on === undefined) on = !(V3 && V3.on); if (!on) { if (V3) V3.stop(); setM3(0); $('#c3').hidden = true; $('#b3d').classList.remove('on'); return; }
     if (!window.Taj || !Taj.ready) return toast('A táj még töltődik.', 1); cam.follow = 1; $('#b3d').classList.add('on');
     if (V3) { $('#c3').hidden = false; V3.start(); setM3(1); return; } if (v3load) return; v3load = 1; toast('3D nézet betöltése…');
-    import('./harom.js?v=202611262058').then(m => { V3 = m; $('#c3').hidden = false; m.init($('#c3'), window.V3API); m.start(); setM3(1); }).catch(e => { console.error(e); v3load = 0; $('#b3d').classList.remove('on'); toast('A 3D nézet nem indult el.', 1); }); }
+    import('./harom.js?v=202611262133').then(m => { V3 = m; $('#c3').hidden = false; m.init($('#c3'), window.V3API); m.start(); setM3(1); }).catch(e => { console.error(e); v3load = 0; $('#b3d').classList.remove('on'); toast('A 3D nézet nem indult el.', 1); }); }
   $('#b3d').onclick = () => toggle3D();
   window.__vt = () => ({ toggle3D, get V3() { return V3; }, NPC, agentsTick, botAgent, agPt, showBots, S, E, ST, TT, CARGO, aligned, onTT, fixRear, NX, NY, ADJ, dijkstra, exits, outDir, routeTo, succ, step, ui, move, plan, nextSwitch, flip, board, take, couple, uncouple, nearSt, front, along, cam });
 })();
