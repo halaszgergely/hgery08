@@ -1,21 +1,23 @@
 // HGWS Közösség – csatornák, privát üzenetek, csoportok, filmtár
 import { FB, auth, db, notConfigured, $, $$, esc, ROLES, roleOf, applyRoles, OWNER_UID, notify, audit, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
-  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason, signOutKeep } from './core.js?v=202611262244';
-import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611262244';
-import * as Admin from './admin.js?v=202611262244';
-import * as Browse from './browse.js?v=202611262244';
-import * as Notif from './notif.js?v=202611262244';
-import * as Profile from './profile.js?v=202611262244';
-import * as Party from './party.js?v=202611262244';
-import * as Ideas from './ideas.js?v=202611262244';
-import * as Player from './player.js?v=202611262244';
-import * as Cmdk from './cmdk.js?v=202611262244';
-import * as Stk from './stickers.js?v=202611262244';
-import * as Friends from './friends.js?v=202611262244';
-import * as Bo from './bo-ui.js?v=202611262244';
-import { bootOut, pageIn, I } from './fx.js?v=202611262244';
+  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason, signOutKeep } from './core.js?v=202611262256';
+import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611262256';
+import * as Admin from './admin.js?v=202611262256';
+import * as Browse from './browse.js?v=202611262256';
+import * as Notif from './notif.js?v=202611262256';
+import * as Profile from './profile.js?v=202611262256';
+import * as Party from './party.js?v=202611262256';
+import * as Premier from './premier.js?v=202611262256';
+import * as Ideas from './ideas.js?v=202611262256';
+import * as Player from './player.js?v=202611262256';
+import * as Cmdk from './cmdk.js?v=202611262256';
+import * as Stk from './stickers.js?v=202611262256';
+import * as Friends from './friends.js?v=202611262256';
+import * as Bo from './bo-ui.js?v=202611262256';
+import { bootOut, pageIn, I } from './fx.js?v=202611262256';
 
 const S = {
+  premieres: {},
   user: null, me: null, users: new Map(), channels: [], convs: [], convsLoaded: false, videos: [], reads: { ch: {} },
   owner: undefined, route: { sec: 'srv' }, chat: null, memOpen: innerWidth > 1100, myList: [], mode: '', music: [], progress: {}, tags: []
 };
@@ -29,7 +31,12 @@ const isStaff = () => ['moderate', 'manageTags', 'tickets', 'submitMedia', 'publ
 const isAdmin = () => can('publishMedia');
 const isMod = () => can('moderate');
 /* azok a nézetek, amelyek a filmlistából épülnek – filmváltozáskor újrarajzoljuk őket */
+/* rangokhoz kötött csatornák: üres lista = mindenki; a tulaj és az admin mindent lát */
+const seeChan = c => !Array.isArray(c.roles) || !c.roles.length || isOwner() || ['owner', 'admin'].includes(roleKey(S.me)) || c.roles.includes(roleKey(S.me));
 const VID_VIEWS = new Set(['home', 'tar', 'lista', 'kereses', 'zene']);
+/* élő premierek állapota (vezérlő, szünet, vége) – a filmlista „hamarosan” jelzése ebből számolódik */
+function premieresSub() { FB.onSnapshot(FB.collection(db, 'premieres'), s => { const o = {}; s.docs.forEach(d => { o[d.id] = d.data(); }); S.premieres = o; if (S.videos.length && Premier.apply(S.videos)) videosChanged(); }, () => {}); }
+function videosChanged() { soon('vid', () => { if (S.mode === 'browse' && (S.route.view === 'nez' ? !$('.watch') : VID_VIEWS.has(S.route.view))) route(true); if (!S.guest) { S.chat?.rerender(); Admin.refresh(); checkPremieres(); } }); }
 /* premier-értesítő: ha egy figyelt film megjelent, értesítést kap a tag (magának írja) */
 function checkPremieres() {
   if (S.guest || !S.alertsLoaded || !S.videos.length) return;
@@ -115,10 +122,11 @@ function start() {
   FB.onSnapshot(FB.collection(db, 'users'), s => {
     s.docs.forEach(d => S.users.set(d.id, { id: d.id, ...d.data() }));
     s.docChanges().forEach(c => c.type === 'removed' && S.users.delete(c.doc.id));
+    if (S.allChannels) { const n = S.allChannels.filter(seeChan); if (n.length !== S.channels.length) { S.channels = n; soon('chan2', () => { if (S.route.sec === 'srv') renderSide(); if (S.route.view === 'chan' && !n.some(c => c.id === S.route.id)) location.hash = '#/'; }); } }
     soon('users', () => { renderMembers(); renderOnline(); if (S.route.sec === 'dm') renderSide(); S.chat?.rerender(); if (S.route.view === 'dmhome' && S.mode === 'chat') renderDmHome(true); Admin.refresh(); Browse.updateComm(); });
   }, e => console.warn(e));
   FB.onSnapshot(FB.query(FB.collection(db, 'channels'), FB.orderBy('order')), s => {
-    S.channels = s.docs.map(d => ({ id: d.id, ...d.data() }));
+    S.allChannels = s.docs.map(d => ({ id: d.id, ...d.data() })); S.channels = S.allChannels.filter(seeChan);
     soon('chan', () => { if (S.route.sec === 'srv') renderSide(); if (S.route.view === 'chathome') route(true); Admin.refresh(); });
   }, e => console.warn(e));
   FB.onSnapshot(FB.query(FB.collection(db, 'conversations'), FB.where('members', 'array-contains', uid())), s => {
@@ -128,9 +136,10 @@ function start() {
     soon('conv', () => { if (S.route.sec === 'dm') renderSide(); badges(); if (S.chat?.conv) S.chat.updateConv(); Browse.updateComm(); });
   }, e => console.warn(e));
   FB.onSnapshot(FB.collection(db, 'videos'), s => {
-    S.videos = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    S.videos = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); Premier.apply(S.videos);
     soon('vid', () => { if (S.mode === 'browse' && (S.route.view === 'nez' ? !$('.watch') : VID_VIEWS.has(S.route.view))) route(true); S.chat?.rerender(); Admin.refresh(); checkPremieres(); });
   });
+  premieresSub();
   FB.onSnapshot(FB.collection(db, 'music'), s => {
     S.music = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     soon('mus', () => { if (S.mode === 'browse' && ['home', 'zene'].includes(S.route.view)) route(true); S.chat?.rerender(); Admin.refresh(); });
@@ -179,9 +188,10 @@ function startGuest() {
     soon('users', () => { renderOnline(); });
   }, e => console.warn(e));
   FB.onSnapshot(FB.collection(db, 'videos'), s => {
-    S.videos = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    S.videos = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); Premier.apply(S.videos);
     soon('vid', () => { if (S.mode === 'browse' && (S.route.view === 'nez' ? !$('.watch') : VID_VIEWS.has(S.route.view))) route(true); });
   }, e => console.warn(e));
+  premieresSub();
   FB.onSnapshot(FB.collection(db, 'music'), s => {
     S.music = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     soon('mus', () => { if (S.mode === 'browse' && ['home', 'zene'].includes(S.route.view)) route(true); });
@@ -269,6 +279,7 @@ function route(force) {
   else if (a === 'otletek') r = { mode: 'browse', view: 'otletek', id: b || '' };
   else if (a === 'profil' && b) r = { mode: 'browse', view: 'profil', id: b };
   else if (a === 'party' && b) r = { mode: 'browse', view: 'party', id: b };
+  else if (a === 'premier' && b) r = { mode: 'browse', view: 'premier', id: b };
   else if (a === 'kereses') r = { mode: 'browse', view: 'kereses', id: b || '' };
   else if (a === 'nez' && b) r = { mode: 'browse', view: 'nez', id: b };
   else if (a === 'film' && b) r = { mode: 'browse', view: S.route.mode === 'browse' && S.route.view !== 'nez' ? S.route.view : 'home', id: S.route.mode === 'browse' ? S.route.id : '', film: b };
@@ -283,6 +294,7 @@ function route(force) {
   const filmBefore = S.route.film, prevRoute = S.route;
   S.route = r;
   if (r.view !== 'party') Party.leave();
+  if (r.view !== 'premier') Premier.leave();
   if (r.view !== 'birodalom') Bo.leave();
   if (!r.film && Browse.detailOpen()) Browse.closeDetail(true);
   if (r.mode === 'browse') {
@@ -300,6 +312,7 @@ function route(force) {
       else if (r.view === 'otletek') Ideas.render(r.id);
       else if (r.view === 'profil') Profile.render(r.id);
       else if (r.view === 'party') Party.render(r.id);
+      else if (r.view === 'premier') { Browse.cleanup(); Premier.render(r.id); }
       else if (r.view === 'kereses') Browse.search(r.id);
       else if (r.view === 'nez') Browse.watch(r.id);
       else if (r.view === 'admin') { Browse.cleanup(); Admin.render(r.id); }
@@ -407,7 +420,7 @@ function renderSide() {
   const cats = []; S.channels.forEach(c => { const k = c.category || 'Csatornák'; let g = cats.find(x => x.k === k); if (!g) cats.push(g = { k, l: [] }); g.l.push(c); });
   $('#sBody').innerHTML = `<div class="banner"></div>
     ${cats.map(g => `<div class="cat">${esc(g.k)}</div>${g.l.map(c => `<a class="si${r.view === 'chan' && r.id === c.id ? ' on' : ''}${chanUnread(c) ? ' unread' : ''}" href="#/c/${esc(c.id)}">
-      <span class="hash">${c.type === 'announce' ? '<i class="ic ic-megaphone"></i>' : '#'}</span><span class="nm">${esc(c.name)}</span></a>`).join('')}`).join('')}
+      <span class="hash">${c.type === 'announce' ? '<i class="ic ic-megaphone"></i>' : '#'}</span><span class="nm">${esc(c.name)}</span>${c.roles?.length ? `<i class="ic ic-lock clock" title="Csak: ${esc(c.roles.map(k => roleOf(k).label).join(', '))}"></i>` : ''}</a>`).join('')}`).join('')}
     ${!S.channels.length ? '<p class="hint" style="padding:.8rem .6rem">Még nincsenek csatornák.</p>' : ''}
 `;
   badges();
@@ -1148,6 +1161,7 @@ Notif.init({ S, uid, U });
 Friends.init({ S, uid, U, roleBadge, setTitle, changed: () => soon('friends', friendsChanged) });
 Profile.init({ S, uid, friendBtn: id => `<span id="pFr" data-id="${esc(id)}">${Friends.actionHtml(id, 'pbtn')}</span>`, can, isOwner, U, roleBadge, tagPills, userTags, roleKey, rankOfUser, myRank, openDm: id => location.hash = '#/u/' + id });
 Party.init({ S, uid, can, U, roleBadge });
+Premier.init({ S, uid, can, U, changed: () => videosChanged() });
 Bo.init({ S, uid, can, isOwner, U });
 Browse.init({ S, uid, isAdmin, isMod, can, isOwner, U, shareFilm, renderOwnerBar, convUnread, guestPrompt, guestLeave, tagPills });
 setInterval(() => S.users.size && renderOnline(), 60e3);

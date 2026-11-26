@@ -10,7 +10,7 @@ const RM = matchMedia('(prefers-reduced-motion: reduce)');
 export function setup(o) { G = o; }
 export function target() {
   if (!G) return null; const l = G.videos().filter(v => v.visible !== false && !v.series);
-  return l.find(v => v.promo) || l.filter(v => (v.kind || '') === 'Anime').sort((a, b) => (b.order || 0) - (a.order || 0))[0] || null;
+  return (G.premier && G.premier(l)) || l.find(v => v.promo) || l.filter(v => (v.kind || '') === 'Anime').sort((a, b) => (b.order || 0) - (a.order || 0))[0] || null;
 }
 
 /* ---------- determinisztikus véletlen ---------- */
@@ -144,14 +144,15 @@ const clip = (s, n) => s && s.length > n ? s.slice(0, n - 1).trimEnd() + '…' :
 export function bannerHtml() {
   const v = target(); if (!v) return '';
   return `<section class="promo pbig"><canvas class="pcv"></canvas><div class="pfade"></div><div class="pmin">
-    <span class="ptag"><i class="ic ic-sparkles"></i>${v.soon ? 'HAMAROSAN' : 'ÚJ'} ${esc((v.kind || 'Anime').toUpperCase())}</span>
+    <span class="ptag"><i class="ic ic-${v.liveAt ? 'radio' : 'sparkles'}"></i>${v.liveAt && v.soon ? esc(v.live?.phase === 'upcoming' ? 'PREMIER · ' + G.when(v.liveAt).toUpperCase() : G.label(v)) : (v.soon ? 'HAMAROSAN' : 'ÚJ') + ' ' + esc((v.kind || 'Anime').toUpperCase())}</span>
     <h2>${esc(v.en || v.title)}</h2>${v.en ? `<div class="pen">${esc(v.title)}</div>` : ''}
     ${v.desc ? `<p>${esc(clip(v.desc, 180))}</p>` : ''}
-    <div class="hbtns"><button class="pbtn play" data-play="${esc(v.id)}"><i class="ic ic-${v.soon ? 'bell' : 'play'}"></i>${v.soon ? 'Részletek' : 'Megnézem'}</button><button class="pbtn info" data-info="${esc(v.id)}"><i class="ic ic-info"></i>További infók</button></div></div></section>`;
+    <div class="hbtns">${v.liveAt && v.soon ? `<a class="pbtn play" href="#/premier/${esc(v.id)}"><i class="ic ic-radio"></i>${v.live?.open ? 'Belépés a premierre' : 'Premier oldala'}</a>` : `<button class="pbtn play" data-play="${esc(v.id)}"><i class="ic ic-${v.soon ? 'bell' : 'play'}"></i>${v.soon ? 'Részletek' : 'Megnézem'}</button>`}<button class="pbtn info" data-info="${esc(v.id)}"><i class="ic ic-info"></i>További infók</button></div></div></section>`;
 }
 export function stripHtml() {
   const v = target(); if (!v) return '';
-  return `<button class="promo pstrip" data-info="${esc(v.id)}"><canvas class="pcv"></canvas><span class="pmin"><span class="ptag"><i class="ic ic-sparkles"></i>ÚJ ${esc((v.kind || 'Anime').toUpperCase())}</span><b>${esc(v.en || v.title)}</b><span class="pgo">Megnézem <i class="ic ic-chevron-right"></i></span></span></button>`;
+  const go = v.liveAt && v.soon && v.live?.open;
+  return `${go ? `<a class="promo pstrip" href="#/premier/${esc(v.id)}">` : `<button class="promo pstrip" data-info="${esc(v.id)}">`}<canvas class="pcv"></canvas><span class="pmin"><span class="ptag"><i class="ic ic-${v.liveAt && v.soon ? 'radio' : 'sparkles'}"></i>${v.liveAt && v.soon ? esc(v.live?.phase === 'upcoming' ? 'PREMIER · ' + G.when(v.liveAt).toUpperCase() : G.label(v)) : 'ÚJ ' + esc((v.kind || 'Anime').toUpperCase())}</span><b>${esc(v.en || v.title)}</b><span class="pgo">${v.liveAt && v.soon && v.live?.open ? 'Belépés' : 'Megnézem'} <i class="ic ic-chevron-right"></i></span></span>${go ? '</a>' : '</button>'}`;
 }
 /* a frissen beillesztett hirdetések élesítése */
 export function wire(root = document) { root.querySelectorAll('.promo .pcv:not([data-on])').forEach(cv => { cv.dataset.on = '1'; live(cv, cv.closest('.pstrip') !== null); }); }

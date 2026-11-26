@@ -20,6 +20,7 @@ Statikus oldal (GitHub Pages + Cloudflare), háttér: Firebase (`hgws-7629e`).
 | `zene/` | feltöltött mp3-ak (az admin innen listázza) |
 | `tools/` | segédszkriptek: verziózás, matricák, térképadat, szabályteszt |
 | `firestore.rules` | adatbázis-szabályok – módosítás után a Firebase Console-ban is közzé kell tenni |
+| `js/premier.js` | élő premier (`#/premier/<film>`): várószoba visszaszámlálással, vezérlő zárral, csak visszatekerés + szinkron gomb, csevegés, nézők; a film a vége után 24 órával (vagy a megadott időpontban) kerül a filmtárba |
 
 ## Minden módosítás után
 
