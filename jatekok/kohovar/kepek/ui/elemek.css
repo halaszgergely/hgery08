@@ -1,0 +1,121 @@
+@font-face{font-family:mfont;src:url(../betu.woff) format('woff')}
+@font-face{font-family:mico;src:url(../ikon.woff) format('woff')}
+.ic::before{font-family:mico;font-style:normal;font-weight:normal;display:inline-block;line-height:1;text-shadow:none}
+.np-button{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(button.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-button-over{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(button-over.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-button-down{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(button-down.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-button-disabled{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(button-disabled.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-button-red{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(button-red.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-button-trans{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(button-trans.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-button-right{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(button-right.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-button-right-over{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(button-right-over.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-button-right-down{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(button-right-down.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-button-right-disabled{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(button-right-disabled.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-button-edge-1{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(button-edge-1.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-button-edge-2{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(button-edge-2.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-button-edge-3{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(button-edge-3.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-button-edge-4{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(button-edge-4.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-button-edge-over-4{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(button-edge-over-4.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-button-select{border-style:solid;border-width:4px 4px 4px 4px;border-image:url(button-select.png) 4 4 4 4 fill/4px 4px 4px 4px stretch;background:none}
+.np-pane{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(pane.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-pane-2{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(pane-2.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-pane-solid{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(pane-solid.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-pane-left{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(pane-left.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-pane-right{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(pane-right.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-pane-top{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(pane-top.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-window-empty{border-style:solid;border-width:2px 4px 2px 4px;border-image:url(window-empty.png) 2 4 2 4 fill/2px 4px 2px 4px stretch;background:none}
+.np-wavepane{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(wavepane.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-underline{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(underline.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-underline-over{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(underline-over.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-underline-white{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(underline-white.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-underline-2{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(underline-2.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-sideline{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(sideline.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-sideline-over{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(sideline-over.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-flat-down-base{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(flat-down-base.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.np-bar{border-style:solid;border-width:9px 9px 9px 9px;border-image:url(bar.png) 9 9 9 9 fill/9px 9px 9px 9px stretch;background:none}
+.np-bar-top{border-style:solid;border-width:9px 10px 10px 9px;border-image:url(bar-top.png) 9 10 10 9 fill/9px 10px 10px 9px stretch;background:none}
+.np-inventory{border-style:solid;border-width:10px 10px 14px 10px;border-image:url(inventory.png) 10 10 14 10 fill/10px 10px 14px 10px stretch;background:none}
+.np-slider-back{border-style:solid;border-width:4px 4px 4px 4px;border-image:url(slider-back.png) 4 4 4 4 fill/4px 4px 4px 4px stretch;background:none}
+.np-scroll{border-style:solid;border-width:6px 10px 5px 10px;border-image:url(scroll.png) 6 10 5 10 fill/6px 10px 5px 10px stretch;background:none}
+.np-white-pane{border-style:solid;border-width:12px 12px 12px 12px;border-image:url(white-pane.png) 12 12 12 12 fill/12px 12px 12px 12px stretch;background:none}
+.ic-play::before{content:'\e829'}
+.ic-pause::before{content:'\e806'}
+.ic-menu::before{content:'\e88c'}
+.ic-book::before{content:'\e85b'}
+.ic-book-open::before{content:'\e801'}
+.ic-tree::before{content:'\e875'}
+.ic-settings::before{content:'\e87c'}
+.ic-exit::before{content:'\e85f'}
+.ic-left::before{content:'\e802'}
+.ic-right::before{content:'\e803'}
+.ic-up::before{content:'\e804'}
+.ic-down::before{content:'\e805'}
+.ic-up-open::before{content:'\e826'}
+.ic-down-open::before{content:'\e824'}
+.ic-left-open::before{content:'\e825'}
+.ic-right-open::before{content:'\e83a'}
+.ic-ok::before{content:'\e800'}
+.ic-cancel::before{content:'\e815'}
+.ic-add::before{content:'\e813'}
+.ic-trash::before{content:'\e86f'}
+.ic-refresh::before{content:'\e86a'}
+.ic-save::before{content:'\e81b'}
+.ic-download::before{content:'\e879'}
+.ic-upload::before{content:'\e87b'}
+.ic-map::before{content:'\e827'}
+.ic-terrain::before{content:'\e864'}
+.ic-planet::before{content:'\e833'}
+.ic-info::before{content:'\f129'}
+.ic-info-circle::before{content:'\e837'}
+.ic-warning::before{content:'\26a0'}
+.ic-lock::before{content:'\e88d'}
+.ic-lock-open::before{content:'\e876'}
+.ic-zoom::before{content:'\e88a'}
+.ic-list::before{content:'\e811'}
+.ic-grid::before{content:'\f029'}
+.ic-home::before{content:'\e807'}
+.ic-star::before{content:'\e809'}
+.ic-turret::before{content:'\e871'}
+.ic-production::before{content:'\e85e'}
+.ic-distribution::before{content:'\e814'}
+.ic-liquid::before{content:'\e85c'}
+.ic-power::before{content:'\e810'}
+.ic-defense::before{content:'\e84d'}
+.ic-crafting::before{content:'\e830'}
+.ic-units::before{content:'\e86d'}
+.ic-effect::before{content:'\e853'}
+.ic-logic::before{content:'\e80e'}
+.ic-wrench::before{content:'\e80f'}
+.ic-hammer::before{content:'\e817'}
+.ic-eye::before{content:'\e88e'}
+.ic-eye-off::before{content:'\e88f'}
+.ic-chart-bar::before{content:'\e819'}
+.ic-layers::before{content:'\e83f'}
+.ic-box::before{content:'\e81e'}
+.ic-file::before{content:'\f15b'}
+.ic-folder::before{content:'\e81d'}
+.ic-copy::before{content:'\e874'}
+.ic-paste::before{content:'\e852'}
+.ic-rotate::before{content:'\e823'}
+.ic-command-rally::before{content:'\e86c'}
+.ic-command-attack::before{content:'\e86e'}
+.ic-mode-survival::before{content:'\e86b'}
+.ic-mode-attack::before{content:'\e865'}
+.ic-filter::before{content:'\f0b0'}
+.ic-tags::before{content:'\e828'}
+.ic-tag::before{content:'\e821'}
+.ic-chat::before{content:'\e870'}
+.ic-admin::before{content:'\e82c'}
+.ic-players::before{content:'\e872'}
+.ic-waves::before{content:'\e83b'}
+.ic-pencil::before{content:'\e869'}
+.ic-edit::before{content:'\e816'}
+.ic-pick::before{content:'\e877'}
+.ic-move::before{content:'\e818'}
+.ic-resize::before{content:'\e80b'}
+.ic-line::before{content:'\e82b'}
+.ic-fill::before{content:'\e84c'}
+.ic-eraser::before{content:'\f12d'}
+.ic-image::before{content:'\e808'}
+.ic-link::before{content:'\e81c'}
+.ic-export::before{content:'\e878'}

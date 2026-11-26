@@ -12,6 +12,9 @@ Ez a mappa (`jatekok/kohovar/`) a **GNU General Public License 3-as verziója** 
 - `kepek/atlasz.png`, `kepek/atlasz.json`: a Mindustry nyers sprite-jai (`core/assets-raw/sprites`, 19a0f40 commit, 2026-11-18),
   egy atlaszba csomagolva (2026-11-26). Módosítások: a tornyok fejei, az egységek és a fegyverek körvonalat kaptak (a Mindustry saját
   csomagolója is ezt teszi), a szektorikonok 64×64-re kicsinyítve. A csomagoló: `eszkoz/pack.py`.
+- `kepek/ui/*.png`, `kepek/betu.woff`, `kepek/ikon.woff`: a Mindustry kezelőfelületének 9-patch keretei (a vezetővonalak levágva),
+  betűtípusa (`core/assets/fonts/font.woff`, a latin és magyar karakterekre szűkítve) és ikonbetűkészlete (`icon.ttf`, a felhasznált ikonokra szűkítve, márkajelzések nélkül).
+  Előállító: `eszkoz/ui.py`. A menük és párbeszédablakok elrendezése a Mindustry `ui/` forrását követi (saját HTML/CSS megvalósítás).
 - Számértékek és szerkezet: a blokkok, tornyok, egységek adatai, a kutatási fa és az alap hullámtábla a Mindustry
   forrásának adatait követik (`adat.js`).
 
