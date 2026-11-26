@@ -15,11 +15,12 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;image-rende
 #wave .wn{font:800 18px inherit;font-family:inherit;color:var(--acc);letter-spacing:.04em}#wave .row{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-top:3px}
 #items{margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:1px 10px;font-size:12px}
 #tr{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
-#mini{width:200px;height:170px;display:block;image-rendering:pixelated;cursor:pointer}
+#mini{width:200px;height:auto;display:block;cursor:pointer}#mini.big{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:auto;z-index:4;box-shadow:0 0 0 100vmax rgba(0,0,0,.65)}
+.it.lq{border-radius:50%}
 #tbtn{display:flex;gap:4px}
 #pal{position:absolute;right:66px;bottom:8px;display:flex;align-items:stretch}
 #cats{display:flex;flex-direction:column;border-right:2px solid var(--ln)}#cats button{width:38px;height:36px;background:none;border:0;color:var(--mut);font-size:17px;cursor:pointer}#cats button.on{color:var(--acc);background:#2c2e37}
-#blks{display:grid;grid-template-columns:repeat(4,46px);gap:3px;padding:6px;align-content:start;min-height:120px}
+#blks{display:grid;grid-template-columns:repeat(4,46px);gap:3px;padding:6px;align-content:start;min-height:120px;max-height:60vh;overflow-y:auto}
 .bk{width:46px;height:46px;background:#1c1d23;border:2px solid #30323c;border-radius:3px;cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative}.bk img{width:34px;height:34px;image-rendering:pixelated}.bk.on{border-color:var(--acc)}.bk.no img{opacity:.35}
 @media (min-width:900px) and (pointer:fine){#blks{grid-template-columns:repeat(6,60px);gap:4px;padding:8px;min-height:0}.bk{width:60px;height:60px}.bk img{width:46px;height:46px}#cats button{width:50px;height:48px;font-size:22px}#info{width:300px;font-size:13px}#info h3{font-size:16px}}
 #info{position:absolute;right:66px;bottom:calc(var(--palh,150px) + 16px);width:250px;padding:8px 10px;font-size:12px}#info h3{font-size:14px;color:var(--acc);margin-bottom:4px}#info .st{color:var(--mut);margin-top:4px}
@@ -41,7 +42,7 @@ h2{font-size:12px;letter-spacing:.2em;color:var(--mut);text-transform:uppercase;
 #tech{z-index:6}#tech .card{width:min(1200px,100%);height:100%;display:flex;flex-direction:column}
 #tree{position:relative;flex:1;overflow:auto;background:#15161b;border:2px solid var(--ln);margin-top:8px;cursor:grab}
 #tree svg{position:absolute;left:0;top:0;pointer-events:none}
-.tn{position:absolute;width:118px;padding:5px;background:#1f2027;border:2px solid #30323c;border-radius:3px;font-size:11px;text-align:center;cursor:pointer}.tn img{width:30px;height:30px;image-rendering:pixelated;display:block;margin:0 auto 2px}.tn.done{border-color:#8c7337;background:#2a2619}.tn.av{border-color:#6ab0ff}.tn.lock{opacity:.4;cursor:default}.tn .c{color:var(--mut);font-size:10px;margin-top:2px}.tn .c .bad{color:var(--bad)}
+.tn{position:absolute;width:102px;padding:5px;background:#1f2027;border:2px solid #30323c;border-radius:3px;font-size:11px;text-align:center;cursor:pointer}.tn img{width:30px;height:30px;image-rendering:pixelated;display:block;margin:0 auto 2px}.tn.done{border-color:#8c7337;background:#2a2619}.tn.av{border-color:#6ab0ff}.tn.lock{opacity:.4;cursor:default}.tn .c{color:var(--mut);font-size:10px;margin-top:2px}.tn .c .bad{color:var(--bad)}
 .bank{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px}
 .fwrap{display:flex;gap:16px;flex-wrap:wrap}#fOpts{flex:1;min-width:300px}.fo h2{margin:10px 0 5px}.fo .row{display:flex;gap:4px;flex-wrap:wrap}.fside{width:300px;display:flex;flex-direction:column;gap:8px;margin-top:12px}#fPrev{width:100%;image-rendering:pixelated;border:2px solid var(--ln)}
 #end .card{width:min(460px,100%);text-align:center}#end h1{font-size:30px}
@@ -49,7 +50,7 @@ h2{font-size:12px;letter-spacing:.2em;color:var(--mut);text-transform:uppercase;
 <canvas id="c"></canvas>
 <div id="hud" hidden>
   <div id="wave" class="box"><div class="row"><span class="wn" id="wn"></span><button class="b sm" id="skip">▶▶</button></div><div class="row"><span id="wt" class="mut"></span><span id="en"></span></div><div id="items"></div></div>
-  <div id="tr"><canvas id="mini" class="box" width="200" height="170"></canvas><div id="tbtn"><button class="b sm" id="bPause">⏸</button><button class="b sm" id="bTech">Kutatás</button><button class="b sm" id="bMenu">☰</button></div></div>
+  <div id="tr"><canvas id="mini" class="box" width="200" height="170"></canvas><div id="tbtn"><button class="b sm" id="bPause">⏸</button><button class="b sm" id="bMap">Térkép</button><button class="b sm" id="bTech">Kutatás</button><button class="b sm" id="bMenu">☰</button></div></div>
   <div id="info" class="box" hidden></div>
   <div id="sel" class="box" hidden></div>
   <div id="pal" class="box"><div id="blks"></div><div id="cats"></div></div>
@@ -66,5 +67,5 @@ h2{font-size:12px;letter-spacing:.2em;color:var(--mut);text-transform:uppercase;
 <div id="tech" class="scr" hidden><div class="card box"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h1 style="font-size:26px">KUTATÁS</h1><div class="bank" id="bank2" style="flex:1"></div><button class="b" id="techBack">Bezár</button></div><div id="tree"></div></div></div>
 <div id="pmenu" class="scr" hidden><div class="card box" style="width:min(340px,100%)"><h1 style="font-size:24px">SZÜNET</h1><div class="mlist"><button class="b go" id="pRes">Folytatás</button><button class="b" id="pTech">Kutatás</button><button class="b" id="pSave">Mentés és kilépés</button><button class="b" id="pAband">Szektor feladása</button></div></div></div>
 <div id="end" class="scr" hidden><div class="card box"><h1 id="endT"></h1><p id="endP" class="mut" style="margin-top:10px"></p><div class="bank" id="endB" style="justify-content:center;margin-top:10px"></div><div class="mlist" style="margin:18px auto 0"><button class="b go" id="endOk">Térkép</button></div></div></div>
-<script type="module" src="fo.js?v=202611261601"></script>
+<script type="module" src="fo.js?v=202611261712"></script>
 </body></html>

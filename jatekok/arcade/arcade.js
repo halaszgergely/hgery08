@@ -19,7 +19,7 @@ const ZeroChip = { id: 'zerochip', name: 'ZERO CHIP', ext: 'jatekok/zerochip/ind
 const ZeroQuest = { id: 'zeroquest', name: 'ZERO QUEST', ext: 'jatekok/zeroquest/index.html', tag: 'ZÁRT BÉTA', lock: 1,
   desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében: küldetések, szintlépés, felszerelés és egy ébredő őr a romok alatt. Zárt béta.' };
 const Kohovar = { id: 'kohovar', name: 'KOHÓVÁR', ext: 'jatekok/kohovar/index.html', tag: 'ÚJ', lbx: 1, icon: '⛏️', fmt: v => Math.floor(v) + '. hullám',
-  desc: 'Bányássz, építs szállítószalagokat, gyárakat és áramhálózatot, és védd meg a magot a hullámokban érkező ellenség ellen. Három kampány és szabad játék. A Mindustry alapján készült.' };
+  desc: 'Bányássz, építs szállítószalagokat, gyárakat és áramhálózatot, és védd meg a magot a hullámokban érkező ellenség ellen. Óriási barlangtérképek, három kampány és szabad játék. A Mindustry alapján készült.' };
 const Drift = window.HGDrift ? window.HGDrift({ G, Sfx, rr, store, hud }) : null;
 const Zombi = window.HGZombi ? window.HGZombi({ G, Sfx, rr, store, hud }) : null;
 const Vasut = { id: 'vasut', name: 'DERAIL HUNGARY', ext: 'jatekok/vasut/index.html', tag: 'ÚJ', lbx: 1, icon: '🚂', fmt: v => Math.floor(v).toLocaleString('hu-HU') + ' Ft',
