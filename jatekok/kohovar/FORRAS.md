@@ -35,3 +35,15 @@ Ez a mappa (`jatekok/kohovar/`) a **GNU General Public License 3-as verziója** 
 A játék teljes programkódja (`*.js`, `index.html`) saját, nulláról írt megvalósítás; a Mindustry kódjából nem tartalmaz részletet.
 A felfedezési köd, a lövedékek és hatások rajza és a kezelőfelület saját munka.
 A forráskód ebben a mappában olvasható formában érhető el, és a GPLv3 feltételei szerint szabadon továbbadható és módosítható.
+
+## Beépített modok (`modok/`)
+
+A modok listában szerepelnek, alapból kikapcsolva. Mindegyik a saját licence alatt áll, változatlanul (a fejlesztői fájlok nélkül) csomagolva:
+
+| Fájl | Mod | Szerző | Licenc | Forrás |
+|---|---|---|---|---|
+| exoprosopa.zip | Exoprosopa 0.96 | TnmSpiroct | GPLv3 | https://github.com/TnmSpiroct/Exoprosopa |
+| extended-unit-arsenal.zip | Extended unit arsenal 1.0 | Garmy | GPLv3 | https://github.com/Garmundo/Extended-unit-arsenal |
+| goldmod.zip | Gold Mod 2.0 alpha b19 | The Slaylord | GPLv3 | https://github.com/Slotterleet/GoldMod |
+| heavy-armaments-industries.zip | Heavy Armaments Industries 2.6 | Eschatologue | MIT | https://github.com/Eschatologue/Heavy-Armaments-Industries |
+| mechanical-warfare.zip | Mechanical Warfare 1.6.2 | GlennFolker, JerichoFletcher | GPLv3 | https://github.com/JerichoFletcher/mechanical-warfare |
