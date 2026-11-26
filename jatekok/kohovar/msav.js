@@ -1,6 +1,6 @@
 // Kohóvár – a Mindustry .msav pályafájlok olvasója (az eredeti io/SaveVersion, MapIO formátum alapján).
 // A Mindustry y tengelye felfelé nő, a Kohóváré lefelé: a sorokat itt fordítjuk meg.
-import { parseHjson } from './hjson.js?v=202611262244';
+import { parseHjson } from './hjson.js?v=202611262304';
 
 async function inflate(buf) {
   const ds = new DecompressionStream('deflate'), s = new Blob([buf]).stream().pipeThrough(ds);
@@ -64,10 +64,9 @@ export async function readMsav(buf) {
 }
 
 /* ----- pálya → Kohóvár-világ ----- */
-import { FLOORS, WALLS, TREES, MFLOOR, MWALL, MPROP, ITEM_IDS, BLOCKS } from './adat.js?v=202611262244';
-import { SN, ISN } from './kepadat.js?v=202611262244';
+import { FLOORS, WALLS, TREES, MFLOOR, MWALL, MPROP, ITEM_IDS, BLOCKS, MOD_ORE, MOD_DECO } from './adat.js?v=202611262304';
+import { SN, ISN } from './kepadat.js?v=202611262304';
 const DECO = new Set(['pebbles', 'tendrils', 'rune-overlay', 'char-overlay']);
-const FLK = Object.keys(FLOORS), WLK = Object.keys(WALLS);
 let INV = null;
 export function blockOf(mname) {
   if (!INV) { INV = Object.create(null); for (const k in SN) if (BLOCKS[k] && !INV[SN[k]]) INV[SN[k]] = k; }
@@ -78,7 +77,7 @@ const ROT = [0, 3, 2, 1];
 // Mindustry-csempe (y felfelé) → Kohóvár-csempe (y lefelé)
 export const mtile = (m, x, y) => ({ x, y: m.h - 1 - y });
 export function toWorld(m) {
-  const { w, h, names } = m, N = w * h, floor = new Uint8Array(N), ore = new Uint8Array(N), wall = new Uint8Array(N), prop = new Uint8Array(N);
+  const { w, h, names } = m, N = w * h, floor = new Uint16Array(N), ore = new Uint8Array(N), wall = new Uint16Array(N), prop = new Uint8Array(N), FLK = Object.keys(FLOORS), WLK = Object.keys(WALLS);
   const fi = n => { const k = FLOORS[n] ? n : MFLOOR[n]; const i = FLK.indexOf(k || 'stone'); return i < 0 ? 0 : i; };
   const wi = n => { const k = WALLS[n] ? n : MWALL[n]; return k ? WLK.indexOf(k) + 1 : n.endsWith('-wall') || n.endsWith('-vent') ? WLK.indexOf('rock') + 1 : 0; };
   const fcache = {}, ocache = {}, wcache = {}, spawns = [], props = [], PN = [null];
@@ -88,6 +87,8 @@ export function toWorld(m) {
     const on = m.ore[s] ? names[m.ore[s]] : null;
     if (on) {
       if (on === 'spawn') spawns.push({ x, y: h - 1 - my });
+      else if (MOD_ORE[on]) { const it = ITEM_IDS.indexOf(MOD_ORE[on]) + 1; if (it > 0) ore[i] = it; }
+      else if (MOD_DECO[on]) { props.push({ x, y: h - 1 - my, n: on + 1, i }); prop[i] = 1; }
       else if (on.startsWith('ore-')) { const it = ocache[on] ??= ITEM_IDS.indexOf(itemOf(on.replace(/^ore-(wall-|crystal-)?/, ''))) + 1; if (it > 0) ore[i] = it; }   // a falérc a fal csempéjén marad
       else if (DECO.has(on)) { props.push({ x, y: h - 1 - my, n: on + (1 + ((x * 7 + my * 13) % 3)), i }); prop[i] = 1; }
       else if (FLOORS[on] || MFLOOR[on]) floor[i] = fcache[on] ??= fi(on);

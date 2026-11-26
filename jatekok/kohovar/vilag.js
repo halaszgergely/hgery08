@@ -1,7 +1,7 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611262244';
-import { toWorld } from './msav.js?v=202611262244';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611262244';
+import { genMapSerpulo } from './terkep.js?v=202611262304';
+import { toWorld } from './msav.js?v=202611262304';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611262304';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -760,6 +760,7 @@ export class World {
         if (B.heatOut) b.hOut = (b.hOut || 0) + ((run ? B.heatOut : 0) - (b.hOut || 0)) * .02 * ts;
         if (B.outL) this.lqDump(b, 'oq', B.outL[0]); break;
       }
+      case 'liq1': if (lqOk(b, [B.inL[0], B.inL[1] * ts])) { b.lq -= B.inL[1] * ts; p = B.gen; } break;   // egyetlen folyadékot égető generátor
       case 'flux': if (lqOk(b, [B.inL[0], B.inL[1] * ts])) { b.lq -= B.inL[1] * ts; p = B.gen * Math.min(1, (b.hIn || 0) / B.heatReq); } break;   // fluxusreaktor: a teljesítmény a kapott hővel arányos   // több folyadékot égető generátor
       case 'burn': case 'item': case 'rtg': {
         const L = lqOk(b, B.inL);

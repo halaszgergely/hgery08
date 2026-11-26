@@ -568,6 +568,7 @@ export const FREE_OPTS = {
 export const FREE_DEF = { map: 'vadon', size: 'l', diff: 'norm', wt: 120, win: 0, sp: 1, ore: 1, start: 'base', res: 'own', fog: 1 };
 export const freeRanked = o => o.win === 0 && o.diff !== 'easy' && o.start === 'base' && o.res === 'own' && o.wt <= 120;
 export const EXTRA_ORES = [];
+export const MOD_ORE = {}, MOD_DECO = {};   // a modok érc- és díszítő-overlayei a pályákhoz (név → anyag)
 export function freeSector(o, seed) {
   const F = k => FREE_OPTS[k].find(x => x[0] === o[k]) || FREE_OPTS[k][0], M = MAPS.find(m => m.id === o.map) || MAPS[0], [w, h] = F('size')[2];
   const ores = {}; for (const k in M.ores) ores[k] = M.ores[k] * o.ore; for (const k of EXTRA_ORES) ores[k] = .7 * o.ore;   // a modok ércei a szabad játék térképein
