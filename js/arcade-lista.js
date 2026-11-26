@@ -1,6 +1,6 @@
 /* HGWS Arcade – listaoldal: kiemeltek, szűrők, kategóriasorok, részletező panel.
    Az adatok a js/arcade-manifest.js-ből jönnek; a ranglistát és a játékszámokat csak olvassa (a ctx függvényein át). */
-import { JATEKOK, KATEGORIAK, UJ_NAPOK } from './arcade-manifest.js?v=202611262023';
+import { JATEKOK, KATEGORIAK, UJ_NAPOK } from './arcade-manifest.js?v=202611262038';
 
 const V = new URL(import.meta.url).search, RK = 'hgws_arc_recent';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -49,11 +49,11 @@ export function render(page, ctx) {
   document.querySelectorAll('body > .apnl').forEach(x => x.remove()); const pnl = document.createElement('div'); pnl.className = 'apnl'; pnl.hidden = true; document.body.appendChild(pnl);
   const body = page.querySelector('.abody'), sel = page.querySelector('.fs'); sel.value = S.rend;
   const sorted = l => { const r = S.rend || (S.kat || S.q ? 'uj' : ''); return l.slice().sort(r === 'az' ? (a, b) => a.cim.localeCompare(b.cim, 'hu') : r === 'nepszeru' ? (a, b) => (plays[b.id] || 0) - (plays[a.id] || 0) : (a, b) => String(b.hozzaadva).localeCompare(String(a.hozzaadva)) || (b.kiemelt || 0) - (a.kiemelt || 0)); };
-  const rowH = (t, l) => l.length ? `<section class="row"><div class="rowh"><h2>${esc(t)}</h2></div><div class="arow">${favFirst(l).map(g => card(g, ctx)).join('')}</div></section>` : '';
+  const rowH = (t, l, keep) => l.length ? `<section class="row"><div class="rowh"><h2>${esc(t)}</h2></div><div class="arow">${(keep ? l : favFirst(l)).map(g => card(g, ctx)).join('')}</div></section>` : '';
   function draw() { page.querySelectorAll('.fchips button').forEach(b => b.classList.toggle('on', b.dataset.k === S.kat)); const gs = all();
     page.querySelector('.ahero')?.toggleAttribute('hidden', !!(S.kat || S.q || S.rend));
     if (!S.kat && !S.q && !S.rend) { const rec = recent().map(id => gs.find(g => g.id === id)).filter(Boolean), nw = gs.filter(isNew).sort((a, b) => String(b.hozzaadva).localeCompare(String(a.hozzaadva))).slice(0, 10);
-      const fv = favs().map(id => gs.find(g => g.id === id)).filter(Boolean); body.innerHTML = rowH('★ Kedvencek', fv) + rowH('Legutóbb játszott', rec) + rowH('Újdonságok', nw) + KATEGORIAK.map(k => rowH(k.t, gs.filter(g => g.kat === k.k))).join(''); showNow(); return; }
+      const fv = favs().map(id => gs.find(g => g.id === id)).filter(Boolean); body.innerHTML = rowH('★ Kedvencek', fv) + rowH('Legutóbb játszott', rec, 1) + rowH('Újdonságok', nw) + KATEGORIAK.map(k => rowH(k.t, gs.filter(g => g.kat === k.k))).join(''); showNow(); return; }
     const q = fold(S.q), l = favFirst(sorted(gs.filter(g => (!S.kat || g.kat === S.kat) && (!q || fold(g.cim).includes(q) || (g.cimkek || []).some(c => fold(c).includes(q)) || fold(KN[g.kat]?.n).includes(q)))));
     body.innerHTML = `<section class="row"><div class="rowh"><h2>${esc(S.kat ? KN[S.kat].t : S.q ? 'Találatok' : 'Minden játék')}</h2><span class="al-cnt">${l.length} játék</span></div>${l.length ? `<div class="agridx">${l.map(g => card(g, ctx)).join('')}</div>` : '<p class="al-none">Nincs a szűrésnek megfelelő játék.</p>'}</section>`; showNow(); }
   // éppen játszók: a főoldal adja (percenként frissítjük, amíg a lista látszik)

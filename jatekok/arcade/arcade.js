@@ -32,7 +32,9 @@ const Vizfuvar = { id: 'vizfuvar', name: 'HGWS VÍZFUVAR', ext: 'jatekok/vizfuva
   desc: 'Vízszállító-szimulátor Miskolc valódi utcáin: Babettóval egyetlen ballonnal kezded, aztán Trabóval, később tartálykocsival és kamionnal építed a HGWS flottáját.' };
 const LocsoloVaros = { id: 'locsolovaros', name: 'HGWS: LOCSOLÓ VÁROS', ext: 'jatekok/locsolovaros/index.html', tag: 'ÚJ', icon: '🏙️',
   desc: 'Nyitott világú akciójáték egy kitalált, Miskolc ihlette városban: Halász Gergelyként vízfegyverekkel szállsz szembe Szilárddal, vezetsz Trabantot, Ikarust, helikoptert – és egy tankot.' };
-const GAMES = [Locsolo, Nyomas, Anya, Vizagyu, Csepp, Ugro, Torony, Birodalom, BoOnline, Aszaly, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, Atemelotelep, Vasut, Szerver, Kohovar, LegiOntozes, Vizfuvar, LocsoloVaros, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
+const WaterBlast = { id: 'waterblast', name: 'HGWS WATER BLAST', ext: 'jatekok/waterblast/index.html', tag: 'ÚJ', lbx: 1, icon: '💧', fmt: v => Math.floor(v).toLocaleString('hu-HU') + ' p',
+  desc: 'Blokk-kirakós 8×8-as táblán, HGWS-víztömbökkel: rakd le a három elemet, a teli sorok és oszlopok vízzé válnak. Kombók, sorozatok, tiszta tábla.' };
+const GAMES = [Locsolo, Nyomas, Anya, Vizagyu, Csepp, Ugro, Torony, Birodalom, BoOnline, Aszaly, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, Atemelotelep, Vasut, Szerver, Kohovar, LegiOntozes, Vizfuvar, LocsoloVaros, WaterBlast, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
 const NOSPON = ['locsolo', 'vizagyu', 'csepp', 'vizfuvar'];
 GAMES.forEach(g => { if (NOSPON.includes(g.id)) delete g.sponsor; else g.sponsor = 'A Zerosites támogatásával'; });
 /* népszerűség: a főoldal küldi a játékonkénti indításszámot (plays), helyben is megjegyezzük a gyors sorrendhez */
@@ -112,6 +114,12 @@ const ARTS = {
     x.fillStyle = '#1a2a33'; x.fillRect(bx - 22, by - 40, 44, 12); x.fillStyle = '#15181c'; x.fillRect(bx - 32, by + 2, 12, 9); x.fillRect(bx + 20, by + 2, 12, 9); x.fillStyle = '#d01010'; x.fillRect(bx - 30, by - 18, 10, 6); x.fillRect(bx + 20, by - 18, 10, 6);
     x.fillStyle = 'rgba(95,183,230,.85)'; for (let i = 0; i < 3; i++) { x.beginPath(); x.roundRect(bx - 18 + i * 13, by - 36, 9, 12, 3); x.fill(); }
     x.fillStyle = '#fff'; x.font = '900 13px Inter, Arial'; x.fillText('HGWS', 10, 20); },
+  waterblast: (c, x, t) => { const W = c.width, H = c.height, g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0b1a33'); g.addColorStop(1, '#040912'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    const P = ['#2a8fe0', '#e8b656', '#3fbf63', '#22c6c0', '#ff8a2a', '#9b6bff', '#ff5a4d'], s = Math.min(W, H) / 7.2, ox = W / 2 - s * 3, oy = H / 2 - s * 3, cl = Math.floor(t * .8) % 6;
+    for (let y = 0; y < 6; y++) for (let k = 0; k < 6; k++) { const on = (k * 7 + y * 3) % 5 !== 0; const X = ox + k * s, Y = oy + y * s; x.fillStyle = 'rgba(42,143,224,.1)'; x.beginPath(); x.roundRect(X + 2, Y + 2, s - 4, s - 4, s * .16); x.fill();
+      if (!on && y !== cl) continue; const pulse = y === cl ? .5 + .5 * Math.sin(t * 8) : 0, col = P[(k + y * 2) % 7]; x.fillStyle = col; x.globalAlpha = 1 - pulse * .5; x.beginPath(); x.roundRect(X + 2, Y + 2, s - 4, s - 4, s * .16); x.fill();
+      x.fillStyle = 'rgba(255,255,255,.35)'; x.beginPath(); x.roundRect(X + s * .15, Y + s * .12, s * .7, s * .26, s * .1); x.fill(); x.fillStyle = 'rgba(255,255,255,.4)'; x.beginPath(); x.arc(X + s / 2, Y + s * .58, s * .12, 0, 6.3); x.fill(); x.globalAlpha = 1; }
+    x.fillStyle = '#e8b656'; x.font = '900 15px Inter, Arial'; x.textAlign = 'center'; x.fillText('WATER BLAST', W / 2, oy - 6); x.textAlign = 'left'; },
   locsolovaros: (c, x, t) => { const W = c.width, H = c.height, g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#2b3f7a'); g.addColorStop(.55, '#f29a5a'); g.addColorStop(.55, '#3a3d42'); g.addColorStop(1, '#2a2c30'); x.fillStyle = g; x.fillRect(0, 0, W, H);
     for (let i = 0; i < 9; i++) { const bw = W * .09, bh = H * (.22 + ((i * 37) % 5) * .055), bx = i * W * .115 - W * .02; x.fillStyle = ['#c9a25e', '#b5654e', '#8a95a3', '#d2b884'][i % 4]; x.fillRect(bx, H * .55 - bh, bw, bh);
       x.fillStyle = 'rgba(255,214,120,.85)'; for (let r = 0; r < bh / 9 - 1; r++) for (let k = 0; k < 3; k++) if ((i * 7 + r * 3 + k) % 4) x.fillRect(bx + 4 + k * bw / 3.3, H * .55 - bh + 5 + r * 9, bw / 6, 4); }
