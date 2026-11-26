@@ -10,7 +10,7 @@ for d, _, fs in os.walk(R):
 ENV_F = 'stone dacite sand-floor darksand snow ice grass metal-floor shallow-water deep-water moss spore-moss dirt shale basalt hotrock magmarock char molten-slag tar salt'.split()
 ENV_W = 'stone-wall snow-wall sand-wall dacite-wall dirt-wall spore-wall carbon-wall ferric-stone-wall'.split()
 ORES = 'copper lead scrap coal titanium thorium'.split()
-SECT = 'groundZero frozenForest craters stainedMountains desolateRift ruinousShores windsweptIslands tarFields nuclearComplex fungalPass saltFlats overgrowth coastline'.split()
+SECT = 'groundZero frozenForest crateredBattleground stainedMountains desolateRift ruinousShores windsweptIslands tarFields nuclearComplex fungalPass saltFlats overgrowth coastline'.split()
 plain, outl = set(), set()
 for n in BN.values():
     for k in idx:
