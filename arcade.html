@@ -302,6 +302,8 @@ footer p{margin-top:.8rem;color:#5f5a4f;font-size:.78rem;letter-spacing:.18em}
 .sndfix{position:fixed;top:14px;right:14px;z-index:25}
 body.embed .sndfix{top:10px;right:10px}
 body.embed .scroll{display:none}
+/* beágyazva a régi lista nem látszik: csak a játék fut, kilépéskor az új Arcade-lista jön */
+body.nolist .hero,body.nolist #arcade,body.nolist .afoot,body.nolist .ticker{display:none}
 .afoot{text-align:center;padding:2.5rem 1rem calc(2rem + env(safe-area-inset-bottom));color:#5f5a4f;font-size:.78rem;letter-spacing:.18em}
 .afoot .fs{font-family:var(--head);font-weight:900;font-size:clamp(1.1rem,3.6vw,1.6rem);letter-spacing:.12em;background:linear-gradient(180deg,var(--gold1),var(--gold2) 55%,var(--gold3));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:.6rem}
 
@@ -309,7 +311,7 @@ body.embed .scroll{display:none}
 <meta name="robots" content="noindex">
 </head>
 <body>
-<script>if (window.top !== window) document.body.classList.add("embed"); else if (!/[?&]solo/.test(location.search)) location.replace("./#/arcade" + (location.hash.startsWith("#play=") ? "/" + location.hash.slice(6) : ""));</script>
+<script>if (window.top !== window) { document.body.classList.add("embed"); if (!/[?&]bo=/.test(location.search)) document.body.classList.add("nolist"); } else if (!/[?&]solo/.test(location.search)) location.replace("./#/arcade" + (location.hash.startsWith("#play=") ? "/" + location.hash.slice(6) : ""));</script>
 <button class="snd sndfix" id="snd" aria-label="Hang be/ki">🔊</button>
 <header class="hero" id="top">
   <canvas id="water" aria-hidden="true"></canvas>
@@ -381,20 +383,20 @@ body.embed .scroll{display:none}
   </div>
 </div>
 
-<script src="jatekok/drift/drift.js?v=202611260118"></script>
-<script src="jatekok/holtvaros/terkep/megyek.js?v=202611260118"></script>
-<script src="jatekok/holtvaros/holtvaros.js?v=202611260118"></script>
-<script src="jatekok/arcade/mag.js?v=202611260118"></script>
-<script src="jatekok/locsolo/locsolo.js?v=202611260118"></script>
-<script src="jatekok/nyomas/nyomas.js?v=202611260118"></script>
-<script src="jatekok/anya/anya.js?v=202611260118"></script>
-<script src="jatekok/vizagyu/vizagyu.js?v=202611260118"></script>
-<script src="jatekok/csepp/csepp.js?v=202611260118"></script>
-<script src="jatekok/ugro/ugro.js?v=202611260118"></script>
-<script src="jatekok/torony/torony.js?v=202611260118"></script>
-<script src="jatekok/birodalom/nagyszam.js?v=202611260118"></script>
-<script src="jatekok/birodalom/birodalom.js?v=202611260118"></script>
-<script src="jatekok/aszaly/aszaly.js?v=202611260118"></script>
-<script src="jatekok/arcade/arcade.js?v=202611260118"></script>
+<script src="jatekok/drift/drift.js?v=202611261135"></script>
+<script src="jatekok/holtvaros/terkep/megyek.js?v=202611261135"></script>
+<script src="jatekok/holtvaros/holtvaros.js?v=202611261135"></script>
+<script src="jatekok/arcade/mag.js?v=202611261135"></script>
+<script src="jatekok/locsolo/locsolo.js?v=202611261135"></script>
+<script src="jatekok/nyomas/nyomas.js?v=202611261135"></script>
+<script src="jatekok/anya/anya.js?v=202611261135"></script>
+<script src="jatekok/vizagyu/vizagyu.js?v=202611261135"></script>
+<script src="jatekok/csepp/csepp.js?v=202611261135"></script>
+<script src="jatekok/ugro/ugro.js?v=202611261135"></script>
+<script src="jatekok/torony/torony.js?v=202611261135"></script>
+<script src="jatekok/birodalom/nagyszam.js?v=202611261135"></script>
+<script src="jatekok/birodalom/birodalom.js?v=202611261135"></script>
+<script src="jatekok/aszaly/aszaly.js?v=202611261135"></script>
+<script src="jatekok/arcade/arcade.js?v=202611261135"></script>
 </body>
 </html>

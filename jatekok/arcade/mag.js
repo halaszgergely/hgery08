@@ -292,7 +292,7 @@ function over() {
   if (window.top !== window && G.score > 0 && !cheat) parent.postMessage({ hgws: 'score', game: G.game.id, score: G.score, win: !!G.win }, location.origin);
   if (window.top !== window && G.score > 0 && cheat) parent.postMessage({ hgws: 'suspect', game: G.game.id, score: G.score, why: 'ido' }, location.origin); // moderátori ellenőrzésre
 }
-function close() { if (G.game && G.game.leave) G.game.leave(G); if (G.running && G.score > 0) over(); /* kilépéskor is számít az addig elért pontszám */ G.running = false; cancelAnimationFrame(G.raf); gEl.classList.remove('open'); document.body.classList.remove('locked'); renderCards(); }
+function close() { if (G.game && G.game.leave) G.game.leave(G); if (G.running && G.score > 0) over(); /* kilépéskor is számít az addig elért pontszám */ G.running = false; cancelAnimationFrame(G.raf); gEl.classList.remove('open'); document.body.classList.remove('locked'); renderCards(); window.HGWS_TO_LIST?.(); }
 $('#gQuit').onclick = () => { if (G.running) over(); };
 // lapbezárás / elnavigálás játék közben: az addig elért pontszám rekordként megmarad, és ha lehet, felmegy a ranglistára
 addEventListener('pagehide', () => { try { if (G.running && G.game && !G.game.ext && G.score > 0 && !IdoOr.bad) { if (G.score > store.get('best_' + G.game.id)) store.set('best_' + G.game.id, G.score); if (window.top !== window) parent.postMessage({ hgws: 'score', game: G.game.id, score: G.score }, location.origin); } } catch (_) {} });
