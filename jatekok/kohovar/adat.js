@@ -185,6 +185,7 @@ export const BLOCKS = {
   overdrive:  B('Gyorsítóvetítő', 'effect', 2, 320, { lead: 100, titanium: 75, silicon: 75, plastanium: 30 }, 'overdrive', { power: 3.5, range: 80, od: 1.5, bItem: 'phase', bOd: .75, bRange: 20 }),
   dome:       B('Gyorsítókupola', 'effect', 3, 720, { lead: 200, titanium: 130, silicon: 130, plastanium: 80, surge: 120 }, 'overdrive', { power: 10, range: 200, od: 2.5, need: { phase: 1, silicon: 1 }, useT: 300 }),
   forceproj:  B('Erőtérvetítő', 'effect', 3, 720, { lead: 100, titanium: 75, silicon: 125 }, 'shield', { power: 4, radius: 101.7, shp: 750, regen: 1.5, broken: .35, bItem: 'phase', bRadius: 80 }),
+  lamp:       B('Megvilágító', 'effect', 1, 40, { graphite: 12, silicon: 8, lead: 8 }, 'lamp', { power: .05 }),
   mine:       B('Sokkoló akna', 'effect', 1, 50, { lead: 25, silicon: 12 }, 'mine', { d: 25, cnt: 4 }),
   core:       B('Mag: Szilánk', null, 3, 1100, { copper: 1000, lead: 800 }, 'core', { cap: 4000, tier: 1, unit: 'alpha', ucap: 8 }),
   foundation: B('Mag: Alapzat', 'effect', 4, 3500, { copper: 3000, lead: 3000, silicon: 2000 }, 'core', { cap: 9000, tier: 2, unit: 'beta', ucap: 16 }),
@@ -214,10 +215,11 @@ export const BLOCKS = {
   /* egységek */
   gfactory:   B('Földi gyár', 'units', 3, 540, { copper: 50, lead: 120, silicon: 80 }, 'factory', { rot: 1, power: 1.2, plans: ['dagger', 'crawler', 'nova'] }),
   afactory:   B('Légi gyár', 'units', 3, 540, { copper: 60, lead: 70, silicon: 60 }, 'factory', { rot: 1, power: 1.2, plans: ['flare', 'mono'] }),
-  additive:   B('Additív átépítő', 'units', 3, 540, { copper: 200, lead: 120, silicon: 90 }, 'recon', { rot: 1, power: 3, inp: { silicon: 40, graphite: 40 }, time: 600, up: { nova: 'pulsar', dagger: 'mace', crawler: 'atrax', flare: 'horizon', mono: 'poly' } }),
-  multi:      B('Multiplikatív átépítő', 'units', 5, 1500, { lead: 650, silicon: 450, titanium: 350, thorium: 650 }, 'recon', { rot: 1, power: 6, inp: { silicon: 130, titanium: 80, metaglass: 40 }, time: 1800, up: { horizon: 'zenith', mace: 'fortress', poly: 'mega', pulsar: 'quasar', atrax: 'spiroct' } }),
-  expo:       B('Exponenciális átépítő', 'units', 7, 2940, { lead: 2000, silicon: 1000, titanium: 2000, thorium: 750, plastanium: 450, phase: 600 }, 'recon', { rot: 1, power: 13, inp: { silicon: 850, titanium: 750, plastanium: 650 }, inL: ['cryo', 1], lcap: 120, time: 5400, up: { zenith: 'antumbra', spiroct: 'arkyid', fortress: 'scepter', mega: 'quad', quasar: 'vela' } }),
-  tetra:      B('Tetratív átépítő', 'units', 9, 4860, { lead: 4000, silicon: 3000, thorium: 1000, plastanium: 600, phase: 600, surge: 800 }, 'recon', { rot: 1, power: 25, inp: { silicon: 1000, plastanium: 600, surge: 500, phase: 350 }, inL: ['cryo', 3], lcap: 360, time: 14400, up: { antumbra: 'eclipse', arkyid: 'toxopid', scepter: 'reign', quad: 'oct', vela: 'corvus' } }),
+  navalf:     B('Vízi gyár', 'units', 3, 540, { copper: 150, lead: 130, metaglass: 120 }, 'factory', { rot: 1, power: 1.2, plans: ['risso', 'retusa'], water: 1, float: 1 }),
+  additive:   B('Additív átépítő', 'units', 3, 540, { copper: 200, lead: 120, silicon: 90 }, 'recon', { rot: 1, power: 3, inp: { silicon: 40, graphite: 40 }, time: 600, up: { nova: 'pulsar', dagger: 'mace', crawler: 'atrax', flare: 'horizon', mono: 'poly', risso: 'minke', retusa: 'oxynoe' } }),
+  multi:      B('Multiplikatív átépítő', 'units', 5, 1500, { lead: 650, silicon: 450, titanium: 350, thorium: 650 }, 'recon', { rot: 1, power: 6, inp: { silicon: 130, titanium: 80, metaglass: 40 }, time: 1800, up: { horizon: 'zenith', mace: 'fortress', poly: 'mega', pulsar: 'quasar', atrax: 'spiroct', minke: 'bryde', oxynoe: 'cyerce' } }),
+  expo:       B('Exponenciális átépítő', 'units', 7, 2940, { lead: 2000, silicon: 1000, titanium: 2000, thorium: 750, plastanium: 450, phase: 600 }, 'recon', { rot: 1, power: 13, inp: { silicon: 850, titanium: 750, plastanium: 650 }, inL: ['cryo', 1], lcap: 120, time: 5400, up: { zenith: 'antumbra', spiroct: 'arkyid', fortress: 'scepter', mega: 'quad', quasar: 'vela', bryde: 'sei', cyerce: 'aegires' } }),
+  tetra:      B('Tetratív átépítő', 'units', 9, 4860, { lead: 4000, silicon: 3000, thorium: 1000, plastanium: 600, phase: 600, surge: 800 }, 'recon', { rot: 1, power: 25, inp: { silicon: 1000, plastanium: 600, surge: 500, phase: 350 }, inL: ['cryo', 3], lcap: 360, time: 14400, up: { antumbra: 'eclipse', arkyid: 'toxopid', scepter: 'reign', quad: 'oct', vela: 'corvus', sei: 'omura', aegires: 'navanax' } }),
   repairpt:   B('Javítópont', 'units', 1, 80, { lead: 30, copper: 30, silicon: 20 }, 'repair', { power: 1, range: 60, rep: .45 }),
   repairtur:  B('Javítótorony', 'units', 2, 320, { silicon: 90, thorium: 80, plastanium: 60 }, 'repair', { power: 5, range: 145, rep: 3 }),
 };
@@ -229,14 +231,14 @@ export const BUILD_ORDER = {
   power: ['node', 'nodeL', 'surgetower', 'diode', 'battery', 'batteryL', 'combust', 'thermal', 'steam', 'diffgen', 'rtg', 'solar', 'lsolar', 'reactor', 'impact'],
   def: ['cwall', 'cwallL', 'twall', 'twallL', 'plwall', 'plwallL', 'thwall', 'thwallL', 'phwall', 'phwallL', 'swall', 'swallL', 'door', 'doorL', 'scwall', 'scwallL', 'scwallH', 'scwallG'],
   craft: ['gpress', 'mpress', 'smelter', 'crucible', 'kiln', 'plastcomp', 'weaver', 'surgesm', 'cryomix', 'pyramix', 'blastmix', 'melter', 'separator', 'disass', 'sporepress', 'pulver', 'centrifuge', 'incinerator'],
-  units: ['gfactory', 'afactory', 'additive', 'multi', 'expo', 'tetra', 'repairpt', 'repairtur'],
-  effect: ['mender', 'mendproj', 'overdrive', 'dome', 'forceproj', 'mine', 'foundation', 'nucleus', 'container', 'vault', 'launchpad'],
+  units: ['gfactory', 'afactory', 'navalf', 'additive', 'multi', 'expo', 'tetra', 'repairpt', 'repairtur'],
+  effect: ['mender', 'mendproj', 'overdrive', 'dome', 'forceproj', 'mine', 'lamp', 'foundation', 'nucleus', 'container', 'vault', 'launchpad'],
 };
 
 /* ---------- egységek ----------
    fam: mech (földi), legs (lábas – átlép a falakon), air; w: fegyverek (k: b, flame, art, laser, arc, missile, bomb, sap, bolt, beam, boom, shrap, flak, acid)
    ab: képességek – regen (pajzsosztás), ff (erőtér), rep (javítómező) */
-const U = (n, fam, tier, hp, sp, r, armor, o) => ({ n, fam, tier, hp, sp, r, armor, air: fam === 'air' || fam === 'sup' ? 1 : 0, legs: fam === 'legs' ? 1 : 0, w: [], ...o });
+const U = (n, fam, tier, hp, sp, r, armor, o) => ({ n, fam, tier, hp, sp, r, armor, air: fam === 'air' || fam === 'sup' ? 1 : 0, legs: fam === 'legs' ? 1 : 0, naval: fam === 'naval' ? 1 : 0, w: [], ...o });
 const mis = (rl, d, spl, splR, o) => ({ k: 'missile', rl, d, spl, splR, sp: 3, life: 50, ...o });
 export const UNITS = {
   alpha:    U('Alfa', 'air', 1, 350, 3, 4, 0, { core: 1, mine: 6.5, mineT: 1, build: .5, w: [{ rl: 17, d: 11, sp: 2.5, life: 60, hom: .02 }] }),
@@ -267,14 +269,39 @@ export const UNITS = {
   mega:     U('Mega', 'sup', 3, 460, 2.5, 8, 3, { build: 2.6, rebuild: 1, w: [{ k: 'bolt', rl: 24, d: 10, sp: 5.2, life: 35, heal: 5.5 }, { k: 'bolt', rl: 15, d: 8, sp: 5.2, life: 35, heal: 3 }] }),
   quad:     U('Quad', 'sup', 4, 6000, 1.2, 18, 10, { build: 2.5, rebuild: 1, bomber: 1, w: [{ k: 'bomb', rl: 55, spl: 220, splR: 80, heal: 15, air: 0 }] }),
   oct:      U('Oct', 'sup', 5, 24000, .8, 33, 20, { build: 4, rebuild: 1, ab: { ff: [140, 4, 7000, 480], rep: [130, 120, 140] } }),
+  // vízi egységek: csak vízen mozognak
+  risso:    U('Risso', 'naval', 1, 280, 1.1, 5, 2, { cost: { silicon: 20, metaglass: 35 }, time: 45, w: [{ rl: 13, d: 9, sp: 2.5, life: 60 }, mis(25, 12, 10, 25, { sp: 2.7, life: 65 })] }),
+  minke:    U('Minke', 'naval', 2, 600, .9, 6.5, 4, { w: [{ k: 'flak', rl: 10, d: 3, spl: 27, splR: 15, sp: 4.2, life: 52, gnd: 1 }, { k: 'art', rl: 30, d: 20, spl: 40, splR: 30, sp: 3, life: 73, air: 0 }] }),
+  bryde:    U('Bryde', 'naval', 3, 910, .85, 10, 7, { w: [{ k: 'art', rl: 65, d: 15, spl: 70, splR: 40, sp: 3.2, life: 84, air: 0 }, mis(20, 12, 10, 25, { n: 2, sp: 2.7, life: 70 })] }),
+  sei:      U('Sei', 'naval', 4, 11000, .73, 19.5, 12, { w: [mis(45, 42, 45, 35, { n: 6, sp: 4.2, life: 62 }), { rl: 60, n: 3, d: 57, sp: 7, life: 35 }] }),
+  omura:    U('Omura', 'naval', 5, 22000, .62, 29, 16, { w: [{ k: 'laser', rl: 110, d: 1250, len: 500, wide: 1 }] }),
+  retusa:   U('Retusa', 'naval', 1, 270, .9, 5.5, 3, { cost: { silicon: 15, titanium: 20 }, time: 35, build: .5, ab: { rep: [20, 120, 60] }, w: [{ k: 'bolt', rl: 22, d: 12, sp: 5.2, life: 30, heal: 5.5 }] }),
+  oxynoe:   U('Oxynoe', 'naval', 2, 560, .83, 7, 4, { ab: { rep: [30, 120, 70] }, w: [{ k: 'flame', rl: 5, d: 20, sp: 3.3, life: 18, heal: 1.5 }] }),
+  cyerce:   U('Cyerce', 'naval', 3, 870, .86, 10, 6, { ab: { rep: [50, 120, 90] }, w: [{ k: 'flak', rl: 60, d: 25, spl: 25, splR: 30, sp: 2.5, life: 80, gnd: 1, heal: 2.8 }] }),
+  aegires:  U('Aegires', 'naval', 4, 12000, .7, 22, 12, { ab: { rep: [100, 120, 180] }, w: [{ k: 'field', rl: 65, n: 25, d: 40, len: 180, heal: 6 }] }),
+  navanax:  U('Navanax', 'naval', 5, 20000, .65, 29, 20, { w: [mis(65, 110, 110, 60, { sp: 5, life: 60, heal: 20 }), { k: 'beam', rl: 170, d: 27, len: 95, dur: 155, heal: .4 }] }),
 };
 
 /* ---------- kutatási fa (a Mindustry Serpulo-fája szerint) ---------- */
-const TT = 'conveyor<core junction<conveyor router<junction launchpad<router distributor<router sorter<router invsorter<sorter overflow<sorter underflow<overflow container<router unloader<container vault<container bridge<router titancon<bridge driver<titancon phasecon<driver plastcon<titancon armorcon<plastcon foundation<core nucleus<foundation mdrill<core mpump<mdrill conduit<mpump ljunction<conduit lrouter<ljunction lcontainer<lrouter ltank<lcontainer lbridge<lrouter pconduit<lrouter phaseconduit<pconduit plconduit<pconduit rpump<pconduit ipump<rpump gpress<mdrill pdrill<gpress cultivator<pdrill ldrill<pdrill bdrill<ldrill wextract<ldrill oilext<wextract pyramix<gpress blastmix<pyramix smelter<gpress sporepress<smelter centrifuge<sporepress mpress<centrifuge crucible<mpress plastcomp<sporepress weaver<plastcomp kiln<smelter pulver<kiln incinerator<pulver melter<incinerator surgesm<melter separator<melter disass<separator cryomix<melter combust<mdrill node<combust nodeL<node diode<nodeL surgetower<diode battery<node batteryL<battery mender<node mendproj<mender forceproj<mendproj overdrive<forceproj dome<overdrive repairpt<mendproj repairtur<repairpt steam<node thermal<steam diffgen<thermal reactor<diffgen impact<reactor rtg<reactor solar<node lsolar<solar duo<core cwall<duo cwallL<cwall scwall<cwallL scwallL<scwall scwallH<scwallL scwallG<scwallH twall<cwallL twallL<twall door<twall doorL<door plwall<twall plwallL<plwall thwall<twall thwallL<thwall swall<thwall swallL<swall phwall<swall phwallL<phwall scatter<duo hail<scatter salvo<hail swarmer<salvo cyclone<swarmer spectre<cyclone ripple<salvo fuse<ripple arc<duo scorch<arc wave<scorch parallax<wave segment<parallax tsunami<wave lancet<scorch meltdown<lancet foreshadow<meltdown mine<lancet gfactory<core afactory<gfactory additive<gfactory multi<additive expo<multi tetra<expo';
+const TT = 'conveyor<core junction<conveyor router<junction launchpad<router distributor<router sorter<router invsorter<sorter overflow<sorter underflow<overflow container<router unloader<container vault<container bridge<router titancon<bridge driver<titancon phasecon<driver plastcon<titancon armorcon<plastcon foundation<core nucleus<foundation mdrill<core mpump<mdrill conduit<mpump ljunction<conduit lrouter<ljunction lcontainer<lrouter ltank<lcontainer lbridge<lrouter pconduit<lrouter phaseconduit<pconduit plconduit<pconduit rpump<pconduit ipump<rpump gpress<mdrill pdrill<gpress cultivator<pdrill ldrill<pdrill bdrill<ldrill wextract<ldrill oilext<wextract pyramix<gpress blastmix<pyramix smelter<gpress sporepress<smelter centrifuge<sporepress mpress<centrifuge crucible<mpress plastcomp<sporepress weaver<plastcomp kiln<smelter pulver<kiln incinerator<pulver melter<incinerator surgesm<melter separator<melter disass<separator cryomix<melter combust<mdrill node<combust nodeL<node diode<nodeL surgetower<diode battery<node batteryL<battery mender<node mendproj<mender forceproj<mendproj overdrive<forceproj dome<overdrive repairpt<mendproj repairtur<repairpt steam<node thermal<steam diffgen<thermal reactor<diffgen impact<reactor rtg<reactor solar<node lsolar<solar duo<core cwall<duo cwallL<cwall scwall<cwallL scwallL<scwall scwallH<scwallL scwallG<scwallH twall<cwallL twallL<twall door<twall doorL<door plwall<twall plwallL<plwall thwall<twall thwallL<thwall swall<thwall swallL<swall phwall<swall phwallL<phwall scatter<duo hail<scatter salvo<hail swarmer<salvo cyclone<swarmer spectre<cyclone ripple<salvo fuse<ripple arc<duo scorch<arc wave<scorch parallax<wave segment<parallax tsunami<wave lancet<scorch meltdown<lancet foreshadow<meltdown mine<lancet gfactory<core afactory<gfactory additive<gfactory multi<additive expo<multi tetra<expo lamp<battery'
+  + ' u:dagger<gfactory u:mace<u:dagger u:fortress<u:mace u:scepter<u:fortress u:reign<u:scepter u:nova<u:dagger u:pulsar<u:nova u:quasar<u:pulsar u:vela<u:quasar u:corvus<u:vela u:crawler<u:dagger u:atrax<u:crawler u:spiroct<u:atrax u:arkyid<u:spiroct u:toxopid<u:arkyid'
+  + ' u:flare<afactory u:horizon<u:flare u:zenith<u:horizon u:antumbra<u:zenith u:eclipse<u:antumbra u:mono<u:flare u:poly<u:mono u:mega<u:poly u:quad<u:mega u:oct<u:quad'
+  + ' navalf<afactory u:risso<navalf u:minke<u:risso u:bryde<u:minke u:sei<u:bryde u:omura<u:sei u:retusa<u:risso u:oxynoe<u:retusa u:cyerce<u:oxynoe u:aegires<u:cyerce u:navanax<u:aegires'
+  + ' s:zero<core s:erdo<s:zero s:krater<s:erdo s:titan<s:krater s:hasadek<s:titan s:roncs<s:krater s:dunek<s:roncs s:olvasztar<s:dunek s:vassziv<s:olvasztar s:fagyhid<s:erdo s:jegmezo<s:fagyhid s:sarkikoho<s:jegmezo s:feher<s:sarkikoho'
+  + ' i:copper<core l:water<i:copper i:lead<i:copper i:titanium<i:lead l:cryo<i:titanium i:thorium<i:titanium i:surge<i:thorium i:phase<i:thorium i:metaglass<i:lead i:sand<i:copper i:scrap<i:sand l:slag<i:scrap i:coal<i:sand i:graphite<i:coal i:silicon<i:graphite i:pyratite<i:coal i:blast<i:pyratite i:spore<i:coal l:oil<i:spore i:plastanium<l:oil';
 const FREE = ['core', 'conveyor', 'mdrill', 'duo'];
 // kutatási ár: a Mindustry képlete (60 + mennyiség^1,11 · 20) negyedelve és anyagonként 10 000-nél levágva, mert itt nincs háttérben termelő szektor
 const rcost = c => Object.fromEntries(Object.entries(c).map(([k, v]) => [k, Math.min(10000, Math.max(10, Math.round((15 + Math.pow(v, 1.11) * 5) / 10) * 10))]));
-export const TECH = [{ id: 'core', req: null, cost: {} }, ...TT.split(' ').map(s => { const [id, req] = s.split('<'); return { id, req, cost: FREE.includes(id) ? {} : rcost(BLOCKS[id].cost) }; })];
+// csomópontfajták: b blokk, u egység (kutatni kell), i/l anyag és folyadék (magától nyílik, ha megtermelted), s szektor (elfoglalással)
+// egység ára: a Mindustry képlete (mennyiség^1,1 · 50) negyedelve; need: az építő blokk, amelyet előbb ki kell kutatni
+const ucost = c => Object.fromEntries(Object.entries(c).map(([k, v]) => [k, Math.min(10000, Math.max(10, Math.round(Math.pow(v, 1.1) * 12.5 / 10) * 10))]));
+const maker = u => Object.keys(BLOCKS).find(b => (BLOCKS[b].plans || []).includes(u) || Object.values(BLOCKS[b].up || {}).includes(u));
+export const TECH = [{ id: 'core', k: 'b', key: 'core', req: null, cost: {} }, ...TT.split(' ').map(s => {
+  const [id, req] = s.split('<'), k = id[1] === ':' ? id[0] : 'b', key = k === 'b' ? id : id.slice(2);
+  if (k === 'b') return { id, k, key, req, cost: FREE.includes(id) ? {} : rcost(BLOCKS[id].cost) };
+  if (k === 'u') { const m = maker(key); return { id, k, key, req, need: m, cost: ucost(UNITS[key].cost || BLOCKS[m].inp) }; }
+  return { id, k, key, req, cost: {} };
+})];
 
 /* ---------- hullámok: a Mindustry alap hullámtáblája ----------
    [egység, kezdet, vég, darab, skála, köz, max, pajzs, pajzsnövekmény, hatás] */

@@ -1,8 +1,9 @@
 // Kohóvár – főprogram: menük, kampány, szabad játék, kutatás, irányítás, kezelőfelület, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, SECTORS, CAMPAIGNS, LEGACY_SIZE, FREE_OPTS, FREE_DEF, freeSector, freeRanked } from './adat.js?v=202611261712';
-import { World, PLAYER, isPow, genMap } from './vilag.js?v=202611261712';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnitShape } from './rajz.js?v=202611261712';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, SECTORS, CAMPAIGNS, LEGACY_SIZE, FREE_OPTS, FREE_DEF, freeSector, freeRanked } from './adat.js?v=202611261904';
+import { World, PLAYER, isPow, genMap } from './vilag.js?v=202611261904';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611261904';
+import { ISN, LSN, SECSPR } from './kepadat.js?v=202611261904';
 
 const $ = s => document.querySelector(s), cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar';
@@ -10,7 +11,10 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 
 /* ---------- mentés ---------- */
 let S = (() => { try { return JSON.parse(localStorage.getItem(KEY) || localStorage.getItem('ercfront_v1')) || null; } catch (_) { return null; } })();
-if (!S || !S.research) S = { research: TECH.filter(t => !Object.keys(t.cost).length).map(t => t.id), bank: {}, cap: {}, best: 0, runs: {} };
+if (!S || !S.research) S = { research: TECH.filter(t => t.k === 'b' && !Object.keys(t.cost).length).map(t => t.id), bank: {}, cap: {}, best: 0, runs: {}, rv: 2 };
+S.seen = S.seen || {};
+if (!S.rv) { for (const id of [...S.research]) { const B = BLOCKS[id]; for (const u of [...(B && B.plans || []), ...Object.values(B && B.up || {})]) if (!S.research.includes('u:' + u)) S.research.push('u:' + u); } S.rv = 2; }   // a korábbi mentés: a már kikutatott gyárak egységei megmaradnak
+for (const k in S.bank) if (S.bank[k] > 0) S.seen['i:' + k] = 1;
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); return true; } catch (_) { return false; } };
 if (S.runs) delete S.runs.vegtelen;
 S.free = { ...FREE_DEF, ...(S.free || {}) }; S.seed = S.seed || (Math.random() * 1e9 | 0);
@@ -21,11 +25,13 @@ const done = id => (W && W.sec.unlockAll) || S.research.includes(id);
 const ICON = {};
 function blockIcon(t) {
   if (ICON[t]) return ICON[t];
-  const B = BLOCKS[t], c = document.createElement('canvas'), z = Math.max(2, Math.round(8 / B.s)); c.width = c.height = B.s * TS * z; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.scale(z, z);
-  drawB(x, null, { ...ghostOf({ t, x: 0, y: 0, rot: 0, cfg: null }), dItem: 'copper' }, 0); return (ICON[t] = c.toDataURL());
+  const B = BLOCKS[t], c = document.createElement('canvas'), z = B.s <= 3 ? 4 : 2; c.width = c.height = B.s * TS * z; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.scale(z, z);
+  drawB(x, null, { ...ghostOf({ t, x: 0, y: 0, rot: 0, cfg: null }), dItem: null }, 0); return (ICON[t] = c.toDataURL());
 }
-function unitIcon(t) { const k = 'u_' + t; if (ICON[k]) return ICON[k]; const c = document.createElement('canvas'), r = UNITS[t].r; c.width = c.height = 64; const x = c.getContext('2d'); x.scale(64 / 24, 64 / 24); drawUnitShape(x, t, PLAYER, 12, 12, -Math.PI / 2, 0, Math.min(1.4, 9 / r)); return (ICON[k] = c.toDataURL()); }
-const itI = k => `<i class="it" style="background:${ITEMS[k].c}"></i>`, lqI = k => `<i class="it lq" style="background:${LIQUIDS[k].c}"></i>`;
+function unitIcon(t) { const k = 'u_' + t; if (ICON[k]) return ICON[k]; const c = document.createElement('canvas'), sz = sprSize(t + '@o') || [48, 48], m = Math.max(sz[0], sz[1], 56) + 16; c.width = c.height = m; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.scale(4, 4); drawUnit(x, t, PLAYER, m / 8, m / 8, -Math.PI / 2, 0); return (ICON[k] = c.toDataURL()); }
+function sprIcon(n) { const k = 's_' + n; if (ICON[k]) return ICON[k]; const sz = sprSize(n); if (!sz) return ''; const c = document.createElement('canvas'); c.width = sz[0]; c.height = sz[1]; const x = c.getContext('2d'); x.scale(4, 4); spr(x, n, sz[0] / 8, sz[1] / 8); return (ICON[k] = c.toDataURL()); }
+const nodeIcon = t => t.k === 'b' ? blockIcon(t.key) : t.k === 'u' ? unitIcon(t.key) : t.k === 'i' ? sprIcon('item-' + ISN[t.key]) : t.k === 'l' ? sprIcon('liquid-' + LSN[t.key]) : sprIcon('sector-' + SECSPR[t.key]);
+const itI = k => `<i class="it" style="${icoCss('item-' + ISN[k])}"></i>`, lqI = k => `<i class="it" style="${icoCss('liquid-' + LSN[k])}"></i>`;
 const costHtml = (cost, have) => Object.entries(cost).map(([k, n]) => `<span class="${have && (have[k] || 0) < n ? 'bad' : ''}">${itI(k)}${n}</span>`).join(' ');
 const num = n => n >= 10000 ? (n / 1000).toFixed(0) + 'k' : n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(Math.floor(n));
 
@@ -60,35 +66,61 @@ $('#camps').onclick = e => { const b = e.target.closest('button'); if (!b || b.d
 $('#mPlay').onclick = showSecs; $('#mFree').onclick = showFree; $('#freeBack').onclick = () => scr('#menu'); $('#secBack').onclick = () => scr('#menu');
 $('#mTech').onclick = () => showTech('#menu');
 
-/* ---------- kutatás ---------- */
-let techBack = '#menu';
+/* ---------- kutatás (a Mindustry fájának elrendezésében: a gyökér középen, az ágak fölfelé és lefelé) ---------- */
+let techBack = '#menu', tsel = null, tzoom = 1, TPOS = null;
 const campRun = () => W && !W.sec.free;
 function techAvail() { const a = { ...S.bank }; if (campRun()) for (const k in W.core.items) a[k] = (a[k] || 0) + W.core.items[k]; return a; }
 function techSpend(cost) { for (const k in cost) { let n = cost[k]; if (campRun()) { const c = Math.min(n, W.core.items[k] || 0); W.core.items[k] = (W.core.items[k] || 0) - c; n -= c; } S.bank[k] = (S.bank[k] || 0) - n; } }
-function showTech(back) { techBack = back; $('#tech').hidden = false; if (back === '#menu') $('#menu').hidden = true; $('#pmenu').hidden = true; $('#tree').innerHTML = ''; drawTech(); }
-function drawTech() {
-  const av = techAvail(); $('#bank2').innerHTML = bankHtml(campRun() ? W.core.items : null) + ` <span class="mut">· ${S.research.length}/${TECH.length}</span>`;
-  const kids = {}; for (const t of TECH) if (t.req) (kids[t.req] = kids[t.req] || []).push(t);
-  const pos = {}; let leaf = 0;
-  const lay = (t, d) => { const ch = kids[t.id] || []; if (!ch.length) { pos[t.id] = { x: leaf++, y: d }; return; } ch.forEach(c => lay(c, d + 1)); const xs = ch.map(c => pos[c.id].x); pos[t.id] = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: d }; };
-  lay(TECH[0], 0);
-  const DXp = 112, DYp = 100, maxX = Math.max(...Object.values(pos).map(p => p.x)), maxY = Math.max(...Object.values(pos).map(p => p.y));
-  let svg = `<svg width="${(maxX + 1) * DXp + 40}" height="${(maxY + 1) * DYp + 40}">`, html = '';
-  for (const t of TECH) {
-    const p = pos[t.id], x = 20 + p.x * DXp, y = 20 + p.y * DYp;
-    if (t.req) { const q = pos[t.req]; svg += `<line x1="${20 + q.x * DXp + 51}" y1="${20 + q.y * DYp + 60}" x2="${x + 51}" y2="${y}" stroke="${done(t.id) ? '#8c7337' : '#3b3e4a'}" stroke-width="3"/>`; }
-    const st = S.research.includes(t.id) ? 'done' : (!t.req || S.research.includes(t.req)) ? 'av' : 'lock';
-    html += `<div class="tn ${st}" data-t="${t.id}" style="left:${x}px;top:${y}px"><img src="${blockIcon(t.id)}">${esc(BLOCKS[t.id].n)}${st === 'av' ? `<div class="c">${costHtml(t.cost, av)}</div>` : ''}</div>`;
-  }
-  const tr = $('#tree'), first = !tr.innerHTML, sl = tr.scrollLeft, stp = tr.scrollTop; tr.innerHTML = svg + '</svg>' + html;
-  if (first) { tr.scrollLeft = 20 + pos.core.x * DXp + 51 - tr.clientWidth / 2; tr.scrollTop = 0; } else { tr.scrollLeft = sl; tr.scrollTop = stp; }
+const NODE = Object.fromEntries(TECH.map(t => [t.id, t]));
+const nDone = t => t.k === 'b' || t.k === 'u' ? S.research.includes(t.id) : t.k === 's' ? !!S.cap[t.key] : !!S.seen[t.id];
+const nOpen = t => (!t.req || nDone(NODE[t.req])) && (!t.need || S.research.includes(t.need));
+const nName = t => t.k === 'b' ? BLOCKS[t.key].n : t.k === 'u' ? UNITS[t.key].n : t.k === 'i' ? ITEMS[t.key].n : t.k === 'l' ? LIQUIDS[t.key].n : SECTORS.find(s => s.id === t.key).n;
+const nCan = (t, av) => !nDone(t) && nOpen(t) && (t.k === 'b' || t.k === 'u') && Object.entries(t.cost).every(([k, n]) => (av[k] || 0) >= n);
+function layoutTech() {
+  if (TPOS) return TPOS; const kids = {}; for (const t of TECH) if (t.req) (kids[t.req] = kids[t.req] || []).push(t);
+  const pos = {}, rc = kids.core, half = Math.ceil(rc.length / 2);
+  const lay = (t, d, st) => { const ch = kids[t.id] || []; if (!ch.length) pos[t.id] = { x: st.leaf++, y: d, st }; else { ch.forEach(c => lay(c, d + st.dir, st)); const xs = ch.map(c => pos[c.id].x); pos[t.id] = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: d, st }; } };
+  const up = { leaf: 0, dir: -1 }, dn = { leaf: 0, dir: 1 }; rc.slice(0, half).forEach(c => lay(c, -1, up)); rc.slice(half).forEach(c => lay(c, 1, dn));
+  for (const id in pos) pos[id].x -= (pos[id].st.leaf - 1) / 2; pos.core = { x: 0, y: 0 };
+  const P = Object.values(pos), GX = 54, GY = 66, minX = Math.min(...P.map(p => p.x)), minY = Math.min(...P.map(p => p.y));
+  for (const p of P) { p.px = 60 + (p.x - minX) * GX; p.py = 60 + (p.y - minY) * GY; }
+  return (TPOS = { pos, w: 164 + (Math.max(...P.map(p => p.x)) - minX) * GX, h: 164 + (Math.max(...P.map(p => p.y)) - minY) * GY });
 }
-$('#tree').onclick = e => {
-  const n = e.target.closest('.tn'); if (!n || moved > 4) return; const t = TECH.find(q => q.id === n.dataset.t);
-  if (S.research.includes(t.id) || (t.req && !S.research.includes(t.req))) return; const av = techAvail();
-  if (!Object.entries(t.cost).every(([k, q]) => (av[k] || 0) >= q)) return;
-  techSpend(t.cost); S.research.push(t.id); persist(); drawTech(); if (W) buildPalette();
-};
+function showTech(back) { techBack = back; $('#tech').hidden = false; if (back === '#menu') $('#menu').hidden = true; $('#pmenu').hidden = true; tsel = null; tzoom = Math.max(.6, Math.min(1, $('#tree').clientWidth / layoutTech().w)); drawTech(true); }
+function drawTech(center) {
+  const av = techAvail(), { pos, w, h } = layoutTech();
+  $('#bank2').innerHTML = bankHtml(campRun() ? W.core.items : null) + ` <span class="mut">· ${TECH.filter(nDone).length}/${TECH.length}</span>`;
+  let svg = `<svg width="${w}" height="${h}">`, html = '';
+  for (const t of TECH) {
+    const p = pos[t.id], d = nDone(t), o = nOpen(t);
+    if (t.req) { const q = pos[t.req], my = (q.py + p.py) / 2 + 22; svg += `<path d="M${q.px + 22} ${q.py + 22}V${my}H${p.px + 22}V${p.py + 22}" fill="none" stroke="${d ? '#ffd37f' : o ? '#8a7340' : '#34363f'}" stroke-width="2"/>`; }
+    html += `<div class="tn ${d ? 'done' : o ? 'av' : 'lock'}${nCan(t, av) ? ' can' : ''}${tsel === t.id ? ' sel' : ''}" data-t="${t.id}" style="left:${p.px}px;top:${p.py}px"><img src="${nodeIcon(t)}"></div>`;
+  }
+  const tr = $('#tree'), ti = $('#treeIn'), sl = tr.scrollLeft, st = tr.scrollTop; ti.style.zoom = tzoom; ti.style.width = w + 'px'; ti.style.height = h + 'px'; ti.innerHTML = svg + '</svg>' + html;
+  if (center) { tr.scrollLeft = (pos.core.px + 22) * tzoom - tr.clientWidth / 2; tr.scrollTop = (pos.core.py + 22) * tzoom - tr.clientHeight / 2; } else { tr.scrollLeft = sl; tr.scrollTop = st; }
+  techInfo();
+}
+function ustats(U) {
+  const o = [`Életerő: ${U.hp} · páncél: ${U.armor}`, `Sebesség: ${(U.sp * 60 / TS).toFixed(1)} mező/mp · ${U.air ? 'légi' : U.naval ? 'vízi' : U.legs ? 'lábas' : 'földi'}`];
+  if (U.rng) o.push(`Hatótáv: ${(U.rng / TS).toFixed(1)} mező`); if (U.build) o.push('Építeni tud'); if (U.mine) o.push('Bányászni tud'); if (U.ab) o.push(Object.keys(U.ab).map(k => ({ regen: 'pajzsot oszt', ff: 'erőtér', rep: 'javítómező' }[k])).join(', '));
+  return o.map(s => `<div class="st">${s}</div>`).join('');
+}
+function techInfo() {
+  const el = $('#tinfo'), t = tsel && NODE[tsel]; if (!t) { el.hidden = true; return; }
+  const av = techAvail(), d = nDone(t); let h = `<h3>${esc(nName(t))}</h3>` + (t.k === 'b' ? stats(BLOCKS[t.key]) : t.k === 'u' ? ustats(UNITS[t.key]) : '');
+  if (d) h += `<div class="ok" style="margin-top:6px">${t.k === 's' ? 'Elfoglalva' : t.k === 'i' || t.k === 'l' ? 'Megszerezve' : 'Kikutatva'}</div>`;
+  else if (t.k === 'b' || t.k === 'u') {
+    h += `<div style="margin-top:6px">${costHtml(t.cost, av)}</div>`;
+    if (t.req && !nDone(NODE[t.req])) h += `<div class="bad">Előbb: ${esc(nName(NODE[t.req]))}</div>`; if (t.need && !S.research.includes(t.need)) h += `<div class="bad">Előbb: ${esc(BLOCKS[t.need].n)}</div>`;
+    h += `<button class="b go sm" id="tGo" ${nCan(t, av) ? '' : 'disabled'} style="margin-top:8px">Kutatás</button>`;
+  } else h += `<div class="mut" style="margin-top:6px">${t.k === 's' ? 'Még nincs elfoglalva' : 'Még nem termelted'}</div>`;
+  el.hidden = false; el.innerHTML = h;
+}
+function research() { const t = NODE[tsel]; if (!t || !nCan(t, techAvail())) return; techSpend(t.cost); S.research.push(t.id); persist(); drawTech(); if (W) buildPalette(); }
+$('#tree').onclick = e => { if (moved > 4) return; const n = e.target.closest('.tn'); tsel = n ? n.dataset.t : null; drawTech(); };
+$('#tree').ondblclick = e => { if (e.target.closest('.tn')) research(); };
+$('#tinfo').onclick = e => { if (e.target.id === 'tGo') research(); };
+$('#tree').addEventListener('wheel', e => { e.preventDefault(); const tr = $('#tree'), r = tr.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, z0 = tzoom; tzoom = Math.max(.3, Math.min(1.8, tzoom * (e.deltaY > 0 ? .88 : 1.14))); $('#treeIn').style.zoom = tzoom; tr.scrollLeft = (tr.scrollLeft + mx) * tzoom / z0 - mx; tr.scrollTop = (tr.scrollTop + my) * tzoom / z0 - my; }, { passive: false });
 let moved = 0; { const tr = $('#tree'); let d = null; tr.onpointerdown = e => { d = [e.clientX, e.clientY, tr.scrollLeft, tr.scrollTop]; moved = 0; }; window.addEventListener('pointermove', e => { if (!d) return; moved = Math.hypot(e.clientX - d[0], e.clientY - d[1]); tr.scrollLeft = d[2] - (e.clientX - d[0]); tr.scrollTop = d[3] - (e.clientY - d[1]); }); window.addEventListener('pointerup', () => { d = null; }); }
 $('#techBack').onclick = () => { $('#tech').hidden = true; if (techBack === '#menu') scr('#menu'); else if (techBack === '#pmenu') $('#pmenu').hidden = false; else if (W) paused = false; };
 
@@ -97,6 +129,7 @@ function start(sec, save) {
   if (save && !save.gv) sec = { ...sec, gen: 1, ...(LEGACY_SIZE[sec.id] ? { w: LEGACY_SIZE[sec.id][0], h: LEGACY_SIZE[sec.id][1] } : {}) };   // régi mentés: a régi térképével töltjük vissza
   SEC = sec; W = new World(sec, save); TER = makeTerrain(W); selB = null; selBlock = null; paused = false; cam.free = null; cam.z = 4;
   W.onWave = n => { W.msg(`${n}. hullám`); if (sec.free && sec.ranked) { if (n > (S.best || 0)) { S.best = n; persist(); } try { if (window.top !== window) parent.postMessage({ hgws: 'score', game: GAME, score: n }, location.origin); } catch (_) { } } };
+  W.canUnit = t => !!sec.unlockAll || S.research.includes('u:' + t);
   W.onLaunch = items => { if (sec.free) return; let n = 0; for (const k in items) { S.bank[k] = (S.bank[k] || 0) + items[k]; n += items[k]; } W.msg(`Kilövés: ${n} tárgy a raktárba`); persist(); };
   const p = W.player; cam.x = p.x; cam.y = p.y;
   scr(null); $('#hud').hidden = false; sizeMini(); buildPalette(); saveT = performance.now();
@@ -201,8 +234,8 @@ function selHtml() {
   if (B.type === 'generator') h += `<div>Termel: ${Math.round(b.pgen * 60)}/mp${B.mode === 'reactor' ? ` · hő ${Math.round(b.heat * 100)}%` : B.mode === 'impact' ? ` · felfűtés ${Math.round(b.warm * 100)}%` : ''}</div>`;
   if (B.type === 'shield') h += `<div>Pajzs: ${Math.round(B.shp - b.sh)} / ${B.shp}${b.broken ? ' <span class="bad">összeomlott</span>' : ''}</div>`;
   if (b.g) h += `<div class="mut">Hálózat: +${Math.round(b.g.prod * 60)} / −${Math.round(b.g.need * 60)}${b.g.cap ? ` · akku ${num(b.g.stored)}/${num(b.g.cap)}` : ''}</div><div class="bar"><i style="width:${b.g.sat * 100}%"></i></div>`;
-  if (B.cfg === 'item') h += `<div class="ipick">${ITEM_IDS.map(k => `<button class="${b.cfg === k ? 'on' : ''}" data-i="${k}" title="${ITEMS[k].n}"><i style="background:${ITEMS[k].c}"></i></button>`).join('')}</div>`;
-  if (B.type === 'factory') { const U = UNITS[B.plans[b.cfg || 0]]; h += `<div class="ipick">${B.plans.map((u, i) => `<button class="${(b.cfg || 0) === i ? 'on' : ''}" data-u="${i}" title="${UNITS[u].n}" style="width:34px;height:34px"><img src="${unitIcon(u)}" style="width:26px"></button>`).join('')}</div><div>${U.n} (${W.countU(B.plans[b.cfg || 0])}/${W.core.B.ucap}): ${costHtml(U.cost, b.items)}</div><div class="bar"><i style="width:${b.prog * 100}%"></i></div>`; }
+  if (B.cfg === 'item') h += `<div class="ipick">${ITEM_IDS.map(k => `<button class="${b.cfg === k ? 'on' : ''}" data-i="${k}" title="${ITEMS[k].n}"><i style="${icoCss('item-' + ISN[k], 18)}"></i></button>`).join('')}</div>`;
+  if (B.type === 'factory') { const U = UNITS[B.plans[b.cfg || 0]]; h += `<div class="ipick">${B.plans.map((u, i) => W.canUnit(u) ? `<button class="${(b.cfg || 0) === i ? 'on' : ''}" data-u="${i}" title="${UNITS[u].n}" style="width:38px;height:38px"><img src="${unitIcon(u)}" style="width:32px"></button>` : '').join('')}</div><div>${W.canUnit(B.plans[b.cfg || 0]) ? '' : '<span class="bad">Nincs kikutatva</span> '}${U.n} (${W.countU(B.plans[b.cfg || 0])}/${W.core.B.ucap}): ${costHtml(U.cost, b.items)}</div><div class="bar"><i style="width:${b.prog * 100}%"></i></div>`; }
   if (B.type === 'recon') h += `<div>${b.pay ? `${UNITS[b.pay].n} → ${UNITS[B.up[b.pay]].n}` : '<span class="mut">Egységre vár</span>'}: ${costHtml(B.inp, b.items)}</div><div class="bar"><i style="width:${b.prog * 100}%"></i></div>`;
   if (B.type === 'launchpad' || (B.type === 'crafter' && B.time)) h += `<div class="bar"><i style="width:${(B.type === 'launchpad' ? b.prog / B.time : b.prog) * 100}%"></i></div>`;
   if (b === W.core) h += `<div class="mut">Tárhely: ${W.coreCap()} / anyag</div>`;
@@ -302,7 +335,8 @@ function hud() {
   $('#wt').textContent = SEC.win && w.wave >= SEC.win ? 'Utolsó hullám' : `Következő: ${Math.floor(wt / 60)}:${String(wt % 60).padStart(2, '0')}`;
   const en = w.enemies(); $('#en').innerHTML = en ? `<span class="bad">${en} ellenség</span>` : '';
   $('#skip').disabled = !!(SEC.win && w.wave >= SEC.win);
-  const it = w.core.items; $('#items').innerHTML = ITEM_IDS.filter(k => it[k] > 0).map(k => `<span>${itI(k)}${num(it[k])}</span>`).join('');
+  const it = w.core.items; let ns = 0; for (const k of ITEM_IDS) if (it[k] > 0 && !S.seen['i:' + k]) { S.seen['i:' + k] = 1; ns = 1; } for (const k in w.madeL) if (!S.seen['l:' + k]) { S.seen['l:' + k] = 1; ns = 1; } if (ns) persist();
+  $('#items').innerHTML = ITEM_IDS.filter(k => it[k] > 0).map(k => `<span>${itI(k)}${num(it[k])}</span>`).join('');
   $('#msgs').innerHTML = w.msgs.slice(-4).map(m => `<div class="box ${m.c}">${esc(m.t)}</div>`).join('');
   if (selB) selHtml();
   if (selBlock || hoverBlock) showInfo(hoverBlock || selBlock);
@@ -357,4 +391,6 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 scr('#menu');
-window.__KV = { get W() { return W; }, S, start, SECTORS, freeSector };
+for (const b of ['#mPlay', '#mFree', '#mTech']) $(b).disabled = true;
+loadAtlas().then(() => { for (const b of ['#mPlay', '#mFree', '#mTech']) $(b).disabled = false; }, () => { $('.credit').insertAdjacentHTML('beforebegin', '<p class="bad" style="margin-top:14px">A grafika betöltése nem sikerült – frissítsd az oldalt.</p>'); });
+window.__KV = { get W() { return W; }, S, start, SECTORS, freeSector, BL: BLOCKS, UN: UNITS, cam, retex() { TER = makeTerrain(W); } };
