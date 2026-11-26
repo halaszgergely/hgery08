@@ -1,7 +1,7 @@
 /* Alkalmazottak: felvehető sofőrök, akik a flotta egy járművével önállóan fuvaroznak.
    A fuvarok valós időben telnek (gyorsítva); a cég a díjból levonja a ballonokat, az üzemanyagot és a sofőr jutalékát. */
-import { JARMU, GAZD } from './config.js?v=202611261553';
-import { fuvarDij } from './gazdasag.js?v=202611261553';
+import { JARMU, GAZD } from './config.js?v=202611261601';
+import { fuvarDij } from './gazdasag.js?v=202611261601';
 
 export const MAX_DOLGOZO = 6;
 const VNEV = ['Kovács', 'Szabó', 'Tóth', 'Nagy', 'Horváth', 'Varga', 'Kiss', 'Molnár', 'Németh', 'Farkas', 'Balogh', 'Papp', 'Takács', 'Juhász', 'Lakatos', 'Mészáros', 'Oláh', 'Simon', 'Rácz', 'Fekete'];

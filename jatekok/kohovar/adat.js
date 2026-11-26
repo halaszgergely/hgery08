@@ -1,4 +1,4 @@
-// Ércfront – a játék adatai: anyagok, blokkok, egységek, kutatási fa, szektorok.
+// Kohóvár – a játék adatai: anyagok, blokkok, egységek, kutatási fa, szektorok.
 // A játékmenet a Mindustry (Anuke) alapján készült: https://store.steampowered.com/app/1127400/Mindustry/
 // Saját kód és saját rajzolt grafika; az értékek a játék korai szakaszát követik, egyszerűsítve.
 
@@ -138,26 +138,71 @@ export const TECH = [
   { id: 'thwall', req: 'twall', cost: { thorium: 200 } },
 ];
 
-/* ---------- szektorok ---------- */
-// ores: érc → gyakoriság; win: ennyi hullám túlélése az elfoglalás; wt: hullámidő (mp); biome: talajok
-export const SECTORS = [
-  { id: 'zero', n: 'Nullpont', d: 'Az első partraszállás. Réz, ólom, homok és hulladék.', w: 110, h: 90, ores: { copper: 1, lead: .8, scrap: .5 }, sand: .25, biome: 'stone', win: 15, wt: 110, threat: 1, req: null, start: { copper: 200 } },
-  { id: 'erdo', n: 'Fagyott erdő', d: 'Szén a hó alatt – itt kezdődik a grafit és az áram.', w: 130, h: 110, ores: { copper: 1, lead: .8, coal: .9 }, sand: .2, biome: 'snow', win: 15, wt: 120, threat: 1.3, req: 'zero', start: { copper: 300, lead: 100 } },
-  { id: 'krater', n: 'A kráterek', d: 'Homokos mélyedések, légi támadók. Szilícium kell.', w: 130, h: 120, ores: { copper: 1, lead: .9, coal: .8, scrap: .6 }, sand: .55, biome: 'sand', win: 20, wt: 105, threat: 1.7, req: 'erdo', start: { copper: 400, lead: 200, graphite: 50 } },
-  { id: 'titan', n: 'Titánszirtek', d: 'Kemény kőzet titánnal. Erősebb hullámok, Buzogányok.', w: 150, h: 130, ores: { copper: 1, lead: .9, coal: .7, titanium: .8, scrap: .3 }, sand: .3, biome: 'dark', win: 25, wt: 100, threat: 2.3, req: 'krater', start: { copper: 600, lead: 400, graphite: 150, silicon: 100 } },
-  { id: 'hasadek', n: 'Tórium-hasadék', d: 'A legmélyebb lelőhely. Erődök és bombázók.', w: 160, h: 140, ores: { copper: 1, lead: .9, coal: .8, titanium: .9, thorium: .6, scrap: .4 }, sand: .35, biome: 'dark', win: 35, wt: 95, threat: 3.2, req: 'titan', start: { copper: 1000, lead: 800, graphite: 300, silicon: 300, titanium: 200 } },
-  { id: 'vegtelen', n: 'Végtelen ostrom', d: 'Nincs vége: meddig bírod? (ranglista)', w: 130, h: 120, ores: { copper: 1, lead: .9, coal: .8, titanium: .7, scrap: .5, thorium: .3 }, sand: .35, biome: 'stone', win: 0, wt: 100, threat: 1.4, req: 'erdo', start: { copper: 500, lead: 300 }, endless: 1 },
+/* ---------- kampányok és szektorok ---------- */
+// ores: érc → gyakoriság; win: ennyi hullám túlélése az elfoglalás; wt: hullámidő (mp); threat: erősség; air/gnd: légi/földi szorzó; sp: kezdőpontok száma
+export const CAMPAIGNS = [
+  { id: 'a', n: 'Első partraszállás', d: 'A kezdetek: réztől a tóriumig, öt szektoron át.', req: null },
+  { id: 'b', n: 'Jeges perem', d: 'Fagyott síkságok, sok légi támadó.', req: 'erdo' },
+  { id: 'c', n: 'Rozsdasivatag', d: 'Roncsmezők és dűnék, nehéz földi hadoszlopok.', req: 'krater' },
 ];
+export const SECTORS = [
+  { id: 'zero', camp: 'a', n: 'Nullpont', d: 'Az első partraszállás. Réz, ólom, homok és hulladék.', w: 110, h: 90, ores: { copper: 1, lead: .8, scrap: .5 }, sand: .25, biome: 'stone', win: 15, wt: 110, threat: 1, req: null, start: { copper: 200 } },
+  { id: 'erdo', camp: 'a', n: 'Fagyott erdő', d: 'Szén a hó alatt – itt kezdődik a grafit és az áram.', w: 130, h: 110, ores: { copper: 1, lead: .8, coal: .9 }, sand: .2, biome: 'snow', win: 15, wt: 120, threat: 1.3, req: 'zero', start: { copper: 300, lead: 100 } },
+  { id: 'krater', camp: 'a', n: 'A kráterek', d: 'Homokos mélyedések, légi támadók. Szilícium kell.', w: 130, h: 120, ores: { copper: 1, lead: .9, coal: .8, scrap: .6 }, sand: .55, biome: 'sand', win: 20, wt: 105, threat: 1.7, req: 'erdo', start: { copper: 400, lead: 200, graphite: 50 } },
+  { id: 'titan', camp: 'a', n: 'Titánszirtek', d: 'Kemény kőzet titánnal. Erősebb hullámok, Buzogányok.', w: 150, h: 130, ores: { copper: 1, lead: .9, coal: .7, titanium: .8, scrap: .3 }, sand: .3, biome: 'dark', win: 25, wt: 100, threat: 2.3, req: 'krater', start: { copper: 600, lead: 400, graphite: 150, silicon: 100 } },
+  { id: 'hasadek', camp: 'a', n: 'Tórium-hasadék', d: 'A legmélyebb lelőhely. Erődök és bombázók.', w: 160, h: 140, ores: { copper: 1, lead: .9, coal: .8, titanium: .9, thorium: .6, scrap: .4 }, sand: .35, biome: 'dark', win: 35, wt: 95, threat: 3.2, req: 'titan', start: { copper: 1000, lead: 800, graphite: 300, silicon: 300, titanium: 200 } },
+
+  { id: 'fagyhid', camp: 'b', n: 'Fagyhíd', d: 'Befagyott tavak között keskeny átjárók.', w: 120, h: 100, ores: { copper: 1, lead: .9, coal: .8 }, sand: .2, biome: 'snow', water: 1.4, win: 15, wt: 115, threat: 1.5, air: 1.8, req: null, start: { copper: 400, lead: 200, graphite: 50 } },
+  { id: 'jegmezo', camp: 'b', n: 'Jégmező', d: 'Nyílt jégsíkság, a fáklyák rajokban jönnek.', w: 140, h: 115, ores: { copper: 1, lead: .9, coal: .7, titanium: .7 }, sand: .25, biome: 'ice', water: 1.2, win: 20, wt: 110, threat: 2, air: 2.2, req: 'fagyhid', start: { copper: 600, lead: 400, graphite: 120, silicon: 80 } },
+  { id: 'sarkikoho', camp: 'b', n: 'Sarki kohó', d: 'Elhagyott olvasztó a gleccser szélén. Két irányból támadnak.', w: 150, h: 130, ores: { copper: 1, lead: .9, coal: .8, titanium: .8, scrap: .5 }, sand: .3, biome: 'snow', win: 25, wt: 105, threat: 2.6, air: 1.8, sp: 2, req: 'jegmezo', start: { copper: 900, lead: 600, graphite: 250, silicon: 200, titanium: 100 } },
+  { id: 'feher', camp: 'b', n: 'Fehér csend', d: 'A perem vége. Bombázók és erődök hóviharban.', w: 165, h: 145, ores: { copper: 1, lead: .9, coal: .8, titanium: .9, thorium: .6 }, sand: .3, biome: 'ice', water: 1.3, win: 30, wt: 100, threat: 3.4, air: 2, sp: 3, req: 'sarkikoho', start: { copper: 1400, lead: 1000, graphite: 400, silicon: 400, titanium: 300 } },
+
+  { id: 'roncs', camp: 'c', n: 'Roncstelep', d: 'Régi csatatér, tele fémhulladékkal.', w: 120, h: 100, ores: { copper: .8, lead: .8, scrap: 1.3, coal: .5 }, sand: .5, biome: 'sand', win: 15, wt: 110, threat: 1.8, gnd: 1.3, req: null, start: { copper: 500, lead: 300, graphite: 80 } },
+  { id: 'dunek', camp: 'c', n: 'Vándordűnék', d: 'Homoktenger, a Mászók falkákban rohannak.', w: 145, h: 115, ores: { copper: 1, lead: .9, coal: .8, titanium: .6, scrap: .8 }, sand: .7, biome: 'sand', win: 20, wt: 105, threat: 2.3, gnd: 1.5, req: 'roncs', start: { copper: 700, lead: 500, graphite: 150, silicon: 100 } },
+  { id: 'olvasztar', camp: 'c', n: 'Olvasztár', d: 'Sötét salakmező, minden érc megvan – az ellenség is tudja.', w: 155, h: 130, ores: { copper: 1, lead: .9, coal: .9, titanium: .9, thorium: .5, scrap: .6 }, sand: .4, biome: 'dark', win: 25, wt: 100, threat: 3, gnd: 1.4, sp: 2, req: 'dunek', start: { copper: 1000, lead: 800, graphite: 300, silicon: 300, titanium: 200 } },
+  { id: 'vassziv', camp: 'c', n: 'Vasszív', d: 'A sivatag közepe. Negyven hullám, három irányból.', w: 170, h: 150, ores: { copper: 1, lead: 1, coal: .9, titanium: 1, thorium: .8, scrap: .6 }, sand: .4, biome: 'dark', win: 40, wt: 95, threat: 3.8, gnd: 1.3, air: 1.2, sp: 3, req: 'olvasztar', start: { copper: 1600, lead: 1200, graphite: 500, silicon: 500, titanium: 400, thorium: 100 } },
+];
+
+/* ---------- szabad játék ---------- */
+const ALLORE = { copper: 1, lead: .9, coal: .8, titanium: .75, thorium: .5, scrap: .5 };
+export const MAPS = [
+  { id: 'komezo', n: 'Kőmező', biome: 'stone', ores: ALLORE, sand: .3 },
+  { id: 'homezo', n: 'Hómező', biome: 'snow', ores: ALLORE, sand: .2, water: 1.2 },
+  { id: 'jegtukor', n: 'Jégtükör', biome: 'ice', ores: ALLORE, sand: .2, water: 1.6 },
+  { id: 'dunek', n: 'Homokdűnék', biome: 'sand', ores: { ...ALLORE, scrap: 1 }, sand: .6 },
+  { id: 'hasadek', n: 'Sötét hasadék', biome: 'dark', ores: { ...ALLORE, thorium: .8 }, sand: .3 },
+  { id: 'volgy', n: 'Zöld völgy', biome: 'grass', ores: ALLORE, sand: .3, water: 1.1 },
+  { id: 'szigetek', n: 'Szigetvilág', biome: 'stone', ores: ALLORE, sand: .4, water: 2.2 },
+];
+export const FREE_OPTS = {
+  map: MAPS.map(m => [m.id, m.n]),
+  size: [['s', 'Kicsi', [100, 80]], ['m', 'Közepes', [130, 110]], ['l', 'Nagy', [170, 140]]],
+  diff: [['easy', 'Könnyű', .7], ['norm', 'Normál', 1.2], ['hard', 'Nehéz', 1.9], ['brut', 'Brutális', 2.8]],
+  wt: [[60, '60 mp'], [90, '90 mp'], [120, '120 mp'], [180, '180 mp']],
+  win: [[0, 'Végtelen'], [20, '20'], [40, '40'], [60, '60']],
+  sp: [[1, '1'], [2, '2'], [3, '3']],
+  ore: [[.6, 'Kevés'], [1, 'Normál'], [1.5, 'Sok']],
+  start: [['base', 'Alap', { copper: 300, lead: 100 }], ['rich', 'Bőséges', { copper: 3000, lead: 2000, graphite: 800, silicon: 800, titanium: 500, metaglass: 200 }], ['max', 'Korlátlan', { copper: 4000, lead: 4000, graphite: 4000, silicon: 4000, titanium: 4000, metaglass: 4000, coal: 4000, sand: 4000, thorium: 4000, scrap: 4000 }]],
+  res: [['own', 'Saját kutatás'], ['all', 'Minden feloldva']],
+};
+export const FREE_DEF = { map: 'komezo', size: 'm', diff: 'norm', wt: 120, win: 0, sp: 1, ore: 1, start: 'base', res: 'own' };
+export const freeRanked = o => o.win === 0 && o.diff !== 'easy' && o.start === 'base' && o.res === 'own' && o.wt <= 120;
+export function freeSector(o, seed) {
+  const F = (k) => FREE_OPTS[k].find(x => x[0] === o[k]), M = MAPS.find(m => m.id === o.map), [w, h] = F('size')[2];
+  const ores = {}; for (const k in M.ores) ores[k] = M.ores[k] * o.ore;
+  return { id: 'free_' + seed, free: 1, n: 'Szabad játék – ' + M.n, d: '', w, h, ores, sand: M.sand, biome: M.biome, water: M.water, win: o.win, wt: o.wt, threat: F('diff')[2], sp: o.sp, start: F('start')[2], endless: o.win === 0, unlockAll: o.res === 'all', ranked: freeRanked(o) };
+}
 
 /* ---------- hullámok ---------- */
 // a hullám összetétele: a szektor fenyegetettsége és a hullám sorszáma alapján
-export function waveUnits(w, threat, endless) {
-  const out = [], f = threat * (endless ? 1 + w / 30 : 1), add = (t, n) => { for (let i = 0; i < Math.round(n); i++) out.push(t); };
-  add('dagger', Math.min(40, (1 + w * .55) * f));
-  if (w >= 2) add('flare', Math.min(18, (w - 1) * .4 * f * (w % 2 ? 1 : .5)));
-  if (w >= 5) add('crawler', Math.min(20, (w - 4) * .45 * f * (w % 3 === 0 ? 1.5 : .6)));
+export function waveUnits(w, sec) {
+  const threat = sec.threat, A = sec.air || 1, G = sec.gnd || 1;
+  const out = [], f = threat * (sec.endless ? 1 + w / 30 : 1), add = (t, n) => { for (let i = 0; i < Math.round(n); i++) out.push(t); };
+  add('dagger', Math.min(40, (1 + w * .55) * f * G));
+  if (w >= 2) add('flare', Math.min(18 * A, (w - 1) * .4 * f * A * (w % 2 ? 1 : .5)));
+  if (w >= 5) add('crawler', Math.min(20 * G, (w - 4) * .45 * f * G * (w % 3 === 0 ? 1.5 : .6)));
   if (w >= 8 && threat > 1.2) add('mace', Math.min(12, (w - 7) * .18 * f));
-  if (w >= 10 && threat > 1.6) add('horizon', Math.min(10, (w - 9) * .2 * f * (w % 2 ? 1 : 0)));
+  if (w >= 10 && threat > 1.6) add('horizon', Math.min(10 * A, (w - 9) * .2 * f * A * (w % 2 ? 1 : 0)));
   if (w >= 14 && threat > 2.2) add('fortress', Math.min(8, (w - 13) * .12 * f));
   if (w % 10 === 0 && w > 0) add(threat > 2 ? 'fortress' : 'mace', 1 + w / 20);   // őrző-hullám
   return out;

@@ -1,6 +1,6 @@
-// Ércfront – kirajzolás (saját, kódból rajzolt pixeles grafika)
-import { TS, ITEMS, ITEM_IDS, FLOORS, WALLS, BLOCKS, UNITS } from './adat.js?v=202611261553';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611261553';
+// Kohóvár – kirajzolás (saját, kódból rajzolt pixeles grafika)
+import { TS, ITEMS, ITEM_IDS, FLOORS, WALLS, BLOCKS, UNITS } from './adat.js?v=202611261601';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611261601';
 
 const P = 2;                 // a talajréteg felbontása: 2 képpont / világegység
 const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555' };

@@ -1,18 +1,20 @@
-// Ércfront – főprogram: menük, kutatás, irányítás, kezelőfelület, mentés.
+// Kohóvár – főprogram: menük, kutatás, irányítás, kezelőfelület, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, SECTORS } from './adat.js?v=202611261553';
-import { World, DX, DY, PLAYER, ENEMY, isPow, buildTime } from './vilag.js?v=202611261553';
-import { floorLayer, render, drawB, ghostOf, minimap, drawUnitShape } from './rajz.js?v=202611261553';
+import { TS, ITEMS, ITEM_IDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, SECTORS, CAMPAIGNS, FREE_OPTS, FREE_DEF, freeSector, freeRanked } from './adat.js?v=202611261601';
+import { World, DX, DY, PLAYER, ENEMY, isPow, buildTime, genMap } from './vilag.js?v=202611261601';
+import { floorLayer, render, drawB, ghostOf, minimap, drawUnitShape } from './rajz.js?v=202611261601';
 
 const $ = s => document.querySelector(s), cv = $('#c'), g = cv.getContext('2d');
-const KEY = 'ercfront_v1', GAME = 'ercfront';
+const KEY = 'kohovar_v1', GAME = 'kohovar';
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 /* ---------- mentés ---------- */
-let S = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch (_) { return null; } })();
+let S = (() => { try { return JSON.parse(localStorage.getItem(KEY) || localStorage.getItem('ercfront_v1')) || null; } catch (_) { return null; } })();
 if (!S || !S.research) S = { research: TECH.filter(t => !Object.keys(t.cost).length).map(t => t.id), bank: {}, cap: {}, best: 0, runs: {} };
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (_) { } };
-const done = id => S.research.includes(id);
+if (S.runs) delete S.runs.vegtelen;
+S.free = { ...FREE_DEF, ...(S.free || {}) }; S.seed = S.seed || (Math.random() * 1e9 | 0);
+const done = id => (W && W.sec.unlockAll) || S.research.includes(id);
 
 /* ---------- ikonok ---------- */
 const ICON = {};
@@ -32,15 +34,19 @@ const cam = { x: 0, y: 0, z: 4 }, keys = new Set(), M = { x: 0, y: 0, wx: 0, wy:
 let selBlock = null, rot = 0, cat = 'turret', selB = null, hoverBlock = null, saveT = 0;
 
 /* ---------- képernyők ---------- */
-const scr = id => { for (const s of ['#menu', '#secs', '#tech', '#pmenu', '#end']) $(s).hidden = s !== id; };
+const scr = id => { for (const s of ['#menu', '#secs', '#free', '#tech', '#pmenu', '#end']) $(s).hidden = s !== id; };
 function bankHtml(extra) { const tot = { ...S.bank }; if (extra) for (const k in extra) tot[k] = (tot[k] || 0) + (extra[k] || 0); const l = ITEM_IDS.filter(k => tot[k] > 0); return l.length ? l.map(k => `<span>${itI(k)}${Math.floor(tot[k])} ${ITEMS[k].n}</span>`).join('') : '<span class="mut">üres</span>'; }
-function secState(s) { if (S.cap[s.id]) return 'cap'; if (s.req && !S.cap[s.req]) return 'lock'; return 'open'; }
+const campOpen = c => !c.req || S.cap[c.req];
+function secState(s) { if (S.cap[s.id]) return 'cap'; if (!campOpen(CAMPAIGNS.find(c => c.id === s.camp)) || (s.req && !S.cap[s.req])) return 'lock'; return 'open'; }
+let camp = 'a';
 function showSecs() {
   scr('#secs'); $('#bank1').innerHTML = bankHtml();
-  $('#secList').innerHTML = SECTORS.map(s => {
+  $('#camps').innerHTML = CAMPAIGNS.map(c => `<button class="b ${c.id === camp ? 'on' : ''}" data-camp="${c.id}" ${campOpen(c) ? '' : 'disabled'}>${esc(c.n)} <span class="mut">${SECTORS.filter(s => s.camp === c.id && S.cap[s.id]).length}/${SECTORS.filter(s => s.camp === c.id).length}</span></button>`).join('');
+  const C = CAMPAIGNS.find(c => c.id === camp); $('#campD').innerHTML = esc(C.d) + (campOpen(C) ? '' : ` <span class="bad">Feltétel: ${esc(SECTORS.find(s => s.id === C.req).n)} elfoglalása</span>`);
+  $('#secList').innerHTML = SECTORS.filter(s => s.camp === camp).map(s => {
     const st = secState(s), run = S.runs[s.id];
     const tag = st === 'cap' ? '<span class="ok">ELFOGLALVA</span>' : st === 'lock' ? '<span class="mut">ZÁRT</span>' : run ? `<span>${run.wave}. hullám</span>` : '';
-    const goal = s.endless ? `Rekord: ${S.best || 0}. hullám` : `Cél: ${s.win} hullám túlélése`;
+    const goal = `Cél: ${s.win} hullám túlélése`;
     const ores = Object.keys(s.ores).concat(s.sand ? ['sand'] : []).map(k => itI(k)).join('');
     return `<div class="sec ${st}"><h3>${esc(s.n)} ${tag}</h3><div class="mut">${esc(s.d)}</div><div>${ores}</div><div class="mut">${goal}</div><div class="row">${st === 'lock' ? '' : run ? `<button class="b go sm" data-go="${s.id}">Folytatás</button><button class="b sm" data-new="${s.id}">Újrakezdés</button>` : `<button class="b go sm" data-new="${s.id}">${st === 'cap' ? 'Újra' : 'Indítás'}</button>`}</div></div>`;
   }).join('');
@@ -50,20 +56,21 @@ $('#secList').onclick = e => {
   if (b.dataset.go) return start(SECTORS.find(s => s.id === b.dataset.go), S.runs[b.dataset.go]);
   if (b.dataset.new) { if (S.runs[b.dataset.new] && b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Biztos?'; return; } delete S.runs[b.dataset.new]; persist(); start(SECTORS.find(s => s.id === b.dataset.new), null); }
 };
-$('#mPlay').onclick = showSecs; $('#secBack').onclick = () => scr('#menu');
+$('#camps').onclick = e => { const b = e.target.closest('button'); if (!b || b.disabled) return; camp = b.dataset.camp; showSecs(); };
+$('#mPlay').onclick = showSecs; $('#mFree').onclick = showFree; $('#freeBack').onclick = () => scr('#menu'); $('#secBack').onclick = () => scr('#menu');
 $('#mTech').onclick = () => showTech('#menu');
 
 /* ---------- kutatás ---------- */
 let techBack = '#menu';
-function techAvail() { const a = { ...S.bank }; if (W) for (const k in W.core.items) a[k] = (a[k] || 0) + W.core.items[k]; return a; }
+function techAvail() { const a = { ...S.bank }; if (W && !W.sec.free) for (const k in W.core.items) a[k] = (a[k] || 0) + W.core.items[k]; return a; }
 function techSpend(cost) {
-  for (const k in cost) { let n = cost[k]; if (W) { const c = Math.min(n, W.core.items[k] || 0); W.core.items[k] = (W.core.items[k] || 0) - c; n -= c; } S.bank[k] = (S.bank[k] || 0) - n; }
+  for (const k in cost) { let n = cost[k]; if (W && !W.sec.free) { const c = Math.min(n, W.core.items[k] || 0); W.core.items[k] = (W.core.items[k] || 0) - c; n -= c; } S.bank[k] = (S.bank[k] || 0) - n; }
 }
 function showTech(back) {
   techBack = back; $('#tech').hidden = false; if (back === '#menu') $('#menu').hidden = true; $('#pmenu').hidden = true; drawTech();
 }
 function drawTech() {
-  const av = techAvail(); $('#bank2').innerHTML = bankHtml(W ? W.core.items : null);
+  const av = techAvail(); $('#bank2').innerHTML = bankHtml(W && !W.sec.free ? W.core.items : null);
   const kids = {}; for (const t of TECH) if (t.req) (kids[t.req] = kids[t.req] || []).push(t);
   const pos = {}; let leaf = 0;
   const lay = (t, d) => { const ch = kids[t.id] || []; if (!ch.length) { pos[t.id] = { x: leaf++, y: d }; return; } ch.forEach(c => lay(c, d + 1)); const xs = ch.map(c => pos[c.id].x); pos[t.id] = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: d }; };
@@ -93,25 +100,42 @@ $('#techBack').onclick = () => { $('#tech').hidden = true; if (techBack === '#me
 /* ---------- indítás ---------- */
 function start(sec, save) {
   SEC = sec; W = new World(sec, save); FLOOR = floorLayer(W); selB = null; selBlock = null; paused = false;
-  W.onWave = n => { W.msg(`${n}. hullám`); if (sec.endless) { if (n > (S.best || 0)) { S.best = n; persist(); } try { if (window.top !== window) parent.postMessage({ hgws: 'score', game: GAME, score: n }, location.origin); } catch (_) { } } };
+  W.onWave = n => { W.msg(`${n}. hullám`); if (sec.free && sec.ranked) { if (n > (S.best || 0)) { S.best = n; persist(); } try { if (window.top !== window) parent.postMessage({ hgws: 'score', game: GAME, score: n }, location.origin); } catch (_) { } } };
   const p = W.player; cam.x = p.x; cam.y = p.y;
   scr(null); $('#hud').hidden = false; buildPalette(); saveT = performance.now();
 }
-function saveRun() { if (!W || W.lost || W.won) return; S.runs[SEC.id] = W.save(); persist(); }
-function quit() { saveRun(); W = null; $('#hud').hidden = true; showSecs(); }
+const runKey = s => s.free ? 'free' : s.id;
+function saveRun() { if (!W || W.lost || W.won) return; S.runs[runKey(SEC)] = W.save(); if (SEC.free) S.freeSec = SEC; persist(); }
+function quit() { saveRun(); const f = SEC.free; W = null; $('#hud').hidden = true; f ? showFree() : showSecs(); }
 function endGame(won) {
   paused = true; const items = { ...W.core.items };
-  if (won) { S.cap[SEC.id] = 1; for (const k in items) S.bank[k] = (S.bank[k] || 0) + items[k]; $('#endT').textContent = 'SZEKTOR ELFOGLALVA'; $('#endP').textContent = `${SEC.n}: ${W.wave} hullám túlélve, ${W.stats.kills} ellenség megsemmisítve. A mag készlete a raktárba került:`; $('#endB').innerHTML = Object.keys(items).filter(k => items[k] > 0).map(k => `<span>${itI(k)}${Math.floor(items[k])}</span>`).join(''); }
+  if (won && SEC.free) { $('#endT').textContent = 'GYŐZELEM'; $('#endP').textContent = `${SEC.n}: mind a ${W.wave} hullám túlélve, ${W.stats.kills} ellenség megsemmisítve.`; $('#endB').innerHTML = ''; }
+  else if (won) { S.cap[SEC.id] = 1; for (const k in items) S.bank[k] = (S.bank[k] || 0) + items[k]; $('#endT').textContent = 'SZEKTOR ELFOGLALVA'; $('#endP').textContent = `${SEC.n}: ${W.wave} hullám túlélve, ${W.stats.kills} ellenség megsemmisítve. A mag készlete a raktárba került:`; $('#endB').innerHTML = Object.keys(items).filter(k => items[k] > 0).map(k => `<span>${itI(k)}${Math.floor(items[k])}</span>`).join(''); }
   else { $('#endT').textContent = 'A MAG ELPUSZTULT'; $('#endP').textContent = `${SEC.n}: ${W.wave}. hullámig jutottál, ${W.stats.kills} ellenség megsemmisítve.`; $('#endB').innerHTML = ''; }
-  delete S.runs[SEC.id]; persist(); W = null; $('#hud').hidden = true; scr('#end');
+  delete S.runs[runKey(SEC)]; endFree = !!SEC.free; persist(); W = null; $('#hud').hidden = true; scr('#end');
 }
-$('#endOk').onclick = showSecs;
+let endFree = false;
+$('#endOk').onclick = () => endFree ? showFree() : showSecs();
+
+/* ---------- szabad játék ---------- */
+function showFree() {
+  scr('#free'); const o = S.free, run = S.runs.free;
+  $('#fOpts').innerHTML = Object.entries(FREE_OPTS).map(([k, l]) => `<div class="fo"><h2>${{ map: 'Térkép', size: 'Méret', diff: 'Nehézség', wt: 'Hullámidő', win: 'Hullámok', sp: 'Kezdőpontok', ore: 'Érc', start: 'Kezdő készlet', res: 'Kutatás' }[k]}</h2><div class="row">${l.map(x => `<button class="b sm ${o[k] === x[0] ? 'on' : ''}" data-k="${k}" data-v="${x[0]}">${esc(x[1])}</button>`).join('')}</div></div>`).join('')
+    + `<div class="fo"><h2>Térképkód</h2><div class="row"><span>${S.seed}</span><button class="b sm" id="fSeed">Új térkép</button></div></div>`;
+  $('#fRank').innerHTML = freeRanked(o) ? `<span class="ok">Ranglistás</span> · rekord: ${S.best || 0}. hullám` : '<span class="mut">Nem ranglistás</span>';
+  $('#fCont').hidden = !run; if (run) $('#fCont').textContent = `Folytatás (${S.freeSec.n}, ${run.wave}. hullám)`;
+  const sec = freeSector(o, S.seed), m = genMap(sec), fl = floorLayer({ ...m, w: sec.w, h: sec.h }), pc = $('#fPrev'); pc.width = sec.w * 2; pc.height = sec.h * 2; const pg = pc.getContext('2d'); pg.imageSmoothingEnabled = true; pg.drawImage(fl, 0, 0, pc.width, pc.height); pg.fillStyle = '#ffd37f'; pg.fillRect((m.coreAt.x) * 2, m.coreAt.y * 2, 6, 6);
+}
+$('#fOpts').onclick = e => { const b = e.target.closest('button'); if (!b) return; if (b.id === 'fSeed') S.seed = Math.random() * 1e9 | 0; else { const k = b.dataset.k, v = b.dataset.v; S.free[k] = typeof FREE_DEF[k] === 'number' ? +v : v; } persist(); showFree(); };
+$('#fGo').onclick = e => { const b = e.currentTarget; if (S.runs.free && b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Biztos? A folyamatban lévő játék elvész'; return; } b.dataset.sure = ''; b.textContent = 'Indítás'; delete S.runs.free; const sec = freeSector(S.free, S.seed); S.freeSec = sec; persist(); start(sec, null); };
+$('#fCont').onclick = () => start(S.freeSec, S.runs.free);
 
 /* ---------- paletta ---------- */
 function buildPalette() {
   $('#cats').innerHTML = CATS.map(([id, n, ic]) => BUILD_ORDER[id].some(done) ? `<button data-c="${id}" class="${id === cat ? 'on' : ''}" title="${esc(n)}">${ic}</button>` : '').join('');
   const l = BUILD_ORDER[cat].filter(done);
   $('#blks').innerHTML = l.map(t => `<div class="bk ${t === selBlock ? 'on' : ''} ${W && !W.has(BLOCKS[t].cost) ? 'no' : ''}" data-b="${t}"><img src="${blockIcon(t)}"></div>`).join('');
+  document.documentElement.style.setProperty('--palh', $('#pal').offsetHeight + 'px');
 }
 $('#cats').onclick = e => { const b = e.target.closest('button'); if (!b) return; cat = b.dataset.c; buildPalette(); };
 $('#blks').onclick = e => { const b = e.target.closest('.bk'); if (!b) return; selBlock = selBlock === b.dataset.b ? null : b.dataset.b; selB = null; buildPalette(); showInfo(selBlock); };
@@ -303,4 +327,4 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 scr('#menu');
-window.__EF = { get W() { return W; }, S, start, SECTORS };
+window.__KV = { get W() { return W; }, S, start, SECTORS };
