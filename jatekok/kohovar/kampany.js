@@ -1,8 +1,8 @@
 // Kohóvár – a Serpulo-hadjárat: az eredeti szektorok (SectorPresets), a bolygórács (PlanetGrid) és a technológiafa (SerpuloTechTree).
 // Az adatok: palyak/serpulo.json (eszkoz/serpulo.py generálja) és palyak/serpulo/*.msav (az eredeti pályák).
-import { BLOCKS, UNITS, ITEMS, LIQUIDS, TECH, rcost, ucost } from './adat.js?v=202611262220';
-import { LSN, SECSPR } from './kepadat.js?v=202611262220';
-import { readMsav, blockOf, itemOf } from './msav.js?v=202611262220';
+import { BLOCKS, UNITS, ITEMS, LIQUIDS, TECH, rcost, ucost } from './adat.js?v=202611262244';
+import { LSN, SECSPR } from './kepadat.js?v=202611262244';
+import { readMsav, blockOf, itemOf } from './msav.js?v=202611262244';
 
 async function bytes(p) {
   const u = new URL(p, import.meta.url);
@@ -17,7 +17,8 @@ export const GRIDS = { serpulo: SERP.grid, erekir: EREK.grid };
 
 // tartalom-hivatkozás ('content:duo', 'item:copper', 'liquid:water', 'sector:frontier') → [fajta, kulcs]
 export function contentOf(c) {
-  if (!c) return null; const i = c.indexOf(':'), k = c.slice(0, i), n = c.slice(i + 1);
+  if (!c) return null; if (c.indexOf(':') < 0) return contentOf('content:' + c) || contentOf('item:' + c) || contentOf('liquid:' + c);   // a pályák célkitűzéseiben előtag nélküli név
+  const i = c.indexOf(':'), k = c.slice(0, i), n = c.slice(i + 1);
   if (k === 'content') { if (n === 'core-shard') return ['b', 'core']; const b = blockOf(n); if (b) return ['b', b]; if (Object.hasOwn(UNITS, n)) return ['u', n]; const it = itemOf(n); if (it) return ['i', it]; return null; }
   if (k === 'item') { const it = itemOf(n); return it ? ['i', it] : null; }
   if (k === 'liquid') { for (const q in LSN) if (LSN[q] === n && LIQUIDS[q]) return ['l', q]; return null; }
