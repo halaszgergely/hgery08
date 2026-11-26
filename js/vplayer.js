@@ -1,6 +1,6 @@
 // HGWS saját videólejátszó – YouTube-forrásnál a YouTube IFrame API-t vezérli saját gombokkal
 // (a YouTube felülete nem kattintható, így a videó linkje sem érhető el egy kattintással), MP4-nél sima <video>.
-import { esc } from './core.js?v=202611262220';
+import { esc } from './core.js?v=202611262254';
 
 let ytLoad = null;
 function loadYT() {
@@ -37,7 +37,8 @@ const ICON = {
 /**
  * Lejátszó beillesztése egy dobozba.
  * o: { youtube, mp4, vtt (felirat .vtt/.srt az MP4-hez), poster, title, start, onTime(t, d), onPause(), onEnd(), next: { title, href, poster },
- *      locked (közös nézés vendégként: csak a házigazda irányít), onLocked(), onAction(kind, t) – a néző saját mozdulatai }
+ *      locked (közös nézés vendégként: csak a házigazda irányít), onLocked(), onAction(kind, t) – a néző saját mozdulatai,
+ *      maxT() – ennél előrébb nem lehet tekerni (élő premier: a vezérlő pozíciója) }
  * Visszaad: { destroy() }
  */
 export function mount(box, o) {
@@ -138,7 +139,8 @@ export function mount(box, o) {
 
   function ready() {
     A.vol(vol); A.mute(muted); volUi();
-    q('[data-k=cc]').hidden = !A.cc || (!!o.mp4 && !o.vtt);   // MP4-nél csak akkor van gomb, ha van feliratfájl
+    q('[data-k=cc]').hidden = !A.cc || (!!o.mp4 && !o.vtt);
+    if (o.maxT) q('[data-k=speed]').hidden = true;   // MP4-nél csak akkor van gomb, ha van feliratfájl
     poll = setInterval(tick, 250);
   }
 
@@ -171,7 +173,8 @@ export function mount(box, o) {
 
   /* ---------- vezérlők ---------- */
   const toggle = () => { if (!A) return; if (o.locked) { o.onLocked?.(); return; } if (ended) { A.seek(0); A.play(); o.onAction?.('play', 0); } else if (playing) { A.pause(); o.onAction?.('pause', A.time()); } else { A.play(); o.onAction?.('play', A.time()); } };
-  const skip = s => { if (!A) return; if (o.locked) { flash('🍿 A házigazda irányít'); return; } const t = Math.max(0, Math.min(A.dur() - .5, A.time() + s)); A.seek(t); tick(); flash(s > 0 ? '+' + s + ' mp' : s + ' mp'); o.onAction?.('seek', t); };
+  const cap = t => o.maxT ? Math.min(t, Math.max(0, o.maxT())) : t;
+  const skip = s => { if (!A) return; if (o.locked) { flash('🍿 A házigazda irányít'); return; } const t = cap(Math.max(0, Math.min(A.dur() - .5, A.time() + s))); A.seek(t); tick(); flash(s > 0 ? '+' + s + ' mp' : s + ' mp'); o.onAction?.('seek', t); };
   function volUi() {
     volR.value = muted ? 0 : vol;
     volR.style.setProperty('--v', (muted ? 0 : vol) + '%');
@@ -255,7 +258,7 @@ export function mount(box, o) {
   });
   bar.addEventListener('pointerleave', () => { if (!seeking) tip.hidden = true; });
   bar.addEventListener('pointerdown', e => { if (!A?.dur() || o.locked) return; seeking = true; bar.setPointerCapture(e.pointerId); box.classList.add('seeking'); setBar(frac(e)); });
-  const endSeek = e => { if (!seeking) return; seeking = false; box.classList.remove('seeking'); tip.hidden = true; const d = A.dur(), t = frac(e) * d; A.seek(t); if (ended) A.play(); tick(); o.onAction?.('seek', t); };
+  const endSeek = e => { if (!seeking) return; seeking = false; box.classList.remove('seeking'); tip.hidden = true; const d = A.dur(), t = cap(frac(e) * d); A.seek(t); if (ended) A.play(); tick(); o.onAction?.('seek', t); };
   bar.addEventListener('pointerup', endSeek); bar.addEventListener('pointercancel', () => { seeking = false; box.classList.remove('seeking'); });
 
   // vezérlők elrejtése, ha nem mozog az egér

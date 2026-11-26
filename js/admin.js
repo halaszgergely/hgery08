@@ -1,7 +1,7 @@
 // HGWS – kezelőfelület: tagok és rangok, tagek, filmek, zenék, csatornák, jóváhagyások, rangok szerkesztése
-import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611262220';
-import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611262220';
-import { githubRepo } from '../firebase-config.js?v=202611262220';
+import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611262254';
+import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611262254';
+import { githubRepo } from '../firebase-config.js?v=202611262254';
 
 let C = null, current = null;
 /* e-mail címek: csak adminok és a tulaj olvashatják (emails/{uid}); a lista megnyitásakor egyszer töltjük be */
@@ -75,7 +75,7 @@ let mq = '';
 /* vendégfiókok: a jelenlétüket (guests) és a lefoglalt/moderátor által adott nevüket (guestnames) mutatja; innen át is nevezhetők */
 /* ---------- gyanús eredmények (időmanipuláció stb.): a játék nem engedte ranglistára, itt ellenőrizhetők ---------- */
 const SUS = { list: [], at: 0, fail: false, names: {} };
-async function loadSuspects() { const [s, b] = await Promise.all([FB.getDocs(FB.query(FB.collection(db, 'suspects'), FB.orderBy('at', 'desc'), FB.limit(300))).catch(() => null), import('./browse.js?v=202611262220').catch(() => null)]);
+async function loadSuspects() { const [s, b] = await Promise.all([FB.getDocs(FB.query(FB.collection(db, 'suspects'), FB.orderBy('at', 'desc'), FB.limit(300))).catch(() => null), import('./browse.js?v=202611262254').catch(() => null)]);
   SUS.fail = !s; SUS.list = s ? s.docs.map(d => ({ id: d.id, ...d.data() })) : []; if (b) for (const g of b.GAMES) SUS.names[g.id] = g; SUS.at = Date.now(); }
 const WHY = { ido: 'Időmanipuláció (lassítás/gyorsítás)' };
 function suspectsPage(v, again) {
@@ -343,12 +343,13 @@ export function channelModal(c) {
     <div class="field"><label>Név</label><input class="inp" name="name" maxlength="40" value="${esc(c?.name || '')}" placeholder="pl. mémek"></div>
     <div class="field"><label>Téma <em>(a fejlécben látszik)</em></label><input class="inp" name="topic" maxlength="200" value="${esc(c?.topic || '')}"></div>
     <div class="grid2"><div class="field"><label>Kategória</label><input class="inp" name="cat" list="cats" maxlength="40" value="${esc(c?.category || 'Beszélgetés')}"><datalist id="cats">${cats.map(x => `<option>${esc(x)}</option>`).join('')}</datalist></div>
-    <div class="field"><label>Típus</label><select class="inp" name="type"><option value="text">💬 Szöveges – mindenki írhat</option><option value="announce" ${c?.type === 'announce' ? 'selected' : ''}>📢 Bejelentés – csak admin/moderátor</option></select></div></div>`,
+    <div class="field"><label>Típus</label><select class="inp" name="type"><option value="text">💬 Szöveges – mindenki írhat</option><option value="announce" ${c?.type === 'announce' ? 'selected' : ''}>📢 Bejelentés – csak admin/moderátor</option></select></div></div>
+    <div class="field"><label>Ki látja? <em>(ha egy sincs bejelölve, mindenki; a tulaj és az admin mindig látja)</em></label><div class="rolechk">${rolesSorted().filter(([k]) => k !== 'owner' && k !== 'admin').map(([k, r]) => `<label class="chk"><input type="checkbox" name="vr" value="${esc(k)}" ${(c?.roles || []).includes(k) ? 'checked' : ''}> <b style="color:${esc(r.color)}">${esc(r.label)}</b></label>`).join('')}</div></div>`,
     foot: `${c ? '<button class="btn danger l" data-del>Törlés</button>' : ''}<button class="btn plain" data-x>Mégse</button><button class="btn goldb" data-ok>Mentés</button>` });
   el.querySelector('[data-ok]').onclick = async () => {
     const name = el.querySelector('[name=name]').value.trim().toLowerCase().replace(/\s+/g, '-');
     if (!name) return toast('Adj nevet a csatornának.', true);
-    const data = { name, topic: el.querySelector('[name=topic]').value.trim(), category: el.querySelector('[name=cat]').value.trim() || 'Beszélgetés', type: el.querySelector('[name=type]').value };
+    const data = { name, topic: el.querySelector('[name=topic]').value.trim(), category: el.querySelector('[name=cat]').value.trim() || 'Beszélgetés', type: el.querySelector('[name=type]').value, roles: [...el.querySelectorAll('[name=vr]:checked')].map(i => i.value) };
     try {
       audit(c ? 'channel.edit' : 'channel.create', '#' + data.name);
       if (c) await FB.updateDoc(FB.doc(db, 'channels', c.id), data);
@@ -384,6 +385,10 @@ function films(v) {
 
 const slug = s => (s || 'film').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'film';
 
+/* élő premier segédek: datetime-local érték és a vetítésvezetőnek választható csapattagok */
+const dtl = t => { if (!t) return ''; const d = new Date(t), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+function staffOpts(sel) { const me = C.uid(), l = [...C.S.users.values()].filter(u => !u.banned && (u.id === me || (u.role && u.role !== 'user'))).sort((a, b) => (b.id === me) - (a.id === me) || a.name.localeCompare(b.name, 'hu'));
+  return l.map(u => `<option value="${esc(u.id)}"${(sel || me) === u.id ? ' selected' : ''}>${esc(u.name)}${u.id === me ? ' (te)' : ''}</option>`).join(''); }
 async function filmModal(f, pre) {
   let src = {};
   if (f) { try { src = (await FB.getDoc(FB.doc(db, 'videoSources', f.id))).data() || {}; } catch (_) {} }
@@ -401,6 +406,10 @@ async function filmModal(f, pre) {
       <div class="field" id="epf"><label>Évad · Rész</label><div style="display:flex;gap:.5rem"><input class="inp" type="number" min="1" max="99" name="season" value="${esc(String(d.season || 1))}" placeholder="évad"><input class="inp" type="number" min="0" max="9999" name="ep" value="${esc(String(d.ep || ''))}" placeholder="rész"></div></div></div>
     <div class="grid2"><div class="field"><label>Műfaj</label><input class="inp" name="genre" maxlength="80" value="${esc(d.genre || '')}" placeholder="Akció · Vígjáték"></div>
       <div class="field"><label>Premier dátuma <em>(nem kötelező)</em></label><input class="inp" type="date" name="premiere" value="${esc(d.premiere || '')}"></div></div>
+    <div class="field pfset"><label class="chk"><input type="checkbox" name="live" ${d.liveAt ? 'checked' : ''}> Élő premier (közös bemutató a megadott időpontban)</label>
+      <div class="grid2" id="livef"><div class="field"><label>Premier kezdete</label><input class="inp" type="datetime-local" name="liveAt" value="${esc(dtl(d.liveAt))}"></div>
+        <div class="field"><label>Filmtárba kerül <em>(üresen: 24 órával a vége után)</em></label><input class="inp" type="datetime-local" name="releaseAt" value="${esc(dtl(d.releaseAt))}"></div>
+        <div class="field"><label>Vetítésvezető</label><select class="inp" name="pMaster">${staffOpts(d.pMaster)}</select></div><div></div></div></div>
     <div class="field"><label>Stúdiók</label><div class="chips stchips" id="stc"></div><input class="inp" id="stin" list="stlist" maxlength="60" placeholder="Stúdió neve, majd Enter" style="margin-top:.4rem"><datalist id="stlist"></datalist></div>
     <div class="field"><label>Leírás</label><textarea class="inp" name="desc" rows="4" maxlength="1500">${esc(d.desc || '')}</textarea></div>
     <div class="field"><label>YouTube link <em>(a lejátszó a saját HGWS-felülettel játssza le)</em></label><input class="inp" name="yt" value="${esc(src.youtube ? 'https://youtu.be/' + src.youtube : '')}" placeholder="https://youtu.be/…  vagy  https://www.youtube.com/watch?v=…"><span class="hint" id="ytok"></span></div>
@@ -417,6 +426,7 @@ async function filmModal(f, pre) {
       <input class="inp" type="url" data-url placeholder="…vagy kép URL-je"><span class="hint" data-info></span></div></div></div>`).join('')}`,
     foot: `${f ? '<button class="btn danger l" data-del>Törlés</button>' : ''}<button class="btn plain" data-x>Mégse</button><button class="btn goldb" data-ok>Mentés</button>` });
   const q = n => el.querySelector(`[name=${n}]`);
+  const liveUi = () => { el.querySelector('#livef').style.display = q('live').checked ? '' : 'none'; }; q('live').onchange = liveUi; liveUi();
   const serUi = () => { const s1 = q('series').value; el.querySelector('#epf').style.display = s1 ? '' : 'none'; q('isser').closest('label').style.display = s1 ? 'none' : ''; };
   q('series').onchange = () => { const s1 = q('series').value, sr = C.S.videos.find(x => x.id === s1); if (sr && !f) { q('ep').value = epNext(s1); if (!q('kind').value || q('kind').value === 'Film') q('kind').value = sr.kind || 'Sorozat'; } serUi(); };
   q('isser').onchange = () => { if (q('isser').checked && (!q('kind').value || q('kind').value === 'Film')) q('kind').value = 'Sorozat'; };
@@ -454,9 +464,15 @@ async function filmModal(f, pre) {
       genre: q('genre').value.trim(), studios: (addSt(), studios.slice(0, 12)), premiere: q('premiere').value, desc: q('desc').value.trim(), status: q('status').value.trim().toUpperCase(), stage,
       soon: !q('rel').checked, featured: q('feat').checked, visible: q('vis').checked, promo: q('promo').checked,
       series: q('series').value, isSeries: !q('series').value && q('isser').checked, season: Math.max(1, parseInt(q('season').value) || 1), ep: Math.max(0, parseInt(q('ep').value) || 0), hasVideo: !!(yt || mp4), poster: imgs.poster, banner: imgs.banner, updatedAt: FB.serverTimestamp() };
+    const live = q('live').checked, liveAt = live ? Date.parse(q('liveAt').value) : NaN, relAt = live && q('releaseAt').value ? Date.parse(q('releaseAt').value) : NaN;
+    if (live && !isFinite(liveAt)) return toast('Add meg a premier kezdetét.', true);
+    if (live && !(yt || mp4)) return toast('Az élő premierhez kell a YouTube-link (vagy MP4).', true);
+    if (live && isFinite(relAt) && relAt < liveAt) return toast('A filmtárba kerülés nem lehet a premier előtt.', true);
+    if (live) { data.liveAt = liveAt; data.releaseAt = isFinite(relAt) ? relAt : FB.deleteField(); data.pMaster = q('pMaster').value || C.uid(); data.soon = true; }
+    else if (f?.liveAt) { data.liveAt = FB.deleteField(); data.releaseAt = FB.deleteField(); data.pMaster = FB.deleteField(); }
     const id = f ? f.id : (() => { let b = slug(title), s = b, n = 2; while (C.S.videos.some(x => x.id === s)) s = b + '-' + n++; return s; })();
-    if (!C.can('publishMedia')) {
-      const { updatedAt, ...clean } = data;
+    if (!C.can('publishMedia')) { if (live) { data.liveAt = liveAt; data.releaseAt = isFinite(relAt) ? relAt : null; data.pMaster = q('pMaster').value || C.uid(); }
+      const { updatedAt, ...clean } = data; for (const k of ['liveAt', 'releaseAt', 'pMaster']) if (clean[k] && typeof clean[k] === 'object') delete clean[k];
       try { await submit({ type: 'film', action: f ? 'update' : 'create', targetId: id, title, data: clean, src: { youtube: yt, mp4, vtt } }); el.close(); } catch (e) { toast(errText(e), true); }
       return;
     }
@@ -465,6 +481,8 @@ async function filmModal(f, pre) {
       const b = FB.writeBatch(db);
       b.set(FB.doc(db, 'videos', id), data, { merge: true });
       b.set(FB.doc(db, 'videoSources', id), { youtube: yt, mp4, vtt });
+      if (live) { const pr = FB.doc(db, 'premieres', id); if (!f?.liveAt || f.liveAt !== liveAt) b.set(pr, { master: data.pMaster, liveAt, state: 'auto', t: 0, at: FB.serverTimestamp(), locked: true, members: {} }); else b.set(pr, { master: data.pMaster, liveAt }, { merge: true }); }
+      else if (f?.liveAt) b.delete(FB.doc(db, 'premieres', id));
       if (data.featured) C.S.videos.filter(x => x.featured && x.id !== id).forEach(x => b.update(FB.doc(db, 'videos', x.id), { featured: false }));
       await b.commit(); audit(f ? 'film.edit' : 'film.create', title); toast('Mentve ✓'); el.close();
     } catch (e) { toast(errText(e), true); }
@@ -472,7 +490,7 @@ async function filmModal(f, pre) {
   const del = el.querySelector('[data-del]'); if (del) del.onclick = async () => {
     if (!await confirmBox(`Törlöd: „${f.title}”?${C.can('publishMedia') ? '' : ' (Jóváhagyásra megy egy adminhoz.)'}`, 'Törlés')) return;
     if (!C.can('publishMedia')) { try { await submit({ type: 'film', action: 'delete', targetId: f.id, title: f.title, data: {}, src: {} }); el.close(); } catch (e) { toast(errText(e), true); } return; }
-    try { const b = FB.writeBatch(db); b.delete(FB.doc(db, 'videos', f.id)); b.delete(FB.doc(db, 'videoSources', f.id)); await b.commit(); audit('film.delete', f.title); toast('Törölve'); el.close(); } catch (e) { toast(errText(e), true); }
+    try { const b = FB.writeBatch(db); b.delete(FB.doc(db, 'videos', f.id)); b.delete(FB.doc(db, 'videoSources', f.id)); if (f.liveAt) b.delete(FB.doc(db, 'premieres', f.id)); await b.commit(); audit('film.delete', f.title); toast('Törölve'); el.close(); } catch (e) { toast(errText(e), true); }
   };
 }
 
@@ -551,7 +569,7 @@ async function musicModal(t) {
     if (!src) return toast('Válassz zenefájlt vagy adj meg linket.', true);
     const data = { title, artist: q('artist').value.trim(), src, cover, visible: q('vis').checked, updatedAt: FB.serverTimestamp() };
     if (!C.can('publishMedia')) {
-      const { updatedAt, ...clean } = data;
+      const { updatedAt, ...clean } = data; for (const k of ['liveAt', 'releaseAt', 'pMaster']) if (clean[k] && typeof clean[k] === 'object') delete clean[k];
       try { await submit({ type: 'music', action: t ? 'update' : 'create', targetId: t?.id || '', title, data: clean, src: {} }); el.close(); } catch (e) { toast(errText(e), true); }
       return;
     }
@@ -647,12 +665,13 @@ async function approve(s, btn) {
   const bt = FB.writeBatch(db), t = FB.serverTimestamp(), d = { ...(s.data || {}) };
   try {
     if (s.type === 'film') {
-      if (s.action === 'delete') { bt.delete(FB.doc(db, 'videos', s.targetId)); bt.delete(FB.doc(db, 'videoSources', s.targetId)); }
+      if (s.action === 'delete') { bt.delete(FB.doc(db, 'videos', s.targetId)); bt.delete(FB.doc(db, 'videoSources', s.targetId)); if (C.S.videos.find(x => x.id === s.targetId)?.liveAt) bt.delete(FB.doc(db, 'premieres', s.targetId)); }
       else {
         let id = s.targetId || slug(s.title);
         if (s.action === 'create') { const b = id; let n = 2; while (C.S.videos.some(x => x.id === id)) id = b + '-' + n++; d.order = Math.max(-10, ...C.S.videos.map(x => x.order || 0)) + 10; d.createdAt = t; }
         bt.set(FB.doc(db, 'videos', id), { ...d, updatedAt: t }, { merge: true });
         bt.set(FB.doc(db, 'videoSources', id), { youtube: s.src?.youtube || '', mp4: s.src?.mp4 || '', vtt: s.src?.vtt || '' });
+        if (d.liveAt) { if (d.releaseAt == null) delete d.releaseAt; const old = C.S.videos.find(x => x.id === id); if (old?.liveAt !== d.liveAt) bt.set(FB.doc(db, 'premieres', id), { master: d.pMaster || C.uid(), liveAt: d.liveAt, state: 'auto', t: 0, at: t, locked: true, members: {} }); }
         if (d.featured) C.S.videos.filter(x => x.featured && x.id !== id).forEach(x => bt.update(FB.doc(db, 'videos', x.id), { featured: false }));
       }
     } else {
@@ -815,7 +834,7 @@ async function statsPage(v) {
     const st = { nyitott: ['Nyitott', '#6cc6ff'], folyamatban: ['Folyamatban', '#ffa94d'], kesz: ['Kész', '#5ee08a'], elutasitva: ['Elutasítva', '#ff7a6e'] };
     $('#stIdea').innerHTML = s.size ? hbars(Object.entries(st).map(([k, [l, c]]) => [l, s.docs.filter(d => d.data().status === k).length, c]), ' db') : '<div class="estate"><i class="ic ic-lightbulb"></i><b>Még nincs beküldött ötlet</b></div>';
   }).catch(() => { $('#stIdea').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
-  import('./browse.js?v=202611262220').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
+  import('./browse.js?v=202611262254').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
     .then(l => { $('#stArc').innerHTML = hbars(l, ' játékos'); });
 }
 const lbScores = g => FB.collection(db, 'leaderboards', g, 'scores');
