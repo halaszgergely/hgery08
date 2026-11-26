@@ -21,7 +21,9 @@ Ez a mappa (`jatekok/kohovar/`) a **GNU General Public License 3-as verziója** 
 - A térképgenerátor (`terkep.js`) a Mindustry `SerpuloPlanetGenerator` lépéseit követi (ridged zaj, sejtautomata, termek és A*-utak, folyók, zajalapú ércek, medián simítás); a kód saját.
 - A modbetöltő (`modok.js`) a Mindustry modformátumát (mod.hjson, content/, sprites/, bundles/) olvassa és a Kohóvár blokkfajtáira fordítja;
   a modok JSON-ban megadott bolygóit és szektorait (content/planets, content/sectors, maps/*.msav) is betölti.
-- `palyak/serpulo/*.msav`: a Mindustry Serpulo-hadjáratának eredeti pályái (`core/assets/maps/serpulo`, változatlanul).
+- `palyak/serpulo/*.msav`, `palyak/erekir/*.msav`: a Mindustry Serpulo- és Erekir-hadjáratának eredeti pályái (`core/assets/maps/serpulo`, `…/erekir`, változatlanul).
+- `palyak/erekir.json`: az Erekir bolygórácsa, szektorai (`SectorPresets`), technológiafája (`ErekirTechTree`) és szövegei; előállító: `eszkoz/serpulo.py … erekir`.
+- Az Erekir anyagai, folyadékai, épületei és egységei (`adat.js`, `pl: 'e'`) a Mindustry `Items`, `Liquids`, `Blocks`, `UnitTypes` adatait követik.
 - `palyak/serpulo.json`: a bolygórács (a `PlanetGrid` algoritmusával 3-as szinten előállítva), a szektorok adatai (`SectorPresets`),
   a technológiafa (`SerpuloTechTree`) és a hadjárat szövegei a Mindustry magyar (és angol) nyelvi fájljából (`bundle_hu.properties`).
   Előállító: `eszkoz/serpulo.py`.

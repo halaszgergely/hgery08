@@ -9,18 +9,18 @@ for d, _, fs in os.walk(R):
         if f.endswith('.png'): idx[f[:-4]] = os.path.join(d, f)
 ENV_F = ('stone dacite sand-floor darksand snow ice grass metal-floor shallow-water deep-water moss spore-moss dirt shale basalt hotrock magmarock char molten-slag tar salt '
          'crater-stone core-zone dark-panel-1 dark-panel-2 dark-panel-3 dark-panel-4 dark-panel-5 dark-panel-6 darksand-tainted-water darksand-water deep-tainted-water ice-snow '
-         'metal-floor-2 metal-floor-3 metal-floor-4 metal-floor-5 metal-floor-damaged sand-water tainted-water mud pebbles tendrils').split()
+         'metal-floor-2 metal-floor-3 metal-floor-4 metal-floor-5 metal-floor-damaged sand-water tainted-water mud pebbles tendrils ' + ' '.join(['yellow-stone', 'rough-rhyolite', 'rhyolite', 'rhyolite-crater', 'carbon-stone', 'beryllic-stone', 'arkyic-stone', 'yellow-stone-plates', 'regolith', 'dense-red-stone', 'crystalline-stone', 'crystal-floor', 'red-stone', 'arkycite-floor', 'rhyolite-vent', 'yellow-stone-vent', 'carbon-vent', 'arkyic-vent', 'crystalline-vent', 'red-stone-vent'])).split()
 AUTO = 'metal-tiles-1 metal-tiles-2 metal-tiles-3 metal-tiles-4 metal-tiles-5 metal-tiles-6 metal-tiles-7 metal-tiles-8 metal-tiles-9 metal-tiles-10 metal-tiles-11 metal-tiles-12 metal-tiles-13'.split()
-PROPS = 'boulder snow-boulder sand-boulder dacite-boulder shale-boulder basalt-boulder spore-cluster white-tree white-tree-dead snow-pine spore-pine pine'.split()
-ENV_W = 'stone-wall snow-wall sand-wall dacite-wall dirt-wall spore-wall carbon-wall ferric-stone-wall dune-wall ice-wall salt-wall shale-wall red-ice-wall red-stone-wall crystalline-stone-wall dark-metal'.split()
-ORES = 'copper lead scrap coal titanium thorium'.split()
-SECT = [k[len('sector-'):] for k in idx if k.startswith('sector-') and not k.endswith('-erekir')]
+PROPS = 'beryllic-boulder arkyic-boulder carbon-boulder rhyolite-boulder yellow-stone-boulder red-stone-boulder crystalline-boulder crystal-orbs crystal-blocks crystal-cluster vibrant-crystal-cluster boulder snow-boulder sand-boulder dacite-boulder shale-boulder basalt-boulder spore-cluster white-tree white-tree-dead snow-pine spore-pine pine'.split()
+ENV_W = 'yellow-stone-wall rhyolite-wall carbon-wall beryllic-stone-wall arkyic-wall graphitic-wall regolith-wall stone-wall snow-wall sand-wall dacite-wall dirt-wall spore-wall carbon-wall ferric-stone-wall dune-wall ice-wall salt-wall shale-wall red-ice-wall red-stone-wall crystalline-stone-wall dark-metal'.split()
+ORES = 'copper lead scrap coal titanium thorium beryllium tungsten crystal-thorium wall-beryllium wall-tungsten wall-thorium wall-graphite'.split()
+SECT = [k[len('sector-'):] for k in idx if k.startswith('sector-')]
 plain, outl = set(), set()
 for n in BN.values():
     for k in idx:
         if (k == n or k.startswith(n + '-')) and not k.endswith('-icon') and not k.endswith('-bg') and not k.endswith('-bg-line'): plain.add(k)
 plain |= {k for k in idx if re.match(r'scrap-wall\d$', k)} | {'block-1', 'block-2', 'block-3', 'block-4', 'spawn', 'naval-factory', 'illuminator', 'illuminator-top'}
-TUR = [BN[k] for k in 'duo scatter scorch hail wave lancet arc parallax swarmer salvo segment tsunami fuse ripple cyclone foreshadow spectre meltdown'.split()]
+TUR = [BN[k] for k in 'breach diffuse sublimate duo scatter scorch hail wave lancet arc parallax swarmer salvo segment tsunami fuse ripple cyclone foreshadow spectre meltdown'.split()]
 for t in TUR: outl.add(t + '-preview' if t + '-preview' in idx else t)
 outl |= {'mass-driver', 'repair-point', 'repair-turret'}
 for u in UN:
@@ -37,7 +37,8 @@ for f in ENV_F: plain |= {k for k in idx if re.fullmatch(re.escape(f) + r'\d?', 
 for f in ENV_W: plain |= {k for k in idx if re.fullmatch(re.escape(f) + r'(\d|-large)', k)}
 for o in ORES: plain |= {f'ore-{o}{i}' for i in (1, 2, 3)}
 for p in PROPS: plain |= {k for k in idx if re.fullmatch(re.escape(p) + r'\d?', k)}
-plain |= {'metal-wall-1', 'metal-wall-2', 'metal-wall-3'}
+plain |= {'metal-wall-1', 'metal-wall-2', 'metal-wall-3', 'reinforced-block-2', 'reinforced-block-3', 'reinforced-block-4', 'reinforced-block-5'}
+for u in ('stell', 'locus'): plain.add(u + '-treads')
 for s in SECT:
     if 'sector-' + s in idx: plain.add('sector-' + s)
 def outline(im, r=3, col=(0x40, 0x40, 0x49)):

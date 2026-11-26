@@ -1,5 +1,5 @@
 /* Gazdaság: mentés, fuvarpiac, díjazás, tankolás, ballontöltés, járművásárlás. Tiszta függvények + a mentés objektum. */
-import { GAZD, JARMU } from './config.js?v=202611262133';
+import { GAZD, JARMU } from './config.js?v=202611262157';
 
 export const UJ_MENTES = () => ({ v: 1, penz: GAZD.kezdoPenz, flotta: [], aktiv: null, szin: {}, uzemanyag: {}, fuvarok: 0, legjobb: 0, kiomlott: 0, km: 0, elso: false, hirnev: 50, kezdes: null, set: {}, piac: null, munka: null, dolgozok: [], dolgFuvar: 0 });
 const rnd = Math.random;

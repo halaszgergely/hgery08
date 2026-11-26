@@ -25,13 +25,25 @@ export const ITEMS = {
   spore:      { n: 'Spóratok',      c: '#7457ce', c2: '#4c3791', h: 0, cost: 1, f: 1.15 },
   blast:      { n: 'Robbanóanyag',  c: '#ff795e', c2: '#b84a36', h: 0, cost: 1, f: .4, ex: 1.2 },
   pyratite:   { n: 'Piratit',       c: '#ffaa5f', c2: '#b96f33', h: 0, cost: 1, f: 1.4, ex: .4 },
+  // Erekir
+  beryllium:  { n: 'Berillium',     c: '#3a8f64', c2: '#256446', h: 3, cost: 1.2, pl: 'e' },
+  tungsten:   { n: 'Volfrám',       c: '#768a9a', c2: '#4f5f6c', h: 5, cost: 1.5, pl: 'e' },
+  oxide:      { n: 'Oxid',          c: '#e4ffd6', c2: '#a9c49c', h: 0, cost: 1.2, pl: 'e' },
+  carbide:    { n: 'Karbid',        c: '#89769a', c2: '#5e4f6c', h: 0, cost: 1.4, pl: 'e' },
 };
+// melyik bolygón jelenik meg az anyag (a raktár és a technológiafa fülei szerint); a közösek mindkettőn
+export const ITEM_PL = { serpulo: ['copper', 'lead', 'metaglass', 'graphite', 'sand', 'coal', 'titanium', 'thorium', 'scrap', 'silicon', 'plastanium', 'phase', 'surge', 'spore', 'blast', 'pyratite'], erekir: ['beryllium', 'tungsten', 'graphite', 'sand', 'silicon', 'oxide', 'thorium', 'carbide', 'phase', 'surge'] };
 export const ITEM_IDS = Object.keys(ITEMS);
 export const LIQUIDS = {
   water: { n: 'Víz',          c: '#596ab8', hc: .4, st: 'wet' },
   slag:  { n: 'Salak',        c: '#ffa166', hc: 0,  st: 'melt', d: 1 },
   oil:   { n: 'Olaj',         c: '#313131', hc: .7, st: 'tar' },
   cryo:  { n: 'Kriofolyadék', c: '#6ecdec', hc: .9, st: 'freeze' },
+  ozone:    { n: 'Ózon',       c: '#fc81dd', hc: 0, gas: 1 },
+  hydrogen: { n: 'Hidrogén',   c: '#9eabf7', hc: 0, gas: 1 },
+  nitrogen: { n: 'Nitrogén',   c: '#efe3ff', hc: 0, gas: 1 },
+  cyanogen: { n: 'Ciánogén',   c: '#89e8b6', hc: 0, gas: 1 },
+  arkycite: { n: 'Arkicit',    c: '#84a94b', hc: 0 },
 };
 // állapothatások: sp sebességszorzó, dps sebzés/lépés, dm kapott sebzés szorzója
 export const STATUS = { burn: { dps: .167, c: '#ffaa5f' }, freeze: { sp: .6, dm: 1.25, c: '#6ecdec' }, wet: { sp: .94, c: '#596ab8' }, tar: { sp: .6, c: '#313131' }, melt: { sp: .8, dps: .3, c: '#ffa166' }, sap: { sp: .7, c: '#bf92f9' }, od: { sp: 1.15, dmg: 1.3, c: '#ffd37f' } };
@@ -95,15 +107,40 @@ export const FLOORS = {
   'metal-tiles-11': { c: '#44444d', c2: '#44444d', auto: 1 },
   'metal-tiles-12': { c: '#9c4b4f', c2: '#9c4b4f', auto: 1 },
   'metal-tiles-13': { c: '#50515a', c2: '#50515a', auto: 1 },
+  // Erekir (a gőzkürtők 3×3-asak, steam: gőz-attribútum)
+  'yellow-stone': { c: '#966446', c2: '#966446' },
+  'rough-rhyolite': { c: '#6a4137', c2: '#6a4137' },
+  'rhyolite': { c: '#764a3c', c2: '#764a3c' },
+  'rhyolite-crater': { c: '#744739', c2: '#744739' },
+  'carbon-stone': { c: '#2d3139', c2: '#2d3139' },
+  'beryllic-stone': { c: '#363e39', c2: '#363e39' },
+  'arkyic-stone': { c: '#496041', c2: '#496041' },
+  'yellow-stone-plates': { c: '#a77949', c2: '#a77949' },
+  'regolith': { c: '#946146', c2: '#946146' },
+  'dense-red-stone': { c: '#be5d58', c2: '#be5d58' },
+  'crystalline-stone': { c: '#3a333d', c2: '#3a333d' },
+  'crystal-floor': { c: '#4c3d57', c2: '#4c3d57' },
+  'red-stone': { c: '#b55055', c2: '#b55055' },
+  'arkycite-floor': { c: '#6e924c', c2: '#6e924c', liq: 'arkycite', shallow: 1 },
+  'rhyolite-vent': { c: '#562e27', c2: '#562e27', steam: 1, vent: 'rhyolite' },
+  'yellow-stone-vent': { c: '#774931', c2: '#774931', steam: 1, vent: 'yellow-stone' },
+  'carbon-vent': { c: '#1e2129', c2: '#1e2129', steam: 1, vent: 'carbon-stone' },
+  'arkyic-vent': { c: '#354635', c2: '#354635', steam: 1, vent: 'arkyic-stone' },
+  'crystalline-vent': { c: '#29242c', c2: '#29242c', steam: 1, vent: 'crystalline-stone' },
+  'red-stone-vent': { c: '#8c3c48', c2: '#8c3c48', steam: 1, vent: 'dense-red-stone' },
 };
 export const WALLS = { rock: '#2e2f34', snowrock: '#7a8794', sandrock: '#7c6a4e', darkrock: '#25262b', mossrock: '#2a3a2c', sporerock: '#382b47', basaltrock: '#20222a', hotwall: '#4c2f22',
   'dune-wall': '#525050', 'ice-wall': '#c0bef6', 'salt-wall': '#dee1e9', 'shale-wall': '#686a91', 'red-ice-wall': '#e5c8ce', 'red-stone-wall': '#aa4c51', 'crystalline-stone-wall': '#615160', 'dark-metal': '#727582',
-  'metal-wall-1': '#51515a', 'metal-wall-2': '#575760', 'metal-wall-3': '#504f58', 'snow-pine': '#d8e0eb', 'spore-pine': '#844686', 'white-tree': '#c2c7e2', 'white-tree-dead': '#ccd5e5', pine: '#529153' };
-export const TREES = new Set(['snow-pine', 'spore-pine', 'white-tree', 'white-tree-dead', 'pine']);
+  'metal-wall-1': '#51515a', 'metal-wall-2': '#575760', 'metal-wall-3': '#504f58', 'snow-pine': '#d8e0eb', 'spore-pine': '#844686', 'white-tree': '#c2c7e2', 'white-tree-dead': '#ccd5e5', pine: '#529153',
+  'yellow-stone-wall': '#956541', 'rhyolite-wall': '#6a3f34', 'carbon-wall': '#3e454a', 'beryllic-stone-wall': '#475449', 'arkyic-wall': '#5d784f', 'graphitic-wall': '#495261', 'regolith-wall': '#b78c51', 'red-stone-wall': '#aa4c51', 'crystalline-stone-wall': '#615160', 'crystal-orbs': '#718e59', 'crystal-blocks': '#bd9352', 'crystal-cluster': '#786376', 'vibrant-crystal-cluster': '#a872a3' };
+export const TREES = new Set(['snow-pine', 'spore-pine', 'white-tree', 'white-tree-dead', 'pine', 'crystal-orbs', 'crystal-blocks', 'crystal-cluster', 'vibrant-crystal-cluster']);
+// a falak homok-attribútuma (sziklazúzó) és a falból bányászható anyag (Mindustry StaticWall attributes / itemDrop)
+export const WALL_SAND = { 'stone-wall': 1, 'sand-wall': 2, 'dune-wall': 1, 'regolith-wall': 1, 'yellow-stone-wall': 1.5, 'rhyolite-wall': 1, 'carbon-wall': .7, 'ferric-stone-wall': .5, 'beryllic-stone-wall': 1.2, 'red-stone-wall': 1.5, rock: 1, sandrock: 2, hotwall: .5, basaltrock: .7 };
+export const WALL_DROP = { 'graphitic-wall': 'graphite' };
 // a Mindustry-nevek → Kohóvár talaj- és faltípusok (az eredeti pályák betöltéséhez)
 export const MFLOOR = { stone: 'stone', dacite: 'dark', 'sand-floor': 'sandf', darksand: 'darksand', snow: 'snow', ice: 'ice', grass: 'grass', 'metal-floor': 'metal', 'shallow-water': 'water', 'deep-water': 'deep', moss: 'moss', 'spore-moss': 'spore', dirt: 'sporedark', shale: 'shale', basalt: 'basalt', hotrock: 'hotrock', magmarock: 'magmarock', char: 'ash', 'molten-slag': 'magma', slag: 'magma', tar: 'tar', salt: 'salt' };
 export const MWALL = { 'stone-wall': 'rock', 'snow-wall': 'snowrock', 'sand-wall': 'sandrock', 'dacite-wall': 'darkrock', 'dirt-wall': 'mossrock', 'spore-wall': 'sporerock', 'carbon-wall': 'basaltrock', 'ferric-stone-wall': 'hotwall' };
-export const MPROP = new Set(['boulder', 'snow-boulder', 'sand-boulder', 'dacite-boulder', 'shale-boulder', 'basalt-boulder', 'spore-cluster']);
+export const MPROP = new Set(['boulder', 'snow-boulder', 'sand-boulder', 'dacite-boulder', 'shale-boulder', 'basalt-boulder', 'spore-cluster', 'beryllic-boulder', 'arkyic-boulder', 'carbon-boulder', 'rhyolite-boulder', 'yellow-stone-boulder', 'red-stone-boulder', 'crystalline-boulder']);
 // biomok: f: [alap, változat], wall, sand: fúrható homokos talaj, liq: [sekély, mély], x: [különleges talaj, gyakoriság]
 export const BIO = {
   stone:  { f: ['stone', 'dark'], wall: 'rock', sand: 'sandf', liq: ['water', 'deep'] },
@@ -263,17 +300,64 @@ export const BLOCKS = {
   tetra:      B('Tetratív átépítő', 'units', 9, 4860, { lead: 4000, silicon: 3000, thorium: 1000, plastanium: 600, phase: 600, surge: 800 }, 'recon', { rot: 1, power: 25, inp: { silicon: 1000, plastanium: 600, surge: 500, phase: 350 }, inL: ['cryo', 3], lcap: 360, time: 14400, up: { antumbra: 'eclipse', arkyid: 'toxopid', scepter: 'reign', quad: 'oct', vela: 'corvus', sei: 'omura', aegires: 'navanax' } }),
   repairpt:   B('Javítópont', 'units', 1, 80, { lead: 30, copper: 30, silicon: 20 }, 'repair', { power: 1, range: 60, rep: .45 }),
   repairtur:  B('Javítótorony', 'units', 2, 320, { silicon: 90, thorium: 80, plastanium: 60 }, 'repair', { power: 5, range: 145, rep: 3 }),
+  /* ===== Erekir (pl: 'e') – a Mindustry Erekir-tartalma ===== */
+  duct:       B('Csatorna', 'dist', 1, 90, { beryllium: 1 }, 'conveyor', { rot: 1, speed: 8, mv: .06, duct: 1, pl: 'e' }),
+  aduct:      B('Páncélozott csatorna', 'dist', 1, 140, { beryllium: 2, tungsten: 1 }, 'conveyor', { rot: 1, speed: 8, mv: .06, duct: 1, armored: 1, pl: 'e' }),
+  drouter:    B('Csatornaelosztó', 'dist', 1, 90, { beryllium: 10 }, 'router', { rot: 1, fwd: 1, pl: 'e' }),
+  dbridge:    B('Csatornahíd', 'dist', 1, 90, { beryllium: 15 }, 'bridge', { range: 4, cfg: 'link', tt: 4, pl: 'e' }),
+  oduct:      B('Túlfolyó csatorna', 'dist', 1, 90, { graphite: 8, beryllium: 8 }, 'overflow', { pl: 'e' }),
+  uduct:      B('Alulfolyó csatorna', 'dist', 1, 90, { graphite: 8, beryllium: 8 }, 'overflow', { inv: 1, pl: 'e' }),
+  dunloader:  B('Csatorna-kirakodó', 'dist', 1, 120, { graphite: 20, silicon: 20, tungsten: 10 }, 'unloader', { cfg: 'item', pl: 'e' }),
+  pbore:      B('Plazmafúró', 'prod', 2, 160, { beryllium: 40 }, 'beamdrill', { rot: 1, tier: 3, time: 160, range: 5, power: .15, boostL: .25 / 60, boostLiq: 'hydrogen', boost: 2.5, icap: 10, lcap: 10, pl: 'e' }),
+  lpbore:     B('Nagy plazmafúró', 'prod', 3, 360, { silicon: 100, oxide: 25, beryllium: 100, tungsten: 70 }, 'beamdrill', { rot: 1, tier: 5, time: 100, range: 6, power: .8, needL: ['hydrogen', .5 / 60], icap: 20, lcap: 20, pl: 'e' }),
+  idrill:     B('Ütvefúró', 'prod', 4, 640, { silicon: 70, beryllium: 90, graphite: 60 }, 'drill', { tier: 6, time: 720, power: 160 / 60, needL: ['water', 10 / 60], icap: 40, lcap: 40, warm: .01, rotS: 0, burst: 1, block: 'thorium', pl: 'e' }),
+  crusher:    B('Sziklazúzó', 'prod', 2, 160, { graphite: 25, beryllium: 20 }, 'wcrafter', { rot: 1, time: 110, power: 11 / 60, out: { sand: 1 }, icap: 10, pl: 'e' }),
+  ventcond:   B('Gőzkondenzátor', 'prod', 3, 360, { graphite: 20, beryllium: 60 }, 'crafter', { outL: ['water', .5], power: .5, lcap: 60, attr: 'steam', aBase: 0, aScale: 1 / 9, aMin: 9, pl: 'e' }),
+  turbine:    B('Turbinás kondenzátor', 'power', 3, 360, { beryllium: 60 }, 'generator', { gen: 1 / 3, mode: 'thermal', attr: 'steam', aMin: 9, outL: ['water', 5 / 60 / 9], lcap: 20, pl: 'e' }),
+  bnode:      B('Sugárcsomópont', 'power', 1, 90, { beryllium: 8 }, 'node', { range: 10, links: 0, beam: 1, pl: 'e' }),
+  btower:     B('Sugártorony', 'power', 3, 810, { beryllium: 30, oxide: 10, silicon: 10 }, 'node', { range: 23, links: 0, beam: 1, pl: 'e' }),
+  chemcomb:   B('Vegyi égetőkamra', 'power', 3, 360, { graphite: 40, tungsten: 20, oxide: 40, silicon: 30 }, 'generator', { gen: 550 / 60, mode: 'liq', inL: ['arkycite', 40 / 60], inL2: ['ozone', 2 / 60], lcap: 40, pl: 'e' }),
+  arcfurn:    B('Szilícium-ívkemence', 'craft', 3, 360, { beryllium: 70, graphite: 80 }, 'crafter', { inp: { graphite: 1, sand: 4 }, out: { silicon: 4 }, time: 50, power: 5, icap: 30, pl: 'e' }),
+  electro:    B('Elektrolizáló', 'craft', 3, 360, { silicon: 50, graphite: 40, beryllium: 130, tungsten: 80 }, 'crafter', { inL: ['water', 10 / 60], outL: ['ozone', 4 / 60], outL2: ['hydrogen', 6 / 60], power: 1, time: 10, lcap: 50, pl: 'e' }),
+  oxid:       B('Oxidációs kamra', 'craft', 3, 360, { tungsten: 120, graphite: 80, silicon: 100, beryllium: 120 }, 'crafter', { rot: 1, inp: { beryllium: 1 }, out: { oxide: 1 }, inL: ['ozone', 2 / 60], power: .5, time: 120, lcap: 30, heatOut: 5, pl: 'e' }),
+  eheater:    B('Elektromos fűtő', 'craft', 2, 160, { tungsten: 30, oxide: 30, beryllium: 30 }, 'heater', { rot: 1, power: 100 / 60, heatOut: 3, pl: 'e' }),
+  hredir:     B('Hőterelő', 'craft', 3, 360, { tungsten: 10, graphite: 10 }, 'heatcond', { rot: 1, pl: 'e' }),
+  carbcruc:   B('Karbidtégely', 'craft', 3, 360, { tungsten: 110, thorium: 150, oxide: 60 }, 'crafter', { inp: { tungsten: 2, graphite: 3 }, out: { carbide: 1 }, time: 135 / 4, power: 2, icap: 20, heatReq: 40, heatMax: 1, pl: 'e' }),
+  bwall:      WALL('Berilliumfal', 1, 130, { beryllium: 6 }, { armor: 2, pl: 'e' }),
+  bwallL:     WALL('Nagy berilliumfal', 2, 130, { beryllium: 6 }, { armor: 2, pl: 'e' }),
+  wwall:      WALL('Volfrámfal', 1, 180, { tungsten: 6 }, { armor: 14, pl: 'e' }),
+  wwallL:     WALL('Nagy volfrámfal', 2, 180, { tungsten: 6 }, { armor: 14, pl: 'e' }),
+  rconduit:   B('Megerősített cső', 'liquid', 1, 250, { beryllium: 2 }, 'conduit', { rot: 1, lcap: 50, lmove: 1, armored: 1, pl: 'e' }),
+  rpumpE:     B('Megerősített szivattyú', 'liquid', 2, 160, { beryllium: 40, tungsten: 30, silicon: 20 }, 'pump', { amt: 80 / 60 / 4, lcap: 160, needL: ['hydrogen', 1.5 / 60], pl: 'e' }),
+  rljunc:     B('Megerősített csőkereszteződés', 'liquid', 1, 250, { graphite: 4, beryllium: 8 }, 'ljunction', { pl: 'e' }),
+  rlbridge:   B('Megerősített csőhíd', 'liquid', 1, 250, { graphite: 8, beryllium: 20 }, 'lbridge', { range: 4, lcap: 120, lmove: 1, cfg: 'link', float: 1, pl: 'e' }),
+  rlrouter:   B('Megerősített folyadékelosztó', 'liquid', 1, 250, { graphite: 8, beryllium: 4 }, 'lrouter', { lcap: 150, lmove: 1, pl: 'e' }),
+  rlcont:     B('Megerősített folyadéktároló', 'liquid', 2, 400, { tungsten: 10, beryllium: 16 }, 'lrouter', { lcap: 1000, lmove: 1, pl: 'e' }),
+  rltank:     B('Megerősített folyadéktartály', 'liquid', 3, 900, { tungsten: 40, beryllium: 50 }, 'lrouter', { lcap: 2700, lmove: 1, pl: 'e' }),
+  bastion:    B('Mag: Bástya', 'effect', 4, 4500, { graphite: 1000, silicon: 1000, beryllium: 800 }, 'core', { cap: 2000, tier: 1, unit: 'evoke', ucap: 15, zone: 1, armor: 5, pl: 'e' }),
+  rcontainer: B('Megerősített tároló', 'effect', 2, 480, { tungsten: 30, graphite: 40 }, 'storage', { cap: 160, noMerge: 1, pl: 'e' }),
+  rvault:     B('Megerősített széf', 'effect', 3, 1080, { tungsten: 125, thorium: 70, beryllium: 100 }, 'storage', { cap: 900, noMerge: 1, pl: 'e' }),
+  regen:      B('Regeneráló vetítő', 'effect', 3, 360, { silicon: 80, tungsten: 60, oxide: 40, beryllium: 80 }, 'mender', { power: 1, reload: 60, range: 112, heal: 4, square: 1, pl: 'e' }),
+  breach:     TU('Áttörés', 3, 1620, { beryllium: 150, silicon: 150, graphite: 125 }, { range: 190, reload: 40, cool: .25, coolM: 15, ammo: { beryllium: { d: 85, sp: 7.5, n: .5, pierce: 2, pb: 1, bdm: .3 }, tungsten: { d: 95, sp: 8, n: 1, pierce: 4, pb: 1, rg: 40, bdm: .3 }, carbide: { d: 433, sp: 12, n: 1, rlm: .2, rg: 56, bdm: .3, frag: { n: 3, d: 227, sp: 8.1, life: 8 } } }, ebase: 1, pl: 'e' }),
+  diffuse:    TU('Szórólöveg', 3, 1890, { beryllium: 150, silicon: 200, graphite: 200, tungsten: 50 }, { range: 125, reload: 30, shots: 15, spr: 4, cool: .25, coolM: 15, ammo: { graphite: { d: 41, sp: 8, n: 1 / 3, bdm: .2, kb: 4 }, oxide: { d: 90, sp: 8, n: 2 / 3, bdm: .2, kb: 3 }, silicon: { d: 35, sp: 8, n: 1 / 3, hom: .045, bdm: .2 } }, ebase: 1, pl: 'e' }),
+  sublimate:  TU('Szublimáló', 3, 1890, { tungsten: 150, silicon: 200, oxide: 40, beryllium: 400 }, { range: 130, reload: 5, lcap: 50, lammo: { ozone: 0, cyanogen: 0 }, lflame: { ozone: { d: 60, len: 130, pierce: 2, c: '#c88af5' }, cyanogen: { d: 130, len: 200, pierce: 3, c: '#89e8b6' } }, luse: 18 / 60, ebase: 1, pl: 'e' }),
+  tankfab:    B('Lánctalpas-gyártó', 'units', 3, 540, { silicon: 200, beryllium: 150 }, 'factory', { rot: 1, power: 1.5, plans: ['stell'], pl: 'e' }),
+  mechfab:    B('Lépegető-gyártó', 'units', 3, 540, { silicon: 200, beryllium: 250, tungsten: 10 }, 'factory', { rot: 1, power: 1.5, plans: ['merui'], pl: 'e' }),
+  shipfab:    B('Hajógyártó', 'units', 3, 540, { silicon: 250, beryllium: 200 }, 'factory', { rot: 1, power: 1.5, plans: ['elude'], pl: 'e' }),
+  tankrefab:  B('Lánctalpas-átépítő', 'units', 3, 540, { beryllium: 200, tungsten: 80, silicon: 100 }, 'recon', { rot: 1, power: 3, inp: { silicon: 40, tungsten: 30 }, inL: ['hydrogen', 3 / 60], lcap: 30, time: 1800, up: { stell: 'locus' }, pl: 'e' }),
+  mechrefab:  B('Lépegető-átépítő', 'units', 3, 540, { beryllium: 250, tungsten: 175, silicon: 150 }, 'recon', { rot: 1, power: 2.5, inp: { silicon: 50, tungsten: 40 }, inL: ['hydrogen', 3 / 60], lcap: 30, time: 2700, up: { merui: 'cleroi' }, pl: 'e' }),
+  shiprefab:  B('Hajóátépítő', 'units', 3, 540, { beryllium: 250, tungsten: 120, silicon: 150, oxide: 15 }, 'recon', { rot: 1, power: 2.5, inp: { silicon: 60, tungsten: 40 }, inL: ['hydrogen', 3 / 60], lcap: 30, time: 3000, up: { elude: 'avert' }, pl: 'e' }),
 };
 export const BUILD_ORDER = {
-  turret: ['duo', 'scatter', 'scorch', 'hail', 'wave', 'lancet', 'arc', 'parallax', 'swarmer', 'salvo', 'segment', 'tsunami', 'fuse', 'ripple', 'cyclone', 'foreshadow', 'spectre', 'meltdown'],
-  prod: ['mdrill', 'pdrill', 'ldrill', 'bdrill', 'wextract', 'cultivator', 'oilext'],
-  dist: ['conveyor', 'titancon', 'plastcon', 'armorcon', 'junction', 'bridge', 'phasecon', 'sorter', 'invsorter', 'router', 'distributor', 'overflow', 'underflow', 'unloader', 'driver'],
-  liquid: ['mpump', 'rpump', 'ipump', 'conduit', 'pconduit', 'plconduit', 'lrouter', 'lcontainer', 'ltank', 'ljunction', 'lbridge', 'phaseconduit'],
-  power: ['node', 'nodeL', 'surgetower', 'diode', 'battery', 'batteryL', 'combust', 'thermal', 'steam', 'diffgen', 'rtg', 'solar', 'lsolar', 'reactor', 'impact'],
-  def: ['cwall', 'cwallL', 'twall', 'twallL', 'plwall', 'plwallL', 'thwall', 'thwallL', 'phwall', 'phwallL', 'swall', 'swallL', 'door', 'doorL', 'scwall', 'scwallL', 'scwallH', 'scwallG'],
-  craft: ['gpress', 'mpress', 'smelter', 'crucible', 'kiln', 'plastcomp', 'weaver', 'surgesm', 'cryomix', 'pyramix', 'blastmix', 'melter', 'separator', 'disass', 'sporepress', 'pulver', 'centrifuge', 'incinerator'],
-  units: ['gfactory', 'afactory', 'navalf', 'additive', 'multi', 'expo', 'tetra', 'repairpt', 'repairtur'],
-  effect: ['mender', 'mendproj', 'overdrive', 'dome', 'forceproj', 'mine', 'lamp', 'foundation', 'nucleus', 'container', 'vault', 'launchpad'],
+  turret: ['breach', 'diffuse', 'sublimate', 'duo', 'scatter', 'scorch', 'hail', 'wave', 'lancet', 'arc', 'parallax', 'swarmer', 'salvo', 'segment', 'tsunami', 'fuse', 'ripple', 'cyclone', 'foreshadow', 'spectre', 'meltdown'],
+  prod: ['pbore', 'lpbore', 'idrill', 'crusher', 'ventcond', 'mdrill', 'pdrill', 'ldrill', 'bdrill', 'wextract', 'cultivator', 'oilext'],
+  dist: ['duct', 'aduct', 'drouter', 'dbridge', 'oduct', 'uduct', 'dunloader', 'conveyor', 'titancon', 'plastcon', 'armorcon', 'junction', 'bridge', 'phasecon', 'sorter', 'invsorter', 'router', 'distributor', 'overflow', 'underflow', 'unloader', 'driver'],
+  liquid: ['rpumpE', 'rconduit', 'rljunc', 'rlbridge', 'rlrouter', 'rlcont', 'rltank', 'mpump', 'rpump', 'ipump', 'conduit', 'pconduit', 'plconduit', 'lrouter', 'lcontainer', 'ltank', 'ljunction', 'lbridge', 'phaseconduit'],
+  power: ['bnode', 'btower', 'turbine', 'chemcomb', 'node', 'nodeL', 'surgetower', 'diode', 'battery', 'batteryL', 'combust', 'thermal', 'steam', 'diffgen', 'rtg', 'solar', 'lsolar', 'reactor', 'impact'],
+  def: ['bwall', 'bwallL', 'wwall', 'wwallL', 'cwall', 'cwallL', 'twall', 'twallL', 'plwall', 'plwallL', 'thwall', 'thwallL', 'phwall', 'phwallL', 'swall', 'swallL', 'door', 'doorL', 'scwall', 'scwallL', 'scwallH', 'scwallG'],
+  craft: ['arcfurn', 'electro', 'oxid', 'eheater', 'hredir', 'carbcruc', 'gpress', 'mpress', 'smelter', 'crucible', 'kiln', 'plastcomp', 'weaver', 'surgesm', 'cryomix', 'pyramix', 'blastmix', 'melter', 'separator', 'disass', 'sporepress', 'pulver', 'centrifuge', 'incinerator'],
+  units: ['tankfab', 'mechfab', 'shipfab', 'tankrefab', 'mechrefab', 'shiprefab', 'gfactory', 'afactory', 'navalf', 'additive', 'multi', 'expo', 'tetra', 'repairpt', 'repairtur'],
+  effect: ['regen', 'rcontainer', 'rvault', 'mender', 'mendproj', 'overdrive', 'dome', 'forceproj', 'mine', 'lamp', 'foundation', 'nucleus', 'container', 'vault', 'launchpad'],
 };
 
 /* ---------- egységek ----------
@@ -321,6 +405,14 @@ export const UNITS = {
   cyerce:   U('Cyerce', 'naval', 3, 870, .86, 10, 6, { ab: { rep: [50, 120, 90] }, w: [{ k: 'flak', rl: 60, d: 25, spl: 25, splR: 30, sp: 2.5, life: 80, gnd: 1, heal: 2.8 }] }),
   aegires:  U('Aegires', 'naval', 4, 12000, .7, 22, 12, { ab: { rep: [100, 120, 180] }, w: [{ k: 'field', rl: 65, n: 25, d: 40, len: 180, heal: 6 }] }),
   navanax:  U('Navanax', 'naval', 5, 20000, .65, 29, 20, { w: [mis(65, 110, 110, 60, { sp: 5, life: 60, heal: 20 }), { k: 'beam', rl: 170, d: 27, len: 95, dur: 155, heal: .4 }] }),
+  // Erekir: a magegység falból bányászik (mineW), nem lő, hanem javító sugara van
+  evoke:    U('Evoke', 'air', 1, 300, 3.4, 4.5, 1, { core: 1, mine: 6, mineT: 3, mineW: 1, icap: 60, build: 1.2, pl: 'e', w: [{ k: 'laser', rl: 20, d: 0, len: 60, heal: 3, air: 0 }] }),
+  stell:    U('Stell', 'mech', 1, 850, .75, 6, 6, { tank: 1, cost: { beryllium: 40, silicon: 50 }, time: 35, pl: 'e', w: [{ rl: 50, d: 40, sp: 4, life: 40 }] }),
+  locus:    U('Locus', 'mech', 2, 2100, .7, 9, 8, { tank: 1, pl: 'e', w: [{ k: 'laser', rl: 18, d: 48, len: 160, wide: 0 }] }),
+  merui:    U('Merui', 'legs', 1, 680, .72, 4.5, 4, { cost: { beryllium: 50, silicon: 70 }, time: 40, pl: 'e', w: [{ k: 'art', rl: 63, d: 0, spl: 30, splR: 19, sp: 3, life: 46, air: 0 }] }),
+  cleroi:   U('Cleroi', 'legs', 2, 1100, .6, 7, 5, { pl: 'e', w: [{ rl: 33, d: 30, spl: 43, splR: 30, sp: 3.5, life: 40 }] }),
+  elude:    U('Elude', 'mech', 1, 600, 1.8, 5.5, 1, { hov: 1, cost: { graphite: 50, silicon: 70 }, time: 40, pl: 'e', w: [{ rl: 40, n: 2, d: 16, sp: 5, life: 30 }] }),
+  avert:    U('Avert', 'air', 2, 1100, 2, 6, 3, { pl: 'e', w: [{ rl: 35, d: 29, sp: 5, life: 18, frag: { n: 3, d: 10, sp: 3, life: 14 } }] }),
 };
 
 /* ---------- kutatási fa (a Mindustry Serpulo-fája szerint) ---------- */

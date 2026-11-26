@@ -1,10 +1,10 @@
 // Kohóvár – a Mindustry-pályák története: célkitűzések (game/MapObjectives) és világprocesszorok (logic/LExecutor, mlog).
 // A koordináták a pályafájlban a Mindustry rendszerében vannak (csempe, y felfelé); itt fordítjuk át.
-import { TS, ITEMS, BLOCKS, UNITS, STATUS } from './adat.js?v=202611262133';
-import { PLAYER, ENEMY, DERELICT } from './vilag.js?v=202611262133';
-import { blockOf, itemOf } from './msav.js?v=202611262133';
+import { TS, ITEMS, BLOCKS, UNITS, STATUS } from './adat.js?v=202611262157';
+import { PLAYER, ENEMY, DERELICT } from './vilag.js?v=202611262157';
+import { blockOf, itemOf } from './msav.js?v=202611262157';
 
-const TEAM = { derelict: DERELICT, sharded: PLAYER, crux: ENEMY };
+const TEAM = { derelict: DERELICT, sharded: PLAYER, crux: ENEMY, malis: ENEMY };
 const ST = { burning: 'burn', freezing: 'freeze', wet: 'wet', tarred: 'tar', melting: 'melt', sapped: 'sap', overdrive: 'od', fast: 'od', overclock: 'od' };
 
 /* ---------- célkitűzések ---------- */
