@@ -16,6 +16,7 @@
      ranglista  – true, ha van online ranglistája (a panel top 10-et mutat, a kártya rekordot)
      link       – csak ha nem a #/arcade/<id> címen indul
      zart       – true: csak a béta-tesztelők látják
+     forras     – { cim, url }: ha a játék egy másik játék alapján készült, a részletező panel megmutatja a linket
      keszito    – 'zerosites', ha a játékot a ZeroSites készítette (a kártyán jelvény mutatja) */
 export const KATEGORIAK = [
   { k: 'szimulator', n: 'Szimulátor', t: 'Szimulátorok' }, { k: 'akcio', n: 'Akció', t: 'Akció' }, { k: 'ugyessegi', n: 'Ügyességi', t: 'Ügyességi' },
@@ -83,6 +84,10 @@ export const JATEKOK = [
   { id: 'vizagyuio', keszito: 'zerosites', cim: 'Vízágyú.io', rovid: 'Valós idejű locsolóaréna 2–8 játékosnak – barátokkal vagy botok ellen.', kat: 'tobbjatekos', cimkek: ['online', 'io', 'aréna', 'botok', 'felülnézetes'], ikon: '🔫', szin: '#6cc6ff', kepek: ['img/arcade/vizagyuio-1.webp', 'img/arcade/vizagyuio-2.webp', 'img/arcade/vizagyuio-3.webp'], statusz: 'online', hozzaadva: '2026-11-21', kiemelt: 0, egyseg: '', ranglista: false,
     hosszu: 'Felülnézetes, valós idejű aréna 2–8 játékosnak, több pályával és játékmóddal. Barátokkal szobában, vagy botok ellen gyakorlásként.',
     iranyitas: ['WASD – mozgás', 'Egér – célzás és lövés'] },
+  { id: 'ercfront', keszito: 'zerosites', cim: 'Ércfront', rovid: 'Bányászat, szállítószalagok, gyárak és toronyvédelem hullámok ellen.', kat: 'strategia', cimkek: ['toronyvédelem', 'gyárépítés', 'automatizálás', 'kutatás', 'egyjátékos'], ikon: '⛏️', szin: '#ffd37f', kepek: [], statusz: 'uj', hozzaadva: '2026-11-26', kiemelt: 0, egyseg: 'hullám', ranglista: true,
+    forras: { cim: 'Mindustry (Anuke) – Steam', url: 'https://store.steampowered.com/app/1127400/Mindustry/' },
+    hosszu: 'Felülnézetes gyárépítő toronyvédelmi játék a Mindustry alapján. Bányászd a rezet és az ólmot, vezesd szalagokon a magba és a tornyokba, építs grafitprést, szilíciumolvasztót, generátorokat és áramhálózatot, kutass új épületeket, és foglald el sorra a szektorokat. A ranglista a Végtelen ostrom legmagasabb hulláma.',
+    iranyitas: ['WASD – repülés, egér bal – lövés / ércre kattintva bányászat', 'Épület kiválasztása a palettán, bal egér húzással – lerakás vonalban', 'R – forgatás, Q / középső gomb – épület másolása', 'Jobb egér húzással – bontás, Szóköz – szünet'] },
   { id: 'zerochip', keszito: 'zerosites', cim: 'Zero Chip', rovid: 'Építs áramköröket a tranzisztortól a processzorig – 61 küldetés.', kat: 'logikai', cimkek: ['áramkör', 'logika', 'fejtörő', 'egyjátékos'], ikon: '🔌', szin: '#3ecf8e', kepek: ['img/arcade/zerochip-1.webp', 'img/arcade/zerochip-2.webp', 'img/arcade/zerochip-3.webp'], statusz: '', hozzaadva: '2026-11-20', kiemelt: 0, egyseg: '', ranglista: false,
     hosszu: 'Logikai építős játék: 61 küldetésen át jutsz el az egyszerű tranzisztortól a kapukon, összeadókon és memórián keresztül egy működő processzorig.',
     iranyitas: ['Egér – alkatrészek lerakása és huzalozás'] },

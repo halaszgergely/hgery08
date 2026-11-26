@@ -2,6 +2,7 @@
 .arcl{padding:calc(var(--nav) + 1.2rem) 0 2.5rem;min-height:100vh}
 .arcl .al-ah{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap;padding:0 var(--pad);margin-bottom:1rem}
 .arcl .al-ah h1{font-family:var(--head);font-size:clamp(1.5rem,3vw,2.2rem);color:#efe9dc;letter-spacing:.04em}
+.apc .al-src{font-size:.85rem;color:#9fb0c8}.apc .al-src a{color:#ffd37f}
 .arcl .al-spon,.apc .al-spon{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:#7f8ea6}
 .arcl .afoot{text-align:center;margin-top:2rem;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:#66748c}
 /* borító: kép(ek) vagy generált */

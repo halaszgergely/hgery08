@@ -1,6 +1,6 @@
 /* HGWS Arcade – listaoldal: kiemeltek, szűrők, kategóriasorok, részletező panel.
    Az adatok a js/arcade-manifest.js-ből jönnek; a ranglistát és a játékszámokat csak olvassa (a ctx függvényein át). */
-import { JATEKOK, KATEGORIAK, UJ_NAPOK } from './arcade-manifest.js?v=202611261135';
+import { JATEKOK, KATEGORIAK, UJ_NAPOK } from './arcade-manifest.js?v=202611261553';
 
 const V = new URL(import.meta.url).search, RK = 'hgws_arc_recent';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -66,7 +66,7 @@ export function render(page, ctx) {
   function detail(id) { const g = all().find(x => x.id === id); if (!g) return;
     pnl.innerHTML = `<div class="apc" role="dialog" aria-label="${esc(g.cim)}" style="--c:${esc(g.szin)}"><button class="al-ax" aria-label="Bezárás">✕</button>${cover(g, 1)}
       <div class="apb"><span class="al-chips"><span class="al-kat">${esc(KN[g.kat]?.n || '')}</span>${ST[g.statusz] ? `<span class="al-st al-st-${esc(g.statusz)}">${ST[g.statusz]}</span>` : ''}${zsChip(g)}${nowChip(g)}${(g.cimkek || []).map(c => `<span class="al-tg">${esc(c)}</span>`).join('')}</span>
-        <h2>${esc(g.cim)} ${favBtn(g)}</h2><p class="al-who" data-who="${esc(g.id)}" hidden></p><p>${esc(g.hosszu)}</p><span class="al-hbtn"><a class="al-pl al-big" href="${esc(linkOf(g))}">▸ Játék</a><em>${esc(statLine(g, ctx))}</em></span>
+        <h2>${esc(g.cim)} ${favBtn(g)}</h2><p class="al-who" data-who="${esc(g.id)}" hidden></p><p>${esc(g.hosszu)}</p>${g.forras ? `<p class="al-src">Ez alapján készült: <a href="${esc(g.forras.url)}" target="_blank" rel="noopener">${esc(g.forras.cim)}</a></p>` : ''}<span class="al-hbtn"><a class="al-pl al-big" href="${esc(linkOf(g))}">▸ Játék</a><em>${esc(statLine(g, ctx))}</em></span>
         <div class="acols"><div><h3>Irányítás</h3><ul>${(g.iranyitas || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>${g.ranglista ? '<div><h3>Top 10</h3><ol class="al-top"><li class="al-ld">Betöltés…</li></ol></div>' : ''}</div>
         <p class="al-spon">${SPON}</p></div></div>`;
     pnl.hidden = false; showNow(); document.body.classList.add('arcl-lock'); pnl.querySelector('.al-ax').focus();
