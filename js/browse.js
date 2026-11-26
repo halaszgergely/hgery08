@@ -1,12 +1,12 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611262023';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611262023';
-import * as Player from './player.js?v=202611262023';
-import * as Party from './party.js?v=202611262023';
-import * as VP from './vplayer.js?v=202611262023';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611262023';
-import * as Promo from './promo.js?v=202611262023';
-import * as ArcL from './arcade-lista.js?v=202611262023';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611262038';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611262038';
+import * as Player from './player.js?v=202611262038';
+import * as Party from './party.js?v=202611262038';
+import * as VP from './vplayer.js?v=202611262038';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611262038';
+import * as Promo from './promo.js?v=202611262038';
+import * as ArcL from './arcade-lista.js?v=202611262038';
 
 let C = null;
 export function init(ctx) { C = ctx; Promo.setup({ videos: () => C.S.videos, open: id => detail(id) }); }
@@ -273,6 +273,7 @@ export const GAMES = [
   { id: 'drift', name: 'Drift Király', icon: '🏎️', desc: 'Felülnézetes drift-verseny 10 pályán, szellemautókkal és kétjátékos móddal.', c: '#ff5a4d' },
   { id: 'holtvaros', name: 'Holtváros', icon: '🧟', unit: 'pont', desc: 'Védd meg a várost a zombijárványtól: zóna, kapuk, őrség, légicsapás. A Zombies Aren\'t Real ihlette.', c: '#7dff4a' },
   { id: 'vizfuvar', name: 'HGWS Vízfuvar', icon: '🚚', unit: 'Ft', desc: 'Vízszállító-szimulátor Miskolc valódi utcáin: mopeddel, egyetlen ballonnal kezded, és céget építesz – rekord: a cég vagyona.', c: '#f2c230' },
+  { id: 'waterblast', name: 'HGWS Water Blast', icon: '💧', unit: 'p', desc: 'Blokk-kirakós HGWS-víztömbökkel: teli sorok és oszlopok, kombók, tiszta tábla – rekord: a legnagyobb pontszám.', c: '#2a8fe0' },
   { id: 'locsolovaros', name: 'HGWS: Locsoló Város', icon: '🏙️', desc: 'Nyitott világú akciójáték egy Miskolc ihlette városban: küldetések Szilárd ellen, vízfegyverek, Trabanttól a helikopterig minden jármű.', c: '#ffd23a' },
   { id: 'flightsim', name: 'HGWS Légi Öntözés', icon: '✈️', unit: 'p', desc: '3D repülőszimulátor Magyarország felett: öntözés, tűzoltás, precíziós célok és vízikarikák – rekord: a legjobb küldetéspontszám.', c: '#2aa7d9' },
   { id: 'szerver', name: 'Cable Horror', icon: '🖥️', unit: 'Ft', fmt: v => Math.floor(+v || 0).toLocaleString('hu-HU') + ' Ft', desc: 'Garázsszervertől az adatközpontig: szerverépítés, kábelezés, ügyfelek és kriptobányászat – rekord: az összes bevétel.', c: '#4cc9f0' },
