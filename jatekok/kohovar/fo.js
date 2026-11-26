@@ -2,13 +2,13 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611262304';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611262304';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611262304';
-import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611262304';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611262304';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611262304';
-import { Story } from './logika.js?v=202611262304';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611270059';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611270059';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611270059';
+import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611270059';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611270059';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611270059';
+import { Story } from './logika.js?v=202611270059';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -666,8 +666,8 @@ let modDirty = false, modErrs = [];
 async function showMods() {
   showDlg('#dMods'); const pref = modPrefs(), list = await builtinList(); let loc = []; try { loc = await localMods(); } catch (_) {}
   const on = (key, def) => pref[key] === undefined ? def : pref[key], loaded = src => MODS.find(m => m.src === src);
-  const row = (key, title, isOn, local) => { const m = loaded(key); return `<div class="modr np-pane"><div class="grow"><div class="nm">${esc(m ? m.name : title)}${m && m.version ? ' <span class="lg">' + esc(m.version) + '</span>' : ''}</div>${m && m.author ? `<div class="lg" style="font-size:16px">${esc(m.author)}</div>` : ''}${m ? `<div class="lg" style="font-size:14px">${m.added.blocks} blokk · ${m.added.units} egység · ${m.added.items} anyag · ${m.added.liquids} folyadék${m.added.patched ? ' · ' + m.added.patched + ' módosított' : ''}${m.added.maps ? ' · ' + m.added.maps + ' pálya' : ''}</div>${m.warn.length ? `<details class="mwarn"><summary class="bad">${m.warn.length} eltérés</summary><div>${m.warn.map(esc).join('<br>')}</div></details>` : ''}` : ''}</div><button class="b np-button sm" data-k="${esc(key)}" data-on="${isOn ? 1 : 0}" style="width:150px">${isOn ? ic('cancel', 's') + 'Letiltás' : ic('ok', 's') + 'Engedélyezés'}</button>${local ? `<button class="b np-button sm" data-del="${esc(local)}" style="width:56px">${ic('trash', 's')}</button>` : ''}</div>`; };
-  $('#modList').innerHTML = (list.map(m => row(m.file, m.name || m.file, on(m.file, !!m.on))).join('') + loc.map(n => row('local:' + n, n, on('local:' + n, true), n)).join('')) || '<div class="lg">Nem találhatók modok.</div>';
+  const row = (key, title, isOn, local, li) => { const m = loaded(key) || (li && { name: li.name, version: li.version, author: li.author }); return `<div class="modr np-pane"><div class="grow"><div class="nm">${esc(li ? li.name : m ? m.name : title)}${m && m.version ? ' <span class="lg">' + esc(m.version) + '</span>' : ''}</div>${m && m.author ? `<div class="lg" style="font-size:16px">${esc(m.author)}</div>` : ''}${m && m.added ? `<div class="lg" style="font-size:14px">${m.added.blocks} blokk · ${m.added.units} egység · ${m.added.items} anyag · ${m.added.liquids} folyadék${m.added.patched ? ' · ' + m.added.patched + ' módosított' : ''}${m.added.maps ? ' · ' + m.added.maps + ' pálya' : ''}</div>${m.warn.length ? `<details class="mwarn"><summary class="bad">${m.warn.length} eltérés</summary><div>${m.warn.map(esc).join('<br>')}</div></details>` : ''}` : ''}</div><button class="b np-button sm" data-k="${esc(key)}" data-on="${isOn ? 1 : 0}" style="width:150px">${isOn ? ic('cancel', 's') + 'Letiltás' : ic('ok', 's') + 'Engedélyezés'}</button>${local ? `<button class="b np-button sm" data-del="${esc(local)}" style="width:56px">${ic('trash', 's')}</button>` : ''}</div>`; };
+  $('#modList').innerHTML = (list.map(m => row(m.file, m.name || m.file, on(m.file, !!m.on), null, m)).join('') + loc.map(n => row('local:' + n, n, on('local:' + n, true), n)).join('')) || '<div class="lg">Nem találhatók modok.</div>';
   $('#modMsg').innerHTML = (modDirty ? '<div class="bad" style="margin:8px 0">Újratöltés szükséges</div>' : '') + modErrs.map(e => `<div class="bad">${esc(e)}</div>`).join('');
   $('#modApply').hidden = !modDirty;
 }

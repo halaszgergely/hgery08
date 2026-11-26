@@ -2,11 +2,11 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611262304';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611262304';
-import { FL, FLI, WL } from './vilag.js?v=202611262304';
-import { parseHjson } from './hjson.js?v=202611262304';
-import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611262304';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270059';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270059';
+import { FL, FLI, WL } from './vilag.js?v=202611270059';
+import { parseHjson } from './hjson.js?v=202611270059';
+import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270059';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [];   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
@@ -49,7 +49,7 @@ export function installMod(files, srcLabel) {
   const meta = parseHjson(txt('mod.hjson') || txt('mod.json') || '{}');
   const id = String(meta.name || srcLabel || 'mod').toLowerCase().replace(/[^a-z0-9-]/g, '-'), warn = [];
   if (MODS.some(m => m.id === id)) return null;
-  const clr = v => String(v ?? '').replace(/\[(#?[0-9a-fA-F]{6,8}|[a-z]+)?\]/g, '').trim();   // a Mindustry színjelölései ([red], [#ff0000])
+  const clr = v => String(v ?? '').replace(/\[[^\]]*\]/g, '').replace(/[[\]]/g, '').replace(/#[0-9a-fA-F]{6,8}/g, '').trim();   // a Mindustry színjelölései ([red], [#ff0000])
   const mod = { id, name: clr(meta.displayName || meta.name || id), version: clr(meta.version), author: clr(meta.author), desc: clr(meta.description), src: srcLabel, warn, added: { items: 0, liquids: 0, blocks: 0, units: 0, patched: 0, overrides: 0, maps: 0 } };
   // nyelvi fájl: a magyar az első, aztán az angol alap
   const bundle = {}; for (const f of ['bundles/bundle.properties', 'bundles/bundle_hu.properties']) { const t = txt(f); if (t) for (const l of t.split(/\r?\n/)) { const m = l.match(/^\s*([^#=][^=]*?)\s*=\s*(.*)$/); if (m) bundle[m[1]] = m[2]; } }
