@@ -1,5 +1,5 @@
-// Ércfront – a világ szimulációja: térképgenerálás, épületek, szállítás, áram, tornyok, egységek, hullámok, építés.
-import { TS, ITEMS, ITEM_IDS, FLOORS, WALLS, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611261553';
+// Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, áram, tornyok, egységek, hullámok, építés.
+import { TS, ITEMS, ITEM_IDS, FLOORS, WALLS, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611261601';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 export const FL = Object.keys(FLOORS), FLI = Object.fromEntries(FL.map((k, i) => [k, i]));
@@ -15,20 +15,22 @@ function vn(x, y, s) { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix
 function fbm(x, y, s) { return vn(x, y, s) * .57 + vn(x * 2.1, y * 2.1, s + 7) * .29 + vn(x * 4.3, y * 4.3, s + 13) * .14; }
 
 /* ---------- térkép ---------- */
-const BIOMES = { stone: ['stone', 'dark', 'rock', 'sandf'], snow: ['snow', 'ice', 'snowrock', 'darksand'], sand: ['darksand', 'sandf', 'sandrock', 'sandf'], dark: ['dark', 'metal', 'darkrock', 'darksand'] };
+const BIOMES = { grass: ['grass', 'stone', 'rock', 'sandf'], ice: ['ice', 'snow', 'snowrock', 'darksand'], stone: ['stone', 'dark', 'rock', 'sandf'], snow: ['snow', 'ice', 'snowrock', 'darksand'], sand: ['darksand', 'sandf', 'sandrock', 'sandf'], dark: ['dark', 'metal', 'darkrock', 'darksand'] };
 export function genMap(sec) {
-  const w = sec.w, h = sec.h, N = w * h, s = hstr(sec.id) % 100000, R = rng(hstr(sec.id) ^ 0x9e3779b9);
+  const w = sec.w, h = sec.h, N = w * h, s = hstr(sec.id) % 100000, wq = sec.water || 1, R = rng(hstr(sec.id) ^ 0x9e3779b9);
   const floor = new Uint8Array(N), ore = new Uint8Array(N), wall = new Uint8Array(N), bio = BIOMES[sec.biome];
   const wallT = WL.indexOf(bio[2]) + 1;
   const cx = Math.round(w * .2), cy = Math.round(h * (.5 + (R() - .5) * .25));
   const spawns = [{ x: w - 7, y: Math.round(h * (.3 + R() * .4)) }];
-  if (sec.threat >= 2.2) spawns.push({ x: Math.round(w * (.55 + R() * .2)), y: R() < .5 ? 6 : h - 7 });
+  const nsp = sec.sp || 1, top = R() < .5;
+  if (nsp >= 2) spawns.push({ x: Math.round(w * (.55 + R() * .2)), y: top ? 6 : h - 7 });
+  if (nsp >= 3) spawns.push({ x: Math.round(w * (.45 + R() * .2)), y: top ? h - 7 : 6 });
   const wet = sec.biome !== 'sand';
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = y * w + x, n = fbm(x / 13, y / 13, s), m = fbm(x / 9, y / 9, s + 101), sd = fbm(x / 11, y / 11, s + 202), wa = fbm(x / 17, y / 17, s + 303);
     let f = m > .58 ? bio[1] : bio[0];
     if (sd > .8 - sec.sand * .3) f = sd > .84 - sec.sand * .3 ? 'sandf' : bio[3];
-    if (wet && wa < .27) f = wa < .21 ? 'deep' : 'water';
+    if (wet && wa < .27 + (wq - 1) * .09) f = wa < .21 + (wq - 1) * .08 ? 'deep' : 'water';
     floor[i] = FLI[f];
     if (n > .64 || x < 2 || y < 2 || x >= w - 2 || y >= h - 2) wall[i] = wallT;
   }
@@ -46,13 +48,20 @@ export function genMap(sec) {
   clear(cx, cy, 9);
   // ércek
   const coreD = (x, y) => Math.hypot(x - cx, y - cy);
+  // ércfoltok: összefüggő, kerekded lelőhelyek (nem szórt mezők)
   ITEM_IDS.forEach((id, k) => {
     const fr = sec.ores[id]; if (!fr || id === 'sand') return;
-    const minD = id === 'titanium' ? 26 : id === 'thorium' ? 42 : 0, th = .775 - fr * .055 + (id === 'scrap' ? .02 : 0);
-    for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) {
-      const i = y * w + x; if (wall[i] || FLOORS[FL[floor[i]]].shallow || FLOORS[FL[floor[i]]].deep) continue;
-      if (coreD(x, y) < Math.max(minD, 5)) continue;
-      if (fbm(x / 4.2, y / 4.2, s + 500 + k * 37) > th) ore[i] = k + 1;
+    const minD = id === 'titanium' ? 26 : id === 'thorium' ? 42 : 8, n = Math.round(w * h / 900 * fr * (id === 'scrap' ? .7 : 1)), kk = k + 1;
+    for (let q = 0, tries = 0; q < n && tries < n * 20; tries++) {
+      const x0 = 4 + Math.floor(R() * (w - 8)), y0 = 4 + Math.floor(R() * (h - 8));
+      if (coreD(x0, y0) < minD || wall[y0 * w + x0] || FLOORS[FL[floor[y0 * w + x0]]].shallow || FLOORS[FL[floor[y0 * w + x0]]].deep || ore[y0 * w + x0]) continue;
+      q++; const r = 2 + R() * 2.6, rr = Math.ceil(r + 1.5), ph = R() * 9;
+      for (let y = y0 - rr; y <= y0 + rr; y++) for (let x = x0 - rr; x <= x0 + rr; x++) {
+        if (x < 2 || y < 2 || x >= w - 2 || y >= h - 2) continue; const i = y * w + x;
+        if (wall[i] || FLOORS[FL[floor[i]]].shallow || FLOORS[FL[floor[i]]].deep) continue;
+        const a = Math.atan2(y - y0, x - x0), edge = r * (1 + .28 * Math.sin(a * 3 + ph) + .15 * Math.sin(a * 5 + ph * 2));
+        if (Math.hypot(x - x0, y - y0) <= edge) ore[i] = kk;
+      }
     }
   });
   const patch = (id, x0, y0, r) => { const k = ITEM_IDS.indexOf(id) + 1, q = Math.ceil(r); for (let y = y0 - q; y <= y0 + q; y++) for (let x = x0 - q; x <= x0 + q; x++) { const i = y * w + x; if (x < 2 || y < 2 || x >= w - 2 || y >= h - 2 || (x - x0) ** 2 + (y - y0) ** 2 > r * r + R() * 2) continue; wall[i] = 0; if (!FLOORS[FL[floor[i]]].ore) floor[i] = base; ore[i] = k; } };
@@ -606,7 +615,7 @@ export class World {
 
   /* ----- hullámok ----- */
   nextWave() {
-    const list = waveUnits(this.wave + 1, this.sec.threat, this.sec.endless); this.wave++;
+    const list = waveUnits(this.wave + 1, this.sec); this.wave++;
     list.forEach((t, k) => { const sp = this.spawns[k % this.spawns.length], a = Math.random() * Math.PI * 2, r = Math.random() * 14; this.spawnU(t, ENEMY, (sp.x + .5) * TS + Math.cos(a) * r, (sp.y + .5) * TS + Math.sin(a) * r); });
     this.wtimer = this.sec.wt * 60;
     for (const sp of this.spawns) this.fx.push({ k: 'ring', x: (sp.x + .5) * TS, y: (sp.y + .5) * TS, r: 48, life: 40, max: 40, c: '#f25555' });

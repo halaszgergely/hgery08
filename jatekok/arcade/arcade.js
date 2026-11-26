@@ -18,8 +18,8 @@ const ZeroChip = { id: 'zerochip', name: 'ZERO CHIP', ext: 'jatekok/zerochip/ind
 /* zárt béta: csak adminok és „Béta-tesztelő” taggel rendelkezők látják és indíthatják (a jogosultságot a főoldal küldi) */
 const ZeroQuest = { id: 'zeroquest', name: 'ZERO QUEST', ext: 'jatekok/zeroquest/index.html', tag: 'ZÁRT BÉTA', lock: 1,
   desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében: küldetések, szintlépés, felszerelés és egy ébredő őr a romok alatt. Zárt béta.' };
-const Ercfront = { id: 'ercfront', name: 'ÉRCFRONT', ext: 'jatekok/ercfront/index.html', tag: 'ÚJ', lbx: 1, icon: '⛏️', fmt: v => Math.floor(v) + '. hullám',
-  desc: 'Bányássz, építs szállítószalagokat, gyárakat és áramhálózatot, és védd meg a magot a hullámokban érkező ellenség ellen. A Mindustry alapján készült.' };
+const Kohovar = { id: 'kohovar', name: 'KOHÓVÁR', ext: 'jatekok/kohovar/index.html', tag: 'ÚJ', lbx: 1, icon: '⛏️', fmt: v => Math.floor(v) + '. hullám',
+  desc: 'Bányássz, építs szállítószalagokat, gyárakat és áramhálózatot, és védd meg a magot a hullámokban érkező ellenség ellen. Három kampány és szabad játék. A Mindustry alapján készült.' };
 const Drift = window.HGDrift ? window.HGDrift({ G, Sfx, rr, store, hud }) : null;
 const Zombi = window.HGZombi ? window.HGZombi({ G, Sfx, rr, store, hud }) : null;
 const Vasut = { id: 'vasut', name: 'DERAIL HUNGARY', ext: 'jatekok/vasut/index.html', tag: 'ÚJ', lbx: 1, icon: '🚂', fmt: v => Math.floor(v).toLocaleString('hu-HU') + ' Ft',
@@ -32,7 +32,7 @@ const Vizfuvar = { id: 'vizfuvar', name: 'HGWS VÍZFUVAR', ext: 'jatekok/vizfuva
   desc: 'Vízszállító-szimulátor Miskolc valódi utcáin: Babettóval egyetlen ballonnal kezded, aztán Trabóval, később tartálykocsival és kamionnal építed a HGWS flottáját.' };
 const LocsoloVaros = { id: 'locsolovaros', name: 'HGWS: LOCSOLÓ VÁROS', ext: 'jatekok/locsolovaros/index.html', tag: 'ÚJ', icon: '🏙️',
   desc: 'Nyitott világú akciójáték egy kitalált, Miskolc ihlette városban: Halász Gergelyként vízfegyverekkel szállsz szembe Szilárddal, vezetsz Trabantot, Ikarust, helikoptert – és egy tankot.' };
-const GAMES = [Locsolo, Nyomas, Anya, Vizagyu, Csepp, Ugro, Torony, Birodalom, BoOnline, Aszaly, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, Atemelotelep, Vasut, Szerver, Ercfront, LegiOntozes, Vizfuvar, LocsoloVaros, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
+const GAMES = [Locsolo, Nyomas, Anya, Vizagyu, Csepp, Ugro, Torony, Birodalom, BoOnline, Aszaly, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, Atemelotelep, Vasut, Szerver, Kohovar, LegiOntozes, Vizfuvar, LocsoloVaros, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest];
 const NOSPON = ['locsolo', 'vizagyu', 'csepp', 'vizfuvar'];
 GAMES.forEach(g => { if (NOSPON.includes(g.id)) delete g.sponsor; else g.sponsor = 'A Zerosites támogatásával'; });
 /* népszerűség: a főoldal küldi a játékonkénti indításszámot (plays), helyben is megjegyezzük a gyors sorrendhez */
@@ -135,7 +135,7 @@ const ARTS = {
     const car = (px, py, a, col) => { x.save(); x.translate(px, py); x.rotate(a); x.fillStyle = '#1a2230'; x.fillRect(-15, -11, 30, 22); x.fillStyle = col; x.fillRect(-13, -9, 26, 18); x.fillStyle = '#c3ced9'; x.fillRect(4, -3, 18, 6); x.restore(); };
     const a1 = Math.sin(t * .9) * .4, p1 = [W * .28, H * .5 + Math.sin(t * 1.3) * 18], p2 = [W * .72, H * .5 + Math.cos(t * 1.1) * 18]; car(p1[0], p1[1], a1, '#6cc6ff'); car(p2[0], p2[1], Math.PI + Math.sin(t * .7) * .4, '#ff7a6e');
     x.fillStyle = 'rgba(170,225,255,.95)'; for (let i = 0; i < 7; i++) { const k = ((t * 2.2 + i / 7) % 1); x.beginPath(); x.arc(p1[0] + Math.cos(a1) * (24 + k * W * .34), p1[1] + Math.sin(a1) * (24 + k * W * .34), 3, 0, 6.283); x.fill(); } },
-  ercfront: (c, x, t) => { const W = c.width, H = c.height; x.fillStyle = '#4b4c51'; x.fillRect(0, 0, W, H); for (let i = 0; i < 90; i++) { const rx = (i * 47.3) % W, ry = (i * 29.7) % H; x.fillStyle = i % 3 ? '#55565b' : '#d99d73'; x.fillRect(rx, ry, i % 3 ? 10 : 4, i % 3 ? 10 : 4); }
+  kohovar: (c, x, t) => { const W = c.width, H = c.height; x.fillStyle = '#4b4c51'; x.fillRect(0, 0, W, H); for (let i = 0; i < 90; i++) { const rx = (i * 47.3) % W, ry = (i * 29.7) % H; x.fillStyle = i % 3 ? '#55565b' : '#d99d73'; x.fillRect(rx, ry, i % 3 ? 10 : 4, i % 3 ? 10 : 4); }
     const y = H * .62; x.fillStyle = '#2c2d33'; x.fillRect(0, y - 8, W * .7, 16); x.fillStyle = '#77798a'; x.fillRect(0, y - 8, W * .7, 3); x.fillRect(0, y + 5, W * .7, 3); for (let k = 0; k < 8; k++) { const px = ((t * 40 + k * W * .1) % (W * .7)); x.fillStyle = k % 2 ? '#d99d73' : '#8c7fa9'; x.fillRect(px, y - 3, 6, 6); }
     x.fillStyle = '#5e6170'; x.fillRect(W * .7, H * .42, 54, 54); x.fillStyle = '#ffd37f'; x.fillRect(W * .7 + 4, H * .42 + 4, 8, 8); x.fillRect(W * .7 + 42, H * .42 + 42, 8, 8); x.fillStyle = '#ffb347'; x.beginPath(); x.arc(W * .7 + 27, H * .42 + 27, 11, 0, 6.3); x.fill();
     const a = Math.sin(t * 2) * .6 - .6; x.save(); x.translate(W * .3, H * .3); x.fillStyle = '#5f616d'; x.fillRect(-12, -12, 24, 24); x.rotate(a); x.fillStyle = '#8b8d99'; x.fillRect(-7, -6, 14, 13); x.fillStyle = '#6b6d79'; x.fillRect(3, -4, 14, 3); x.fillRect(3, 2, 14, 3); x.restore();
