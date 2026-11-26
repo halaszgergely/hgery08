@@ -2,11 +2,13 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, SECTORS, CAMPAIGNS, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611262058';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611262058';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611262058';
-import { MODS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611262058';
-import { ISN, LSN, SECSPR } from './kepadat.js?v=202611262058';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611262133';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611262133';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611262133';
+import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611262133';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611262133';
+import { SECTORS, GRID, TXT, PLANETS, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611262133';
+import { Story } from './logika.js?v=202611262133';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -20,7 +22,7 @@ S.seen = S.seen || {};
 if (!S.rv) { for (const id of [...S.research]) { const B = BLOCKS[id]; for (const u of [...(B && B.plans || []), ...Object.values(B && B.up || {})]) if (!S.research.includes('u:' + u)) S.research.push('u:' + u); } S.rv = 2; }   // a korábbi mentés: a már kikutatott gyárak egységei megmaradnak
 for (const k in S.bank) if (S.bank[k] > 0) S.seen['i:' + k] = 1;
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); return true; } catch (_) { return false; } };
-if (S.runs) delete S.runs.vegtelen;
+if (S.runs) { delete S.runs.vegtelen; for (const k in S.runs) if (k !== 'free' && !SECTORS.some(s => s.id === k)) delete S.runs[k]; }   // a régi hadjárat szektorai megszűntek
 S.free = { ...FREE_DEF, ...(S.free || {}) }; S.seed = S.seed || (Math.random() * 1e9 | 0);
 for (const k in FREE_OPTS) if (!FREE_OPTS[k].some(x => x[0] === S.free[k])) S.free[k] = FREE_DEF[k];
 const done = id => (W && W.sec.unlockAll) || S.research.includes(id);
@@ -106,63 +108,75 @@ function drawMenuBg() {
 }
 
 /* ---------- raktár, szektorok ---------- */
-const campOpen = c => !c.req || S.cap[c.req];
-function secState(s) { if (S.cap[s.id]) return 'cap'; if (!campOpen(CAMPAIGNS.find(c => c.id === s.camp)) || (s.req && !S.cap[s.req])) return 'lock'; return 'open'; }
-const THREAT = s => { const w = s.wo || 0; return w < 5 ? 'Alacsony' : w < 15 ? 'Közepes' : w < 25 ? 'Magas' : w < 35 ? 'Extrém' : 'Irtózatos'; };
+function secState(s) { if (S.cap[s.id]) return 'cap'; const n = NODE['s:' + s.id]; if (s.p.alwaysUnlocked || (n && nOpen(n)) || (!n && s.mod && S.cap.groundZero)) return 'open'; return 'lock'; }
 function bankHtml(extra, cols = 3) { const tot = { ...S.bank }; if (extra) for (const k in extra) tot[k] = (tot[k] || 0) + (extra[k] || 0); const l = ITEM_IDS.filter(k => tot[k] > 0); return l.length ? `<div class="grid" style="display:grid;grid-template-columns:repeat(${cols},auto);gap:2px 12px">${l.map(k => `<span>${itI(k)}${num(tot[k])}</span>`).join('')}</div>` : '<span class="lg">üres</span>'; }
 
-/* ---------- hadjárat: bolygótérkép síkban (PlanetDialog) ---------- */
-const SPOS = { zero: [-.36, .02], erdo: [-.2, -.2], krater: [-.02, -.06], titan: [.1, .18], hasadek: [.3, .32], fagyhid: [-.1, -.46], jegmezo: [.12, -.58], sarkikoho: [.34, -.46], feher: [.48, -.22], roncs: [-.06, .46], dunek: [-.3, .58], olvasztar: [-.52, .38], vassziv: [-.62, .1] };
-const LINKS = { fagyhid: 'erdo', roncs: 'krater' };
-let psel = null, PSTARS = null;
-function showPlanet() { closeAll(); $('#menu').hidden = true; showDlg('#planet', () => {}); const o = SECTORS.filter(s => secState(s) === 'open'); if (!psel) psel = (o.find(s => S.runs[s.id]) || o[0] || SECTORS[0]).id; drawPlanet(); planetInfo(); Promise.all([document.fonts.load('16px mfont'), document.fonts.load('20px mico')]).then(() => { if (!$('#planet').hidden) drawPlanet(); }); }
-function planetGeo() { const c = $('#pcv'), w = c.clientWidth, h = c.clientHeight, R = Math.min(w, h * .92) * .44; return { w, h, R, cx: w / 2, cy: h / 2 + 10, hr: R * .085 }; }
-function hexPath(x, y, r) { g2.beginPath(); for (let k = 0; k < 6; k++) { const a = Math.PI / 6 + k * Math.PI / 3; g2[k ? 'lineTo' : 'moveTo'](x + Math.cos(a) * r, y + Math.sin(a) * r); } g2.closePath(); }
-let g2 = null;
+/* ---------- hadjárat: a Serpulo bolygó (PlanetDialog) – az eredeti PlanetGrid csempéi, forgatható gömbön ---------- */
+let psel = null, PSTARS = null, g2 = null, pcur = 'serpulo';
+const PV = { yaw: 0, pitch: .3, ty: null, tp: null, drag: null };
+const onP = s => (s.planet || 'serpulo') === pcur, secOf = gi => SECTORS.find(s => s.gi === gi && onP(s));
+function tileCol(v) {          // a csempe színe: egyszerű 3D-zaj (jég a sarkokon, víz, fű, kő, homok)
+  const [x, y, z] = v, n = Math.sin(x * 3.1 + 1.3) * Math.cos(y * 2.7 - .4) + Math.sin(z * 3.7 + x * 1.9) * .6 + Math.cos(y * 5.3 + z * 2.1) * .3;
+  if (pcur !== 'serpulo') { const P = PLANETS.find(p => p.id === pcur), c = parseInt((P && P.col || '#9c7fc8').slice(1), 16), k = .6 + n * .25; return [(c >> 16 & 255) * k, (c >> 8 & 255) * k, (c & 255) * k]; }
+  if (Math.abs(y) > .82) return [214, 226, 238]; if (n < -.55) return [54, 82, 140]; if (n < -.35) return [74, 108, 160];
+  if (n > .75) return [118, 112, 122]; if (n > .35) return [92, 118, 82]; return y < -.3 ? [176, 150, 108] : [86, 110, 76];
+}
+function rotV([x, y, z]) { const cy = Math.cos(PV.yaw), sy = Math.sin(PV.yaw), cp = Math.cos(PV.pitch), sp = Math.sin(PV.pitch); const X = x * cy + z * sy, Z1 = -x * sy + z * cy; return [X, y * cp - Z1 * sp, y * sp + Z1 * cp]; }
+function planetGeo() { const c = $('#pcv'), w = c.clientWidth, h = c.clientHeight, R = Math.min(w, h) * .42; return { w, h, R, cx: w / 2, cy: h / 2 }; }
+function showPlanet() { closeAll(); $('#menu').hidden = true; showDlg('#planet', () => {}); const o = SECTORS.filter(s => secState(s) === 'open' && onP(s)); if (!psel || !onP(SECTORS.find(s => s.id === psel) || {})) psel = (o.find(s => S.runs[s.id]) || o[0] || SECTORS.find(onP) || SECTORS[0]).id; focusSec(psel, 1); planetTabs(); planetInfo(); Promise.all([document.fonts.load('16px mfont'), document.fonts.load('20px mico')]).then(() => { if (!$('#planet').hidden) drawPlanet(); }); planetLoop(); }
+function planetTabs() { const el = $('#ptabs'); if (!el) return; el.hidden = PLANETS.length < 2; el.innerHTML = PLANETS.map(p => `<button class="b np-button sm${p.id === pcur ? ' on' : ''}" data-pl="${p.id}">${esc(p.n)}</button>`).join(''); }
+function focusSec(id, now) { const s = SECTORS.find(q => q.id === id); if (!s) return; const [x, y, z] = GRID[s.gi].v; const yaw = Math.atan2(-x, z), pitch = Math.atan2(y, Math.hypot(x, z)); if (now) { PV.yaw = yaw; PV.pitch = pitch; PV.ty = null; } else { let d = yaw - PV.yaw; d = ((d + Math.PI * 3) % (Math.PI * 2)) - Math.PI; PV.ty = PV.yaw + d; PV.tp = pitch; } }
+let ploop = 0;
+function planetLoop() { if (ploop) return; const f = () => { if ($('#planet').hidden) { ploop = 0; return; } if (PV.ty != null) { PV.yaw += (PV.ty - PV.yaw) * .15; PV.pitch += (PV.tp - PV.pitch) * .15; if (Math.abs(PV.ty - PV.yaw) < .002 && Math.abs(PV.tp - PV.pitch) < .002) PV.ty = null; } drawPlanet(); ploop = requestAnimationFrame(f); }; ploop = requestAnimationFrame(f); }
 function drawPlanet() {
-  const c = $('#pcv'), dpr = 1; c.width = c.clientWidth * dpr; c.height = c.clientHeight * dpr; g2 = c.getContext('2d'); const { w, h, R, cx, cy, hr } = planetGeo();
+  const c = $('#pcv'); if (c.width !== c.clientWidth || c.height !== c.clientHeight) { c.width = c.clientWidth; c.height = c.clientHeight; } g2 = c.getContext('2d'); const { w, h, R, cx, cy } = planetGeo();
   g2.fillStyle = '#000'; g2.fillRect(0, 0, w, h);
   if (!PSTARS) { PSTARS = []; for (let k = 0; k < 260; k++) PSTARS.push([Math.random(), Math.random(), Math.random()]); }
   for (const [x, y, b] of PSTARS) { g2.fillStyle = `rgba(255,255,255,${.25 + b * .6})`; g2.fillRect(x * w, y * h, b > .8 ? 2 : 1, b > .8 ? 2 : 1); }
-  // a bolygó: tájegységek színe (északon jég, délen homok), rácsozás, árnyékolás
-  g2.save(); g2.beginPath(); g2.arc(cx, cy, R, 0, 7); g2.clip();
-  g2.fillStyle = '#4b5e47'; g2.fillRect(cx - R, cy - R, R * 2, R * 2);
-  const blob = (x, y, r, col) => { const gr = g2.createRadialGradient(cx + x * R, cy + y * R, 0, cx + x * R, cy + y * R, r * R); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g2.fillStyle = gr; g2.fillRect(cx - R, cy - R, R * 2, R * 2); };
-  blob(0, -1, 1.1, 'rgba(225,235,245,.95)'); blob(.3, -.55, .5, 'rgba(160,190,215,.7)'); blob(-.2, .75, .8, 'rgba(200,165,110,.95)'); blob(-.55, .3, .45, 'rgba(120,95,70,.8)'); blob(.15, .1, .4, 'rgba(110,110,120,.6)'); blob(.75, .45, .55, 'rgba(48,82,140,.85)'); blob(-.85, -.4, .45, 'rgba(48,82,140,.8)');
-  g2.strokeStyle = 'rgba(0,0,0,.18)'; g2.lineWidth = 1; for (let row = -14; row <= 14; row++) for (let col = -14; col <= 14; col++) { const x = cx + col * hr * Math.sqrt(3) + (row & 1) * hr * Math.sqrt(3) / 2, y = cy + row * hr * 1.5; if (Math.hypot(x - cx, y - cy) < R) { hexPath(x, y, hr); g2.stroke(); } }
-  const sh = g2.createRadialGradient(cx - R * .35, cy - R * .35, R * .2, cx, cy, R); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(.75, 'rgba(0,0,0,.25)'); sh.addColorStop(1, 'rgba(0,0,0,.75)'); g2.fillStyle = sh; g2.fillRect(cx - R, cy - R, R * 2, R * 2);
-  g2.restore();
-  g2.strokeStyle = 'rgba(255,211,127,.25)'; g2.lineWidth = 2; g2.beginPath(); g2.arc(cx, cy, R + 2, 0, 7); g2.stroke();
-  const P = id => [cx + SPOS[id][0] * R, cy + SPOS[id][1] * R];
-  for (const s of SECTORS) { const from = s.req || LINKS[s.id]; if (!from) continue; const [x1, y1] = P(from), [x2, y2] = P(s.id); g2.strokeStyle = S.cap[from] ? 'rgba(255,211,127,.8)' : 'rgba(255,255,255,.25)'; g2.lineWidth = 3; g2.setLineDash([8, 6]); g2.beginPath(); g2.moveTo(x1, y1); g2.lineTo(x2, y2); g2.stroke(); g2.setLineDash([]); }
+  const at = g2.createRadialGradient(cx, cy, R * .95, cx, cy, R * 1.12); at.addColorStop(0, 'rgba(120,150,255,.25)'); at.addColorStop(1, 'rgba(120,150,255,0)'); g2.fillStyle = at; g2.beginPath(); g2.arc(cx, cy, R * 1.12, 0, 7); g2.fill();
+  const L = [-.45, .5, .74], P = p => [cx + p[0] * R, cy - p[1] * R];
+  const vis = [];
+  GRID.forEach((t, gi) => { const v = rotV(t.v); if (v[2] < -.05) return; vis.push([gi, v]); });
+  for (const [gi, v] of vis) {
+    const t = GRID[gi], s = secOf(gi), col = tileCol(t.v), lit = .35 + .65 * Math.max(0, v[0] * L[0] + v[1] * L[1] + v[2] * L[2]);
+    g2.beginPath(); t.c.forEach((q, k) => { const [x, y] = P(rotV(q)); g2[k ? 'lineTo' : 'moveTo'](x, y); }); g2.closePath();
+    g2.fillStyle = `rgb(${col[0] * lit | 0},${col[1] * lit | 0},${col[2] * lit | 0})`; g2.fill();
+    g2.strokeStyle = 'rgba(0,0,0,.25)'; g2.lineWidth = 1; g2.stroke();
+    if (s) { const st = secState(s), sel = psel === s.id; g2.fillStyle = st === 'cap' ? 'rgba(255,211,127,.35)' : st === 'open' ? 'rgba(0,0,0,.35)' : 'rgba(0,0,0,.65)'; g2.fill(); g2.lineWidth = sel ? 3 : 1.5; g2.strokeStyle = sel ? '#fff' : st === 'cap' ? '#ffd37f' : st === 'open' ? 'rgba(255,255,255,.7)' : '#454545'; g2.stroke(); }
+  }
   g2.font = '16px mfont'; g2.textAlign = 'center';
-  for (const s of SECTORS) {
-    const [x, y] = P(s.id), st = secState(s), sel = psel === s.id;
-    hexPath(x, y, hr); g2.fillStyle = st === 'cap' ? 'rgba(255,211,127,.45)' : st === 'open' ? 'rgba(0,0,0,.45)' : 'rgba(0,0,0,.7)'; g2.fill();
-    g2.lineWidth = sel ? 4 : 2; g2.strokeStyle = sel ? '#ffffff' : st === 'cap' ? '#ffd37f' : st === 'open' ? 'rgba(255,255,255,.75)' : '#454545'; g2.stroke();
-    if (S.runs[s.id] && st !== 'cap') { g2.fillStyle = '#ff4a3d'; g2.beginPath(); g2.arc(x + hr * .6, y - hr * .6, 5, 0, 7); g2.fill(); }
-    const icn = 'sector-' + SECSPR[s.id]; if (st !== 'lock' && sprSize(icn)) { g2.globalAlpha = st === 'cap' ? 1 : .85; g2.imageSmoothingEnabled = false; spr(g2, icn, x, y, 0, null, null, hr * 1.15, hr * 1.15); g2.globalAlpha = 1; }
-    else if (st === 'lock') { g2.fillStyle = '#454545'; g2.font = `${Math.round(hr * .8)}px mico`; g2.fillText(String.fromCharCode(0xe88d), x, y + hr * .3); g2.font = '16px mfont'; }
-    if (st !== 'lock') { g2.fillStyle = st === 'cap' ? '#ffd37f' : '#fff'; g2.shadowColor = '#000'; g2.shadowOffsetY = 2; g2.fillText(s.n, x, y + hr + 18); g2.shadowOffsetY = 0; }
+  for (const [gi, v] of vis) {
+    const s = secOf(gi); if (!s || v[2] < .15) continue; const [x, y] = P(v), st = secState(s), hr = R * .09 * v[2];
+    if (S.runs[s.id] && st !== 'cap') { g2.fillStyle = '#ff4a3d'; g2.beginPath(); g2.arc(x + hr * .6, y - hr * .6, 4, 0, 7); g2.fill(); }
+    const icn = 'sector-' + s.id; if (st !== 'lock' && sprSize(icn)) { g2.globalAlpha = .9; g2.imageSmoothingEnabled = false; spr(g2, icn, x, y, 0, null, null, hr * 1.1, hr * 1.1); g2.globalAlpha = 1; }
+    else if (st === 'lock') { g2.fillStyle = '#5a5a5a'; g2.font = `${Math.round(hr * .8)}px mico`; g2.fillText(String.fromCharCode(0xe88d), x, y + hr * .3); g2.font = '16px mfont'; }
+    if (st !== 'lock' && v[2] > .35) { g2.fillStyle = st === 'cap' ? '#ffd37f' : '#fff'; g2.shadowColor = '#000'; g2.shadowOffsetY = 2; g2.fillText(s.n, x, y + hr + 16); g2.shadowOffsetY = 0; }
   }
 }
+const THREAT = s => { const d = s.diff || 0; return d < 3 ? 'Alacsony' : d < 5 ? 'Közepes' : d < 7 ? 'Magas' : d < 9 ? 'Extrém' : 'Irtózatos'; };
 function planetInfo() {
-  const s = SECTORS.find(q => q.id === psel); if (!s) return; const st = secState(s), run = S.runs[s.id], C = CAMPAIGNS.find(c => c.id === s.camp);
-  const ores = Object.keys(s.ores).concat(s.sand ? ['sand'] : []).map(k => itI(k)).join('');
-  let h = `<div class="nm">${esc(s.n)}</div><div class="lg">${esc(s.d)}</div>`;
-  h += `<div class="row">${st === 'cap' ? '<span class="acc">Elfoglalva</span>' : st === 'lock' ? `<span class="lg">${ic('lock', 'xs')} Zárva</span>` : run ? `<span>Hullám: ${run.wave}/${s.win}</span>` : '<span class="lg">Felderítetlen</span>'}</div>`;
-  h += `<div class="row"><span class="lg">Ellenállás:</span><span>${THREAT(s)}</span></div><div class="row"><span class="lg">Nyersanyagok:</span>${ores}</div><div class="row"><span class="lg">Cél:</span>${s.win} hullám</div><div class="row lg" style="font-size:14px">${esc(C.n)} · ${s.w}×${s.h}</div>`;
-  if (st === 'lock') h += `<div class="row bad" style="font-size:14px">Előbb: ${esc(SECTORS.find(q => q.id === (s.req || C.req)).n)}</div>`;
+  const s = SECTORS.find(q => q.id === psel); if (!s) return; const st = secState(s), run = S.runs[s.id], node = NODE['s:' + s.id];
+  let h = `<div class="nm">${esc(s.n)}</div><div class="lg">${mtext(s.d)}</div>`;
+  h += `<div class="row">${st === 'cap' ? '<span class="acc">Elfoglalva</span>' : st === 'lock' ? `<span class="lg">${ic('lock', 'xs')} Zárva</span>` : run ? `<span>Hullám: ${run.wave}${s.win ? '/' + s.win : ''}</span>` : '<span class="lg">Felderítetlen</span>'}</div>`;
+  h += `<div class="row"><span class="lg">Ellenállás:</span><span>${THREAT(s)}</span></div><div class="row"><span class="lg">Cél:</span>${s.win ? s.win + ' hullám túlélése' : 'Az ellenséges bázis elpusztítása'}</div>`;
+  if (st === 'lock' && node) { const miss = [node.req, ...node.need].filter(n => n && NODE[n] && !nDone(NODE[n])); if (miss.length) h += `<div class="row bad" style="font-size:14px">Előbb: ${miss.map(n => esc(nName(NODE[n]))).join(', ')}</div>`; }
   if (run && st !== 'lock') h += `<div class="row" style="margin-top:8px"><button class="b np-button sm" id="pRestart" style="width:100%">${ic('refresh', 's')}Újrakezdés</button></div>`;
   $('#pinfo').hidden = false; $('#pinfo').innerHTML = h;
   $('#pbank').innerHTML = `<div class="acc" style="margin-bottom:4px">Raktár</div>${bankHtml()}`;
   $('#pGo').disabled = st === 'lock'; $('#pGo').querySelector('span').textContent = run ? 'Folytatás' : st === 'cap' ? 'Újra' : 'Kilövés';
 }
-$('#pcv').onclick = e => { const { R, cx, cy, hr } = planetGeo(), r = e.target.getBoundingClientRect(), z = SET.ui / 100, mx = (e.clientX - r.left) / z, my = (e.clientY - r.top) / z; let best = null, bd = hr; for (const s of SECTORS) { const d = Math.hypot(cx + SPOS[s.id][0] * R - mx, cy + SPOS[s.id][1] * R - my); if (d < bd) { bd = d; best = s.id; } } if (best) { psel = best; drawPlanet(); planetInfo(); } };
+$('#pcv').onpointerdown = e => { PV.drag = { x: e.clientX, y: e.clientY, yaw: PV.yaw, pitch: PV.pitch, m: 0 }; PV.ty = null; };
+addEventListener('pointermove', e => { const d = PV.drag; if (!d) return; const { R } = planetGeo(), z = SET.ui / 100, dx = (e.clientX - d.x) / z, dy = (e.clientY - d.y) / z; d.m = Math.max(d.m, Math.abs(dx) + Math.abs(dy)); PV.yaw = d.yaw - dx / R; PV.pitch = Math.max(-1.4, Math.min(1.4, d.pitch + dy / R)); });
+addEventListener('pointerup', () => { setTimeout(() => { PV.drag = null; }, 0); });
+$('#pcv').onclick = e => {
+  if (PV.drag && PV.drag.m > 5) return; const { R, cx, cy } = planetGeo(), r = e.target.getBoundingClientRect(), z = SET.ui / 100, mx = (e.clientX - r.left) / z, my = (e.clientY - r.top) / z;
+  let best = null, bd = R * .1; for (const s of SECTORS) { if (!onP(s)) continue; const v = rotV(GRID[s.gi].v); if (v[2] < .1) continue; const d = Math.hypot(cx + v[0] * R - mx, cy - v[1] * R - my); if (d < bd) { bd = d; best = s.id; } }
+  if (best) { psel = best; focusSec(best); planetInfo(); }
+};
 $('#pinfo').onclick = e => { const b = e.target.closest('#pRestart'); if (!b) return; if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.innerHTML = `${ic('warning', 's')}Biztos? A mentés elvész`; return; } delete S.runs[psel]; persist(); start(SECTORS.find(s => s.id === psel), null); };
+$('#planet').addEventListener('click', e => { const b = e.target.closest('[data-pl]'); if (!b) return; pcur = b.dataset.pl; psel = null; showPlanet(); });
 $('#pGo').onclick = () => { const s = SECTORS.find(q => q.id === psel); if (!s || secState(s) === 'lock') return; start(s, S.runs[s.id] || null); };
 $('#pTree').onclick = () => showTech();
-addEventListener('resize', () => { if (!$('#planet').hidden) drawPlanet(); });
 
 /* ---------- technológiafa (ResearchDialog): a gyökér középen, az ágak fölfelé és lefelé ---------- */
 let tsel = null, tzoom = 1, TPOS = null;
@@ -171,7 +185,8 @@ function techAvail() { const a = { ...S.bank }; if (campRun()) for (const k in W
 function techSpend(cost) { for (const k in cost) { let n = cost[k]; if (campRun()) { const c = Math.min(n, W.core.items[k] || 0); W.core.items[k] = (W.core.items[k] || 0) - c; n -= c; } S.bank[k] = (S.bank[k] || 0) - n; } }
 let NODE = Object.fromEntries(TECH.map(t => [t.id, t]));
 const nDone = t => t.k === 'b' || t.k === 'u' ? S.research.includes(t.id) : t.k === 's' ? !!S.cap[t.key] : !!S.seen[t.id];
-const nOpen = t => (!t.req || nDone(NODE[t.req])) && (!t.need || S.research.includes(t.need));
+const needOk = n => NODE[n] ? nDone(NODE[n]) : n.startsWith('s:') ? !!S.cap[n.slice(2)] : S.research.includes(n);
+const nOpen = t => (!t.req || nDone(NODE[t.req])) && (!t.need || (Array.isArray(t.need) ? t.need : [t.need]).every(needOk));
 const nName = t => t.k === 'b' ? BLOCKS[t.key].n : t.k === 'u' ? UNITS[t.key].n : t.k === 'i' ? ITEMS[t.key].n : t.k === 'l' ? LIQUIDS[t.key].n : SECTORS.find(s => s.id === t.key).n;
 const nCan = (t, av) => !nDone(t) && nOpen(t) && (t.k === 'b' || t.k === 'u') && Object.entries(t.cost).every(([k, n]) => (av[k] || 0) >= n);
 function layoutTech() {
@@ -205,7 +220,7 @@ function techInfo() {
   if (d) h += `<div class="ok" style="margin-top:6px">${t.k === 's' ? 'Elfoglalva' : t.k === 'i' || t.k === 'l' ? 'Megszerezve' : 'Kifejlesztve'}</div>`;
   else if (t.k === 'b' || t.k === 'u') {
     h += Object.entries(t.cost).map(([k, n]) => `<div class="st">${itI(k)}${esc(ITEMS[k].n)} <span class="${(av[k] || 0) < n ? 'bad' : ''}">${num(Math.min(av[k] || 0, n))}/${num(n)}</span></div>`).join('');
-    if (t.req && !nDone(NODE[t.req])) h += `<div class="bad">Előbb: ${esc(nName(NODE[t.req]))}</div>`; if (t.need && !S.research.includes(t.need)) h += `<div class="bad">Előbb: ${esc(BLOCKS[t.need].n)}</div>`;
+    if (t.req && !nDone(NODE[t.req])) h += `<div class="bad">Előbb: ${esc(nName(NODE[t.req]))}</div>`; for (const n of [].concat(t.need || [])) if (!needOk(n)) h += `<div class="bad">Előbb: ${esc(NODE[n] ? nName(NODE[n]) : BLOCKS[n] ? BLOCKS[n].n : n)}</div>`;
     h += `<button class="b np-button" id="tGo" ${nCan(t, av) ? '' : 'disabled'} style="margin-top:8px;width:100%">${ic('hammer', 's')}Fejlesztés</button>`;
   } else h += `<div class="lg" style="margin-top:6px">${t.k === 's' ? 'Még nincs elfoglalva' : 'Még nem termelted'}</div>`;
   el.hidden = false; el.innerHTML = h;
@@ -234,7 +249,7 @@ function showContent(k, key) {
   else if (k === 'l') { const L = LIQUIDS[key]; name = L.n; icon = sprIcon('liquid-' + LSN[key]); h = row('Hőkapacitás', Math.round((L.hc || 0) * 100) + '%'); }
   else if (k === 'b') { const B = BLOCKS[key]; name = B.n; icon = blockIcon(key); h = row('Méret', `${B.s}×${B.s}`) + (Object.keys(B.cost).length ? `<div class="st">Építési költség: ${costHtml(B.cost)}</div>` : '') + stats(B, true); }
   else if (k === 'u') { const U = UNITS[key]; name = U.n; icon = unitIcon(key); h = ustats(U) + (U.cost ? `<div class="st">Gyártás: ${costHtml(U.cost)} · ${U.time} mp</div>` : ''); }
-  else if (k === 's') { const s = SECTORS.find(q => q.id === key); name = s.n; icon = sprIcon('sector-' + SECSPR[key]); h = `<div class="st">${esc(s.d)}</div>` + row('Méret', `${s.w}×${s.h}`) + row('Cél', s.win + ' hullám') + row('Ellenállás', THREAT(s)) + `<div class="st">Nyersanyagok: ${Object.keys(s.ores).map(itI).join('')}</div>`; }
+  else if (k === 's') { const s = SECTORS.find(q => q.id === key); name = s.n; icon = sprIcon('sector-' + SECSPR[key]); h = `<div class="st">${mtext(s.d)}</div>` + row('Cél', s.win ? s.win + ' hullám' : 'támadás') + row('Ellenállás', THREAT(s)); }
   $('#cinfo').innerHTML = `<div class="hd"><img src="${icon}"><div class="nm">${esc(name)}</div></div>${h}`; showDlg('#dInfo');
 }
 function ustats(U) {
@@ -301,7 +316,7 @@ $('#fCont').onclick = () => start(S.freeSec, S.runs.free);
 function showLoad() { showDlg('#dLoad'); drawLoad(); }
 function drawLoad() {
   const l = Object.entries(S.runs).filter(([k, r]) => r && (k === 'free' ? S.freeSec : SECTORS.find(s => s.id === k)));
-  $('#saves').innerHTML = l.length ? l.map(([k, r]) => { const s = k === 'free' ? S.freeSec : SECTORS.find(q => q.id === k); return `<div class="save np-pane"><img src="${k === 'free' ? sprIcon('sector-groundZero') : sprIcon('sector-' + SECSPR[k])}" style="width:48px;height:48px;image-rendering:pixelated"><div class="grow"><div class="nm">${esc(k === 'free' ? s.n : s.n)}</div><div class="lg" style="font-size:16px">${k === 'free' ? 'Egyéni játék' : 'Hadjárat'} · ${r.wave}. hullám · ${s.w}×${s.h}</div></div><button class="b np-button sm" data-load="${k}" style="width:150px">${ic('play', 's')}Betöltés</button><button class="b np-button sm" data-del="${k}" style="width:56px">${ic('trash', 's')}</button></div>`; }).join('') : '<div class="lg">Nincs mentett játék.</div>';
+  $('#saves').innerHTML = l.length ? l.map(([k, r]) => { const s = k === 'free' ? S.freeSec : SECTORS.find(q => q.id === k); return `<div class="save np-pane"><img src="${k === 'free' ? sprIcon('sector-groundZero') : sprIcon('sector-' + SECSPR[k])}" style="width:48px;height:48px;image-rendering:pixelated"><div class="grow"><div class="nm">${esc(k === 'free' ? s.n : s.n)}</div><div class="lg" style="font-size:16px">${k === 'free' ? 'Egyéni játék' : 'Hadjárat'} · ${r.wave}. hullám${s.w ? ` · ${s.w}×${s.h}` : ''}</div></div><button class="b np-button sm" data-load="${k}" style="width:150px">${ic('play', 's')}Betöltés</button><button class="b np-button sm" data-del="${k}" style="width:56px">${ic('trash', 's')}</button></div>`; }).join('') : '<div class="lg">Nincs mentett játék.</div>';
 }
 $('#saves').onclick = e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -310,10 +325,38 @@ $('#saves').onclick = e => {
 };
 
 /* ---------- indítás, mentés, vége ---------- */
-function start(sec, save) {
+// Mindustry-szöveg: [accent]…[] színek, :név: ikonok, \n sortörés
+const MCOL = { accent: 'acc', lightgray: 'lg', gray: 'lg', red: 'bad', scarlet: 'bad', green: 'ok', white: 'wh', unlaunched: 'lg', stat: 'acc', orange: 'acc', yellow: 'acc', sky: 'acc', royal: 'acc' };
+function mIcon(n) {
+  const b = Object.keys(SN).find(k => SN[k] === n && BLOCKS[k]); if (b) return `<img class="mi" src="${blockIcon(b)}">`;
+  if (UNITS[n]) return `<img class="mi" src="${unitIcon(n)}">`;
+  for (const k in ISN) if (ISN[k] === n) return itI(k); for (const k in LSN) if (LSN[k] === n) return lqI(k);
+  if (n.startsWith('ore-') && sprSize(n + '1')) return `<img class="mi" src="${sprIcon(n + '1')}">`;
+  return ic(n, 'xs');
+}
+function mtext(t) {
+  let o = '', open = 0; t = String(t || '').replace(/[-]/g, '');
+  for (let i = 0; i < t.length;) {
+    const ch = t[i];
+    if (ch === '[') { if (t[i + 1] === '[') { o += '['; i += 2; continue; } const j = t.indexOf(']', i); if (j > 0) { const k = t.slice(i + 1, j); if (!k) { if (open) { o += '</span>'; open--; } i = j + 1; continue; } if (/^[a-z]+$|^#[0-9a-f]{6,8}$/i.test(k)) { o += k[0] === '#' ? `<span style="color:${k.slice(0, 7)}">` : `<span class="${MCOL[k] || ''}">`; open++; i = j + 1; continue; } } }
+    if (ch === ':') { const m = /^:([a-z0-9-]+):/.exec(t.slice(i)); if (m) { o += mIcon(m[1]); i += m[0].length; continue; } }
+    if (ch === '\n') { o += '<br>'; i++; continue; }
+    o += esc(ch); i++;
+  }
+  return o + '</span>'.repeat(open);
+}
+const toCoreT = m => { for (const b of m.builds) { const n = m.names[b.id]; if (b.team === 1 && n && n.startsWith('core-')) return { 'core-shard': 'core', 'core-foundation': 'foundation', 'core-nucleus': 'nucleus' }[n] || 'core'; } return 'core'; };
+let STORY = null;
+async function start(sec, save) {
+  if (sec.camp === 'serpulo' && !sec.map) {
+    let m; try { m = await loadMap(sec.id); } catch (e) { $('#pinfo').insertAdjacentHTML('beforeend', `<div class="bad">A pálya nem tölthető be</div>`); return; }
+    const base = sec; sec = sectorFor(base, m);
+    if (!save && !base.p.alwaysUnlocked) { const cap = BLOCKS[toCoreT(m)] ? BLOCKS[toCoreT(m)].cap : 4000; for (const k in S.bank) { const n = Math.min(S.bank[k], Math.max(0, cap - (sec.start[k] || 0))); if (n > 0) { sec.start[k] = (sec.start[k] || 0) + n; S.bank[k] -= n; } } persist(); }   // kilövés: a raktárból a mag befogadóképességéig
+  }
   if (save && save.gv === 2) sec = { ...sec, gen: 2 };   // a korábbi barlangos térkép
   if (save && !save.gv) sec = { ...sec, gen: 1, ...(LEGACY_SIZE[sec.id] ? { w: LEGACY_SIZE[sec.id][0], h: LEGACY_SIZE[sec.id][1] } : {}) };   // régi mentés: a régi térképével töltjük vissza
-  SEC = sec; W = new World(sec, save); TER = makeTerrain(W); selB = null; selBlock = null; paused = false; cam.free = null; cam.z = 4;
+  SEC = sec; W = new World(sec, save); TER = makeTerrain(W); selB = null; selBlock = null; paused = false; cam.free = null; cam.z = 4; STORY = null;
+  if (sec.map) STORY = W.story = new Story(W, sec.map, textsFor(SECTORS.find(q => q.id === sec.id) || {}, sec.map), { unlocked: c => { const r = contentOf(c); if (!r) return true; const id = r[0] === 'b' ? r[1] : r[0] + ':' + r[1]; return NODE[id] ? nDone(NODE[id]) : r[0] === 'i' ? !!S.seen[id] || (W.core.items[r[1]] > 0) : true; }, content: c => contentOf(c) || ['i', 'copper'], icon: (k, key) => k === 'b' ? `:${SN[key]}:` : k === 'u' ? `:${key}:` : k === 'i' ? `:${ISN[key]}:` : k === 'l' ? `:${LSN[key]}:` : '', name: (k, key) => k === 'b' ? BLOCKS[key].n : k === 'u' ? UNITS[key].n : k === 'i' ? ITEMS[key].n : k === 'l' ? LIQUIDS[key].n : key });
   if (MODS.length) sec.ranked = 0;   // modokkal nincs ranglista
   W.onWave = n => { W.msg(`${n}. hullám`); if (sec.free && sec.ranked) { if (n > (S.best || 0)) { S.best = n; persist(); } try { if (INFRAME) parent.postMessage({ hgws: 'score', game: GAME, score: n }, location.origin); } catch (_) { } } };
   W.canUnit = t => !!sec.unlockAll || S.research.includes('u:' + t);
@@ -511,7 +554,7 @@ $('#pTech').onclick = () => showTech();
 $('#pDb').onclick = () => showDb();
 $('#pSave').onclick = () => quit();
 $('#pAband').onclick = e => { const b = e.currentTarget; if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.querySelector('span').textContent = 'Biztos?'; return; } closeAll(); endGame(false); };
-$('#skip').onclick = () => { if (W && (!SEC.win || W.wave < SEC.win)) W.nextWave(); };
+$('#skip').onclick = () => { if (W && W.rules.waves && W.rules.waveSending && (!SEC.win || W.wave < SEC.win)) W.nextWave(); };
 function sizeMini() { if (!W) return; const c = $('#mini'), a = W.w / W.h, z = SET.ui / 100, mw = bigMap ? Math.min(innerWidth * .8, innerHeight * .8 * a) / z : 240; c.width = Math.round(mw); c.height = Math.round(mw / a); c.style.width = mw + 'px'; c.classList.toggle('big', bigMap); }
 $('#mini').onclick = e => { if (!W) return; const r = e.target.getBoundingClientRect(); cam.free = { x: (e.clientX - r.left) / r.width * W.w * TS, y: (e.clientY - r.top) / r.height * W.h * TS }; if (bigMap) { bigMap = false; sizeMini(); } };
 window.addEventListener('beforeunload', saveRun);
@@ -520,12 +563,19 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) saveR
 /* ---------- HUD ---------- */
 let palSig = '', fpsN = 0, fpsT = 0, fpsV = 0;
 function hud() {
-  const w = W, wt = Math.max(0, Math.ceil(w.wtimer / 60)), en = w.enemies(), last = SEC.win && w.wave >= SEC.win;
+  const w = W, wt = Math.max(0, Math.ceil(w.wtimer / 60)), en = w.enemies(), last = (SEC.win && w.wave >= SEC.win) || !w.rules.waves, timer = w.rules.waves && w.rules.waveTimer;
   const lines = [`<span class="acc">${SEC.win ? `${w.wave}/${SEC.win}` : w.wave}. hullám</span>`];
   if (en) lines.push(`<span class="lg">${en} ellenség maradt</span>`);
-  if (!last) lines.push(`<span class="lg">Következő hullám: ${Math.floor(wt / 60)}:${String(wt % 60).padStart(2, '0')}</span>`); else if (!en) lines.push('<span class="lg">Utolsó hullám</span>');
+  if (!last && timer) lines.push(`<span class="lg">Következő hullám: ${Math.floor(wt / 60)}:${String(wt % 60).padStart(2, '0')}</span>`); else if (!en && SEC.win && w.wave >= SEC.win) lines.push('<span class="lg">Utolsó hullám</span>');
+  if (w.rules.attackMode && w.ecores) lines.push(`<span class="lg">Ellenséges magok: ${w.ecores}</span>`);
   const wh = lines.join('<br>'); if ($('#wtxt').dataset.h !== wh) { $('#wtxt').innerHTML = wh; $('#wtxt').dataset.h = wh; }
-  $('#skip').disabled = !!last;
+  $('#skip').disabled = !!last || !w.rules.waveSending;
+  if (STORY) {
+    const oh = STORY.active().map(o => STORY.text(o)).filter(Boolean).map(t => `<div>${mtext(t)}</div>`).join(''); if ($('#obj').dataset.h !== oh) { $('#obj').innerHTML = oh; $('#obj').dataset.h = oh; $('#obj').hidden = !oh; }
+    const an = STORY.msgs.filter(m => m.k === 'announce').pop(), to = STORY.msgs.filter(m => m.k !== 'announce').pop();
+    const ah = an ? mtext(an.t) : ''; if ($('#annc').dataset.h !== ah) { $('#annc').innerHTML = ah; $('#annc').dataset.h = ah; } $('#annc').hidden = !an; if (an) $('#annc').style.opacity = Math.min(1, an.life / 30);
+    const th = to ? mtext(to.t) : ''; if ($('#toast').dataset.h !== th) { $('#toast').innerHTML = th; $('#toast').dataset.h = th; } $('#toast').hidden = !to;
+  } else { $('#obj').hidden = true; $('#annc').hidden = true; $('#toast').hidden = true; }
   const it = w.core.items; let ns = 0; for (const k of ITEM_IDS) if (it[k] > 0 && !S.seen['i:' + k]) { S.seen['i:' + k] = 1; ns = 1; } for (const k in w.madeL) if (!S.seen['l:' + k]) { S.seen['l:' + k] = 1; ns = 1; } if (ns) persist();
   const ih = ITEM_IDS.filter(k => it[k] > 0).map(k => `<span title="${esc(ITEMS[k].n)}">${itI(k)}${num(it[k])}</span>`).join(''); if ($('#items').dataset.h !== ih) { $('#items').innerHTML = ih; $('#items').dataset.h = ih; $('#items').hidden = !ih; }
   const mh = w.msgs.slice(-4).map(m => `<div class="np-button ${m.c}">${esc(m.t)}</div>`).join(''); if ($('#msgs').dataset.h !== mh) { $('#msgs').innerHTML = mh; $('#msgs').dataset.h = mh; }
@@ -545,7 +595,23 @@ function control() {
   c.mx = M.wx; c.my = M.wy; c.shoot = M.l && !selBlock;
 }
 const RANGE = B => B.type === 'turret' ? B.range : B.type === 'node' || B.type === 'bridge' || B.type === 'lbridge' ? B.range * TS : B.type === 'mender' || B.type === 'overdrive' || B.type === 'repair' || B.type === 'driver' ? B.range : B.type === 'shield' ? B.radius : 0;
+const mplain = t => String(t || '').replace(/[-]/g, '').replace(/\[\[/g, '\u0001').replace(/\[[^\]]*\]/g, '').replace(/\u0001/g, '[').replace(/:[a-z0-9-]+:/g, '').replace(/ +/g, ' ');
+function storyOverlay(gx, z) {
+  const A = W.area; if (A) { gx.fillStyle = 'rgba(0,0,0,.78)'; const X0 = A.x * TS, Y0 = A.y * TS, X1 = (A.x + A.w) * TS, Y1 = (A.y + A.h) * TS, BW = W.w * TS, BH = W.h * TS; gx.fillRect(-BW, -BH, BW * 3, BH + Y0); gx.fillRect(-BW, Y1, BW * 3, BH * 2); gx.fillRect(-BW, Y0, BW + X0, Y1 - Y0); gx.fillRect(X1, Y0, BW * 2, Y1 - Y0); gx.strokeStyle = 'rgba(255,211,127,.5)'; gx.lineWidth = 2 / z; gx.strokeRect(X0, Y0, X1 - X0, Y1 - Y0); }
+  if (!STORY) return;
+  gx.textAlign = 'center'; gx.textBaseline = 'bottom';
+  for (const m of STORY.markers()) {
+    const shape = m.k === 'ShapeText' || m.k === 'Shape', r = (m.r || (m.k === 'Shape' ? 8 : 6)) * 1.2;
+    if (shape) { gx.save(); gx.translate(m.x, m.y); gx.rotate((m.rot + 45) * Math.PI / 180); gx.strokeStyle = '#ffd37f'; gx.lineWidth = 1.5; gx.globalAlpha = .6 + .4 * Math.sin(T / 12); gx.strokeRect(-r / 1.41, -r / 1.41, r * 1.41, r * 1.41); gx.restore(); gx.globalAlpha = 1; }
+    if (m.text && m.fs !== 0) {
+      const fs = Math.max(3, 4 * (m.fs || 1)), lines = mplain(m.text).split('\n'); gx.font = `${fs}px mfont`; let y = m.y - (shape ? r + 3 : 0) - (lines.length - 1) * fs * 1.15;
+      for (const l of lines) { gx.fillStyle = 'rgba(0,0,0,.7)'; gx.fillText(l, m.x + .5, y + .6); gx.fillStyle = '#fff'; gx.fillText(l, m.x, y); y += fs * 1.15; }
+    }
+  }
+  gx.textBaseline = 'alphabetic';
+}
 function overlay(gx, z) {
+  storyOverlay(gx, z);
   const [tx, ty] = tileAt(M.wx, M.wy), lw = 1.5 / z, ring = (x, y, R, cross) => { gx.strokeStyle = 'rgba(255,211,127,.6)'; gx.lineWidth = lw; gx.setLineDash([3, 3]); gx.beginPath(); if (cross) { gx.rect(x - R - 4, y - 4, R * 2 + 8, 8); gx.rect(x - 4, y - R - 4, 8, R * 2 + 8); } else gx.arc(x, y, R, 0, 7); gx.stroke(); gx.setLineDash([]); };
   if (selBlock) {
     const [ox0, oy0] = originOf(selBlock, tx, ty), list = M.drag ? linePlans(selBlock, M.drag, [tx, ty]) : [{ t: selBlock, x: ox0, y: oy0, rot }];
@@ -575,8 +641,12 @@ function frame(now) {
   if (W.won) return endGame(true);
   if (W.lost) return endGame(false);
   const p = W.player;
-  if (cam.free && !(W.ctl.ax || W.ctl.ay)) { cam.x += (cam.free.x - cam.x) * .15; cam.y += (cam.free.y - cam.y) * .15; }
+  if (W.cut) { const c = W.cut; if (cam.z0 == null) cam.z0 = cam.z; cam.x += (c.x - cam.x) * .25; cam.y += (c.y - cam.y) * .25; if (c.z != null) cam.z += (1.2 + c.z * 4.8 - cam.z) * .1; }
+  else if (cam.z0 != null) { cam.z = cam.z0; cam.z0 = null; }
+  if (W.cut) {}
+  else if (cam.free && !(W.ctl.ax || W.ctl.ay)) { cam.x += (cam.free.x - cam.x) * .15; cam.y += (cam.free.y - cam.y) * .15; }
   else { cam.free = null; if (p && !p.dead) { cam.x += (p.x - cam.x) * .2; cam.y += (p.y - cam.y) * .2; } }
+  if ((W.terV || 0) !== (TER.v || 0)) { TER = makeTerrain(W); TER.v = W.terV || 0; }
   render(g, W, { cam, cw: cv.width, ch: cv.height, t: T, ter: TER, ui: overlay, nofx: !SET.fx });
   if (now - saveT > SET.autosave * 60000) { saveT = now; saveRun(); }
   if (T % 6 === 0 || paused) hud();
@@ -607,7 +677,7 @@ $('#modFile').onchange = async e => {
 /* ---------- indulás ---------- */
 applySet(); showMenu(); requestAnimationFrame(frame);
 loadAtlas().then(() => loadMods()).then(errs => {
-  modErrs = errs; prepContent(); NODE = Object.fromEntries(TECH.map(t => [t.id, t])); TPOS = null;
+  modErrs = errs; prepContent(); addModSectors(MOD_SECTORS, MOD_PLANETS); NODE = Object.fromEntries(TECH.map(t => [t.id, t])); TPOS = null;
   ready = true; buildMenu(); try { menuWorld(); } catch (_) { MW = null; }
 }, () => { $('#mcol').innerHTML = '<div class="fb bad" style="height:auto;padding:14px">A grafika betöltése nem sikerült – frissítsd az oldalt.</div>'; });
 window.__KV = { get W() { return W; }, S, start, SECTORS, freeSector, BL: BLOCKS, UN: UNITS, cam, retex() { TER = makeTerrain(W); }, showPlanet, showCustom, showPlay, showTech, showDb, showSet, showMods, showLoad, openPM, closeDlg, STACK };

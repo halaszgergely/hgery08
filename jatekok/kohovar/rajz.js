@@ -1,10 +1,10 @@
 // Kohóvár – kirajzolás. A blokkok, egységek, anyagok és a talaj képei a Mindustry (Anuke és közreműködők, GPLv3) sprite-jai,
 // a kepek/atlasz.png atlaszból; a lövedékek, hatások, köd és kisérkép kódból rajzoltak.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, BLOCKS, UNITS } from './adat.js?v=202611262058';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611262058';
-import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611262058';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611262133';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611262133';
+import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611262133';
 
-const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555' };
+const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555', 0: '#4d4e58' };
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
 const hash = (x, y, s = 0) => { let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 1442695041) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 const rgb = c => { const n = parseInt(c.slice(1), 16); return [n >> 16, n >> 8 & 255, n & 255]; };
@@ -12,7 +12,7 @@ const circ = (g, x, y, r) => { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); };
 
 /* ---------- atlasz ---------- */
 let AT = null, IMG = null; const TC = new Map();
-const AV = '?a=1';   // az atlasz verziója: újracsomagolás után növelni kell, hogy a kép és a térképe együtt frissüljön
+const AV = '?a=2';   // az atlasz verziója: újracsomagolás után növelni kell, hogy a kép és a térképe együtt frissüljön
 export function loadAtlas(base = 'kepek/') {
   return fetch(base + 'atlasz.json' + AV).then(r => r.json()).then(j => new Promise((ok, no) => { const im = new Image(); im.onload = () => { AT = j; IMG = im; ok(); }; im.onerror = no; im.src = base + 'atlasz.png' + AV; }));
 }
@@ -46,7 +46,8 @@ export function itemSq(g, it, x, y, s = 5) { spr(g, 'item-' + ISN[it], x, y, 0, 
 const LOD = [{ P: 4, CH: 16 }, { P: 2, CH: 32 }];
 export function makeTerrain(W) {
   const w = W.w, h = W.h, N = w * h, depth = new Uint8Array(N), cache = new Map();
-  { const q = new Int32Array(N); let qh = 0, qt = 0; for (let i = 0; i < N; i++) if (!W.wall[i]) q[qt++] = i; else depth[i] = 255;
+  const isTree = i => W.wall[i] && TREES.has(WL[W.wall[i] - 1]);
+  { const q = new Int32Array(N); let qh = 0, qt = 0; for (let i = 0; i < N; i++) if (!W.wall[i] || isTree(i)) q[qt++] = i; else depth[i] = 255;
     while (qh < qt) { const i = q[qh++], d = depth[i]; if (d >= 5) continue; const x = i % w, y = (i - x) / w; for (let k = 0; k < 8; k++) { const X = x + NX[k], Y = y + NY[k]; if (X < 0 || Y < 0 || X >= w || Y >= h) continue; const j = Y * w + X; if (depth[j] === 255) { depth[j] = d + 1; q[qt++] = j; } } } }
   const wname = i => WSPR[WL[W.wall[i] - 1]], img = (g, n, X, Y, T) => { const r = AT[n]; if (r) g.drawImage(r[4] || IMG, r[0], r[1], r[2], r[3], X, Y, T, T); };
   const big = (x, y) => { const i = y * w + x; return x + 1 < w && y + 1 < h && depth[i] && depth[i] < 4 && W.wall[i + 1] === W.wall[i] && W.wall[i + w] === W.wall[i] && W.wall[i + w + 1] === W.wall[i] && hash(x, y, 71) < .5; };
@@ -56,10 +57,15 @@ export function makeTerrain(W) {
     if (d) {
       const lx = x & ~1, ly = y & ~1, n = wname(i);
       if (big(lx, ly)) { if (x === lx && y === ly) img(g, n + '-large', X, Y, T * 2); }
-      else img(g, n + (1 + (hash(x, y, 5) * 2 | 0)), X, Y, T);
+      else img(g, AT[n + '1'] ? n + (1 + (hash(x, y, 5) * (AT[n + '3'] ? 3 : 2) | 0)) : n, X, Y, T);
       return;
     }
-    const [fn, fv] = FSPR[FL[W.floor[i]]]; img(g, fv ? fn + (1 + (hash(x, y) * fv | 0)) : fn, X, Y, T);
+    const [fn, fv] = FSPR[FL[W.floor[i]]] || FSPR.stone;
+    if (fv === 'a') {          // autotile (Mindustry Floor.autotile): a 4×4-es lap cellája a szomszédok szerint
+      const f = W.floor[i], same = (xx, yy) => xx >= 0 && yy >= 0 && xx < w && yy < h && W.floor[yy * w + xx] === f, l = same(x - 1, y), r = same(x + 1, y), u = same(x, y - 1), d = same(x, y + 1);
+      const cx = l && r ? 1 : !l && !r ? 3 : !l ? 0 : 2, cy = u && d ? 1 : !u && !d ? 3 : !u ? 0 : 2;
+      img(g, cx === 3 && cy !== 3 ? `${fn}-a3${cy}` : cy === 3 && cx !== 3 ? `${fn}-a${cx}3` : `${fn}-a${cx}${cy}`, X, Y, T);
+    } else img(g, fv ? fn + (1 + (hash(x, y) * fv | 0)) : fn, X, Y, T);
     const o = W.ore[i]; if (o) img(g, 'ore-' + ISN[ITEM_IDS[o - 1]] + (1 + (hash(x, y, 31) * 3 | 0)), X, Y, T);
     if (y > 0 && W.wall[i - w]) { g.fillStyle = 'rgba(0,0,0,.3)'; g.fillRect(X, Y, T, T * .3); }
   }
@@ -154,10 +160,10 @@ function drawB(g, W, b, t) {
       spr(g, n, cx, cy); break;
     }
     case 'mender': case 'overdrive': case 'shield': case 'lamp':
-      spr(g, n, cx, cy); if (id === 'forceproj') sprT(g, n + '-team', TEAM[PLAYER], 1, cx, cy);
+      spr(g, n, cx, cy); if (id === 'forceproj') sprT(g, n + '-team', TEAM[b.team ?? PLAYER], 1, cx, cy);
       glow(g, n + '-top', cx, cy, B.type === 'mender' ? b.ps * (.3 + .7 * b.prog / B.reload) : B.type === 'shield' ? (b.on ? .8 : 0) : (wk || b.ps) * (.6 + .4 * Math.sin(t * .1))); break;
-    case 'mine': spr(g, n, cx, cy); sprT(g, n + '-team-top', b.cd > 0 ? '#777777' : TEAM[PLAYER], 1, cx, cy); break;
-    case 'core': case 'storage': spr(g, n, cx, cy); sprT(g, n + '-team', TEAM[PLAYER], 1, cx, cy); break;
+    case 'mine': spr(g, n, cx, cy); sprT(g, n + '-team-top', b.cd > 0 ? '#777777' : TEAM[b.team ?? PLAYER], 1, cx, cy); break;
+    case 'core': case 'storage': spr(g, n, cx, cy); sprT(g, n + '-team', TEAM[b.team ?? PLAYER], 1, cx, cy); break;
     case 'launchpad': spr(g, n, cx, cy); glow(g, n + '-light', cx, cy, b.prog / B.time); break;
     case 'factory': case 'recon': {
       spr(g, n, cx, cy); const ut = B.type === 'recon' ? (b.pay ? B.up[b.pay] : null) : W ? B.plans[b.cfg || 0] : null;
@@ -217,7 +223,8 @@ export function render(g, W, R) {
     g.drawImage(ter.chunk(cx, cy, lod), X0, Y0, X1 - X0, Y1 - Y0);
   }
   g.setTransform(z, 0, 0, z, ox, oy);
-  for (const sp of W.spawns) spr(g, 'spawn', (sp.x + .5) * TS, (sp.y + .5) * TS);
+  if (W.props) for (const p of W.props) { if (!W.prop[p.i]) continue; const x = (p.x + .5) * TS, y = (p.y + .5) * TS; if (x < vx0 - 40 || x > vx1 + 40 || y < vy0 - 40 || y > vy1 + 40) continue; if (p.tree && AT[p.n + '-shadow']) { g.globalAlpha = .5; spr(g, p.n + '-shadow', x + 2, y - 2, p.r); g.globalAlpha = 1; } spr(g, p.n, x, y, p.r); }   // kövek, fák
+  if (!W.hideSpawns) for (const sp of W.spawns) spr(g, 'spawn', (sp.x + .5) * TS, (sp.y + .5) * TS);
   for (const f of W.fx) if (f.k === 'rubble') { g.fillStyle = `rgba(20,18,16,${.45 * f.life / f.max})`; g.fillRect(f.x * TS + 1, f.y * TS + 1, f.s * TS - 2, f.s * TS - 2); }
   const vb = [], flat = [];
   for (const b of W.blds) if ((b.x + b.B.s) * TS >= vx0 && b.x * TS <= vx1 && (b.y + b.B.s) * TS >= vy0 && b.y * TS <= vy1) (b.cv || b.B.type === 'sconv' || b.B.type === 'conduit' ? flat : vb).push(b);
@@ -228,6 +235,7 @@ export function render(g, W, R) {
   }
   g.fillStyle = 'rgba(0,0,0,.28)'; for (const b of vb) if (b.B.type !== 'mine') g.fillRect(b.x * TS + .8, b.y * TS + 1.2, b.B.s * TS, b.B.s * TS);
   for (const b of vb) drawB(g, W, b, t);
+  for (const b of vb) if (b.team !== undefined && b.team !== PLAYER) { g.fillStyle = b.team === ENEMY ? 'rgba(242,85,85,.13)' : 'rgba(20,20,28,.42)'; g.fillRect(b.x * TS, b.y * TS, b.B.s * TS, b.B.s * TS); }   // ellenséges / elhagyatott épület
   for (const b of vb) {
     if (b.B.type === 'bridge' || b.B.type === 'lbridge') bridgeLine(g, W, b, t);
     if (b.B.tractor && b.beam && !b.beam.dead) { const c = W.center(b); g.strokeStyle = 'rgba(191,146,249,.8)'; g.lineWidth = 1.4 + Math.sin(t * .4) * .4; g.beginPath(); g.moveTo(c.x, c.y); g.lineTo(b.beam.x, b.beam.y); g.stroke(); }
@@ -296,7 +304,7 @@ export { drawB, buildTime };
 export function minimap(c, W, ter, cam, vw, vh) {
   const g = c.getContext('2d'), sx = c.width / W.w, sy = c.height / W.h; g.imageSmoothingEnabled = sx < 1;
   g.drawImage(ter.mini, 0, 0, c.width, c.height);
-  g.fillStyle = TEAM[PLAYER]; for (const b of W.blds) g.fillRect(b.x * sx, b.y * sy, Math.max(1, b.B.s * sx), Math.max(1, b.B.s * sy));
+  for (const b of W.blds) { g.fillStyle = TEAM[b.team ?? PLAYER]; g.fillRect(b.x * sx, b.y * sy, Math.max(1, b.B.s * sx), Math.max(1, b.B.s * sy)); }
   for (const u of W.units) { if (u.dead) continue; const big = u === W.player ? 3 : Math.max(2, u.U.r * sx / 4); g.fillStyle = u.team === ENEMY ? '#ff4a3d' : u === W.player ? '#fff' : '#ffd37f'; g.fillRect(u.x / TS * sx - big / 2, u.y / TS * sy - big / 2, big, big); }
   for (const sp of W.spawns) { g.strokeStyle = '#ff4a3d'; g.lineWidth = 1; g.strokeRect(sp.x * sx - 3, sp.y * sy - 3, 6, 6); }
   if (W.fog) { g.imageSmoothingEnabled = true; g.drawImage(ter.fog, 0, 0, c.width, c.height); }

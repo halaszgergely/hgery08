@@ -61,8 +61,49 @@ export const FLOORS = {
   magma:    { c: '#e8792b', c2: '#f09a3a', deep: 1, liq: 'slag', heat: .85, glow: 1 },
   tar:      { c: '#2a2a30', c2: '#232328', shallow: 1, liq: 'oil' },
   salt:     { c: '#c9c9c0', c2: '#bdbdb3' },
+  // a Mindustry eredeti pályáinak további talajai (a nevük a Mindustry-név)
+  'crater-stone': { c: '#57575c', c2: '#57575c' },
+  'core-zone': { c: '#8b7662', c2: '#8b7662' },
+  'dark-panel-1': { c: '#4f505c', c2: '#4f505c' },
+  'dark-panel-2': { c: '#55505a', c2: '#55505a' },
+  'dark-panel-3': { c: '#4d4e5a', c2: '#4d4e5a' },
+  'dark-panel-4': { c: '#575966', c2: '#575966' },
+  'dark-panel-5': { c: '#5b5762', c2: '#5b5762' },
+  'dark-panel-6': { c: '#655a62', c2: '#655a62' },
+  'darksand-tainted-water': { c: '#4b4160', c2: '#4b4160', shallow: 1, liq: 'water', spores: .1 },
+  'darksand-water': { c: '#444869', c2: '#444869', shallow: 1, liq: 'water' },
+  'sand-water': { c: '#97879f', c2: '#97879f', shallow: 1, liq: 'water' },
+  'tainted-water': { c: '#604b94', c2: '#604b94', shallow: 1, liq: 'water', spores: .15 },
+  'deep-tainted-water': { c: '#44356b', c2: '#44356b', deep: 1, liq: 'water', spores: .15 },
+  'ice-snow': { c: '#cbcdf3', c2: '#cbcdf3' },
+  'metal-floor-2': { c: '#686975', c2: '#686975' },
+  'metal-floor-3': { c: '#747784', c2: '#747784' },
+  'metal-floor-4': { c: '#797c8a', c2: '#797c8a' },
+  'metal-floor-5': { c: '#8d7263', c2: '#8d7263' },
+  'metal-floor-damaged': { c: '#6c6e7a', c2: '#6c6e7a' },
+  'mud': { c: '#351f1b', c2: '#351f1b' },
+  'metal-tiles-1': { c: '#44444d', c2: '#44444d', auto: 1 },
+  'metal-tiles-2': { c: '#3a3a43', c2: '#3a3a43', auto: 1 },
+  'metal-tiles-3': { c: '#73574b', c2: '#73574b', auto: 1 },
+  'metal-tiles-4': { c: '#79444d', c2: '#79444d', auto: 1 },
+  'metal-tiles-5': { c: '#3e3d47', c2: '#3e3d47', auto: 1 },
+  'metal-tiles-6': { c: '#935555', c2: '#935555', auto: 1 },
+  'metal-tiles-7': { c: '#42424b', c2: '#42424b', auto: 1 },
+  'metal-tiles-8': { c: '#404049', c2: '#404049', auto: 1 },
+  'metal-tiles-9': { c: '#3d3d46', c2: '#3d3d46', auto: 1 },
+  'metal-tiles-10': { c: '#43434c', c2: '#43434c', auto: 1 },
+  'metal-tiles-11': { c: '#44444d', c2: '#44444d', auto: 1 },
+  'metal-tiles-12': { c: '#9c4b4f', c2: '#9c4b4f', auto: 1 },
+  'metal-tiles-13': { c: '#50515a', c2: '#50515a', auto: 1 },
 };
-export const WALLS = { rock: '#2e2f34', snowrock: '#7a8794', sandrock: '#7c6a4e', darkrock: '#25262b', mossrock: '#2a3a2c', sporerock: '#382b47', basaltrock: '#20222a', hotwall: '#4c2f22' };
+export const WALLS = { rock: '#2e2f34', snowrock: '#7a8794', sandrock: '#7c6a4e', darkrock: '#25262b', mossrock: '#2a3a2c', sporerock: '#382b47', basaltrock: '#20222a', hotwall: '#4c2f22',
+  'dune-wall': '#525050', 'ice-wall': '#c0bef6', 'salt-wall': '#dee1e9', 'shale-wall': '#686a91', 'red-ice-wall': '#e5c8ce', 'red-stone-wall': '#aa4c51', 'crystalline-stone-wall': '#615160', 'dark-metal': '#727582',
+  'metal-wall-1': '#51515a', 'metal-wall-2': '#575760', 'metal-wall-3': '#504f58', 'snow-pine': '#d8e0eb', 'spore-pine': '#844686', 'white-tree': '#c2c7e2', 'white-tree-dead': '#ccd5e5', pine: '#529153' };
+export const TREES = new Set(['snow-pine', 'spore-pine', 'white-tree', 'white-tree-dead', 'pine']);
+// a Mindustry-nevek → Kohóvár talaj- és faltípusok (az eredeti pályák betöltéséhez)
+export const MFLOOR = { stone: 'stone', dacite: 'dark', 'sand-floor': 'sandf', darksand: 'darksand', snow: 'snow', ice: 'ice', grass: 'grass', 'metal-floor': 'metal', 'shallow-water': 'water', 'deep-water': 'deep', moss: 'moss', 'spore-moss': 'spore', dirt: 'sporedark', shale: 'shale', basalt: 'basalt', hotrock: 'hotrock', magmarock: 'magmarock', char: 'ash', 'molten-slag': 'magma', slag: 'magma', tar: 'tar', salt: 'salt' };
+export const MWALL = { 'stone-wall': 'rock', 'snow-wall': 'snowrock', 'sand-wall': 'sandrock', 'dacite-wall': 'darkrock', 'dirt-wall': 'mossrock', 'spore-wall': 'sporerock', 'carbon-wall': 'basaltrock', 'ferric-stone-wall': 'hotwall' };
+export const MPROP = new Set(['boulder', 'snow-boulder', 'sand-boulder', 'dacite-boulder', 'shale-boulder', 'basalt-boulder', 'spore-cluster']);
 // biomok: f: [alap, változat], wall, sand: fúrható homokos talaj, liq: [sekély, mély], x: [különleges talaj, gyakoriság]
 export const BIO = {
   stone:  { f: ['stone', 'dark'], wall: 'rock', sand: 'sandf', liq: ['water', 'deep'] },

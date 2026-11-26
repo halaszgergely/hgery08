@@ -2,32 +2,16 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, rcost, ucost } from './adat.js?v=202611262058';
-import { SN, ISN, LSN, UW } from './kepadat.js?v=202611262058';
-import { addSprite, spritesReady } from './rajz.js?v=202611262058';
+import { ITEMS, ITEM_IDS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, rcost, ucost } from './adat.js?v=202611262133';
+import { SN, ISN, LSN, UW } from './kepadat.js?v=202611262133';
+import { parseHjson } from './hjson.js?v=202611262133';
+import { addSprite, spritesReady } from './rajz.js?v=202611262133';
 
-export const MODS = [];          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
+export const MODS = [];
+export const MOD_SECTORS = [], MOD_PLANETS = [];   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
 
 /* ---------- HJSON (a Mindustry modjainak lazább JSON-ja) ---------- */
-export function parseHjson(src) {
-  let i = 0; const s = src.replace(/^﻿/, '');
-  const ws = () => { for (;;) { while (i < s.length && /\s/.test(s[i])) i++; if (s[i] === '#' || (s[i] === '/' && s[i + 1] === '/')) { while (i < s.length && s[i] !== '\n') i++; continue; } if (s[i] === '/' && s[i + 1] === '*') { i = s.indexOf('*/', i + 2); i = i < 0 ? s.length : i + 2; continue; } break; } };
-  const wsLine = () => { while (i < s.length && (s[i] === ' ' || s[i] === '\t' || s[i] === '\r')) i++; };
-  const str = q => { let o = ''; i++; while (i < s.length && s[i] !== q) { if (s[i] === '\\') { i++; const c = s[i]; o += c === 'n' ? '\n' : c === 't' ? '\t' : c === 'u' ? String.fromCharCode(parseInt(s.substr(i + 1, 4), 16)) + ((i += 4), '') : c; } else o += s[i]; i++; } i++; return o; };
-  const ml = () => { i += 3; const e = s.indexOf("'''", i); const t = s.slice(i, e < 0 ? s.length : e); i = e < 0 ? s.length : e + 3; return t.replace(/^\n/, '').replace(/\n[ \t]*$/, ''); };
-  const key = () => { ws(); if (s[i] === '"' || s[i] === "'") return str(s[i]); let k = ''; while (i < s.length && !/[:\s{}\[\],]/.test(s[i])) k += s[i++]; return k; };
-  const bare = (stop) => { let t = ''; while (i < s.length && s[i] !== '\n' && !(stop && stop.test(s[i]))) { if ((s[i] === '/' && s[i + 1] === '/') || s[i] === '#') break; t += s[i++]; } t = t.trim(); if (t === 'true') return true; if (t === 'false') return false; if (t === 'null') return null; if (/^-?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?f?$/.test(t)) return parseFloat(t); return t; };
-  const val = () => {
-    ws(); const c = s[i];
-    if (c === '{') { i++; const o = {}; for (;;) { ws(); if (s[i] === '}') { i++; return o; } if (i >= s.length) return o; const k = key(); ws(); if (s[i] === ':') i++; o[k] = val(); ws(); if (s[i] === ',') i++; } }
-    if (c === '[') { i++; const a = []; for (;;) { ws(); if (s[i] === ']') { i++; return a; } if (i >= s.length) return a; a.push(val()); ws(); if (s[i] === ',') i++; } }
-    if (c === "'" && s.startsWith("'''", i)) return ml();
-    if (c === '"' || c === "'") return str(c);
-    wsLine(); return bare(/[,}\]]/);
-  };
-  ws(); if (s[i] !== '{' && s[i] !== '[') { const o = {}; while (i < s.length) { const k = key(); if (!k) break; ws(); if (s[i] === ':') i++; o[k] = val(); ws(); if (s[i] === ',') i++; ws(); } return o; }
-  return val();
-}
+export { parseHjson };
 
 /* ---------- ZIP olvasás (tömörítetlen és deflate) ---------- */
 export async function readZip(buf) {
@@ -64,7 +48,7 @@ export function installMod(files, srcLabel) {
   // nyelvi fájl: a magyar az első, aztán az angol alap
   const bundle = {}; for (const f of ['bundles/bundle.properties', 'bundles/bundle_hu.properties']) { const t = txt(f); if (t) for (const l of t.split(/\r?\n/)) { const m = l.match(/^\s*([^#=][^=]*?)\s*=\s*(.*)$/); if (m) bundle[m[1]] = m[2]; } }
   const pre = n => id + '-' + n, label = (kind, n) => bundle[`${kind}.${pre(n)}.name`] || bundle[`${kind}.${n}.name`] || human(n);
-  const content = {}; for (const [p] of files) { const m = p.match(/^content\/(items|liquids|blocks|units)\/(?:.*\/)?([^/]+)\.h?json$/); if (m) (content[m[1]] = content[m[1]] || []).push([m[2], parseHjson(txt(p))]); }
+  const content = {}; for (const [p] of files) { const m = p.match(/^content\/(items|liquids|blocks|units|sectors|planets)\/(?:.*\/)?([^/]+)\.h?json$/); if (m) (content[m[1]] = content[m[1]] || []).push([m[2], parseHjson(txt(p))]); }
   // sprite-ok: a fájlnév (kiterjesztés nélkül) a név; a modbeli tartalom a Mindustryhoz hasonlóan előtagot kap
   const spr = new Map(); for (const [p, d] of files) { const m = p.match(/^sprites\/(?:.*\/)?([^/]+)\.png$/); if (m) spr.set(m[1], d); }
   const sp = (...names) => { for (const n of names) if (spr.has(n)) return spr.get(n); return null; };
@@ -226,6 +210,14 @@ export function installMod(files, srcLabel) {
     const c = r && typeof r === 'object' && r.requirements ? stacks(r.requirements) : null;
     const need = kind === 'u' ? Object.keys(BLOCKS).find(b => (BLOCKS[b].plans || []).includes(key) || Object.values(BLOCKS[b].up || {}).includes(key)) : undefined;
     TECH.push({ id: id2, k: kind, key, req, need, cost: c || (kind === 'u' ? ucost(cost) : rcost(cost)), mod: id });
+  }
+  // bolygók és szektorok (Mindustry ContentParser: planet, sector) – a Java-ban írt bolygógenerátor nem fut, a szektorok pályája az msav
+  for (const [n, j] of content.planets || []) { const k = pre(n); MOD_PLANETS.push({ id: k, n: bundle[`planet.${k}.name`] || bundle[`planet.${n}.name`] || human(n), col: '#' + String(j.atmosphereColor || j.landCloudColor || '7f9cc8').slice(0, 6), mod: id }); }
+  for (const [n, j] of content.sectors || []) {
+    const map = files.get(`maps/${n}.msav`) || files.get(`maps/${j.map || n}.msav`); if (!map) { warn.push('a szektornak nincs pályája: ' + n); continue; }
+    const pl = String(j.planet || 'serpulo'), k = pre(n);
+    MOD_SECTORS.push({ id: k, n: bundle[`sector.${k}.name`] || bundle[`sector.${n}.name`] || human(n), d: bundle[`sector.${k}.description`] || bundle[`sector.${n}.description`] || '', planet: pl === 'serpulo' ? 'serpulo' : MOD_PLANETS.some(p => p.id === pre(pl)) ? pre(pl) : pl,
+      gi: j.sector ?? -1, win: +j.captureWave || 0, diff: +j.difficulty || 0, p: { alwaysUnlocked: !!j.alwaysUnlocked, captureWave: +j.captureWave || 0, startWaveTimeMultiplier: j.startWaveTimeMultiplier ?? 2 }, mapBytes: map, txt: bundle, camp: 'serpulo', mod: id });
   }
   MODS.push(mod); return mod;
 }
