@@ -1,7 +1,7 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611262220';
-import { toWorld } from './msav.js?v=202611262220';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611262220';
+import { genMapSerpulo } from './terkep.js?v=202611262244';
+import { toWorld } from './msav.js?v=202611262244';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611262244';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -362,10 +362,10 @@ export class World {
     if (b.B.type === 'core' || b.team === ENEMY || this.plans.some(p => p.brk && p.b === b)) return false;
     this.plans.push({ t: b.t, B: b.B, x: b.x, y: b.y, rot: b.rot, b, prog: 0, paid: {}, brk: true }); return true;
   }
-  cancelAt(x, y) { const n = this.plans.length; this.plans = this.plans.filter(p => { const hit = x >= p.x && y >= p.y && x < p.x + p.B.s && y < p.y + p.B.s; if (hit) { p.done = 1; for (const k in p.paid) this.addCore(k, p.paid[k]); } return !hit; }); return n !== this.plans.length; }
+  cancelAt(x, y) { const n = this.plans.length; this.plans = this.plans.filter(p => { const hit = x >= p.x && y >= p.y && x < p.x + p.B.s && y < p.y + p.B.s; if (hit) { p.done = 1; for (const k in p.paid) this.addCore(k, p.paid[k], 1); } return !hit; }); return n !== this.plans.length; }
   finishPlan(p) {
     p.done = 1;
-    if (p.brk) { if (!p.b.dead) { if (p.b.team === PLAYER) for (const k in p.B.cost) this.addCore(k, Math.floor(p.B.cost[k] * REFUND)); this.remB(p.b); } return; }
+    if (p.brk) { if (!p.b.dead) { if (p.b.team === PLAYER) for (const k in p.B.cost) this.addCore(k, Math.floor(p.B.cost[k] * REFUND), 1); this.remB(p.b); } return; }
     if (p.B.type === 'core' && this.zoneOk(p.B, p.x, p.y) && !(p.x <= this.core.x && p.y <= this.core.y && p.x + p.B.s >= this.core.x + this.core.B.s && p.y + p.B.s >= this.core.y + this.core.B.s)) { this.clearFor(p); this.addB(p.t, p.x, p.y, 0); this.capV = -1; return; }   // új mellékmag a magzónán
     if (p.B.type === 'core') {
       const old = this.core, items = old.items; this.remB(old); const nb = this.addB(p.t, p.x, p.y, 0); nb.items = items; this.core = nb;
@@ -389,7 +389,8 @@ export class World {
     if (p.cleared) return; p.cleared = 1; p.prev = p.prev || [];
     for (let yy = 0; yy < p.B.s; yy++) for (let xx = 0; xx < p.B.s; xx++) { const o = this.tb(p.x + xx, p.y + yy); if (o && !o.dead && o.B.type !== 'core' && !p.prev.includes(o)) { p.prev.push(o); this.remB(o); } }
   }
-  addCore(k, n) { const c = this.core.items; c[k] = Math.min(this.coreCap(), (c[k] || 0) + n); }
+  // a magba érkező anyag; a beérkezést számoljuk (Mindustry stats.coreItemCount), a visszatérítést nem
+  addCore(k, n, refund) { const c = this.core.items; c[k] = Math.min(this.coreCap(), (c[k] || 0) + n); if (!refund) this.stats.coreIn[k] = (this.stats.coreIn[k] || 0) + n; }
   has(cost, mult = 1) { const c = this.core.items; for (const k in cost) if ((c[k] || 0) < Math.ceil(cost[k] * mult)) return false; return true; }
 
   /* ----- áram ----- */
@@ -1156,7 +1157,7 @@ export class World {
     if (pl) this.buildPlan(p, pl);
   }
   buildPlan(u, pl) {
-    if (pl.done) return; const drop = () => { pl.done = 1; const k = this.plans.indexOf(pl); if (k >= 0) this.plans.splice(k, 1); for (const it in pl.paid) this.addCore(it, pl.paid[it]); };
+    if (pl.done) return; const drop = () => { pl.done = 1; const k = this.plans.indexOf(pl); if (k >= 0) this.plans.splice(k, 1); for (const it in pl.paid) this.addCore(it, pl.paid[it], 1); };
     if (pl.brk ? pl.b.dead : !this.okTiles(pl.B, pl.x, pl.y, false)) return drop();
     u.building = pl; const dp = u.U.build / buildTime(pl.B);
     if (!pl.brk && pl.B.type !== 'core') this.clearFor(pl);
@@ -1236,7 +1237,6 @@ export class World {
       const f = this.front(b); if (f && f !== b && (f.B.heatReq || f.B.type === 'heatcond')) f.hIn += b.hOut; }
     if (this.actV !== this.ver) { this.actV = this.ver; this.act = [...this.teamB(PLAYER), ...this.teamB(ENEMY).filter(b => b.B.type === 'turret')]; }   // csak a játékos épületei és az ellenséges tornyok frissülnek
     for (const b of this.act) { if (b.off || b.dead) continue; if (b.team === PLAYER) this.updB(b); else if (b.team === ENEMY) this.updFoeTurret(b); }
-    if (this.tick % 10 === 0) { const c = this.core.items, l = this.lastCore, S = this.stats.coreIn; for (const k in c) { const d = (c[k] || 0) - (l[k] || 0); if (d > 0) S[k] = (S[k] || 0) + d; l[k] = c[k]; } }
     for (const u of this.units) if (u.carrier) { if (u.carrier.dead) u.carrier = null; else { u.x = u.carrier.x; u.y = u.carrier.y; } }
     if (this.onTick) this.onTick();
     if (!this.player || this.player.dead) { if (this.respawn-- <= 0) this.spawnPlayer(); }
