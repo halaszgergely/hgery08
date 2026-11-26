@@ -1,6 +1,6 @@
 // Kohóvár – a Mindustry .msav pályafájlok olvasója (az eredeti io/SaveVersion, MapIO formátum alapján).
 // A Mindustry y tengelye felfelé nő, a Kohóváré lefelé: a sorokat itt fordítjuk meg.
-import { parseHjson } from './hjson.js?v=202611262133';
+import { parseHjson } from './hjson.js?v=202611262157';
 
 async function inflate(buf) {
   const ds = new DecompressionStream('deflate'), s = new Blob([buf]).stream().pipeThrough(ds);
@@ -37,7 +37,7 @@ export async function readMsav(buf) {
   for (let c = r.s(), k = 0; k < c; k++) { const key = r.utf(); meta[key] = r.utf(); }
   r.p = st + n;
   const content = {};
-  for (const reg of ver >= 12 ? ['patches', 'content'] : ['content', 'patches']) {
+  for (const reg of ver >= 12 ? ['patches', 'content'] : ver >= 11 ? ['content', 'patches'] : ['content']) {   // a 11 előtti mentésekben nincs patches-régió
     [st, n] = region();
     if (reg === 'content') for (let m = r.ub(), k = 0; k < m; k++) { const t = r.b(), tot = r.s(), a = []; for (let j = 0; j < tot; j++) a.push(r.utf()); content[t] = a; }
     r.p = st + n;
@@ -47,29 +47,30 @@ export async function readMsav(buf) {
   for (let i = 0; i < N;) { const fl = r.s(), o = r.s(), c = r.ub(); for (let j = i; j <= i + c && j < N; j++) { floor[j] = fl; ore[j] = o; } i += c + 1; }
   const builds = [];
   for (let i = 0; i < N; i++) {
-    const b = r.s(), pk = r.b(), he = pk & 1, hd = pk & 4; if (hd) r.p += 7;
+    const b = r.s(), pk = r.b(), he = pk & 1, hd = pk & 4, ho = ver < 10 && (pk & 2); if (hd) r.p += 7;
     let center = true; if (he) center = r.ub() !== 0;
     block[i] = b;
     if (he) {
       if (center) {
-        const ln = r.i(), s0 = r.p; r.b(); const o = base(r); o.x = i % w; o.y = (i / w) | 0; o.id = b;
+        const ln = ver < 10 ? r.us() : r.i(), s0 = r.p; /* a 10 előtti mentésekben rövid (short) a blokkhossz */ r.b(); const o = base(r); o.x = i % w; o.y = (i / w) | 0; o.id = b;
         if (o.ok && content[1][b] === 'world-processor') try { const cl = r.i(), d = await inflate(r.u.slice(r.p, r.p + cl)), q = new Rd(d); q.ub(); const bl = q.i(); o.code = new TextDecoder().decode(d.subarray(q.p, q.p + bl)); q.p += bl; o.links = []; for (let t = q.i(), k = 0; k < t; k++) { const nm = q.utf(), lx = q.s(), ly = q.s(); o.links.push([nm, lx, ly]); } } catch (e) { }
         builds.push(o); r.p = s0 + ln;
       }
-    } else if (!hd) { const c = r.ub(); for (let j = i + 1; j <= i + c; j++) block[j] = b; i += c; }
+    } else if (ho) r.p += 1;
+    else if (!hd) { const c = r.ub(); for (let j = i + 1; j <= i + c; j++) block[j] = b; i += c; }
   }
   let rules = {}; try { rules = parseHjson(meta.rules || '{}'); } catch (e) { }
   return { ver, meta, rules, names: content[1] || [], inames: content[0] || [], w, h, floor, ore, block, builds };
 }
 
 /* ----- pálya → Kohóvár-világ ----- */
-import { FLOORS, WALLS, TREES, MFLOOR, MWALL, MPROP, ITEM_IDS, BLOCKS } from './adat.js?v=202611262133';
-import { SN, ISN } from './kepadat.js?v=202611262133';
+import { FLOORS, WALLS, TREES, MFLOOR, MWALL, MPROP, ITEM_IDS, BLOCKS } from './adat.js?v=202611262157';
+import { SN, ISN } from './kepadat.js?v=202611262157';
 const DECO = new Set(['pebbles', 'tendrils', 'rune-overlay', 'char-overlay']);
 const FLK = Object.keys(FLOORS), WLK = Object.keys(WALLS);
 let INV = null;
 export function blockOf(mname) {
-  if (!INV) { INV = {}; for (const k in SN) if (BLOCKS[k] && !INV[SN[k]]) INV[SN[k]] = k; }
+  if (!INV) { INV = Object.create(null); for (const k in SN) if (BLOCKS[k] && !INV[SN[k]]) INV[SN[k]] = k; }
   return INV[mname] || null;
 }
 export function itemOf(mname) { for (const k in ISN) if (ISN[k] === mname) return k; return null; }
@@ -87,21 +88,21 @@ export function toWorld(m) {
     const on = m.ore[s] ? names[m.ore[s]] : null;
     if (on) {
       if (on === 'spawn') spawns.push({ x, y: h - 1 - my });
-      else if (on.startsWith('ore-')) { const it = ocache[on] ??= ITEM_IDS.indexOf(itemOf(on.slice(4))) + 1; if (it > 0) ore[i] = it; }
+      else if (on.startsWith('ore-')) { const it = ocache[on] ??= ITEM_IDS.indexOf(itemOf(on.replace(/^ore-(wall-|crystal-)?/, ''))) + 1; if (it > 0) ore[i] = it; }   // a falérc a fal csempéjén marad
       else if (DECO.has(on)) { props.push({ x, y: h - 1 - my, n: on + (1 + ((x * 7 + my * 13) % 3)), i }); prop[i] = 1; }
       else if (FLOORS[on] || MFLOOR[on]) floor[i] = fcache[on] ??= fi(on);
     }
     const bn = names[m.block[s]];
     if (bn && bn !== 'air') {
       if (MPROP.has(bn)) { props.push({ x, y: h - 1 - my, n: bn + (1 + ((x * 5 + my * 11) % 2)), r: ((x * 31 + my * 17) % 4) * 90, i }); prop[i] = 1; }
-      else { const wv = wcache[bn] ??= wi(bn); if (wv) { wall[i] = wv; if (TREES.has(bn)) props.push({ x, y: h - 1 - my, n: bn, r: ((x * 31 + my * 17) % 4) * 90, tree: 1, i }); } }
+      else { const wv = wcache[bn] ??= wi(bn); if (wv) { wall[i] = wv; if (TREES.has(bn)) props.push({ x, y: h - 1 - my, n: /^(crystal|vibrant)/.test(bn) ? bn + (1 + (x * 7 + my * 3) % 3) : bn, r: ((x * 31 + my * 17) % 4) * 90, tree: 1, i }); } }
     }
   }
   const mapB = [], scripts = []; let core = null;
   for (const b of m.builds) {
     const nm = names[b.id];
     if (b.code) { scripts.push({ x: b.x, y: h - 1 - b.y, team: b.team, code: b.code, links: (b.links || []).map(([n, lx, ly]) => [n, lx, h - 1 - ly]) }); continue; }
-    const t = blockOf(nm); if (!t) continue; const B = BLOCKS[t], o = (B.s - 1) >> 1, x = b.x - o, y = h - b.y + o - B.s;
+    const t = blockOf(nm) || (nm.startsWith('core-') ? (names.includes('core-bastion') || m.rules.planet === 'erekir' ? 'bastion' : 'core') : null); if (!t) continue;   /* ismeretlen magtípus: a bolygó alapmagja */ const B = BLOCKS[t], o = (B.s - 1) >> 1, x = b.x - o, y = h - b.y + o - B.s;
     const items = {}; if (b.items) for (const id in b.items) { const it = itemOf(m.inames[id]); if (it) items[it] = b.items[id]; }
     const e = { t, x, y, rot: B.rot ? ROT[b.rot & 3] : 0, team: b.team === 1 ? 1 : b.team === 0 ? 0 : 2, hp: b.hp, items, mx: b.x, my: b.y };
     if (B.type === 'core' && e.team === 1 && (!core || B.s > BLOCKS[core.t].s)) core = e; else mapB.push(e);

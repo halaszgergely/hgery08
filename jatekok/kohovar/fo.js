@@ -2,13 +2,13 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611262133';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611262133';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611262133';
-import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611262133';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611262133';
-import { SECTORS, GRID, TXT, PLANETS, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611262133';
-import { Story } from './logika.js?v=202611262133';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611262157';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611262157';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611262157';
+import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611262157';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611262157';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611262157';
+import { Story } from './logika.js?v=202611262157';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -22,10 +22,12 @@ S.seen = S.seen || {};
 if (!S.rv) { for (const id of [...S.research]) { const B = BLOCKS[id]; for (const u of [...(B && B.plans || []), ...Object.values(B && B.up || {})]) if (!S.research.includes('u:' + u)) S.research.push('u:' + u); } S.rv = 2; }   // a korábbi mentés: a már kikutatott gyárak egységei megmaradnak
 for (const k in S.bank) if (S.bank[k] > 0) S.seen['i:' + k] = 1;
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); return true; } catch (_) { return false; } };
+if (!S.research.includes('bastion')) S.research.push('bastion');
 if (S.runs) { delete S.runs.vegtelen; for (const k in S.runs) if (k !== 'free' && !SECTORS.some(s => s.id === k)) delete S.runs[k]; }   // a régi hadjárat szektorai megszűntek
 S.free = { ...FREE_DEF, ...(S.free || {}) }; S.seed = S.seed || (Math.random() * 1e9 | 0);
 for (const k in FREE_OPTS) if (!FREE_OPTS[k].some(x => x[0] === S.free[k])) S.free[k] = FREE_DEF[k];
-const done = id => (W && W.sec.unlockAll) || S.research.includes(id);
+const plOk = id => { const B = BLOCKS[id]; if (!B || !W) return true; const PI = plItems(SEC.planet || 'serpulo'); return Object.keys(B.cost).every(k => PI.includes(k)); };
+const done = id => ((W && W.sec.unlockAll) || S.research.includes(id)) && plOk(id);
 
 /* ---------- beállítások (SettingsMenuDialog) ---------- */
 const SET = { ui: 100, fps: 0, mini: 1, fx: 1, autosave: 1, ...(() => { try { return JSON.parse(localStorage.getItem('kohovar_beall')) || {}; } catch (_) { return {}; } })() };
@@ -109,7 +111,10 @@ function drawMenuBg() {
 
 /* ---------- raktár, szektorok ---------- */
 function secState(s) { if (S.cap[s.id]) return 'cap'; const n = NODE['s:' + s.id]; if (s.p.alwaysUnlocked || (n && nOpen(n)) || (!n && s.mod && S.cap.groundZero)) return 'open'; return 'lock'; }
-function bankHtml(extra, cols = 3) { const tot = { ...S.bank }; if (extra) for (const k in extra) tot[k] = (tot[k] || 0) + (extra[k] || 0); const l = ITEM_IDS.filter(k => tot[k] > 0); return l.length ? `<div class="grid" style="display:grid;grid-template-columns:repeat(${cols},auto);gap:2px 12px">${l.map(k => `<span>${itI(k)}${num(tot[k])}</span>`).join('')}</div>` : '<span class="lg">üres</span>'; }
+// a raktár közös, de bolygónként az ott használt anyagokat mutatja (a Mindustryban a két bolygó anyagai külön vannak)
+const plItems = pl => ITEM_PL[pl] || ITEM_IDS.filter(k => !ITEM_PL.erekir.includes(k) || ITEM_PL.serpulo.includes(k));
+const curPl = () => W ? (SEC.planet || 'serpulo') : pcur;
+function bankHtml(extra, cols = 3, pl = curPl()) { const tot = { ...S.bank }; if (extra) for (const k in extra) tot[k] = (tot[k] || 0) + (extra[k] || 0); const PI = plItems(pl), l = ITEM_IDS.filter(k => tot[k] > 0 && PI.includes(k)); return l.length ? `<div class="grid" style="display:grid;grid-template-columns:repeat(${cols},auto);gap:2px 12px">${l.map(k => `<span>${itI(k)}${num(tot[k])}</span>`).join('')}</div>` : '<span class="lg">üres</span>'; }
 
 /* ---------- hadjárat: a Serpulo bolygó (PlanetDialog) – az eredeti PlanetGrid csempéi, forgatható gömbön ---------- */
 let psel = null, PSTARS = null, g2 = null, pcur = 'serpulo';
@@ -117,6 +122,7 @@ const PV = { yaw: 0, pitch: .3, ty: null, tp: null, drag: null };
 const onP = s => (s.planet || 'serpulo') === pcur, secOf = gi => SECTORS.find(s => s.gi === gi && onP(s));
 function tileCol(v) {          // a csempe színe: egyszerű 3D-zaj (jég a sarkokon, víz, fű, kő, homok)
   const [x, y, z] = v, n = Math.sin(x * 3.1 + 1.3) * Math.cos(y * 2.7 - .4) + Math.sin(z * 3.7 + x * 1.9) * .6 + Math.cos(y * 5.3 + z * 2.1) * .3;
+  if (pcur === 'erekir') { const k = .75 + n * .2; return Math.abs(y) > .85 ? [150 * k, 70 * k, 50 * k] : n < -.4 ? [196 * k, 98 * k, 70 * k] : n > .5 ? [120 * k, 72 * k, 60 * k] : [176 * k, 110 * k, 72 * k]; }
   if (pcur !== 'serpulo') { const P = PLANETS.find(p => p.id === pcur), c = parseInt((P && P.col || '#9c7fc8').slice(1), 16), k = .6 + n * .25; return [(c >> 16 & 255) * k, (c >> 8 & 255) * k, (c & 255) * k]; }
   if (Math.abs(y) > .82) return [214, 226, 238]; if (n < -.55) return [54, 82, 140]; if (n < -.35) return [74, 108, 160];
   if (n > .75) return [118, 112, 122]; if (n > .35) return [92, 118, 82]; return y < -.3 ? [176, 150, 108] : [86, 110, 76];
@@ -125,7 +131,7 @@ function rotV([x, y, z]) { const cy = Math.cos(PV.yaw), sy = Math.sin(PV.yaw), c
 function planetGeo() { const c = $('#pcv'), w = c.clientWidth, h = c.clientHeight, R = Math.min(w, h) * .42; return { w, h, R, cx: w / 2, cy: h / 2 }; }
 function showPlanet() { closeAll(); $('#menu').hidden = true; showDlg('#planet', () => {}); const o = SECTORS.filter(s => secState(s) === 'open' && onP(s)); if (!psel || !onP(SECTORS.find(s => s.id === psel) || {})) psel = (o.find(s => S.runs[s.id]) || o[0] || SECTORS.find(onP) || SECTORS[0]).id; focusSec(psel, 1); planetTabs(); planetInfo(); Promise.all([document.fonts.load('16px mfont'), document.fonts.load('20px mico')]).then(() => { if (!$('#planet').hidden) drawPlanet(); }); planetLoop(); }
 function planetTabs() { const el = $('#ptabs'); if (!el) return; el.hidden = PLANETS.length < 2; el.innerHTML = PLANETS.map(p => `<button class="b np-button sm${p.id === pcur ? ' on' : ''}" data-pl="${p.id}">${esc(p.n)}</button>`).join(''); }
-function focusSec(id, now) { const s = SECTORS.find(q => q.id === id); if (!s) return; const [x, y, z] = GRID[s.gi].v; const yaw = Math.atan2(-x, z), pitch = Math.atan2(y, Math.hypot(x, z)); if (now) { PV.yaw = yaw; PV.pitch = pitch; PV.ty = null; } else { let d = yaw - PV.yaw; d = ((d + Math.PI * 3) % (Math.PI * 2)) - Math.PI; PV.ty = PV.yaw + d; PV.tp = pitch; } }
+function focusSec(id, now) { const s = SECTORS.find(q => q.id === id); if (!s) return; const [x, y, z] = (GRIDS[s.planet] || GRID)[s.gi].v; const yaw = Math.atan2(-x, z), pitch = Math.atan2(y, Math.hypot(x, z)); if (now) { PV.yaw = yaw; PV.pitch = pitch; PV.ty = null; } else { let d = yaw - PV.yaw; d = ((d + Math.PI * 3) % (Math.PI * 2)) - Math.PI; PV.ty = PV.yaw + d; PV.tp = pitch; } }
 let ploop = 0;
 function planetLoop() { if (ploop) return; const f = () => { if ($('#planet').hidden) { ploop = 0; return; } if (PV.ty != null) { PV.yaw += (PV.ty - PV.yaw) * .15; PV.pitch += (PV.tp - PV.pitch) * .15; if (Math.abs(PV.ty - PV.yaw) < .002 && Math.abs(PV.tp - PV.pitch) < .002) PV.ty = null; } drawPlanet(); ploop = requestAnimationFrame(f); }; ploop = requestAnimationFrame(f); }
 function drawPlanet() {
@@ -136,9 +142,9 @@ function drawPlanet() {
   const at = g2.createRadialGradient(cx, cy, R * .95, cx, cy, R * 1.12); at.addColorStop(0, 'rgba(120,150,255,.25)'); at.addColorStop(1, 'rgba(120,150,255,0)'); g2.fillStyle = at; g2.beginPath(); g2.arc(cx, cy, R * 1.12, 0, 7); g2.fill();
   const L = [-.45, .5, .74], P = p => [cx + p[0] * R, cy - p[1] * R];
   const vis = [];
-  GRID.forEach((t, gi) => { const v = rotV(t.v); if (v[2] < -.05) return; vis.push([gi, v]); });
+  const GR = GRIDS[pcur] || GRID; GR.forEach((t, gi) => { const v = rotV(t.v); if (v[2] < -.05) return; vis.push([gi, v]); });
   for (const [gi, v] of vis) {
-    const t = GRID[gi], s = secOf(gi), col = tileCol(t.v), lit = .35 + .65 * Math.max(0, v[0] * L[0] + v[1] * L[1] + v[2] * L[2]);
+    const t = GR[gi], s = secOf(gi), col = tileCol(t.v), lit = .35 + .65 * Math.max(0, v[0] * L[0] + v[1] * L[1] + v[2] * L[2]);
     g2.beginPath(); t.c.forEach((q, k) => { const [x, y] = P(rotV(q)); g2[k ? 'lineTo' : 'moveTo'](x, y); }); g2.closePath();
     g2.fillStyle = `rgb(${col[0] * lit | 0},${col[1] * lit | 0},${col[2] * lit | 0})`; g2.fill();
     g2.strokeStyle = 'rgba(0,0,0,.25)'; g2.lineWidth = 1; g2.stroke();
@@ -170,7 +176,7 @@ addEventListener('pointermove', e => { const d = PV.drag; if (!d) return; const 
 addEventListener('pointerup', () => { setTimeout(() => { PV.drag = null; }, 0); });
 $('#pcv').onclick = e => {
   if (PV.drag && PV.drag.m > 5) return; const { R, cx, cy } = planetGeo(), r = e.target.getBoundingClientRect(), z = SET.ui / 100, mx = (e.clientX - r.left) / z, my = (e.clientY - r.top) / z;
-  let best = null, bd = R * .1; for (const s of SECTORS) { if (!onP(s)) continue; const v = rotV(GRID[s.gi].v); if (v[2] < .1) continue; const d = Math.hypot(cx + v[0] * R - mx, cy - v[1] * R - my); if (d < bd) { bd = d; best = s.id; } }
+  let best = null, bd = R * .1; for (const s of SECTORS) { if (!onP(s)) continue; const v = rotV((GRIDS[pcur] || GRID)[s.gi].v); if (v[2] < .1) continue; const d = Math.hypot(cx + v[0] * R - mx, cy - v[1] * R - my); if (d < bd) { bd = d; best = s.id; } }
   if (best) { psel = best; focusSec(best); planetInfo(); }
 };
 $('#pinfo').onclick = e => { const b = e.target.closest('#pRestart'); if (!b) return; if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.innerHTML = `${ic('warning', 's')}Biztos? A mentés elvész`; return; } delete S.runs[psel]; persist(); start(SECTORS.find(s => s.id === psel), null); };
@@ -179,38 +185,41 @@ $('#pGo').onclick = () => { const s = SECTORS.find(q => q.id === psel); if (!s |
 $('#pTree').onclick = () => showTech();
 
 /* ---------- technológiafa (ResearchDialog): a gyökér középen, az ágak fölfelé és lefelé ---------- */
-let tsel = null, tzoom = 1, TPOS = null;
+let tsel = null, tzoom = 1, TPOS = null, tpl = 'serpulo';
+const TT_ = () => TECH.filter(t => (t.pl || 'serpulo') === tpl);
 const campRun = () => W && !W.sec.free;
 function techAvail() { const a = { ...S.bank }; if (campRun()) for (const k in W.core.items) a[k] = (a[k] || 0) + W.core.items[k]; return a; }
 function techSpend(cost) { for (const k in cost) { let n = cost[k]; if (campRun()) { const c = Math.min(n, W.core.items[k] || 0); W.core.items[k] = (W.core.items[k] || 0) - c; n -= c; } S.bank[k] = (S.bank[k] || 0) - n; } }
 let NODE = Object.fromEntries(TECH.map(t => [t.id, t]));
-const nDone = t => t.k === 'b' || t.k === 'u' ? S.research.includes(t.id) : t.k === 's' ? !!S.cap[t.key] : !!S.seen[t.id];
+const nDone = t => !t.req && t.k === 'b' ? true : t.k === 'b' || t.k === 'u' ? S.research.includes(t.rid || t.id) : t.k === 's' ? !!S.cap[t.key] : !!S.seen[t.k + ':' + t.key];
 const needOk = n => NODE[n] ? nDone(NODE[n]) : n.startsWith('s:') ? !!S.cap[n.slice(2)] : S.research.includes(n);
 const nOpen = t => (!t.req || nDone(NODE[t.req])) && (!t.need || (Array.isArray(t.need) ? t.need : [t.need]).every(needOk));
 const nName = t => t.k === 'b' ? BLOCKS[t.key].n : t.k === 'u' ? UNITS[t.key].n : t.k === 'i' ? ITEMS[t.key].n : t.k === 'l' ? LIQUIDS[t.key].n : SECTORS.find(s => s.id === t.key).n;
 const nCan = (t, av) => !nDone(t) && nOpen(t) && (t.k === 'b' || t.k === 'u') && Object.entries(t.cost).every(([k, n]) => (av[k] || 0) >= n);
 function layoutTech() {
-  if (TPOS) return TPOS; const kids = {}; for (const t of TECH) if (t.req) (kids[t.req] = kids[t.req] || []).push(t);
-  const pos = {}, rc = kids.core, half = Math.ceil(rc.length / 2);
+  TPOS = TPOS || {}; if (TPOS[tpl]) return TPOS[tpl]; const kids = {}, root = TECH_ROOT[tpl]; for (const t of TT_()) if (t.req) (kids[t.req] = kids[t.req] || []).push(t);
+  const pos = {}, rc = kids[root] || [], half = Math.ceil(rc.length / 2);
   const lay = (t, d, st) => { const ch = kids[t.id] || []; if (!ch.length) pos[t.id] = { x: st.leaf++, y: d, st }; else { ch.forEach(c => lay(c, d + st.dir, st)); const xs = ch.map(c => pos[c.id].x); pos[t.id] = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: d, st }; } };
   const up = { leaf: 0, dir: -1 }, dn = { leaf: 0, dir: 1 }; rc.slice(0, half).forEach(c => lay(c, -1, up)); rc.slice(half).forEach(c => lay(c, 1, dn));
-  for (const id in pos) pos[id].x -= (pos[id].st.leaf - 1) / 2; pos.core = { x: 0, y: 0 };
+  for (const id in pos) pos[id].x -= (pos[id].st.leaf - 1) / 2; pos[root] = { x: 0, y: 0 };
   const P = Object.values(pos), GX = 66, GY = 84, minX = Math.min(...P.map(p => p.x)), minY = Math.min(...P.map(p => p.y));
   for (const p of P) { p.px = 80 + (p.x - minX) * GX; p.py = 80 + (p.y - minY) * GY; }
-  return (TPOS = { pos, w: 216 + (Math.max(...P.map(p => p.x)) - minX) * GX, h: 216 + (Math.max(...P.map(p => p.y)) - minY) * GY });
+  return (TPOS[tpl] = { root, pos, w: 216 + (Math.max(...P.map(p => p.x)) - minX) * GX, h: 216 + (Math.max(...P.map(p => p.y)) - minY) * GY });
 }
-function showTech() { showDlg('#dTech', () => { if (W && STACK.length === 0) paused = false; if (W) buildPalette(); }); tsel = null; tzoom = Math.max(.55, Math.min(1, $('#tree').clientWidth / layoutTech().w)); drawTech(true); }
+$('#dTech').addEventListener('click', e => { const b = e.target.closest('[data-tp]'); if (!b) return; tpl = b.dataset.tp; tsel = null; tzoom = Math.max(.55, Math.min(1, $('#tree').clientWidth / layoutTech().w)); drawTech(true); });
+function showTech() { tpl = curPl() === 'erekir' ? 'erekir' : 'serpulo'; showDlg('#dTech', () => { if (W && STACK.length === 0) paused = false; if (W) buildPalette(); }); tsel = null; tzoom = Math.max(.55, Math.min(1, $('#tree').clientWidth / layoutTech().w)); drawTech(true); }
 function drawTech(center) {
-  const av = techAvail(), { pos, w, h } = layoutTech();
-  $('#tbank').innerHTML = `<div class="acc" style="margin-bottom:4px">Nyersanyagok <span class="lg">· ${TECH.filter(nDone).length}/${TECH.length}</span></div>${bankHtml(campRun() ? W.core.items : null, 3)}`;
+  const av = techAvail(), { pos, w, h, root } = layoutTech(), TL = TT_();
+  $('#ttabs').innerHTML = ['serpulo', 'erekir'].map(p => `<button class="b np-button sm${p === tpl ? ' on' : ''}" data-tp="${p}">${esc((PLANETS.find(q => q.id === p) || { n: p }).n)}</button>`).join('');
+  $('#tbank').innerHTML = `<div class="acc" style="margin-bottom:4px">Nyersanyagok <span class="lg">· ${TL.filter(nDone).length}/${TL.length}</span></div>${bankHtml(campRun() ? W.core.items : null, 3, tpl)}`;
   let svg = `<svg width="${w}" height="${h}">`, html = '';
-  for (const t of TECH) {
-    const p = pos[t.id], d = nDone(t), o = nOpen(t);
+  for (const t of TL) {
+    const p = pos[t.id], d = nDone(t), o = nOpen(t); if (!p) continue;
     if (t.req) { const q = pos[t.req], my = (q.py + p.py) / 2 + 28; svg += `<path d="M${q.px + 28} ${q.py + 28}V${my}H${p.px + 28}V${p.py + 28}" fill="none" stroke="${d ? '#ffd37f' : o ? '#6e7080' : '#454545'}" stroke-width="4"/>`; }
     html += `<div class="tn np-button ${d ? 'done' : o ? 'av' : 'lock'}${nCan(t, av) ? ' can' : ''}${tsel === t.id ? ' sel' : ''}" data-t="${t.id}" style="left:${p.px}px;top:${p.py}px"><img src="${nodeIcon(t)}"></div>`;
   }
   const tr = $('#tree'), ti = $('#treeIn'), sl = tr.scrollLeft, st = tr.scrollTop; ti.style.zoom = tzoom; ti.style.width = w + 'px'; ti.style.height = h + 'px'; ti.innerHTML = svg + '</svg>' + html;
-  if (center) { tr.scrollLeft = (pos.core.px + 28) * tzoom - tr.clientWidth / 2; tr.scrollTop = (pos.core.py + 28) * tzoom - tr.clientHeight / 2; } else { tr.scrollLeft = sl; tr.scrollTop = st; }
+  if (center) { tr.scrollLeft = (pos[root].px + 28) * tzoom - tr.clientWidth / 2; tr.scrollTop = (pos[root].py + 28) * tzoom - tr.clientHeight / 2; } else { tr.scrollLeft = sl; tr.scrollTop = st; }
   techInfo();
 }
 function techInfo() {
@@ -225,7 +234,7 @@ function techInfo() {
   } else h += `<div class="lg" style="margin-top:6px">${t.k === 's' ? 'Még nincs elfoglalva' : 'Még nem termelted'}</div>`;
   el.hidden = false; el.innerHTML = h;
 }
-function research() { const t = NODE[tsel]; if (!t || !nCan(t, techAvail())) return; techSpend(t.cost); S.research.push(t.id); persist(); drawTech(); if (W) buildPalette(); }
+function research() { const t = NODE[tsel]; if (!t || !nCan(t, techAvail())) return; techSpend(t.cost); S.research.push(t.rid || t.id); persist(); drawTech(); if (W) buildPalette(); }
 $('#tree').onclick = e => { if (moved > 4) return; const n = e.target.closest('.tn'); tsel = n ? n.dataset.t : null; drawTech(); };
 $('#tree').ondblclick = e => { if (e.target.closest('.tn')) research(); };
 $('#tinfo').onclick = e => { if (e.target.closest('#tGo')) research(); if (e.target.closest('#tInfo')) { const t = NODE[tsel]; if (t && (nOpen(t) || nDone(t))) showContent(t.k, t.key); } };
@@ -329,7 +338,7 @@ $('#saves').onclick = e => {
 const MCOL = { accent: 'acc', lightgray: 'lg', gray: 'lg', red: 'bad', scarlet: 'bad', green: 'ok', white: 'wh', unlaunched: 'lg', stat: 'acc', orange: 'acc', yellow: 'acc', sky: 'acc', royal: 'acc' };
 function mIcon(n) {
   const b = Object.keys(SN).find(k => SN[k] === n && BLOCKS[k]); if (b) return `<img class="mi" src="${blockIcon(b)}">`;
-  if (UNITS[n]) return `<img class="mi" src="${unitIcon(n)}">`;
+  if (Object.hasOwn(UNITS, n)) return `<img class="mi" src="${unitIcon(n)}">`;
   for (const k in ISN) if (ISN[k] === n) return itI(k); for (const k in LSN) if (LSN[k] === n) return lqI(k);
   if (n.startsWith('ore-') && sprSize(n + '1')) return `<img class="mi" src="${sprIcon(n + '1')}">`;
   return ic(n, 'xs');
@@ -345,18 +354,18 @@ function mtext(t) {
   }
   return o + '</span>'.repeat(open);
 }
-const toCoreT = m => { for (const b of m.builds) { const n = m.names[b.id]; if (b.team === 1 && n && n.startsWith('core-')) return { 'core-shard': 'core', 'core-foundation': 'foundation', 'core-nucleus': 'nucleus' }[n] || 'core'; } return 'core'; };
+const toCoreT = m => { for (const b of m.builds) { const n = m.names[b.id]; if (b.team === 1 && n && n.startsWith('core-')) return Object.keys(SN).find(k => SN[k] === n && BLOCKS[k]) || 'core'; } return 'core'; };
 let STORY = null;
 async function start(sec, save) {
   if (sec.camp === 'serpulo' && !sec.map) {
     let m; try { m = await loadMap(sec.id); } catch (e) { $('#pinfo').insertAdjacentHTML('beforeend', `<div class="bad">A pálya nem tölthető be</div>`); return; }
     const base = sec; sec = sectorFor(base, m);
-    if (!save && !base.p.alwaysUnlocked) { const cap = BLOCKS[toCoreT(m)] ? BLOCKS[toCoreT(m)].cap : 4000; for (const k in S.bank) { const n = Math.min(S.bank[k], Math.max(0, cap - (sec.start[k] || 0))); if (n > 0) { sec.start[k] = (sec.start[k] || 0) + n; S.bank[k] -= n; } } persist(); }   // kilövés: a raktárból a mag befogadóképességéig
+    if (!save && !base.p.alwaysUnlocked) { const cap = BLOCKS[toCoreT(m)] ? BLOCKS[toCoreT(m)].cap : 4000; for (const k of plItems(base.planet || 'serpulo')) { if (!(S.bank[k] > 0)) continue; const n = Math.min(S.bank[k], Math.max(0, cap - (sec.start[k] || 0))); if (n > 0) { sec.start[k] = (sec.start[k] || 0) + n; S.bank[k] -= n; } } persist(); }   // kilövés: a raktárból a mag befogadóképességéig
   }
   if (save && save.gv === 2) sec = { ...sec, gen: 2 };   // a korábbi barlangos térkép
   if (save && !save.gv) sec = { ...sec, gen: 1, ...(LEGACY_SIZE[sec.id] ? { w: LEGACY_SIZE[sec.id][0], h: LEGACY_SIZE[sec.id][1] } : {}) };   // régi mentés: a régi térképével töltjük vissza
   SEC = sec; W = new World(sec, save); TER = makeTerrain(W); selB = null; selBlock = null; paused = false; cam.free = null; cam.z = 4; STORY = null;
-  if (sec.map) STORY = W.story = new Story(W, sec.map, textsFor(SECTORS.find(q => q.id === sec.id) || {}, sec.map), { unlocked: c => { const r = contentOf(c); if (!r) return true; const id = r[0] === 'b' ? r[1] : r[0] + ':' + r[1]; return NODE[id] ? nDone(NODE[id]) : r[0] === 'i' ? !!S.seen[id] || (W.core.items[r[1]] > 0) : true; }, content: c => contentOf(c) || ['i', 'copper'], icon: (k, key) => k === 'b' ? `:${SN[key]}:` : k === 'u' ? `:${key}:` : k === 'i' ? `:${ISN[key]}:` : k === 'l' ? `:${LSN[key]}:` : '', name: (k, key) => k === 'b' ? BLOCKS[key].n : k === 'u' ? UNITS[key].n : k === 'i' ? ITEMS[key].n : k === 'l' ? LIQUIDS[key].n : key });
+  if (sec.map) STORY = W.story = new Story(W, sec.map, textsFor(SECTORS.find(q => q.id === sec.id) || {}, sec.map), { unlocked: c => { const r = contentOf(c); if (!r) return true; if (r[0] === 'b' || r[0] === 'u') return S.research.includes(r[0] === 'u' ? 'u:' + r[1] : r[1]); if (r[0] === 's') return !!S.cap[r[1]]; return !!S.seen[r[0] + ':' + r[1]] || (W.core.items[r[1]] > 0); }, content: c => contentOf(c) || ['i', 'copper'], icon: (k, key) => k === 'b' ? `:${SN[key]}:` : k === 'u' ? `:${key}:` : k === 'i' ? `:${ISN[key]}:` : k === 'l' ? `:${LSN[key]}:` : '', name: (k, key) => k === 'b' ? BLOCKS[key].n : k === 'u' ? UNITS[key].n : k === 'i' ? ITEMS[key].n : k === 'l' ? LIQUIDS[key].n : key });
   if (MODS.length) sec.ranked = 0;   // modokkal nincs ranglista
   W.onWave = n => { W.msg(`${n}. hullám`); if (sec.free && sec.ranked) { if (n > (S.best || 0)) { S.best = n; persist(); } try { if (INFRAME) parent.postMessage({ hgws: 'score', game: GAME, score: n }, location.origin); } catch (_) { } } };
   W.canUnit = t => !!sec.unlockAll || S.research.includes('u:' + t);
@@ -382,7 +391,7 @@ $('#endOk').onclick = () => closeDlg('#dEnd');
 /* ---------- építőpaletta (PlacementFragment) ---------- */
 const CATICON = { turret: 'turret', prod: 'production', dist: 'distribution', liquid: 'liquid', power: 'power', def: 'defense', craft: 'crafting', units: 'units', effect: 'effect' };
 function buildPalette() {
-  if (!BUILD_ORDER[cat].some(done)) cat = CATS.find(c => BUILD_ORDER[c[0]].some(done))[0];
+  if (!BUILD_ORDER[cat].some(done)) { const c0 = CATS.find(c => BUILD_ORDER[c[0]].some(done)); if (c0) cat = c0[0]; }
   $('#cats').innerHTML = CATS.map(([id, n]) => BUILD_ORDER[id].some(done) ? `<button data-c="${id}" class="${id === cat ? 'on' : ''}" title="${esc(n)}">${ic(CATICON[id] || 'box')}</button>` : '').join('');
   $('#blks').innerHTML = BUILD_ORDER[cat].filter(done).map(t => `<div class="bk ${t === selBlock ? 'on' : ''} ${W && !W.has(BLOCKS[t].cost) ? 'no' : ''}" data-b="${t}" title="${esc(BLOCKS[t].n)}"><img src="${blockIcon(t)}"></div>`).join('');
 }
@@ -503,7 +512,7 @@ cv.addEventListener('pointerdown', e => {
   if (b && b.B.door) { b.open = !b.open; W.fdirty = 1; return; }
   if (b) { selB = b; selHtml(); return; }
   const i = ty * W.w + tx, p = W.player;
-  if (W.inb(tx, ty) && W.seen[i] && p && W.mineItem(i, p.U.mineT, 1)) { p.mine = p.mine === i ? -1 : i; return; }
+  if (W.inb(tx, ty) && W.seen[i] && p && W.mineItem(i, p.U.mineT, p.U.mineW ? 'w' : 1)) { p.mine = p.mine === i ? -1 : i; return; }
   selB = null; $('#sel').hidden = true; M.l = true;
 });
 window.addEventListener('pointermove', e => { updMouse(e); });
@@ -629,7 +638,7 @@ function overlay(gx, z) {
     const R = RANGE(B) + (B.type === 'turret' ? W.rangeBonus(selB) : 0); if (R) ring(c.x, c.y, R, B.type === 'bridge' || B.type === 'lbridge');
     if (B.type === 'driver' && selB.link >= 0 && W.bt[selB.link]) { const o = W.center(W.bt[selB.link]); gx.strokeStyle = 'rgba(255,211,127,.8)'; gx.lineWidth = lw; gx.beginPath(); gx.moveTo(c.x, c.y); gx.lineTo(o.x, o.y); gx.stroke(); }
   } else if (!selBlock && W.inb(tx, ty)) {
-    const i = ty * W.w + tx; if (!W.tb(tx, ty) && W.seen[i] && W.player && W.mineItem(i, W.player.U.mineT, 1)) { gx.strokeStyle = 'rgba(255,255,255,.5)'; gx.lineWidth = lw; gx.strokeRect(tx * TS, ty * TS, TS, TS); }
+    const i = ty * W.w + tx; if (!W.tb(tx, ty) && W.seen[i] && W.player && W.mineItem(i, W.player.U.mineT, W.player.U.mineW ? 'w' : 1)) { gx.strokeStyle = 'rgba(255,255,255,.5)'; gx.lineWidth = lw; gx.strokeRect(tx * TS, ty * TS, TS, TS); }
   }
 }
 function frame(now) {

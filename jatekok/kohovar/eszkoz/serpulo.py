@@ -1,8 +1,10 @@
 # A Mindustry Serpulo-hadjáratának adatai a forráskódból: szektorrács (PlanetGrid), szektorok (SectorPresets),
 # kutatási fa (SerpuloTechTree) és a magyar (angol tartalékkal) szövegek. Kimenet: serpulo.json
-# Futtatás: python3 serpulo.py <mindustry-gyökér> <kimeneti fájl>
+# Futtatás: python3 serpulo.py <mindustry-gyökér> <kimeneti fájl> [serpulo|erekir]
 import sys, re, json, math
 root, out = sys.argv[1], sys.argv[2]
+PL = sys.argv[3] if len(sys.argv) > 3 else 'serpulo'          # serpulo vagy erekir
+LEVEL = {'serpulo': 3, 'erekir': 2}[PL]
 src = lambda p: open(f'{root}/core/src/mindustry/{p}', encoding='utf8').read()
 
 # ---- PlanetGrid (az eredeti algoritmus, élek nélkül) ----
@@ -49,20 +51,20 @@ def subdivide(prev, size):
         for k in range(t.n): add_corner(nc, tiles, corners, t.id, t.tiles[(k + t.n - 1) % t.n].id, t.tiles[k].id); nc += 1
     connect(corners); return tiles, corners
 g = initial()
-for s in range(1, 4): g = subdivide(g, s)
+for s in range(1, LEVEL + 1): g = subdivide(g, s)
 tiles, corners = g
 GRID = [{'v': [round(a, 5) for a in t.v], 'c': [[round(a, 5) for a in c.v] for c in t.corners], 'n': [x.id for x in t.tiles]} for t in tiles]
 
 # ---- szektorok ----
-sp = src('content/SectorPresets.java'); ser = sp[sp.index('//region serpulo'):sp.index('//endregion', sp.index('//region serpulo'))]
+sp = src('content/SectorPresets.java'); ser = sp[sp.index('//region ' + PL):sp.index('//endregion', sp.index('//region ' + PL))]
 PRE = {}
-for m in re.finditer(r'(\w+) = new SectorPreset\("([\w-]+)", serpulo, (-?\d+)\)\{\{(.*?)\}\};', ser, re.S):
+for m in re.finditer(r'(\w+) = new SectorPreset\("([\w-]+)", ' + PL + r', (-?\d+)\)\{\{(.*?)\}\};', ser, re.S):
     o = {'id': m.group(2), 'sector': int(m.group(3))}
     for k, v in re.findall(r'(\w+) = ([^;]+);', m.group(4)): o[k] = json.loads(v.rstrip('f')) if re.match(r'^[\d.]+f?$|^true$|^false$', v) else v
     PRE[m.group(1)] = o
 
 # ---- kutatási fa ----
-tt = src('content/SerpuloTechTree.java'); body = tt[tt.index('nodeRoot('):]
+tt = src('content/' + {'serpulo': 'SerpuloTechTree', 'erekir': 'ErekirTechTree'}[PL] + '.java'); body = tt[tt.index('nodeRoot('):]
 def camel2kebab(s): return re.sub(r'(?<!^)(?=[A-Z0-9])', '-', s).lower().replace('-', '-')
 def match_paren(s, i):
     d = 0
@@ -99,13 +101,13 @@ def parse_body(s):
                 n['ch'] = parse_body(x[x.index('{') + 1:x.rindex('}')])
         nodes.append(n)
 a = body.index('('); b = match_paren(body, a); args = split_args(body[a + 1:b])
-TREE = {'k': 'root', 'c': args[1], 'req': [], 'cost': None, 'ch': parse_body(args[2][args[2].index('{') + 1:args[2].rindex('}')])}
+TREE = {'k': 'root', 'c': args[1], 'req': [], 'cost': None, 'ch': parse_body(args[-1][args[-1].index('{') + 1:args[-1].rindex('}')])}
 def norm(n):
     c = n['c']
-    if '.' in c: kind, nm = c.split('.')[-2:]; n['c'] = ('item:' if kind == 'Items' else 'liquid:') + camel2kebab(nm)
+    if '.' in c: kind, nm = c.split('.')[-2:]; n['c'] = ('item:' if kind == 'Items' else 'liquid:' if kind == 'Liquids' else 'content:') + camel2kebab(nm)
     elif c in PRE: n['c'] = 'sector:' + PRE[c]['id']
     else: n['c'] = 'content:' + camel2kebab(c)
-    n['req'] = [[k, ('sector:' + PRE[v]['id']) if v in PRE else ('item:' + camel2kebab(v.split('.')[1]) if v.startswith('Items.') else 'liquid:' + camel2kebab(v.split('.')[1]) if v.startswith('Liquids.') else 'content:' + camel2kebab(v))] for k, v in n['req']]
+    n['req'] = [[k, ('sector:' + PRE[v]['id']) if v in PRE else ('item:' + camel2kebab(v.split('.')[1]) if v.startswith('Items.') else 'liquid:' + camel2kebab(v.split('.')[1]) if v.startswith('Liquids.') else 'content:' + camel2kebab(v.split('.')[-1]))] for k, v in n['req']]
     for ch in n['ch']: norm(ch)
 norm(TREE)
 
@@ -121,9 +123,9 @@ def props(p):
 en, hu = props(f'{root}/core/assets/bundles/bundle.properties'), props(f'{root}/core/assets/bundles/bundle_hu.properties')
 need = set()
 for o in PRE.values(): need |= {f"sector.{o['id']}.name", f"sector.{o['id']}.description", f"sector.{o['id']}.details"}
-need |= {k for k in en if k.startswith(('objective.', 'gz.', 'atolls.', 'frontier.', 'onset.', 'aegis.', 'split.', 'sector.curcapture', 'sector.capture', 'sector.lost', 'wave.', 'threat.', 'sectors.', 'hint.'))}
+need |= {k for k in en if k.startswith(('objective.', 'gz.', 'atolls.', 'frontier.', 'onset.', 'aegis.', 'split.', 'lake.', 'intersect.', 'atlas.', 'basin.', 'marsh.', 'peaks.', 'ravine.', 'caldera.', 'stronghold.', 'crevice.', 'siege.', 'crossroads.', 'karst.', 'origin.', 'planet.', 'sector.curcapture', 'sector.capture', 'sector.lost', 'wave.', 'threat.', 'sectors.', 'hint.'))}
 import glob
-for f in glob.glob(f'{root}/core/assets/maps/serpulo/*.msav'):
+for f in glob.glob(f'{root}/core/assets/maps/{PL}/*.msav'):
     import zlib
     raw = zlib.decompress(open(f, 'rb').read()).decode('latin1')
     need |= set(re.findall(r'@([a-z][\w.]+)', raw)) | set(re.findall(r'localeprint "([\w.]+)"', raw))

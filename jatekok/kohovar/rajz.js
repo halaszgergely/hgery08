@@ -1,8 +1,8 @@
 // Kohóvár – kirajzolás. A blokkok, egységek, anyagok és a talaj képei a Mindustry (Anuke és közreműködők, GPLv3) sprite-jai,
 // a kepek/atlasz.png atlaszból; a lövedékek, hatások, köd és kisérkép kódból rajzoltak.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611262133';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611262133';
-import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611262133';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611262157';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611262157';
+import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611262157';
 
 const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555', 0: '#4d4e58' };
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -12,7 +12,7 @@ const circ = (g, x, y, r) => { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); };
 
 /* ---------- atlasz ---------- */
 let AT = null, IMG = null; const TC = new Map();
-const AV = '?a=2';   // az atlasz verziója: újracsomagolás után növelni kell, hogy a kép és a térképe együtt frissüljön
+const AV = '?a=3';   // az atlasz verziója: újracsomagolás után növelni kell, hogy a kép és a térképe együtt frissüljön
 export function loadAtlas(base = 'kepek/') {
   return fetch(base + 'atlasz.json' + AV).then(r => r.json()).then(j => new Promise((ok, no) => { const im = new Image(); im.onload = () => { AT = j; IMG = im; ok(); }; im.onerror = no; im.src = base + 'atlasz.png' + AV; }));
 }
@@ -58,10 +58,16 @@ export function makeTerrain(W) {
       const lx = x & ~1, ly = y & ~1, n = wname(i);
       if (big(lx, ly)) { if (x === lx && y === ly) img(g, n + '-large', X, Y, T * 2); }
       else img(g, AT[n + '1'] ? n + (1 + (hash(x, y, 5) * (AT[n + '3'] ? 3 : 2) | 0)) : n, X, Y, T);
+      const wo = W.ore[i]; if (wo) img(g, 'ore-wall-' + ISN[ITEM_IDS[wo - 1]] + (1 + (hash(x, y, 31) * 3 | 0)), X, Y, T);
       return;
     }
-    const [fn, fv] = FSPR[FL[W.floor[i]]] || FSPR.stone;
-    if (fv === 'a') {          // autotile (Mindustry Floor.autotile): a 4×4-es lap cellája a szomszédok szerint
+    const [fn, fv, fp] = FSPR[FL[W.floor[i]]] || FSPR.stone;
+    if (fv === 'v') {          // gőzkürtő (Mindustry SteamVent): 3×3-as sprite, a közepe az a csempe, amelynek mind a 8 szomszédja kürtő
+      const f = W.floor[i], vs = (xx, yy) => xx >= 0 && yy >= 0 && xx < w && yy < h && W.floor[yy * w + xx] === f, ctr = (xx, yy) => { for (let k = 0; k < 8; k++) if (!vs(xx + NX[k], yy + NY[k])) return false; return vs(xx, yy); };
+      let dx = 9, dy = 9; for (let k = -1; k < 8 && dx === 9; k++) { const ox = k < 0 ? 0 : NX[k], oy = k < 0 ? 0 : NY[k]; if (ctr(x + ox, y + oy)) { dx = -ox; dy = -oy; } }
+      const [pn, pv] = FSPR[fp] || FSPR.stone; img(g, pv ? pn + (1 + (hash(x, y) * pv | 0)) : pn, X, Y, T);
+      if (dx !== 9) { const r = AT[fn + '1']; if (r) g.drawImage(r[4] || IMG, r[0] + (dx + 1) * r[2] / 3, r[1] + (dy + 1) * r[3] / 3, r[2] / 3, r[3] / 3, X, Y, T, T); }
+    } else if (fv === 'a') {          // autotile (Mindustry Floor.autotile): a 4×4-es lap cellája a szomszédok szerint
       const f = W.floor[i], same = (xx, yy) => xx >= 0 && yy >= 0 && xx < w && yy < h && W.floor[yy * w + xx] === f, l = same(x - 1, y), r = same(x + 1, y), u = same(x, y - 1), d = same(x, y + 1);
       const cx = l && r ? 1 : !l && !r ? 3 : !l ? 0 : 2, cy = u && d ? 1 : !u && !d ? 3 : !u ? 0 : 2;
       img(g, cx === 3 && cy !== 3 ? `${fn}-a3${cy}` : cy === 3 && cx !== 3 ? `${fn}-a${cx}3` : `${fn}-a${cx}${cy}`, X, Y, T);
@@ -116,7 +122,7 @@ function drawB(g, W, b, t) {
   const B = b.B, s = B.s * TS, x = b.x * TS, y = b.y * TS, cx = x + s / 2, cy = y + s / 2, id = b.t, n = SN[id], R = b.rot * Math.PI / 2, wk = b.work || 0;
   const liqRect = (liq, a, inset = .12) => { if (!liq || a <= .02) return; g.globalAlpha = Math.min(1, a); g.fillStyle = LIQUIDS[liq].c; g.fillRect(x + s * inset, y + s * inset, s * (1 - 2 * inset), s * (1 - 2 * inset)); g.globalAlpha = 1; };
   switch (B.type) {
-    case 'conveyor': { const [bt, sy] = blend(W, b), fr = Math.floor(t * B.mv * 8) % 4; spr(g, `${n}-${bt}-${fr}`, cx, cy, R, 1, sy); break; }
+    case 'conveyor': { const [bt, sy] = blend(W, b); if (B.duct) { spr(g, 'duct-bottom-' + bt, cx, cy, R, 1, sy); spr(g, `${n}-top-${bt}`, cx, cy, R, 1, sy); break; } const fr = Math.floor(t * B.mv * 8) % 4; spr(g, `${n}-${bt}-${fr}`, cx, cy, R, 1, sy); break; }
     case 'sconv': {
       const start = W && !W.nbs(b).some(o => o.B.type === 'sconv' && W.front(o) === b), nx = W && W.tb(b.x + DX[b.rot], b.y + DY[b.rot]), end = W && !(nx && nx.B.type === 'sconv');
       spr(g, n + (start ? '-1' : end ? '-2' : '-0'), cx, cy, R); for (const d of [1, 3]) { const o = W && W.tb(b.x + DX[(b.rot + d) % 4], b.y + DY[(b.rot + d) % 4]); if (!(o && o.B.type === 'sconv' && W.front(o) === b)) spr(g, n + '-edge', cx, cy, R + (d === 1 ? Math.PI / 2 : -Math.PI / 2) - Math.PI / 2); }
@@ -134,12 +140,20 @@ function drawB(g, W, b, t) {
     }
     case 'lrouter': spr(g, n + '-bottom', cx, cy); liqRect(b.lt, b.lq / B.lcap); spr(g, n, cx, cy); break;
     case 'diode': spr(g, n, cx, cy); spr(g, n + '-arrow', cx, cy, R); break;
+    case 'router': spr(g, n, cx, cy); if (B.fwd) spr(g, n + '-top', cx, cy, R); break;
+    case 'beamdrill': {
+      spr(g, n, cx, cy); if (b.lasers && wk > .02) { g.strokeStyle = `rgba(255,140,110,${.35 + .4 * wk})`; g.lineWidth = 1.2; for (const [ax, ay, bx2, by2] of b.lasers) { g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx2, by2); g.stroke(); } }
+      glow(g, n + '-glow', cx, cy, wk); spr(g, n + '-top', cx, cy, R); break;
+    }
+    case 'wcrafter': spr(g, n, cx, cy, R); spr(g, n + '-rotator-bottom', cx, cy, t * .05 * wk); spr(g, n + '-rotator', cx, cy, t * .05 * wk); spr(g, n + '-top', cx, cy, R); break;
+    case 'heater': case 'heatcond': spr(g, n, cx, cy); spr(g, n + (b.rot % 2 ? '-top2' : '-top1'), cx, cy, b.rot >= 2 ? R - Math.PI : R); glow(g, n + '-heat', cx, cy, Math.min(1, (b.hOut || 0) / (B.heatOut || 10)), R); break;
     case 'battery': spr(g, n, cx, cy); sprT(g, n + '-top', ['#f8c266', '#f9b866', '#faab66', '#fa9f67', '#fb9567'][Math.min(4, Math.floor((b.pw || 0) / B.capP * 5))], 1, cx, cy); break;
     case 'generator': {
       const m = B.mode;
       if (m === 'impact') { spr(g, n + '-bottom', cx, cy); for (let k = 0; k < 4; k++) { g.globalAlpha = b.warm * (.4 + .15 * k); spr(g, n + '-plasma-' + k, cx, cy, t * (.02 + k * .013) * (k % 2 ? 1 : -1)); } g.globalAlpha = 1; spr(g, n, cx, cy); glow(g, n + '-light', cx, cy, b.warm); break; }
       spr(g, n, cx, cy);
       if (m === 'reactor') { if (b.heat > .02) { g.fillStyle = `rgba(255,70,50,${b.heat * .6})`; g.fillRect(x + 2, y + 2, s - 4, s - 4); } spr(g, n + '-top', cx, cy); if (b.heat > .46 && Math.sin(t * .5) > 0) spr(g, n + '-lights', cx, cy); break; }
+      if (has(n + '-rotator')) spr(g, n + '-rotator', cx, cy, t * .1 * wk);
       if (id === 'steam') { spr(g, n + '-turbine', cx, cy, t * .08 * wk); spr(g, n + '-turbine', cx, cy, -t * .08 * wk + .6); spr(g, n + '-cap', cx, cy); }
       if (id === 'diffgen' && b.lq > .1) { g.globalAlpha = Math.min(1, b.lq / 10); sprT(g, n + '-liquid', LIQUIDS[b.lt].c, 0, cx, cy); g.globalAlpha = 1; }
       glow(g, n + '-top', cx, cy, wk * (.75 + .25 * Math.sin(t * .3))); break;
@@ -150,6 +164,8 @@ function drawB(g, W, b, t) {
       if (bot) { spr(g, n + '-bottom', cx, cy); liq(); if (rotN) spr(g, n + rotN, cx, cy, t * .06 * wk); spr(g, n, cx, cy); }
       else { spr(g, n, cx, cy); liq(); if (rotN) spr(g, n + rotN, cx, cy, t * .07 * wk); }
       if (has(n + '-middle')) glow(g, n + '-middle', cx, cy, wk);
+      if (B.rot && has(n + '-top1')) spr(g, n + (b.rot % 2 ? '-top2' : '-top1'), cx, cy, b.rot >= 2 ? R - Math.PI : R);
+      if (B.heatOut && has(n + '-heat')) glow(g, n + '-heat', cx, cy, Math.min(1, (b.hOut || 0) / B.heatOut));
       if (GLOWTOP.has(id)) glow(g, n + '-top', cx, cy, wk * (.7 + .3 * Math.sin(t * .25 + b.x))); else if (has(n + '-top')) spr(g, n + '-top', cx, cy);
       if (id === 'incinerator' && b.ps > .5) { g.fillStyle = `rgba(255,${150 + 60 * Math.sin(t * .3)},70,.9)`; circ(g, cx, cy, 1.6); }
       break;
@@ -175,7 +191,7 @@ function drawB(g, W, b, t) {
     }
     case 'repair': spr(g, id === 'repairpt' ? 'repair-point-base' : 'block-2', cx, cy); spr(g, n + '@o', cx, cy, (b.ang ?? -Math.PI / 2) + Math.PI / 2); break;
     case 'turret': {
-      spr(g, 'block-' + B.s, cx, cy); const a = (b.ang ?? -Math.PI / 2), rec = (b.heat || 0) * (B.s > 2 ? 2 : 1), hx = cx - Math.cos(a) * rec, hy = cy - Math.sin(a) * rec, hn = HEADS[id] || n + '@o';
+      spr(g, (B.ebase ? 'reinforced-block-' : 'block-') + B.s, cx, cy); const a = (b.ang ?? -Math.PI / 2), rec = (b.heat || 0) * (B.s > 2 ? 2 : 1), hx = cx - Math.cos(a) * rec, hy = cy - Math.sin(a) * rec, hn = HEADS[id] || n + '@o';
       if (B.lammo && b.lq > .2) { g.globalAlpha = Math.min(1, b.lq / B.lcap + .2); sprT(g, n + '-liquid', LIQUIDS[b.lt].c, 0, hx, hy, a + Math.PI / 2); g.globalAlpha = 1; }
       spr(g, hn, hx, hy, a + Math.PI / 2); if (B.lammo) spr(g, n + '-top', hx, hy, a + Math.PI / 2);
       if (b.heat > .05 && has(n + '-heat')) { g.globalCompositeOperation = 'lighter'; glow(g, n + '-heat', hx, hy, b.heat, a + Math.PI / 2); g.globalCompositeOperation = 'source-over'; }
@@ -205,6 +221,7 @@ export function drawUnit(g, t, team, x, y, a, walk, sc = 1) {
   } else if (has(t + '-leg@o')) {   // lépegető: a két láb felváltva előre-hátra csúszik
     const e = Math.sin(walk * .22) * U.r * .45; spr(g, t + '-leg@o', 0, -e); spr(g, t + '-leg@o', 0, e, 0, -1, 1); spr(g, t + '-base@o', 0, 0);
   }
+  if (has(t + '-treads')) spr(g, t + '-treads', 0, 0);
   weapons(false); spr(g, t + '@o', 0, 0);
   if (has(t + '-cell')) sprT(g, t + '-cell', TEAM[team], 1, 0, 0);
   weapons(true);
@@ -242,6 +259,7 @@ export function render(g, W, R) {
     if (b.beamT > 0 && b.bx != null) { const c = W.center(b); g.strokeStyle = '#ff9a5a'; g.lineWidth = 5 + Math.sin(t * .6); g.beginPath(); g.moveTo(c.x, c.y); g.lineTo(b.bx, b.by); g.stroke(); g.strokeStyle = '#fff3d0'; g.lineWidth = 2; g.stroke(); }
     if (b.B.type === 'repair' && b.tgt && !b.tgt.dead && b.ps > .1) { const c = W.center(b); g.strokeStyle = 'rgba(132,244,145,.8)'; g.lineWidth = 1; g.beginPath(); g.moveTo(c.x, c.y); g.lineTo(b.tgt.x, b.tgt.y); g.stroke(); }
   }
+  for (const b of W.blds) if (b.bml) for (const o of b.bml) { const a = W.center(b), c = W.center(o); if (Math.max(a.x, c.x) < vx0 || Math.min(a.x, c.x) > vx1 || Math.max(a.y, c.y) < vy0 || Math.min(a.y, c.y) > vy1) continue; g.strokeStyle = b.g && b.g.sat > .01 ? 'rgba(255,211,127,.7)' : 'rgba(150,150,150,.5)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(c.x, c.y); g.stroke(); }   // sugárcsomópontok (BeamNode)
   for (const b of W.blds) if (b.links) for (const o of b.links) { const a = W.center(b), c = W.center(o); if (Math.max(a.x, c.x) < vx0 || Math.min(a.x, c.x) > vx1 || Math.max(a.y, c.y) < vy0 || Math.min(a.y, c.y) > vy1) continue; const on = b.g && b.g.sat > 0 && b.g.prod + b.g.stored > 0; g.strokeStyle = on ? 'rgba(251,211,103,.55)' : 'rgba(110,104,96,.5)'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(c.x, c.y); g.stroke(); g.strokeStyle = on ? 'rgba(255,255,255,.55)' : 'rgba(160,160,160,.3)'; g.lineWidth = .5; g.stroke(); }
   for (const b of vb) if (b.hp < b.B.hp) { const s = b.B.s * TS; g.fillStyle = '#2a0f0f'; g.fillRect(b.x * TS + 1, (b.y + b.B.s) * TS - 1.6, s - 2, 1.2); g.fillStyle = '#ff6b5a'; g.fillRect(b.x * TS + 1, (b.y + b.B.s) * TS - 1.6, (s - 2) * Math.max(0, b.hp / b.B.hp), 1.2); }
   for (const p of W.plans) {
