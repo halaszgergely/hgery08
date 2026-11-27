@@ -3,10 +3,10 @@
    - Allisták: vizfuvar_fuvarok (teljesített fuvarok), vizfuvar_legjobb (a legjobb fuvar pontszáma), vizfuvar_dolgozok (alkalmazottak száma).
    - Vendég: becenévvel (nick mező), bejelentkezett felhasználó: a profil neve.
    - Mentés bejelentkezve: cloudsaves/<uid>/g/vizfuvar (ha a szabályok engedik; különben csak helyben). */
-import { GAME } from './config.js?v=202611271305';
+import { GAME } from './config.js?v=202611271349';
 
 let core = null, user = null, ready = null; const names = new Map();
-export function init() { if (ready) return ready; ready = (async () => { try { const v = new URL(import.meta.url).searchParams.get('v') || ''; core = await import('../../../js/core.js?v=202611271305' + (v ? '?v=' + v : '')); if (!core || core.notConfigured || !core.auth) { core = null; return; }
+export function init() { if (ready) return ready; ready = (async () => { try { const v = new URL(import.meta.url).searchParams.get('v') || ''; core = await import('../../../js/core.js?v=202611271349' + (v ? '?v=' + v : '')); if (!core || core.notConfigured || !core.auth) { core = null; return; }
     await new Promise(ok => { const un = core.FB.onAuthStateChanged(core.auth, u => { user = u; ok(); un && un(); }); setTimeout(ok, 4000); }); core.FB.onAuthStateChanged(core.auth, u => { user = u; }); } catch (e) { console.info('ranglista nem érhető el', e); core = null; } })(); return ready; }
 export const status = () => ({ on: !!core, user: !!user, guest: !!user?.isAnonymous, uid: user?.uid || null });
 export const getNick = () => { try { return localStorage.getItem('hgws_nick') || ''; } catch (_) { return ''; } };
