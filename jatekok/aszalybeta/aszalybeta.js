@@ -140,7 +140,10 @@ const AszalyBeta = (() => {
     { id: 'spd', n: 'Könnyű csizma', d: '+3% sebesség', mx: 5, c: 8 }, { id: 'mag', n: 'Vízérzék', d: '+10% gyűjtési távolság', mx: 5, c: 6 },
     { id: 'arm', n: 'Vastag kesztyű', d: '+1 páncél', mx: 3, c: 18 }, { id: 'reg', n: 'Esővíz-tároló', d: '+0,2 élet/mp', mx: 3, c: 14 },
     { id: 'cd', n: 'Pontos óra', d: '−3% töltési idő', mx: 5, c: 12 }, { id: 'xp', n: 'Tapasztalat', d: '+5% XP', mx: 5, c: 10 },
-    { id: 'rr', n: 'Új sorsolás', d: '+1 újrasorsolás körönként', mx: 3, c: 15 }, { id: 'gold', n: 'Aranyér', d: '+25% arany', mx: 3, c: 20 }
+    { id: 'rr', n: 'Új sorsolás', d: '+1 újrasorsolás körönként', mx: 3, c: 15 }, { id: 'gold', n: 'Aranyér', d: '+25% arany', mx: 3, c: 20 },
+    { id: 'area', n: 'Széles permet', d: '+5% hatóterület', mx: 2, c: 25 }, { id: 'dur', n: 'Lassú párolgás', d: '+10% időtartam', mx: 2, c: 22 },
+    { id: 'amt', n: 'Ikerfúvóka', d: '+1 lövedék a lövedékes fegyverekre', mx: 1, c: 120 }, { id: 'luck', n: 'Négylevelű kert', d: '+10% szerencse', mx: 3, c: 16 },
+    { id: 'rev', n: 'Forrásvíz', d: 'Egyszer feltámadsz fél élettel', mx: 1, c: 150 }, { id: 'curse', n: 'Szilárd átka', d: '+10% ellenség, +5% XP és arany', mx: 5, c: 6 }
   ];
   const metaGet = () => { try { return JSON.parse(localStorage.getItem('hgws_aszb_meta') || '{}') || {}; } catch (_) { return {}; } };
   const metaSet = m => { try { localStorage.setItem('hgws_aszb_meta', JSON.stringify(m)); } catch (_) {} };
@@ -160,8 +163,8 @@ const AszalyBeta = (() => {
     const c = chr();
     const M = S.meta || {}, mv = k => M[k] || 0;
     S.st = { speed: 150 * (1 + .09 * lv('csizma') + .03 * mv('spd')) * (c === 'bt' ? .94 : c === 'kt' ? 1.08 : 1), magnet: 62 * (1 + .35 * lv('magnes') + .1 * mv('mag')), dmg: 1 + .12 * lv('nyomas') + .05 * mv('dmg'),
-      cd: (1 - .07 * lv('idozito') - .03 * mv('cd')) * (c === 'zr' ? .9 : 1), area: (1 + .1 * lv('fuvoka')) * (c === 'rl' ? 1.1 : 1), dur: 1 + .15 * lv('hosszabbito'),
-      armor: lv('kesztyu') + (c === 'gt' ? 1 : 0) + mv('arm'), regen: .3 * lv('gyujto') + .2 * mv('reg'), extra: lv('tartaly'), luck: 1 + .3 * lv('lohere'), xp: (c === 'gh' ? 1.1 : 1) + .05 * mv('xp'), gold: 1 + .25 * mv('gold') };
+      cd: (1 - .07 * lv('idozito') - .03 * mv('cd')) * (c === 'zr' ? .9 : 1), area: (1 + .1 * lv('fuvoka') + .05 * mv('area')) * (c === 'rl' ? 1.1 : 1), dur: 1 + .15 * lv('hosszabbito') + .1 * mv('dur'),
+      armor: lv('kesztyu') + (c === 'gt' ? 1 : 0) + mv('arm'), regen: .3 * lv('gyujto') + .2 * mv('reg'), extra: lv('tartaly') + mv('amt'), luck: 1 + .3 * lv('lohere') + .1 * mv('luck'), xp: (c === 'gh' ? 1.1 : 1) + .05 * mv('xp') + .05 * mv('curse'), gold: 1 + .25 * mv('gold') + .05 * mv('curse'), curse: 1 + .1 * mv('curse') };
     S.P.mhp = 100 + 20 * lv('vitamin') + (c === 'gt' ? 20 : c === 'bt' ? 30 : 0) + 10 * mv('hp');
   }
   function view(G) { V.sc = G.d * clamp(Math.min(G.W, G.H) / G.d / 640, .6, 1.15); V.hw = G.W / 2 / V.sc; V.hh = G.H / 2 / V.sc; V.ring = Math.hypot(V.hw, V.hh) + 50; }
@@ -227,10 +230,10 @@ const AszalyBeta = (() => {
   }
   function spawner(G, dt) {
     if (S.ph === 'descent' || S.ph === 'win') return;
-    const cap = Math.round(clamp(Math.round(V.hw * V.hh / 420), 150, 300) * (S.ph === 'bloom' ? .25 : S.ph === 'god' ? .45 : 1));
+    const cap = Math.round(clamp(Math.round(V.hw * V.hh / 420), 150, 300) * S.st.curse * (S.ph === 'bloom' ? .25 : S.ph === 'god' ? .45 : 1));
     S.sT -= dt;
     const rate = S.ph === 'bloom' ? 1.4 : S.ph === 'wrath' ? Math.max(.09, .2 - S.wk * .1) : S.ph === 'god' ? .55 : Math.max(.16, .5 - S.t * .0006);
-    while (S.sT <= 0) { S.sT += rate; for (let i = 0, n = 1 + Math.floor(Math.min(S.t, 3000) / 300); i < n && S.en.length < cap; i++) spawnOne(cap); }
+    while (S.sT <= 0) { S.sT += rate / S.st.curse; for (let i = 0, n = 1 + Math.floor(Math.min(S.t, 3000) / 300); i < n && S.en.length < cap; i++) spawnOne(cap); }
     if (S.ph !== 'run' && S.ph !== 'wrath') return;
     // varjúraj
     if (S.t > 60 && (S.batT -= dt) <= 0) { S.batT = 26 + Math.random() * 10; const [ox, oy] = edge(); for (let i = 0, n = 8 + Math.floor(S.t / 120); i < n && S.en.length < cap + 20; i++) spawn('hollok', ox + rnd(-40, 40), oy + rnd(-40, 40)); }
@@ -321,6 +324,8 @@ const AszalyBeta = (() => {
   function hitPlayer(G, e, dm) {
     const P = S.P; P.hp -= Math.max(1, (dm != null ? dm : e.T.dmg) * (1 + S.t / 2400) * (S.ph === 'wrath' ? 1 + S.wk * .6 : S.ph === 'god' ? 1.2 : 1) - S.st.armor); P.inv = .6; G.shake = 10 * G.d; Sfx.hit(); if (navigator.vibrate) navigator.vibrate(40);
     part(P.x, P.y, 8, '255,90,77', 120, .4);
+    if (P.hp <= 0 && S.rev > 0) { S.rev--; P.hp = P.mhp * .5; P.inv = 3; S.flash = .5; banner('FORRÁSVÍZ: FELTÁMADTÁL!', 2.6, '#6cc6ff'); S.rings.push({ x: P.x, y: P.y, R: 260, l: 1, w: 1 });
+      near(P.x, P.y, 260, (o, dx, dy) => { const d = Math.hypot(dx, dy) || 1; if (!o.T.boss) { o.kx += dx / d * 600; o.ky += dy / d * 600; } }); for (const o of S.ep) o.dead = 1; Sfx.perfect(); return; }
     if (P.hp <= 0) { P.hp = 0; me.overTitle = (S.ph === 'god' ? 'AZ ISTEN GYŐZÖTT · ' : 'KISZÁRADTÁL · ') + fmtT(S.t); G.end(); }
   }
   function enemies(G, dt) {
@@ -637,11 +642,11 @@ const AszalyBeta = (() => {
     const x0 = (G.W - (cols * w + (cols - 1) * gap)) / 2, y0 = Math.max(96 * d, (G.H - (rows * h + (rows - 1) * gap)) / 2 - 10 * d);
     return CH.map((c, i) => ({ c, i, x: x0 + (i % cols) * (w + gap), y: y0 + Math.floor(i / cols) * (h + gap), w, h })); }
   function kutBtn(G) { const cs = selCards(G), l = cs[cs.length - 1], d = G.d, w = Math.min(300 * d, G.W - 40 * d); return { x: (G.W - w) / 2, y: l.y + l.h + 16 * d, w, h: 44 * d }; }
-  function shopRows(G) { const d = G.d, cols = G.W / d > 700 ? 2 : 1, cw = Math.min((G.W - 30 * d) / cols, 400 * d), rh = Math.min(58 * d, (G.H - 230 * d) / Math.ceil(META.length / cols)), x0 = (G.W - cols * cw) / 2;
-    return META.map((u, i) => ({ u, i, x: x0 + (i % cols) * cw + 4 * d, y: 120 * d + Math.floor(i / cols) * rh, w: cw - 8 * d, h: rh - 6 * d })); }
+  function shopRows(G) { const d = G.d, cols = G.W / d > 700 ? 2 : 1, cw = Math.min((G.W - 30 * d) / cols, 400 * d), rh = Math.min(58 * d, (G.H - 200 * d) / Math.ceil(META.length / cols)), x0 = (G.W - cols * cw) / 2;
+    return META.map((u, i) => ({ u, i, x: x0 + (i % cols) * cw + 4 * d, y: 112 * d + Math.floor(i / cols) * rh, w: cw - 8 * d, h: rh - 6 * d })); }
   const shopClose = G => ({ x: G.W / 2 - 90 * G.d, y: G.H - 70 * G.d, w: 180 * G.d, h: 44 * G.d, t: 'VISSZA' });
   function selPick(G, i) { const c = CH[i]; if (!c || S.sel.t < .25) return; S.sel.i = i; if (!chOpen(c)) { S.sel.shake = .35; Sfx.blip(150, .15, 'square', .05, .7); return; }
-    S.ch = c.id; S.up = { [c.w]: 1 }; S.sel = null; S.shop = null; S.meta = metaGet(); S.rr = 3 + (S.meta.rr || 0); stats(); S.P.hp = S.P.mhp; Sfx.coin(); S.started = 1; }
+    S.ch = c.id; S.up = { [c.w]: 1 }; S.sel = null; S.shop = null; S.meta = metaGet(); S.rr = 3 + (S.meta.rr || 0); S.rev = S.meta.rev || 0; stats(); S.P.hp = S.P.mhp; Sfx.coin(); S.started = 1; }
 
   /* ---------- statisztika a kör végén ---------- */
   function showStats() {
@@ -1101,9 +1106,9 @@ const AszalyBeta = (() => {
           const gold = store.get('aszb_gold'); g.font = `800 ${14 * d}px Inter, sans-serif`; g.fillStyle = '#ffd23f'; g.fillText(gold + ' ARANY', W / 2, 98 * d);
           for (const r of shopRows(G)) { const l = (S.meta[r.u.id] || 0), mx = l >= r.u.mx, c = mCost(r.u, l), ok = !mx && gold >= c, x = r.x + (sh.i === r.i && sh.shake > 0 ? Math.sin(sh.shake * 60) * 4 * d : 0);
             g.fillStyle = mx ? 'rgba(60,44,4,.92)' : 'rgba(14,24,44,.95)'; rrp(g, x, r.y, r.w, r.h, 10 * d); g.strokeStyle = ok ? '#e8b656' : 'rgba(120,190,255,.3)'; g.lineWidth = (ok ? 1.8 : 1.2) * d; g.beginPath(); g.roundRect(x, r.y, r.w, r.h, 10 * d); g.stroke();
-            g.textAlign = 'left'; g.font = `800 ${13 * d}px Inter, sans-serif`; g.fillStyle = mx ? '#ffd23f' : '#fff'; g.fillText(r.u.n, x + 12 * d, r.y + r.h / 2 - 8 * d, r.w * .5);
-            g.font = `500 ${11 * d}px Inter, sans-serif`; g.fillStyle = '#b9c4d2'; g.fillText(r.u.d, x + 12 * d, r.y + r.h / 2 + 9 * d, r.w * .55);
-            for (let j = 0; j < r.u.mx; j++) { g.fillStyle = j < l ? '#ffd23f' : 'rgba(255,255,255,.15)'; circ(g, x + r.w * .62 + j * 11 * d, r.y + r.h / 2, 3.6 * d); }
+            const fz = Math.min(1, r.h / (46 * d)); g.textAlign = 'left'; g.font = `800 ${13 * d * fz}px Inter, sans-serif`; g.fillStyle = mx ? '#ffd23f' : '#fff'; g.fillText(r.u.n, x + 12 * d, r.y + r.h / 2 - 8 * d * fz, r.w * .5);
+            g.font = `500 ${11 * d * Math.max(.85, fz)}px Inter, sans-serif`; g.fillStyle = '#b9c4d2'; g.fillText(r.u.d, x + 12 * d, r.y + r.h / 2 + 8 * d * fz, r.w * .58);
+            for (let j = 0; j < r.u.mx; j++) { g.fillStyle = j < l ? '#ffd23f' : 'rgba(255,255,255,.15)'; circ(g, x + r.w * .64 + j * 9 * d, r.y + r.h / 2, 3 * d); }
             g.textAlign = 'right'; g.font = `800 ${12 * d}px Inter, sans-serif`; g.fillStyle = mx ? '#ffd23f' : ok ? '#ffe29a' : 'rgba(255,255,255,.4)'; g.fillText(mx ? 'MAX' : c + ' ARANY', x + r.w - 12 * d, r.y + r.h / 2); }
           g.textAlign = 'center'; btn(g, G, shopClose(G)); g.globalAlpha = 1; } }
     },
