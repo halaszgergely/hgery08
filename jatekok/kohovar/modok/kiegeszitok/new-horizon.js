@@ -1,6 +1,6 @@
 // A New Horizon kiegészítője a Kohóvár modkeretéhez: a Java-kódban megírt egyedi blokkok működése.
 // (A tartalmat az eszkoz/nhconv.py alakítja át; ez a fájl csak a viselkedést adja.)
-import { TS, ITEMS, LIQUIDS } from '../../adat.js?v=202611270941';
+import { TS, ITEMS, LIQUIDS } from '../../adat.js?v=202611270948';
 
 const GF = [];        // gravitációs csapdák mezői: { b, r } – az ellenség ide nem ugorhat
 const inHostileField = (team, x, y) => GF.some(f => !f.b.dead && f.b.team !== team && Math.abs(x - f.cx) <= f.r && Math.abs(y - f.cy) <= f.r);
@@ -62,7 +62,7 @@ export function types(FW) {
       b.work = b.prog;
     },
     pointTap(W, b, tx, ty) { b.cfg = [tx, ty]; return true; },
-    sel(W, b) { return `<div style="font-size:14px">${b.cfg ? `Célpont: ${b.cfg[0]}, ${b.cfg[1]}` : '<span class="lg">Koppints a térképre a célponthoz</span>'}</div><div class="mbar"><i style="width:${(b.prog || 0) * 100}%;background:#a08cff"></i><span>Töltés ${Math.round((b.prog || 0) * 100)}%</span></div>${b.jam ? '<div class="bad">Ellenséges gravitációs mező zavarja</div>' : ''}<button class="np-button" data-fw="warp" style="width:100%;margin-top:4px">Ugrás</button>`; },
+    sel(W, b) { return `<div style="font-size:14px">Célpont: ${b.cfg ? `${b.cfg[0]}, ${b.cfg[1]}` : '—'}</div><div class="mbar"><i style="width:${(b.prog || 0) * 100}%;background:#a08cff"></i><span>Töltés ${Math.round((b.prog || 0) * 100)}%</span></div>${b.jam ? '<div class="bad">Ellenséges gravitációs mező zavarja</div>' : ''}<button class="np-button" data-fw="warp" style="width:100%;margin-top:4px">Ugrás</button>`; },
     selClick(W, b, el) {
       if (el.dataset.fw !== 'warp' || !b.cfg || (b.prog || 0) < 1) return;
       const B = b.B; if (B.fuel && (b.items[B.fuel] || 0) < B.fuelN) return;
@@ -76,5 +76,17 @@ export function types(FW) {
     overlay(g, W, b) { const c = FW.center(b); g.strokeStyle = 'rgba(160,140,255,.5)'; g.beginPath(); g.arc(c.x, c.y, b.B.pick, 0, 7); g.stroke(); if (b.cfg) { const x = (b.cfg[0] + .5) * TS, y = (b.cfg[1] + .5) * TS; g.strokeStyle = '#a08cff'; g.beginPath(); g.moveTo(c.x, c.y); g.lineTo(x, y); g.stroke(); g.strokeRect(x - 6, y - 6, 12, 12); } },
     info: B => ['A 12 mezőn belüli saját egységeket a kijelölt pontra ugratja', `Töltés: <b>${B.reload / 60} mp</b>`],
   });
-  FW.parts.push('New Horizon: fúrómodulok, tűzoltó, gravitációs csapda, hipertér-ugró');
+  // kijelzők: a beállított anyag ikonja / egy karakter
+  FW.reg('nh-icondisp', {
+    mindustry: /^NhIconDisplay$/, convert: () => ({ cfg: 'item' }),
+    draw(g, b, d) { d.spr(g, d.n, d.cx, d.cy); if (b.cfg && ITEMS[b.cfg]) FW.sprItem(g, b.cfg, d.cx, d.cy, d.s * .7); },
+  });
+  FW.reg('nh-chardisp', {
+    mindustry: /^NhCharDisplay$/,
+    init(W, b) { if (typeof b.cfg !== 'string') b.cfg = ''; },
+    draw(g, b, d) { d.spr(g, d.n, d.cx, d.cy); if (b.cfg) { g.fillStyle = '#fff'; g.font = `bold ${Math.round(d.s * .75)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(b.cfg, d.cx, d.cy + 1); } },
+    sel: (W, b) => `<button class="np-button" data-fw="ch" style="width:100%">Karakter: ${b.cfg ? b.cfg.replace(/[<&]/g, '') : '—'}</button>`,
+    selClick(W, b, el, api) { if (el.dataset.fw === 'ch') api.editText('Karakter', b.cfg || '', v => { b.cfg = [...v.trim()][0] || ''; }); },
+  });
+  FW.parts.push('New Horizon: fúrómodulok, tűzoltó, gravitációs csapda, hipertér-ugró, kijelzők');
 }

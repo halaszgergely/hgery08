@@ -220,7 +220,7 @@ TYPEMAP = {'MultiBlockCrafter': 'GenericCrafter', 'RecipeGenericCrafter': 'Gener
            'Webber': 'TractorBeamTurret', 'MultTractorBeamTurret': 'TractorBeamTurret', 'LiquidRadiator': 'Block', 'OreCollector': 'Drill',
            'StreamExtractor': 'LiquidBridge', 'StreamRepeater': 'LiquidBridge', 'StreamRedirector': 'LiquidBridge', 'StreamReceiver': 'LiquidRouter', 'StreamSplitter': 'LiquidRouter', 'ShockwaveGenerator': 'ShockwaveTower'}
 SANDBOX = {'StreamSource', 'LiquidSource', 'ItemSource', 'PlaceholderBlock', 'UnitSpawner'}
-STREAM = {'GravityWell', 'ShockwaveGenerator', 'FireExtinguisher', 'AirRaider', 'UnitSpawner', 'BombLauncher', 'HyperSpaceWarper', 'IconDisplay', 'CharacterDisplay', 'PlaceholderBlock'}
+STREAM = {'GravityWell', 'ShockwaveGenerator', 'FireExtinguisher', 'AirRaider', 'UnitSpawner', 'BombLauncher', 'HyperSpaceWarper', 'PlaceholderBlock'}
 
 def conv_block(var, o):
     n = name_of.get(id(o))
@@ -288,7 +288,7 @@ def conv_block(var, o):
             'OreCollector': 'egyszerűsítve: fúróként', 'QuantumVortexProjector': 'egyszerűsítve: erőtérként', 'AssignedBeacon': 'egyszerűsítve: gyorsítóként',
             'CaptureableTurret': 'elfoglalás nélkül', 'Webber': 'egyszerűsítve: vonósugárként', 'MultTractorBeamTurret': 'egyszerűsítve: vonósugárként', 'RemoteCoreStorage': 'egyszerűsítve: raktárként', 'AccumulatingStorage': 'egyszerűsítve: raktárként'}
     if t in PART: d['_partial'] = PART[t]
-    ADDON = {'DrillModule': 'NhRadiator', 'LiquidRadiator': 'NhRadiator', 'FireExtinguisher': 'NhExtinguisher', 'GravityWell': 'NhGravityWell', 'HyperSpaceWarper': 'NhWarper'}   # a kiegészítő (modok/kiegeszitok/new-horizon.js) fajtái
+    ADDON = {'DrillModule': 'NhRadiator', 'LiquidRadiator': 'NhRadiator', 'FireExtinguisher': 'NhExtinguisher', 'GravityWell': 'NhGravityWell', 'HyperSpaceWarper': 'NhWarper', 'IconDisplay': 'NhIconDisplay', 'CharacterDisplay': 'NhCharDisplay'}   # a kiegészítő (modok/kiegeszitok/new-horizon.js) fajtái
     if t in ADDON: d['type'] = ADDON[t]; d.pop('_special', None)
     if T == 'LiquidBridge' and t.startswith('Stream'): d['range'] = 5
     if t == 'OreCollector': d.setdefault('tier', 4); d.setdefault('drillTime', 400)

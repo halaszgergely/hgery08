@@ -1,9 +1,9 @@
 // Kohóvár – kirajzolás. A blokkok, egységek, anyagok és a talaj képei a Mindustry (Anuke és közreműködők, GPLv3) sprite-jai,
 // a kepek/atlasz.png atlaszból; a lövedékek, hatások, köd és kisérkép kódból rajzoltak.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611270941';
-import { FW } from './keret.js?v=202611270941';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611270941';
-import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270941';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611270948';
+import { FW } from './keret.js?v=202611270948';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611270948';
+import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270948';
 
 const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555', 0: '#4d4e58' };
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -120,7 +120,7 @@ function bridgeLine(g, W, b, t) {
   g.globalAlpha = 1;
 }
 function drawB(g, W, b, t) {
-  if (b.B.links && !b.__rx) {      // nem négyzetes blokk: a teljes alakzat közepére, forgatva rajzoljuk
+  if (b.B.xlinks && !b.__rx) {      // nem négyzetes blokk: a teljes alakzat közepére, forgatva rajzoljuk
     const B = b.B, rc = FW.rect(B, b.x, b.y, b.rot || 0), mx = (rc.x0 + rc.x1) / 2, my = (rc.y0 + rc.y1) / 2, w = (rc.x1 - rc.x0) * TS, h = (rc.y1 - rc.y0) * TS;
     g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(rc.x0 * TS, rc.y0 * TS, w, h);
     g.save(); g.translate(mx * TS, my * TS); g.rotate(-(b.rot || 0) * Math.PI / 2); g.translate(-B.s * TS / 2, -B.s * TS / 2);
