@@ -1,8 +1,8 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611271103';
-import { FW } from './keret.js?v=202611271103';
-import { toWorld } from './msav.js?v=202611271103';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271103';
+import { genMapSerpulo } from './terkep.js?v=202611271110';
+import { FW } from './keret.js?v=202611271110';
+import { toWorld } from './msav.js?v=202611271110';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271110';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -353,6 +353,13 @@ export class World {
     if (B.type === 'pump') return any(i => this.fl(i).liq);
     if (B.mode === 'thermal') return any(i => this.fl(i).heat);
     return true;
+  }
+  // a kurzor alatti forgatható épület vagy építési terv elforgatása (R)
+  rotateAt(tx, ty, d) {
+    const p = this.plans.find(q => !q.brk && !q.done && tx >= q.x && ty >= q.y && tx < q.x + q.B.s && ty < q.y + q.B.s);
+    if (p) { if (!p.B.rot || p.B.type === 'turret' || p.B.xlinks) return false; p.rot = ((p.rot || 0) + d) % 4; return true; }
+    const b = this.tb(tx, ty); if (!b || b.team !== PLAYER || !b.B.rot || b.B.type === 'turret' || b.B.xlinks) return false;
+    b.rot = (b.rot + d) % 4; this.ver++; this.fdirty = 1; return true;
   }
   coreSpot(t) { const d = (BLOCKS[t].s - this.core.B.s) >> 1; return [this.core.x - d, this.core.y - d]; }
   plan(t, x, y, rot, cfg) {
