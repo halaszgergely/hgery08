@@ -1,14 +1,14 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611272153';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611272153';
-import * as Player from './player.js?v=202611272153';
-import * as Party from './party.js?v=202611272153';
-import * as Premier from './premier.js?v=202611272153';
-import * as VP from './vplayer.js?v=202611272153';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611272153';
-import * as Promo from './promo.js?v=202611272153';
-import * as ArcL from './arcade-lista.js?v=202611272153';
-import * as Tabs from './tabs.js?v=202611272153';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611272339';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611272339';
+import * as Player from './player.js?v=202611272339';
+import * as Party from './party.js?v=202611272339';
+import * as Premier from './premier.js?v=202611272339';
+import * as VP from './vplayer.js?v=202611272339';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611272339';
+import * as Promo from './promo.js?v=202611272339';
+import * as ArcL from './arcade-lista.js?v=202611272339';
+import * as Tabs from './tabs.js?v=202611272339';
 
 let C = null;
 export function init(ctx) { C = ctx; Promo.setup({ videos: () => C.S.videos, open: id => detail(id) }); }
@@ -569,7 +569,7 @@ addEventListener('message', async e => {
   if (e.origin !== location.origin || !e.data?.hgws) return;
   const fr = Tabs.frames().find(f => f.contentWindow === e.source); if (!fr) return;
   if (e.data.hgws === 'suspect') { saveSuspect(e.data.game, e.data.score, e.data.why); return; }
-  if (e.data.hgws === 'score') { await saveScore(e.data.game, e.data.score, !!e.data.win, false, typeof e.data.lg === 'number' ? e.data.lg : undefined); sendBoards(fr.contentWindow); }
+  if (e.data.hgws === 'score' && e.data.game !== 'aszalybeta') { await saveScore(e.data.game, e.data.score, !!e.data.win, false, typeof e.data.lg === 'number' ? e.data.lg : undefined); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbreq') sendBoards(fr.contentWindow);
   if (e.data.hgws === 'play') countPlay(e.data.game);
   if (e.data.hgws === 'csreq') cloudGet(fr.contentWindow, e.data.game);

@@ -18,8 +18,6 @@ const ZeroChip = { id: 'zerochip', name: 'ZERO CHIP', ext: 'jatekok/zerochip/ind
 /* zárt béta: csak adminok és „Béta-tesztelő” taggel rendelkezők látják és indíthatják (a jogosultságot a főoldal küldi) */
 const ZeroQuest = { id: 'zeroquest', name: 'ZERO QUEST', ext: 'jatekok/zeroquest/index.html', tag: 'ZÁRT BÉTA', lock: 1,
   desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében: küldetések, szintlépés, felszerelés és egy ébredő őr a romok alatt. Zárt béta.' };
-const AszalyBeta = { id: 'aszalybeta', name: 'ASZÁLYTÚLÉLŐ: A NAGY SZÁRAZSÁG', ext: 'jatekok/aszalybeta/index.html', tag: 'ZÁRT BÉTA', lock: 1,
-  desc: 'Az Aszálytúlélő nagy frissítése zárt bétában: hat karakter saját fegyverrel, új ellenségek, a Tanács próbái és az Aszály Istene. A pontszám nem kerül ranglistára.' };
 const Kohovar = { id: 'kohovar', name: 'KOHÓVÁR', ext: 'jatekok/kohovar/index.html', tag: 'ÚJ', lbx: 1, icon: '⛏️', fmt: v => Math.floor(v) + '. hullám',
   desc: 'Bányássz, építs szállítószalagokat, gyárakat és áramhálózatot, és védd meg a magot a hullámokban érkező ellenség ellen. Óriási barlangtérképek, három kampány és szabad játék. A Mindustry alapján készült.' };
 const Drift = window.HGDrift ? window.HGDrift({ G, Sfx, rr, store, hud }) : null;
@@ -43,7 +41,7 @@ GAMES.forEach(g => { if (NOSPON.includes(g.id)) delete g.sponsor; else g.sponsor
 let PLAYS = (() => { try { return JSON.parse(localStorage.getItem('hgws_plays') || '{}') || {}; } catch (_) { return {}; } })();
 const byPop = l => l.map((g, i) => [g, i]).sort((a, b) => (PLAYS[b[0].id] || 0) - (PLAYS[a[0].id] || 0) || a[1] - b[1]).map(x => x[0]);
 function popOrder() { const wrap = $('#games'); if (!wrap.children.length) return; const els = [...wrap.children]; byPop(GAMES).forEach((g, i) => { const el = els.find(x => x.dataset.id === g.id); if (el) { wrap.appendChild(el); el.querySelector('.tag').textContent = String(i + 1).padStart(2, '0'); } }); }
-const launch = gm => { if (window.top !== window) parent.postMessage({ hgws: 'play', game: gm.id }, location.origin); openGame(gm); };
+const launch = gm => { if (gm.lock && !gm.ext && !window.HGZQ_OK) { zqWait = window.HGZQ_SEEN ? false : gm; return; } if (window.top !== window) parent.postMessage({ hgws: 'play', game: gm.id }, location.origin); openGame(gm); };
 const EXT = $('#ext'); let EXF = $('#extf');
 // a külön oldalon futó játékok (pl. Az Átemelőtelep) eredménye ide érkezik, innen megy tovább a ranglistára
 addEventListener('message', e => { if (e.origin !== location.origin || e.source !== EXF.contentWindow || !e.data || e.data.hgws !== 'score') return; const g = GAMES.find(x => x.id === e.data.game && x.lbx); if (!g || !(e.data.score > 0)) return;
@@ -69,7 +67,7 @@ const ARTS = {
     for (const [px, py, col, r] of N) { x.fillStyle = col + '44'; x.strokeStyle = col; x.lineWidth = 2.5; x.beginPath(); x.arc(px, py, r * (1 + .06 * Math.sin(t * 2 + px)), 0, 6.283); x.fill(); x.stroke(); }
     x.fillStyle = '#fff3c4'; x.font = '800 15px system-ui'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('🏛', N[0][0], N[0][1] + 1); },
   aszaly: (c, x, t) => Aszaly.art(c, x, t),
-  aszalybeta: (c, x, t) => Aszaly.art(c, x, t),
+  aszalybeta: (c, x, t) => AszalyBeta.art(c, x, t),
   drift: (c, x, t) => Drift && Drift.art(c, x, t),
   holtvaros: (c, x, t) => Zombi && Zombi.art(c, x, t),
   birodalom: (c, x, t) => { const W = c.width, H = c.height, s = 22, ox = (W - s * 11) / 2, oy = (H - s * 5) / 2; x.fillStyle = '#0f2a1a'; x.fillRect(0, 0, W, H);
@@ -230,7 +228,7 @@ $('#lbw').addEventListener('click', e => { if (e.target.closest('[data-nick]')) 
     const [game, uid] = del.dataset.del.split('|'); del.disabled = true; del.textContent = '…'; parent.postMessage({ hgws: 'lbdel', game, uid }, location.origin); return; } const b = e.target.closest('[data-lbt]'); if (!b) return; lbt = b.dataset.lbt; document.querySelectorAll('[data-lbt]').forEach(x => x.classList.toggle('on', x === b)); lbDraw(); });
 addEventListener('message', e => { if (e.origin !== location.origin || e.data?.hgws !== 'lb') return; LB = e.data;
   if (LB.plays) { PLAYS = LB.plays; try { localStorage.setItem('hgws_plays', JSON.stringify(PLAYS)); } catch (_) {} popOrder(); } lbDraw();
-  window.HGZQ_SEEN = true; window.HGZQ_OK = LB.beta === true; document.querySelectorAll('#games [data-lock]').forEach(el => { el.hidden = !window.HGZQ_OK; }); if (zqWait) { const w = zqWait; zqWait = false; if (window.HGZQ_OK) openExt(w); } });
+  window.HGZQ_SEEN = true; window.HGZQ_OK = LB.beta === true; document.querySelectorAll('#games [data-lock]').forEach(el => { el.hidden = !window.HGZQ_OK; }); if (zqWait) { const w = zqWait; zqWait = false; if (window.HGZQ_OK) w.ext ? openExt(w) : launch(w); } });
 if (window.top !== window) parent.postMessage({ hgws: 'lbreq' }, location.origin);
 // a helyi rekordok felszinkronizálása a ranglistára: betöltéskor (a játékok a kör/játék végén maguk küldik az új eredményt)
 if (window.top !== window) { const sent = {}; const syncB = () => { const bests = {}; for (const gm of GAMES) if (!gm.ext) { const v = store.get('best_' + gm.id); if (v > 0 && v !== sent[gm.id]) bests[gm.id] = sent[gm.id] = v; } if (Object.keys(bests).length) parent.postMessage({ hgws: 'sync', bests }, location.origin); };
