@@ -2,8 +2,8 @@
    Közös felület: { g, kerek[], kormany, szem, kulso, ballonHely[], ballonok[], fenyek{elso, hatso, fek, index[]}, lovas?, sal? }.
    A modell origója a talajon, a jármű közepén; orr −Z. */
 import * as THREE from 'three';
-import { M, FEST, KROM, GUMI, UVEG, LAMPA, hull, lathe, add, tube, rbox, kerek, logo, ballon } from './modellkit.js?v=202611271006';
-import { SZIN } from './config.js?v=202611271006';
+import { M, FEST, KROM, GUMI, UVEG, LAMPA, hull, lathe, add, tube, rbox, kerek, logo, ballon } from './modellkit.js?v=202611271009';
+import { SZIN } from './config.js?v=202611271009';
 
 /* ---- motoros figura: bukósisak, kabát, sál ---- */
 function lovas(par, kabat = SZIN.zold, sisak = SZIN.sarga) { const g = new THREE.Group(); par.add(g); const bor = M(0xe0b08a), nadrag = M(0x2b3440), cipo = M(0x1d1d1f), kab = M(kabat, { roughness: .7 });

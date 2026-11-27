@@ -1,7 +1,7 @@
 import {
 	Color
 } from 'three';
-import { Pass } from './Pass.js?v=202611271006';
+import { Pass } from './Pass.js?v=202611271009';
 
 class RenderPass extends Pass {
 

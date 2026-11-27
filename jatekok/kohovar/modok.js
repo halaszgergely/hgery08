@@ -2,12 +2,12 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611271006';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271006';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271006';
-import { FL, FLI, WL } from './vilag.js?v=202611271006';
-import { parseHjson } from './hjson.js?v=202611271006';
-import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611271006';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611271009';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271009';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271009';
+import { FL, FLI, WL } from './vilag.js?v=202611271009';
+import { parseHjson } from './hjson.js?v=202611271009';
+import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611271009';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [];   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
@@ -53,8 +53,9 @@ export function installMod(files, srcLabel) {
   const clr = v => String(v ?? '').replace(/\[[^\]]*\]/g, '').replace(/[[\]]/g, '').replace(/#[0-9a-fA-F]{6,8}/g, '').trim();   // a Mindustry színjelölései ([red], [#ff0000])
   const mod = { id, name: clr(meta.displayName || meta.name || id), version: clr(meta.version), author: clr(meta.author), desc: clr(meta.description), src: srcLabel, warn, added: { items: 0, liquids: 0, blocks: 0, units: 0, patched: 0, overrides: 0, maps: 0 } };
   // nyelvi fájl: a magyar az első, aztán az angol alap
-  const bundle = {}; for (const f of ['bundles/bundle.properties', 'bundles/bundle_hu.properties']) { const t = txt(f); if (t) for (const l of t.split(/\r?\n/)) { const m = l.match(/^\s*([^#=][^=]*?)\s*=\s*(.*)$/); if (m) bundle[m[1]] = m[2]; } }
-  const pre = n => id + '-' + n, label = (kind, n, j) => clr(bundle[`${kind}.${pre(n)}.name`] || bundle[`${kind}.${n}.name`] || (j && (j.localizedName || j.name)) || human(n));
+  const bundle = {}, bundleEn = {}; for (const f of ['bundles/bundle.properties', 'bundles/bundle_hu.properties']) { const t = txt(f); if (t) for (const l of t.split(/\r?\n/)) { const m = l.match(/^\s*([^#=][^=]*?)\s*=\s*(.*)$/); if (m) { bundle[m[1]] = m[2]; if (f === 'bundles/bundle.properties') bundleEn[m[1]] = m[2]; } } }
+  const en = k => bundleEn[k] || bundle[k];   // a tartalom nevei angolul, a küldetésszövegek magyarul, ha van
+  const pre = n => id + '-' + n, label = (kind, n, j) => clr(en(`${kind}.${pre(n)}.name`) || en(`${kind}.${n}.name`) || (j && (j.localizedName || j.name)) || human(n));
   const content = {}; for (const [p] of files) { const m = p.match(/^content\/(items|liquids|blocks|units|sectors|planets|status|statuses)\/(?:.*\/)?([^/]+)\.h?json$/); if (m) { const kk = m[1] === 'statuses' ? 'status' : m[1]; let j; try { j = parseHjson(txt(p)); } catch (e) { warn.push(p + ': hibás fájl'); continue; } if (j && typeof j === 'object') (content[kk] = content[kk] || []).push([m[2], j]); } }
   // sprite-ok: a fájlnév (kiterjesztés nélkül) a név; a modbeli tartalom a Mindustryhoz hasonlóan előtagot kap
   const spr = new Map(); for (const [p, d] of files) { const m = p.match(/^sprites\/(?:.*\/)?([^/]+)\.png$/); if (m) spr.set(m[1], d); }
@@ -340,16 +341,16 @@ export function installMod(files, srcLabel) {
     TECH.push({ id: id2, k: kind, key, req, need: need ? [need] : [], pl, cost: c || (kind === 'u' ? ucost(cost) : rcost(cost)), mod: id });
   }
   // bolygók és szektorok (Mindustry ContentParser: planet, sector) – a Java-ban írt bolygógenerátor nem fut, a szektorok pályája az msav
-  for (const [n, j] of content.planets || []) { const k = pre(n); MOD_PLANETS.push({ id: k, n: bundle[`planet.${k}.name`] || bundle[`planet.${n}.name`] || human(n), col: '#' + String(j.atmosphereColor || j.landCloudColor || '7f9cc8').slice(0, 6), mod: id }); }
+  for (const [n, j] of content.planets || []) { const k = pre(n); MOD_PLANETS.push({ id: k, n: en(`planet.${k}.name`) || en(`planet.${n}.name`) || human(n), col: '#' + String(j.atmosphereColor || j.landCloudColor || '7f9cc8').slice(0, 6), mod: id }); }
   for (const [n, j] of content.sectors || []) {
     const mapFile = files.has(`maps/${n}.msav`) ? `maps/${n}.msav` : `maps/${j.map || n}.msav`, map = files.get(mapFile); if (!map) { warn.push('a szektornak nincs pályája: ' + n); continue; }
     const pl = String(j.planet || 'serpulo'), k = pre(n);
-    MOD_SECTORS.push({ id: k, n: bundle[`sector.${k}.name`] || bundle[`sector.${n}.name`] || human(n), d: bundle[`sector.${k}.description`] || bundle[`sector.${n}.description`] || '', planet: pl === 'serpulo' ? 'serpulo' : MOD_PLANETS.some(p => p.id === pre(pl)) ? pre(pl) : pl,
+    MOD_SECTORS.push({ id: k, n: en(`sector.${k}.name`) || en(`sector.${n}.name`) || human(n), d: en(`sector.${k}.description`) || en(`sector.${n}.description`) || '', planet: pl === 'serpulo' ? 'serpulo' : MOD_PLANETS.some(p => p.id === pre(pl)) ? pre(pl) : pl,
       gi: j.sector ?? -1, win: +j.captureWave || 0, diff: +j.difficulty || 0, p: { alwaysUnlocked: !!j.alwaysUnlocked, captureWave: +j.captureWave || 0, startWaveTimeMultiplier: j.startWaveTimeMultiplier ?? 2 }, mapBytes: map, mapFile, txt: bundle, camp: 'serpulo', mod: id });
   }
   const used = new Set(MOD_SECTORS.filter(s => s.mod === id).map(s => s.mapFile));
   const maps = [...files.keys()].filter(p => /^maps\/[^/]+\.msav$/.test(p) && !used.has(p));
-  if (maps.length) { const pl = 'mod-' + id; MOD_PLANETS.push({ id: pl, n: mod.name, col: '#8a8f9c', mod: id }); maps.forEach((p, i) => { const nm = p.slice(5, -5); MOD_SECTORS.push({ id: pre('map-' + nm), n: bundle[`map.${nm}.name`] || human(nm), d: '', planet: pl, gi: i * 7, win: 0, diff: 0, p: { alwaysUnlocked: true }, mapBytes: files.get(p), txt: bundle, camp: 'serpulo', mod: id }); mod.added.maps++; }); }
+  if (maps.length) { const pl = 'mod-' + id; MOD_PLANETS.push({ id: pl, n: mod.name, col: '#8a8f9c', mod: id }); maps.forEach((p, i) => { const nm = p.slice(5, -5); MOD_SECTORS.push({ id: pre('map-' + nm), n: en(`map.${nm}.name`) || human(nm), d: '', planet: pl, gi: i * 7, win: 0, diff: 0, p: { alwaysUnlocked: true }, mapBytes: files.get(p), txt: bundle, camp: 'serpulo', mod: id }); mod.added.maps++; }); }
   MODS.push(mod); return mod;
 }
 
