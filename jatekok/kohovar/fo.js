@@ -2,15 +2,16 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271025';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271025';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271025';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611271025';
-import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271025';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271025';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271025';
-import { toWorld } from './msav.js?v=202611271025';
-import { Story } from './logika.js?v=202611271025';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271028';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271028';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271028';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611271028';
+import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271028';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271028';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271028';
+import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271028';
+import { toWorld } from './msav.js?v=202611271028';
+import { Story } from './logika.js?v=202611271028';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -401,9 +402,8 @@ function applyRules(sec, base) {
   if (rulesCustom()) sec.ranked = 0;
   return sec;
 }
-$('#fGo').onclick = e => {
-  const b = e.currentTarget; if (S.runs.free && b.dataset.sure !== '1') { b.dataset.sure = '1'; b.querySelector('span').textContent = 'Biztos? A mentett játék elvész'; return; }
-  delete S.runs.free; const M_ = curMap(); let sec;
+$('#fGo').onclick = async e => {
+  await archiveFree(); delete S.runs.free; const M_ = curMap(); let sec;
   if (M_.kind === 'gen') sec = applyRules(freeSector(S.free, S.seed));
   else sec = { id: 'free_map', n: M_.n, d: '', free: 1, camp: 'serpulo', planet: 'serpulo', p: { alwaysUnlocked: true }, ...(M_.mod ? { modMap: M_.mod.id } : { mapFile: M_.file }), fr: { mode: S.free.mode, rules: { ...(S.free.rules || {}) }, res: S.free.res, fog: S.free.fog } };
   S.freeSec = sec; persist(); start(sec, null);
@@ -411,15 +411,39 @@ $('#fGo').onclick = e => {
 $('#fCont').onclick = () => start(S.freeSec, S.runs.free);
 
 /* ---------- játék betöltése (LoadDialog) ---------- */
-function showLoad() { showDlg('#dLoad'); drawLoad(); }
-function drawLoad() {
-  const l = Object.entries(S.runs).filter(([k, r]) => r && (k === 'free' ? S.freeSec : SECTORS.find(s => s.id === k)));
-  $('#saves').innerHTML = l.length ? l.map(([k, r]) => { const s = k === 'free' ? S.freeSec : SECTORS.find(q => q.id === k); return `<div class="save np-pane"><img src="${k === 'free' ? sprIcon('sector-groundZero') : sprIcon('sector-' + SECSPR[k])}" style="width:48px;height:48px;image-rendering:pixelated"><div class="grow"><div class="nm">${esc(k === 'free' ? s.n : s.n)}</div><div class="lg" style="font-size:16px">${k === 'free' ? 'Egyéni játék' : 'Hadjárat'} · ${r.wave}. hullám${s.w ? ` · ${s.w}×${s.h}` : ''}</div></div><button class="b np-button sm" data-load="${k}" style="width:150px">${ic('play', 's')}Betöltés</button><button class="b np-button sm" data-del="${k}" style="width:56px">${ic('trash', 's')}</button></div>`; }).join('') : '<div class="lg">Nincs mentett játék.</div>';
+// mentéshelyek: S.slots = [{ id, key ('free' vagy szektor), n, t, wave, auto, w, h }]; az adat a mentes.js-ben
+S.slots = S.slots || [];
+let loadKey = null;
+const slotSec = key => key === 'free' ? null : SECTORS.find(s => s.id === key);
+async function addSlot(auto) {
+  if (!W || W.lost || W.won) return false; const key = runKey(SEC), run = W.save(), base = SEC.free ? (SEC.base || SEC) : null;
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6), meta = { id, key, n: SEC.n, t: Date.now(), wave: W.wave, auto: auto ? 1 : 0, w: SEC.w || W.w, h: SEC.h || W.h };
+  if (!(await putSlot(id, { sec: base, run }))) { W.msg('A mentés nem fért el', 'bad'); return false; }
+  S.slots.unshift(meta);
+  if (auto) { const A = S.slots.filter(q => q.auto && q.key === key && q.n === meta.n); for (const q of A.slice(3)) { delSlot(q.id); S.slots.splice(S.slots.indexOf(q), 1); } }   // futásonként az utolsó 3 automatikus
+  persist(); return true;
 }
-$('#saves').onclick = e => {
+// a folyamatban lévő egyéni játékot új játék előtt nem írjuk felül: mentéshelyre kerül
+async function archiveFree() { const r = S.runs.free, sec = S.freeSec; if (!r || !sec) return; const id = Date.now().toString(36) + 'f'; if (await putSlot(id, { sec, run: r })) { S.slots.unshift({ id, key: 'free', n: sec.n, t: Date.now(), wave: r.wave, auto: 1, w: sec.w, h: sec.h }); persist(); } }
+function showLoad(key) { loadKey = key || null; showDlg('#dLoad'); drawLoad(); }
+const when = t => { const d = new Date(t); return d.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }); };
+function drawLoad() {
+  const cur = Object.entries(S.runs).filter(([k, r]) => r && (k === 'free' ? S.freeSec : slotSec(k)) && (!loadKey || k === loadKey));
+  const row = (icon, n, sub, attrs, del) => `<div class="save np-pane"><img src="${icon}" style="width:48px;height:48px;image-rendering:pixelated"><div class="grow"><div class="nm">${esc(n)}</div><div class="lg" style="font-size:16px">${sub}</div></div><button class="b np-button sm" ${attrs} style="width:150px">${ic('play', 's')}Betöltés</button><button class="b np-button sm" ${del} style="width:56px">${ic('trash', 's')}</button></div>`;
+  const icon = k => k === 'free' ? sprIcon('sector-groundZero') : sprIcon('sector-' + SECSPR[k]);
+  const curH = cur.map(([k, r]) => { const s = k === 'free' ? S.freeSec : slotSec(k); return row(icon(k), s.n, `${k === 'free' ? 'Egyéni játék' : 'Hadjárat'} · folyamatban · ${r.wave}. hullám`, `data-load="${k}"`, `data-del="${k}"`); });
+  const sl = S.slots.filter(q => (!loadKey || q.key === loadKey) && (q.key === 'free' || slotSec(q.key)));
+  const slH = sl.map(q => row(icon(q.key), q.n, `${q.key === 'free' ? 'Egyéni játék' : 'Hadjárat'} · ${q.auto ? 'automatikus · ' : ''}${q.wave}. hullám · ${when(q.t)}`, `data-slot="${q.id}"`, `data-sdel="${q.id}"`));
+  $('#saves').innerHTML = (curH.length || slH.length) ? curH.join('') + (slH.length ? `<h4 class="mapsh" style="width:100%">Mentések</h4>` + slH.join('') : '') : '<div class="lg">Nincs mentett játék.</div>';
+}
+$('#saves').onclick = async e => {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.load) { const k = b.dataset.load; start(k === 'free' ? S.freeSec : SECTORS.find(s => s.id === k), S.runs[k]); }
-  if (b.dataset.del) { if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.innerHTML = ic('warning', 's'); return; } delete S.runs[b.dataset.del]; persist(); drawLoad(); }
+  if (b.dataset.load) { const k = b.dataset.load; start(k === 'free' ? S.freeSec : slotSec(k), S.runs[k]); }
+  if (b.dataset.slot) { const q = S.slots.find(x => x.id === b.dataset.slot), d = q && await getSlot(q.id); if (!d || !d.run) { b.disabled = true; return; }
+    if (q.key === 'free') { if (S.runs.free && S.freeSec) await archiveFree(); S.freeSec = d.sec; S.runs.free = d.run; persist(); start(d.sec, d.run); } else { S.runs[q.key] = d.run; persist(); start(slotSec(q.key), d.run); } }
+  if (b.dataset.del || b.dataset.sdel) { if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.innerHTML = ic('warning', 's'); return; }
+    if (b.dataset.del) delete S.runs[b.dataset.del]; else { delSlot(b.dataset.sdel); S.slots = S.slots.filter(q => q.id !== b.dataset.sdel); }
+    persist(); drawLoad(); }
 };
 
 /* ---------- indítás, mentés, vége ---------- */
@@ -458,7 +482,7 @@ async function start(sec, save) {
   SEC = sec; W = new World(sec, save); TER = makeTerrain(W); selB = null; selBlock = null; paused = false; cam.free = null; cam.z = 4; STORY = null;
   if (sec.map) STORY = W.story = new Story(W, sec.map, textsFor(SECTORS.find(q => q.id === sec.id) || {}, sec.map), { unlocked: c => { const r = contentOf(c); if (!r) return true; if (r[0] === 'b' || r[0] === 'u') return S.research.includes(r[0] === 'u' ? 'u:' + r[1] : r[1]); if (r[0] === 's') return !!S.cap[r[1]]; return !!S.seen[r[0] + ':' + r[1]] || (W.core.items[r[1]] > 0); }, content: c => contentOf(c) || ['i', 'copper'], icon: (k, key) => k === 'b' ? `:${SN[key]}:` : k === 'u' ? `:${key}:` : k === 'i' ? `:${ISN[key]}:` : k === 'l' ? `:${LSN[key]}:` : '', name: (k, key) => k === 'b' ? BLOCKS[key].n : k === 'u' ? UNITS[key].n : k === 'i' ? ITEMS[key].n : k === 'l' ? LIQUIDS[key].n : key });
   if (MODS.length) sec.ranked = 0;   // modokkal nincs ranglista
-  W.onWave = n => { W.msg(`${n}. hullám`); if (sec.free && sec.ranked) { if (n > (S.best || 0)) { S.best = n; persist(); } try { if (INFRAME) parent.postMessage({ hgws: 'score', game: GAME, score: n }, location.origin); } catch (_) { } } };
+  W.onWave = n => { W.msg(`${n}. hullám`); if (n > 1 && n % 3 === 0) setTimeout(() => addSlot(true), 0); if (sec.free && sec.ranked) { if (n > (S.best || 0)) { S.best = n; persist(); } try { if (INFRAME) parent.postMessage({ hgws: 'score', game: GAME, score: n }, location.origin); } catch (_) { } } };
   W.canUnit = t => !!sec.unlockAll || S.research.includes('u:' + t);
   W.onAccel = () => { const others = PLANETS.filter(p => p.id !== (sec.planet || 'serpulo')); if (!others.length) return; saveRun(); const P = others.find(p => p.id === 'erekir') || others[0]; W.msg(`Mag kilőve: ${P.n}`); setTimeout(() => { if (!W) return; pcur = P.id; psel = null; quit(); }, 1200); };
   W.onLand = (k, max) => { if (sec.free) return 0; const n = Math.min(max, Math.floor(S.bank[k] || 0)); if (n > 0) { S.bank[k] -= n; persist(); } return n; };
@@ -477,9 +501,12 @@ function endGame(won) {
   else if (won) { S.cap[SEC.id] = 1; for (const k in items) S.bank[k] = (S.bank[k] || 0) + items[k]; $('#endT').textContent = `A(z) ${SEC.n} szektor elfoglalva!`; lines.push('A mag készlete a raktárba került:'); $('#endB').innerHTML = Object.keys(items).filter(k => items[k] > 0).map(k => `<span>${itI(k)}${num(items[k])}</span>`).join(''); }
   else { $('#endT').textContent = SEC.free ? 'A játéknak vége' : `A(z) ${SEC.n} szektor elveszett!`; $('#endB').innerHTML = ''; }
   $('#endP').innerHTML = lines.join('<br>');
+  const lk = runKey(SEC), hasSl = !won && S.slots.some(q => q.key === lk); $('#endLoad').hidden = !hasSl; $('#endLoad').dataset.k = lk;
   delete S.runs[runKey(SEC)]; endFree = !!SEC.free; persist(); W = null; $('#hud').hidden = true; closeAll(); showDlg('#dEnd', () => { showMenu(); if (endFree) { showCustom(); } else showPlanet(); });
 }
 $('#endOk').onclick = () => closeDlg('#dEnd');
+$('#endLoad').onclick = () => { const k = $('#endLoad').dataset.k; closeAll(); showMenu(); showLoad(k); };
+$('#pSlot').onclick = async () => { const b = $('#pSlot'); if (await addSlot(false)) { b.querySelector('span').textContent = 'Mentve'; setTimeout(() => { b.querySelector('span').textContent = 'Mentés'; }, 1500); } };
 
 /* ---------- építőpaletta (PlacementFragment) ---------- */
 const CATICON = { logic: 'logic', turret: 'turret', prod: 'production', dist: 'distribution', liquid: 'liquid', power: 'power', def: 'defense', craft: 'crafting', units: 'units', effect: 'effect' };
