@@ -1,8 +1,9 @@
 // Kohóvár – a Mindustry-pályák története: célkitűzések (game/MapObjectives) és világprocesszorok (logic/LExecutor, mlog).
 // A koordináták a pályafájlban a Mindustry rendszerében vannak (csempe, y felfelé); itt fordítjuk át.
-import { TS, ITEMS, BLOCKS, UNITS, STATUS } from './adat.js?v=202611271009';
-import { PLAYER, ENEMY, DERELICT } from './vilag.js?v=202611271009';
-import { blockOf, itemOf } from './msav.js?v=202611271009';
+import { TS, ITEMS, BLOCKS, UNITS, STATUS } from './adat.js?v=202611271013';
+import { PLAYER, ENEMY, DERELICT } from './vilag.js?v=202611271013';
+import { blockOf, itemOf } from './msav.js?v=202611271013';
+import { SN } from './kepadat.js?v=202611271013';
 
 const TEAM = { derelict: DERELICT, sharded: PLAYER, crux: ENEMY, malis: ENEMY, 0: DERELICT, 1: PLAYER, 2: ENEMY, 3: ENEMY };
 const ST = { burning: 'burn', freezing: 'freeze', wet: 'wet', tarred: 'tar', melting: 'melt', sapped: 'sap', overdrive: 'od', fast: 'od', overclock: 'od' };
@@ -140,13 +141,14 @@ export class Proc {
         else if (a === 'stop') W.cut = null;
         break;
       }
-      case 'fetch': {
-        const t = (this.val(c) || {}).team, ty = this.val(f || e), tid = ty && ty.c ? blockOf(ty.c) : null;
-        if (b === 'build') { const i = this.num(d) | 0; let k = 0, r = null; for (const o of W.blds) if (o.team === t && (!tid || o.t === tid)) { if (k++ === i) { r = o; break; } } this.set(a, r); }
-        else if (b === 'buildCount') { const ty2 = this.val(e); const id = ty2 && ty2.c ? blockOf(ty2.c) : null; let k = 0; for (const o of W.blds) if (o.team === t && (!id || o.t === id)) k++; this.set(a, k); }
-        else if (b === 'coreCount') { let k = 0; for (const o of W.blds) if (o.team === t && o.B.type === 'core') k++; this.set(a, k); }
-        else if (b === 'core') { const i = this.num(d) | 0; this.set(a, W.blds.filter(o => o.team === t && o.B.type === 'core')[i] || null); }
-        else if (b === 'unit' || b === 'unitCount') { const L = W.units.filter(u => !u.dead && u.team === t); this.set(a, b === 'unitCount' ? L.length : L[this.num(d) | 0] || null); }
+      case 'fetch': {   // fetch típus eredmény csapat index blokk/egység
+        const t = (this.val(c) || {}).team, ty = this.val(e), tid = ty && ty.c ? blockOf(ty.c) : null, uid = ty && ty.c && UNITS[ty.c] ? ty.c : null;
+        if (a === 'build') { const i = this.num(d) | 0; let k = 0, r = null; for (const o of W.blds) if (o.team === t && (!tid || o.t === tid)) { if (k++ === i) { r = o; break; } } this.set(b, r); }
+        else if (a === 'buildCount') { let k = 0; for (const o of W.blds) if (o.team === t && (!tid || o.t === tid)) k++; this.set(b, k); }
+        else if (a === 'coreCount') { let k = 0; for (const o of W.blds) if (o.team === t && o.B.type === 'core') k++; this.set(b, k); }
+        else if (a === 'core') { const i = this.num(d) | 0; this.set(b, W.blds.filter(o => o.team === t && o.B.type === 'core')[i] || null); }
+        else if (a === 'unit' || a === 'unitCount') { const L = W.units.filter(u => !u.dead && u.team === t && (!uid || u.t === uid)); this.set(b, a === 'unitCount' ? L.length : L[this.num(d) | 0] || null); }
+        else if (a === 'player' || a === 'playerCount') { const p = W.player && !W.player.dead && W.player.team === t ? [W.player] : []; this.set(b, a === 'playerCount' ? p.length : p[this.num(d) | 0] || null); }
         break;
       }
       case 'sensor': {
@@ -196,7 +198,14 @@ export class Proc {
       }
       case 'ulocate': { const u = this.unit; if (!u) break; let best = null, bd = 1e9; for (const o of W.blds) if ((b === 'core' ? o.B.type === 'core' : b === 'turret' ? o.B.type === 'turret' : true) && (this.num(c) ? o.team !== u.team : o.team === u.team)) { const cc = W.center(o), dd = Math.hypot(cc.x - u.x, cc.y - u.y); if (dd < bd) { bd = dd; best = o; } } this.set(l[7], best ? 1 : 0); this.set(l[l.length - 1], best); if (best) { this.set(l[5], best.x + best.B.s / 2 - .5); this.set(l[6], W.h - best.y - best.B.s / 2 - .5); } break; }
       case 'getlink': { const i = this.num(b) | 0, ks = Object.keys(this.v).filter(k => this.v[k] && this.v[k].lnk); this.set(a, ks[i] ? this.val(ks[i]) : null); break; }
-      case 'explosion': { const [x, y] = this.wpos(c, d); W.splashAll(x, y, this.num(e) * TS, this.num(f)); break; }
+      case 'getblock': {   // getblock réteg eredmény x y
+        const [x, y] = this.tile(c, d); if (!W.inb(x, y)) { this.set(b, null); break; } const i = y * W.w + x;
+        if (a === 'building') this.set(b, W.tb(x, y) || null);
+        else if (a === 'block') { const o = W.tb(x, y); this.set(b, o ? { c: SN[o.t] || o.t } : W.wall[i] ? { c: 'stone-wall' } : { c: 'air' }); }
+        else if (a === 'floor') this.set(b, { c: 'floor' }); else if (a === 'ore') this.set(b, { c: 'air' });
+        break;
+      }
+      case 'explosion': { const [x, y] = this.wpos(b, c); W.splashAll(x, y, this.num(d) * TS, this.num(e)); break; }   // explosion csapat x y sugár sebzés
       case 'noop': default: break;
     }
   }

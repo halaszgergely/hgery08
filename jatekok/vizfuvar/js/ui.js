@@ -1,6 +1,6 @@
 /* Menük: főmenü, új játék (Babettó vagy Rigó-13), cég / garázs, fuvarpiac, ranglista, beállítások, irányítás, készítők, titkos dev menü.
    Felugró böngészőablak helyett minden megerősítés a játékon belül jelenik meg. */
-import { KIOSZTAS_NEV, ALAP_KIOSZTAS } from './iranyitas.js?v=202611271009';
+import { KIOSZTAS_NEV, ALAP_KIOSZTAS } from './iranyitas.js?v=202611271013';
 const $ = s => document.querySelector(s), esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const ft = n => Math.round(n).toLocaleString('hu-HU') + ' Ft';
 const STAT = { babetto: [40, 1, .55, 2.0, .3], rigo: [38, 2, .62, 2.2, .35], trabo: [100, 12, .45, 7.2, .35] };   // végsebesség, kapacitás, kezelhetőség, fogyasztás, terepjárás
