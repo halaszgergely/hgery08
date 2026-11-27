@@ -1,13 +1,13 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611271022';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611271022';
-import * as Player from './player.js?v=202611271022';
-import * as Party from './party.js?v=202611271022';
-import * as Premier from './premier.js?v=202611271022';
-import * as VP from './vplayer.js?v=202611271022';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611271022';
-import * as Promo from './promo.js?v=202611271022';
-import * as ArcL from './arcade-lista.js?v=202611271022';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611271025';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611271025';
+import * as Player from './player.js?v=202611271025';
+import * as Party from './party.js?v=202611271025';
+import * as Premier from './premier.js?v=202611271025';
+import * as VP from './vplayer.js?v=202611271025';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611271025';
+import * as Promo from './promo.js?v=202611271025';
+import * as ArcL from './arcade-lista.js?v=202611271025';
 
 let C = null;
 export function init(ctx) { C = ctx; Promo.setup({ videos: () => C.S.videos, open: id => detail(id) }); }
@@ -327,12 +327,19 @@ function countPlay(id) {
 }
 const best = id => { try { return +localStorage.getItem('hgws_best_' + id) || 0; } catch (_) { return 0; } };
 /* az Arcade listaoldal (js/arcade-lista.js) csak ezeken át olvas: saját rekord, formázás, játékszám, top 10 */
-/* ki mit játszik éppen: playing/{uid} = { g, at } – percenként frissül, amíg a játék nyitva van; a lista az utóbbi 2,5 perc jelzéseit számolja */
-let nowG = '', nowT = 0;
-function playing(id) { clearInterval(nowT); nowT = 0; const u = C.uid(); if (!u) return; const ref = FB.doc(db, 'playing', u);
-  if (!id) { if (nowG) FB.deleteDoc(ref).catch(() => {}); nowG = ''; return; } nowG = id; const ping = () => { if (!document.hidden) FB.setDoc(ref, { g: id, at: FB.serverTimestamp() }).catch(() => {}); }; ping(); nowT = setInterval(ping, 60e3); }
+/* ki mit játszik éppen – takarékosan: 5 perces „vödrök”, playnow/{vödörszám} = { u: { uid: játék } }.
+   A játékos vödrönként EGYSZER ír (5 percenként 1 írás), a lista mindig csak 2 dokumentumot olvas (a mostani és az előző vödör),
+   akárhányan játszanak – így a számláló az utóbbi 5–10 perc játékosait mutatja. */
+const BK = 300e3, bucket = () => Math.floor(Date.now() / BK), pnRef = b => FB.doc(db, 'playnow', String(b));
+let nowG = '', nowT = 0, nowB = 0;
+function playing(id) { clearInterval(nowT); nowT = 0; const u = C.uid(); if (!u) return;
+  if (!id) { if (nowG && nowB === bucket()) FB.updateDoc(pnRef(nowB), new FB.FieldPath('u', u), FB.deleteField()).catch(() => {}); nowG = ''; nowB = 0; return; }
+  if (nowG !== id) nowB = 0; nowG = id;
+  const ping = () => { const b = bucket(); if (document.hidden || b === nowB) return; nowB = b; FB.setDoc(pnRef(b), { u: { [u]: id } }, { merge: true }).catch(() => { nowB = 0; }); };
+  ping(); nowT = setInterval(ping, 30e3); }
+let actC = null, actAt = 0;
 const WHO = {}; // moderátori nézet: játékonként az éppen játszók neve
-async function activeNow() { const o = {}, w = {}; try { const s = await FB.getDocs(FB.query(FB.collection(db, 'playing'), FB.where('at', '>', FB.Timestamp.fromMillis(Date.now() - 150e3)))); s.docs.forEach(d => { const g = d.data().g; if (typeof g !== 'string') return; o[g] = (o[g] || 0) + 1; const u = S().users.get(d.id); (w[g] = w[g] || []).push(u ? u.name : FORCED.get(d.id) || S().guests?.get(d.id)?.nick || 'Vendég'); }); } catch (_) {} for (const k in WHO) delete WHO[k]; Object.assign(WHO, w); return o; }
+async function activeNow() { if (actC && Date.now() - actAt < 100e3) return actC; const o = {}, w = {}; try { const b = bucket(), [p, c] = await Promise.all([b - 1, b].map(x => FB.getDoc(pnRef(x)).then(s => s.data()?.u || {}).catch(() => ({})))); const all = { ...p, ...c }; Object.entries(all).map(([id, g]) => ({ id, g })).forEach(d => { const g = d.g; if (typeof g !== 'string') return; o[g] = (o[g] || 0) + 1; const u = S().users.get(d.id); (w[g] = w[g] || []).push(u ? u.name : FORCED.get(d.id) || S().guests?.get(d.id)?.nick || 'Vendég'); }); } catch (_) {} for (const k in WHO) delete WHO[k]; Object.assign(WHO, w); actC = o; actAt = Date.now(); return o; }
 addEventListener('hashchange', () => { if (!/^#\/arcade\/\w/.test(location.hash)) playing(''); }); addEventListener('pagehide', () => playing(''));
 const arcCtx = { best, active: () => activeNow(), who: id => C.isMod() ? (WHO[id] || []) : [], num: bigNum, beta: () => betaOk(), fmt: (id, v) => { const g = GAMES.find(x => x.id === id); return g && g.fmt ? g.fmt(v) : null; }, playsNow: () => PLAYS, plays: () => loadPlays(),
   profile: (uid, nick) => lbProfile(uid, nick),
