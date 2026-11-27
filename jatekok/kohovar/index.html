@@ -1,7 +1,7 @@
 <!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="robots" content="noindex,nofollow"><title>Kohóvár – HGWS Arcade</title>
 <link rel="icon" type="image/png" href="../../img/favicon-32.png">
-<link rel="stylesheet" href="kepek/ui/elemek.css?v=202611271357">
-<link rel="stylesheet" href="felulet.css?v=202611271357">
+<link rel="stylesheet" href="kepek/ui/elemek.css?v=202611271408">
+<link rel="stylesheet" href="felulet.css?v=202611271408">
 </head><body>
 <canvas id="c"></canvas>
 
@@ -51,6 +51,7 @@
 <div id="dCustom" class="dlg" hidden><div class="tt">Egyéni játék</div><div class="bd"><div class="maps" id="maps"></div></div><div class="ft"><button class="b np-button" data-back><i class="ic ic-left"></i>Vissza</button></div></div>
 <div id="dPlay" class="dlg" hidden><div class="tt" id="fTitle"></div><div class="bd"><div class="mplay"><div class="pv np-pane"><canvas id="fPrev"></canvas><div id="fRank" style="margin-top:6px;font-size:16px"></div></div><div class="ru" id="fOpts"></div></div></div><div class="ft"><button class="b np-button" data-back><i class="ic ic-left"></i>Vissza</button><button class="b np-button" id="fCont" hidden><i class="ic ic-download"></i><span></span></button><button class="b np-button" id="fGo"><i class="ic ic-play"></i><span>Játék</span></button></div></div>
 <div id="dLoad" class="dlg" hidden><div class="tt">Játék betöltése</div><div class="bd"><div class="saves" id="saves"></div></div><div class="ft"><button class="b np-button" data-back><i class="ic ic-left"></i>Vissza</button></div></div>
+<div id="dMp" class="dlg" hidden><div class="tt">Többjátékos</div><div class="bd"><div id="mpBody" style="width:min(760px,100%)"></div></div><div class="ft"><button class="b np-button" data-back><i class="ic ic-left"></i>Vissza</button></div></div>
 <div id="dMods" class="dlg" hidden><div class="tt">Modok</div><div class="bd"><div id="modList"></div><div id="modMsg" style="width:min(760px,100%);font-size:16px"></div></div><div class="ft"><button class="b np-button" data-back><i class="ic ic-left"></i>Vissza</button><label class="b np-button" style="width:210px;height:64px"><i class="ic ic-download"></i>Mod importálása<input type="file" id="modFile" accept=".zip" hidden></label><button class="b np-button" id="modApply" hidden><i class="ic ic-refresh"></i>Újratöltés</button></div></div>
 <div id="dAbout" class="dlg" hidden><div class="tt">Névjegy</div><div class="bd"><div class="about np-pane">
   <p><span class="acc">Kohóvár</span> – gyárépítő toronyvédelmi játék a HGWS Arcade-ban.</p>
@@ -65,5 +66,5 @@
 </div></div></div>
 <div id="dEnd" class="dlg" hidden><div class="tt" id="endT"></div><div class="bd" style="justify-content:center"><div class="endst" id="endP"></div><div id="endB" style="display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:12px;font-size:16px"></div></div><div class="ft"><button class="b np-button" id="endLoad" hidden><i class="ic ic-download"></i>Mentés betöltése</button><button class="b np-button" id="endOk"><i class="ic ic-ok"></i>OK</button></div></div>
 
-<script type="module" src="fo.js?v=202611271357"></script>
+<script type="module" src="fo.js?v=202611271408"></script>
 </body></html>
