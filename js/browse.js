@@ -1,13 +1,13 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611270115';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611270115';
-import * as Player from './player.js?v=202611270115';
-import * as Party from './party.js?v=202611270115';
-import * as Premier from './premier.js?v=202611270115';
-import * as VP from './vplayer.js?v=202611270115';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611270115';
-import * as Promo from './promo.js?v=202611270115';
-import * as ArcL from './arcade-lista.js?v=202611270115';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611270130';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611270130';
+import * as Player from './player.js?v=202611270130';
+import * as Party from './party.js?v=202611270130';
+import * as Premier from './premier.js?v=202611270130';
+import * as VP from './vplayer.js?v=202611270130';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611270130';
+import * as Promo from './promo.js?v=202611270130';
+import * as ArcL from './arcade-lista.js?v=202611270130';
 
 let C = null;
 export function init(ctx) { C = ctx; Promo.setup({ videos: () => C.S.videos, open: id => detail(id) }); }
@@ -336,8 +336,9 @@ async function activeNow() { const o = {}, w = {}; try { const s = await FB.getD
 addEventListener('hashchange', () => { if (!/^#\/arcade\/\w/.test(location.hash)) playing(''); }); addEventListener('pagehide', () => playing(''));
 const arcCtx = { best, active: () => activeNow(), who: id => C.isMod() ? (WHO[id] || []) : [], num: bigNum, beta: () => betaOk(), fmt: (id, v) => { const g = GAMES.find(x => x.id === id); return g && g.fmt ? g.fmt(v) : null; }, playsNow: () => PLAYS, plays: () => loadPlays(),
   profile: (uid, nick) => lbProfile(uid, nick),
-  boards: async week => { const wk = weekKey(); return Promise.all(GAMES.map(async g => ({ id: g.id, name: g.name, icon: g.icon, rows: (await topOf(week ? g.id + '_' + wk : g.id, 10)).map(r => ({ uid: r.uid, nick: r.nick || '', name: lbName(r.uid, r.nick), wins: r.wins, me: r.uid === C.uid(), score: g.fmt ? g.fmt(r.score) : bigNum(r.score) + (g.unit ? ' ' + g.unit : '') })) }))); },
-  top: async id => { const g = GAMES.find(x => x.id === id); return (await topOf(id, 10)).map(r => ({ name: lbName(r.uid, r.nick), me: r.uid === C.uid(), score: g && g.fmt ? g.fmt(r.score) : bigNum(r.score) + (g && g.unit ? ' ' + g.unit : '') })); } };
+  mod: () => C.isMod(), flag: (game, uid, on) => setFlag(game, uid, on),
+  boards: async week => { const wk = weekKey(); return Promise.all(GAMES.map(async g => ({ id: g.id, name: g.name, icon: g.icon, rows: (await topOf(week ? g.id + '_' + wk : g.id, 10)).map(r => ({ uid: r.uid, nick: r.nick || '', name: lbName(r.uid, r.nick), wins: r.wins, me: r.uid === C.uid(), flag: r.flag, game: g.id, score: g.fmt ? g.fmt(r.score) : bigNum(r.score) + (g.unit ? ' ' + g.unit : '') })) }))); },
+  top: async id => { const g = GAMES.find(x => x.id === id); return (await topOf(id, 10)).map(r => ({ name: lbName(r.uid, r.nick), me: r.uid === C.uid(), flag: r.flag, uid: r.uid, game: id, score: g && g.fmt ? g.fmt(r.score) : bigNum(r.score) + (g && g.unit ? ' ' + g.unit : '') })); } };
 function arcadeRow() { return ArcL.homeRow(arcCtx); }
 /* ha a tagek vagy a saját fiók megváltozik, a zárt béta jogosultságot újraküldjük az Arcade-nak */
 export function tagsChanged() { const f = $('.arcframe'); if (f) sendBoards(f.contentWindow); }
@@ -389,9 +390,22 @@ export function weekKey(d = new Date()) {
   return y + '-W' + String(w).padStart(2, '0');
 }
 const lbCol = lb => FB.collection(db, 'leaderboards', lb, 'scores');
+/* csalásgyanú: lbflags/{játék}__{uid} – moderátor jelöli „ellenőrzésre vár”-ra; az eredmény a lista végére kerül, felirattal */
+const FLAGS = new Set(); let flagsOn = false, flagsP = null;
+const flagKey = (game, uid) => game + '__' + uid;
+function loadFlags() { if (flagsOn) return flagsP; flagsOn = true; flagsP = new Promise(res => { try { FB.onSnapshot(FB.collection(db, 'lbflags'), s => { FLAGS.clear(); s.docs.forEach(d => FLAGS.add(d.id)); res(); }, () => res()); } catch (_) { res(); } }); return flagsP; }
+const gameOf = lb => lb.replace(/_\d{4}-W\d{2}$/, '');
 async function topOf(lb, n = 10) {
-  try { const s = await FB.getDocs(FB.query(lbCol(lb), FB.orderBy('best', 'desc'), FB.limit(n * 3)));
-    return s.docs.map(d => ({ uid: d.id, raw: +d.data().best || 0, score: lbDec(d.data().best), wins: d.data().wins || 0, nick: d.data().nick })).sort((a, b) => b.raw - a.raw || b.wins - a.wins).slice(0, n); } catch (_) { return []; }
+  try { await Promise.race([loadFlags(), new Promise(r => setTimeout(r, 1500))]);
+    const s = await FB.getDocs(FB.query(lbCol(lb), FB.orderBy('best', 'desc'), FB.limit(n * 3))), g = gameOf(lb);
+    const l = s.docs.map(d => ({ uid: d.id, raw: +d.data().best || 0, score: lbDec(d.data().best), wins: d.data().wins || 0, nick: d.data().nick, flag: FLAGS.has(flagKey(g, d.id)) })).sort((a, b) => b.raw - a.raw || b.wins - a.wins);
+    return [...l.filter(r => !r.flag).slice(0, n), ...l.filter(r => r.flag)]; } catch (_) { return []; }
+}
+async function setFlag(game, uid, on) {
+  if (!C.isMod() || !GAMES.some(g => g.id === game) || typeof uid !== 'string') return;
+  const ref = FB.doc(db, 'lbflags', flagKey(game, uid));
+  try { if (on) await FB.setDoc(ref, { game, uid, by: C.uid(), at: FB.serverTimestamp() }); else await FB.deleteDoc(ref);
+    if (on) FLAGS.add(flagKey(game, uid)); else FLAGS.delete(flagKey(game, uid)); toast(on ? 'Ellenőrzésre vár – a lista végére került' : 'Jelölés levéve'); } catch (e) { toast(errText(e), true); }
 }
 async function sendBoards(win) {
   const wk = weekKey(), boards = {}, plays = await loadPlays();

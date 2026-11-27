@@ -390,6 +390,16 @@ service cloud.firestore {
 
     // ---------- Arcade ranglista: mindenki csak a saját rekordját írhatja, és csak felfelé ----------
     // wins: hányszor érte el a csúcsot (Víztorony) – egyszerre csak eggyel nőhet
+    // csalásgyanú: a moderátor „ellenőrzésre vár” jelölést tesz egy játékos eredményére (lbflags/{játék}__{uid});
+    // az eredmény a ranglistán marad, de a végére kerül „Csalás észlelve” felirattal
+    match /lbflags/{id} {
+      allow read: if signedIn();
+      allow create: if perm('moderate') && request.resource.data.keys().hasOnly(['game', 'uid', 'by', 'at'])
+        && request.resource.data.game is string && request.resource.data.uid is string
+        && id == request.resource.data.game + '__' + request.resource.data.uid
+        && request.resource.data.by == request.auth.uid && request.resource.data.at == request.time;
+      allow delete: if perm('moderate');
+    }
     match /leaderboards/{lb}/scores/{uid} {
       allow read: if signedIn();
       allow create: if lbWriter(uid, ['best', 'at', 'wins'])
