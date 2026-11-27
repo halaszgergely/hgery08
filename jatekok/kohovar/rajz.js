@@ -1,9 +1,9 @@
 // Kohóvár – kirajzolás. A blokkok, egységek, anyagok és a talaj képei a Mindustry (Anuke és közreműködők, GPLv3) sprite-jai,
 // a kepek/atlasz.png atlaszból; a lövedékek, hatások, köd és kisérkép kódból rajzoltak.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271915';
-import { FW } from './keret.js?v=202611271915';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271915';
-import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271915';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271920';
+import { FW } from './keret.js?v=202611271920';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271920';
+import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271920';
 
 const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555', 0: '#4d4e58' };
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -52,7 +52,8 @@ export function spr(g, n, x, y, rot, sx, sy, w, h, src) {
 }
 // Mindustry Drawf.laser: két végsprite (a vonal irányába forgatva) és a köztük kifeszített vonaltextúra; scale = sugárszélesség
 function laserTex(g, line, end, x, y, x2, y2, scale, col) {
-  const re = AT[end], rl = AT[line]; if (!re || !rl) { g.strokeStyle = col || (line.startsWith('drill') ? (line.includes('boost') ? '#9ad7ff' : '#fd9e81') : '#cbfd81'); g.lineWidth = 4 * scale; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, y); g.lineTo(x2, y2); g.stroke(); g.lineCap = 'butt'; return; }   // régi atlasz: egyszerű vonal const rot = Math.atan2(y2 - y, x2 - x), sc = 8 * scale / 4, vx = Math.cos(rot) * sc, vy = Math.sin(rot) * sc;
+  const re = AT[end], rl = AT[line]; if (!re || !rl) { g.strokeStyle = col || (line.startsWith('drill') ? (line.includes('boost') ? '#9ad7ff' : '#fd9e81') : '#cbfd81'); g.lineWidth = 4 * scale; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, y); g.lineTo(x2, y2); g.stroke(); g.lineCap = 'butt'; return; }   // régi atlasz: egyszerű vonal
+  const rot = Math.atan2(y2 - y, x2 - x), sc = 8 * scale / 4, vx = Math.cos(rot) * sc, vy = Math.sin(rot) * sc;
   const sE = col ? tint(end, col, true) : undefined, sL = col ? tint(line, col, true) : undefined, ew = re[2] * scale / 4, eh = re[3] * scale / 4;
   spr(g, end, x, y, rot + Math.PI, 1, 1, ew, eh, sE); spr(g, end, x2, y2, rot, 1, 1, ew, eh, sE);
   const ax = x + vx, ay = y + vy, bx = x2 - vx, by = y2 - vy, L = Math.hypot(bx - ax, by - ay) * Math.sign((bx - ax) * Math.cos(rot) + (by - ay) * Math.sin(rot) || 1);
@@ -143,6 +144,15 @@ function blend(W, b, liquid) {
   b.bl = back && l && r ? [3, 1] : l && r ? [4, 1] : r && back ? [2, 1] : l && back ? [2, -1] : r ? [1, -1] : l ? [1, 1] : [0, 1]; b.blV = W.ver; return b.bl;
 }
 function bridgeLine(g, W, b, t) {
+  if (b.B.dir) {      // DirectionBridge.drawBridge: a híd-textúra a két blokk között, alatta halvány alj, a forgatás irányában nyilak
+    const o = W && W.linkB ? W.linkB(b) : null; if (!o) return; const n = SN[b.t], ax = (b.x + .5) * TS, ay = (b.y + .5) * TS, bx = (o.x + .5) * TS, by = (o.y + .5) * TS, a = Math.atan2(by - ay, bx - ax), L = Math.max(Math.abs(bx - ax), Math.abs(by - ay)) - TS, mx = (ax + bx) / 2, my = (ay + by) / 2;
+    if (L <= 0) return; const rb = AT[n + '-bridge']; if (!rb) return; const h = rb[3] / 4;
+    if (has(n + '-bridge-bottom')) { g.globalAlpha = .4; sprT(g, n + '-bridge-bottom', '#666666', 1, mx, my, a, 1, 1, L, h); g.globalAlpha = 1; }
+    spr(g, n + '-bridge', mx, my, a, 1, 1, L, h);
+    if (b.B.type === 'lbridge' && b.lq > .05 && has(n + '-bridge-liquid')) { g.globalAlpha = Math.min(1, b.lq / b.B.lcap); sprT(g, n + '-bridge-liquid', LIQUIDS[b.lt].c, 1, mx, my, a, 1, 1, L, h); g.globalAlpha = 1; }
+    for (let i = 6; i <= L + TS - 5; i += 5) spr(g, n + '-arrow', ax + DX[b.rot] * i, ay + DY[b.rot] * i, a);
+    return;
+  }
   const o = b.link >= 0 && W ? W.bt[b.link] : null; if (!o) return; const n = SN[b.t], ax = (b.x + .5) * TS, ay = (b.y + .5) * TS, bx = (o.x + .5) * TS, by = (o.y + .5) * TS, a = Math.atan2(by - ay, bx - ax), L = Math.hypot(bx - ax, by - ay);
   g.globalAlpha = .8; spr(g, n + '-bridge', (ax + bx) / 2, (ay + by) / 2, a, 1, 1, L - 4, 8);
   spr(g, n + '-end', ax, ay, a - Math.PI / 2); spr(g, n + '-end', bx, by, a + Math.PI / 2);
@@ -168,7 +178,13 @@ function drawB(g, W, b, t) {
       break;
     }
     case 'sorter': spr(g, n, cx, cy); if (b.cfg) { g.fillStyle = ITEMS[b.cfg].c; g.fillRect(cx - 1.5, cy - 1.5, 3, 3); } break;
-    case 'unloader': spr(g, n, cx, cy); sprT(g, 'unloader-center', b.cfg ? ITEMS[b.cfg].c : '#ffffff', 0, cx, cy); break;
+    case 'unloader': if (B.duct) { spr(g, n, cx, cy); spr(g, n + '-top', cx, cy, R); if (b.cfg) sprT(g, n + '-center', ITEMS[b.cfg].c, 0, cx, cy); else spr(g, n + '-arrow', cx, cy, R); break; }   // DirectionalUnloader.draw
+      spr(g, n, cx, cy); sprT(g, 'unloader-center', b.cfg ? ITEMS[b.cfg].c : '#ffffff', 0, cx, cy); break;
+    case 'overflow': spr(g, n, cx, cy); if (B.duct) spr(g, n + '-top', cx, cy, R); break;   // OverflowDuct.draw: a tető a forgatás irányába
+    case 'bridge': case 'lbridge': if (B.dir) {    // DirectionBridge: alap + irányjelző; a folyadékos változat alatt a folyadék
+      if (B.type === 'lbridge' && b.lq > .05) { g.globalAlpha = Math.min(1, b.lq / B.lcap); g.fillStyle = LIQUIDS[b.lt].c; g.fillRect(x + 1, y + 1, s - 2, s - 2); g.globalAlpha = 1; }
+      spr(g, n, cx, cy); spr(g, n + '-dir', cx, cy, R); break; }
+      spr(g, n, cx, cy); break;
     case 'driver': spr(g, 'mass-driver-base', cx, cy); spr(g, 'mass-driver@o', cx, cy, (b.ang || 0) + Math.PI / 2); break;
     case 'drill': spr(g, n, cx, cy); if (id === 'bdrill') glow(g, n + '-rim', cx, cy, wk * .6); spr(g, n + '-rotator', cx, cy, b.rotA || 0); spr(g, n + '-top', cx, cy); if (b.dItem && W) { g.fillStyle = ITEMS[b.dItem].c; g.fillRect(cx - 1, cy - 1, 2, 2); } break;
     case 'pump': spr(g, n, cx, cy); if (b.pLiq && b.oq > .1) { g.globalAlpha = Math.min(1, .3 + b.oq / B.lcap); sprT(g, n + '-liquid', LIQUIDS[b.pLiq].c, 0, cx, cy); g.globalAlpha = 1; } break;
@@ -179,7 +195,7 @@ function drawB(g, W, b, t) {
     }
     case 'lrouter': spr(g, n + '-bottom', cx, cy); liqRect(b.lt, b.lq / B.lcap); spr(g, n, cx, cy); break;
     case 'diode': spr(g, n, cx, cy); spr(g, n + '-arrow', cx, cy, R); break;
-    case 'router': spr(g, n, cx, cy); if (B.fwd) spr(g, n + '-top', cx, cy, R); else if (has(n + '-top')) spr(g, n + '-top', cx, cy); break;
+    case 'router': spr(g, n, cx, cy); if (B.duct) { if (b.cfg) { g.fillStyle = ITEMS[b.cfg].c; g.fillRect(cx - 1.5, cy - 1.5, 3, 3); } else spr(g, n + '-top', cx, cy, R); } else if (B.fwd) spr(g, n + '-top', cx, cy, R); else if (has(n + '-top')) spr(g, n + '-top', cx, cy); break;
     case 'radar': spr(g, n + '-base', cx, cy); spr(g, n, cx, cy, b.rotA || 0); glow(g, n + '-glow', cx, cy, b.ps || 0, b.rotA || 0); break;
     case 'btower': { spr(g, n + '-base', cx, cy); const p = b.tgtP, a = p ? Math.atan2((p.y + p.B.s / 2) * TS - cy, (p.x + p.B.s / 2) * TS - cx) : (b.ang || 0); b.ang = a; spr(g, n, cx, cy, a + Math.PI / 2); glow(g, n + '-glow', cx, cy, wk, a + Math.PI / 2);
       if (p) { g.strokeStyle = 'rgba(255,211,127,.6)'; g.lineWidth = 1; g.beginPath(); g.moveTo(cx, cy); g.lineTo((p.x + p.B.s / 2) * TS, (p.y + p.B.s / 2) * TS); g.stroke(); } break; }
