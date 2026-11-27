@@ -2,18 +2,18 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271305';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271305';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271305';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611271305';
-import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271305';
-import { JS } from './jsapi.js?v=202611271305';
-import { initCloud, changed as cloudChanged, push as cloudPush, flush as cloudFlush } from './felho.js?v=202611271305';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271305';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271305';
-import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271305';
-import { toWorld } from './msav.js?v=202611271305';
-import { Story } from './logika.js?v=202611271305';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271349';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271349';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271349';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611271349';
+import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271349';
+import { JS } from './jsapi.js?v=202611271349';
+import { initCloud, changed as cloudChanged, push as cloudPush, flush as cloudFlush } from './felho.js?v=202611271349';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271349';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271349';
+import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271349';
+import { toWorld } from './msav.js?v=202611271349';
+import { Story } from './logika.js?v=202611271349';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -195,7 +195,7 @@ function planetInfo() {
   $('#pGo').disabled = st === 'lock'; $('#pGo').querySelector('span').textContent = run ? 'Folytatás' : st === 'cap' ? 'Újra' : 'Kilövés';
 }
 $('#pcv').onpointerdown = e => { PV.drag = { x: e.clientX, y: e.clientY, yaw: PV.yaw, pitch: PV.pitch, m: 0 }; PV.ty = null; };
-addEventListener('pointermove', e => { const d = PV.drag; if (!d) return; const { R } = planetGeo(), z = SET.ui / 100, dx = (e.clientX - d.x) / z, dy = (e.clientY - d.y) / z; d.m = Math.max(d.m, Math.abs(dx) + Math.abs(dy)); PV.yaw = d.yaw + dx / R; PV.pitch = Math.max(-1.4, Math.min(1.4, d.pitch - dy / R)); });
+addEventListener('pointermove', e => { const d = PV.drag; if (!d) return; const { R } = planetGeo(), z = SET.ui / 100, dx = (e.clientX - d.x) / z, dy = (e.clientY - d.y) / z; d.m = Math.max(d.m, Math.abs(dx) + Math.abs(dy)); PV.yaw = d.yaw + dx / R; PV.pitch = Math.max(-1.4, Math.min(1.4, d.pitch + dy / R)); });
 addEventListener('pointerup', () => { setTimeout(() => { PV.drag = null; }, 0); });
 $('#pcv').onclick = e => {
   if (PV.drag && PV.drag.m > 5) return; const { R, cx, cy } = planetGeo(), r = e.target.getBoundingClientRect(), z = SET.ui / 100, mx = (e.clientX - r.left) / z, my = (e.clientY - r.top) / z;
