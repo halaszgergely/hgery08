@@ -1,8 +1,8 @@
 // Teljes modellű szereplők: vízügyi ellenőrök gyalog, Szilárd emberei, a történet alakjai, taxiutasok.
 import * as THREE from 'three';
-import * as W from './world.js?v=202611271044';
-import { buildHuman, pose, LOOKS, buildWeapon } from './player.js?v=202611271044';
-import { WEAPONS } from './weapons.js?v=202611271044';
+import * as W from './world.js?v=202611271046';
+import { buildHuman, pose, LOOKS, buildWeapon } from './player.js?v=202611271046';
+import { WEAPONS } from './weapons.js?v=202611271046';
 
 export function createActors(ctx) {
   const list = [], V = new THREE.Vector3();

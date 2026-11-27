@@ -1,6 +1,6 @@
 // Kamera: harmadik személyű követés (ütközés-elkerüléssel, járműmögé igazodással, célzáskor vállkamera) és átvezető jelenetek (kamerautak + feliratok).
 import * as THREE from 'three';
-import * as W from './world.js?v=202611271044';
+import * as W from './world.js?v=202611271046';
 
 const ss = k => k * k * (3 - 2 * k);
 export function createCamera(camera) {
