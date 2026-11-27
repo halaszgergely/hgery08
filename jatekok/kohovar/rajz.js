@@ -1,9 +1,9 @@
 // Kohóvár – kirajzolás. A blokkok, egységek, anyagok és a talaj képei a Mindustry (Anuke és közreműködők, GPLv3) sprite-jai,
 // a kepek/atlasz.png atlaszból; a lövedékek, hatások, köd és kisérkép kódból rajzoltak.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271349';
-import { FW } from './keret.js?v=202611271349';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271349';
-import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271349';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271357';
+import { FW } from './keret.js?v=202611271357';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271357';
+import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271357';
 
 const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555', 0: '#4d4e58' };
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -139,6 +139,7 @@ function bridgeLine(g, W, b, t) {
   g.globalAlpha = 1;
 }
 function drawB(g, W, b, t) {
+  if (b.__land) return;   // a leszálló magot a drawLanding rajzolja
   if (b.B.xlinks && !b.__rx) {      // nem négyzetes blokk: a teljes alakzat közepére, forgatva rajzoljuk
     const B = b.B, rc = FW.rect(B, b.x, b.y, b.rot || 0), mx = (rc.x0 + rc.x1) / 2, my = (rc.y0 + rc.y1) / 2, w = (rc.x1 - rc.x0) * TS, h = (rc.y1 - rc.y0) * TS;
     g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(rc.x0 * TS, rc.y0 * TS, w, h);
@@ -259,6 +260,31 @@ export function drawUnit(g, t, team, x, y, a, walk, sc = 1) {
   weapons(true);
   g.restore(); TM.ok = tmOk;
 }
+
+/* ---------- a mag leszállása (Mindustry CoreBlock.drawLaunch / drawLanding) ---------- */
+const THR = [0, 0, 0, 0, .3, 1, 1, 1, 1, 1, 1, 1, 1, 0];   // a hajtóművek lángjának mérete a leszállás során
+const sample = (a, f) => { const x = Math.max(0, Math.min(1, f)) * (a.length - 1), i = Math.min(a.length - 2, Math.floor(x)); return a[i] + (a[i + 1] - a[i]) * (x - i); };
+const rnd = s => { let a = (s | 0) + 0x6D2B79F5; a = Math.imul(a ^ a >>> 15, 1 | a); a ^= a + Math.imul(a ^ a >>> 7, 61 | a); return ((a ^ a >>> 14) >>> 0) / 4294967296; };
+export function drawLanding(g, W, fin, t) {
+  const b = W.core; if (!b) return; const B = b.B, n = SN[b.t] || b.t, cx = (b.x + B.s / 2) * TS, cy = (b.y + B.s / 2) * TS, fout = 1 - fin;
+  const pfin = 1 - (1 - fin) ** 3, pf = fout * fout, k = 1 + 2.6 * (1 - fin * fin), rot = 135 * pf * Math.PI / 180;
+  // kifelé repülő fénycsíkok
+  g.strokeStyle = '#ffe2a9'; g.lineCap = 'round';
+  for (let i = 0; i < 100; i++) { const a = rnd(i * 2 + 1) * Math.PI * 2, f = rnd(i * 2 + 2), d = f * 220 * pfin; if (pf * f < .01) continue; g.lineWidth = f * pf * 3; const l = f * 20 + 1; g.beginPath(); g.moveTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); g.lineTo(cx + Math.cos(a) * (d + l), cy + Math.sin(a) * (d + l)); g.stroke(); }
+  // árnyék / fényudvar
+  { const r = B.s * TS * 1.8 * (1 - fin * fin) * k; if (r > 1) { const gr = g.createRadialGradient(cx, cy, 0, cx, cy, r); gr.addColorStop(0, 'rgba(255,226,169,.55)'); gr.addColorStop(1, 'rgba(255,226,169,0)'); g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill(); } }
+  // hajtóműlángok
+  const th = sample(THR, fin), str = (1 + (B.s - 3) / 2.5) * th * (.95 + Math.abs(Math.sin(t / 2)) * .1), off = (B.s - 3) * 3;
+  for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 - rot, d1 = (B.s * TS / 2 + 1) * k + str * 2 * k + off, d2 = (B.s * TS / 2 + 1) * k + str * .5 * k + off;
+    if (str > .01) { g.fillStyle = TEAM[b.team ?? PLAYER]; g.beginPath(); g.arc(cx + Math.cos(a) * d1, cy + Math.sin(a) * d1, 6 * str * k / 2, 0, 7); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(cx + Math.cos(a) * d2, cy + Math.sin(a) * d2, 3.5 * str * k / 2, 0, 7); g.fill(); } }
+  // a mag a kinyitott hajtóművekkel, forogva és a magasból kicsinyedve
+  const frame = fin >= .75 ? Math.max(0, 1 - (fin - .75) / .25) : 1, len = (3.5 * (frame - 1) - .25) * -1 * k;
+  for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 - rot, reg = n + (i >= 2 ? '-thruster2' : '-thruster1'); if (has(reg)) spr(g, reg, cx + Math.cos(a) * len, cy + Math.sin(a) * len, a, null, null, sz(reg)[0] / 4 * k, sz(reg)[1] / 4 * k); }
+  const w = (AT[n] ? AT[n][2] : B.s * 32) / 4 * k, h = (AT[n] ? AT[n][3] : B.s * 32) / 4 * k; spr(g, n, cx, cy, -rot, null, null, w, h);
+  if (has(n + '-team')) sprT(g, n + '-team', TEAM[b.team ?? PLAYER], 1, cx, cy, -rot, null, null, w, h);
+  const wa = fout ** 5; if (wa > .01) { g.globalAlpha = wa; sprT(g, n, '#ffffff', 0, cx, cy, -rot, null, null, w, h); g.globalAlpha = 1; }   // fehér felvillanás a magasban
+}
+const sz = n => AT[n] ? [AT[n][2], AT[n][3]] : [32, 32];
 
 /* ---------- fő rajzolás ---------- */
 export function render(g, W, R) {
