@@ -38,7 +38,7 @@ A forráskód ebben a mappában olvasható formában érhető el, és a GPLv3 fe
 
 ## Beépített modok (`modok/`)
 
-A modok listában szerepelnek, alapból kikapcsolva. Mindegyik a saját licence alatt áll, változatlanul (a fejlesztői fájlok nélkül) csomagolva:
+A modok listában szerepelnek, alapból kikapcsolva. Mindegyik a saját licence alatt áll, a fejlesztői fájlok nélkül csomagolva. Módosítás: a JS-szkriptekben megadott értékeket (lőszerek, lövedékek, blokktípusok) az `eszkoz/jsmod.mjs` kinyerte és a mod JSON-fájljaiba írta, mert a böngészőben a szkriptek nem futnak:
 
 | Fájl | Mod | Szerző | Licenc | Forrás |
 |---|---|---|---|---|

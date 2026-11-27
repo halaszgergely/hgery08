@@ -218,7 +218,7 @@ def conv_block(var, o):
     n = name_of.get(id(o))
     if not n: return None
     t = o.type
-    if t in SANDBOX or 'sandbox' in str(getattr(o.f.get('buildVisibility'), 'path', '')).lower(): return None    # csak homokozóban építhető
+    if n.startswith('test-') or t in SANDBOX or 'sandbox' in str(getattr(o.f.get('buildVisibility'), 'path', '')).lower(): return None    # csak homokozóban építhető
     T = TYPEMAP.get(t) or (t if t in BLOCK_ROOTS else root(t, BLOCK_ROOTS))
     d = {'type': T if T in BLOCK_ROOTS or T in TYPEMAP.values() else 'Block', '_class': t}
     d.update(plain(o, BLK_KEYS))
@@ -276,6 +276,12 @@ def conv_block(var, o):
     if t in STREAM: d['_special'] = t
     if T == 'LiquidBridge' and t.startswith('Stream'): d['range'] = 5
     if t == 'OreCollector': d.setdefault('tier', 4); d.setdefault('drillTime', 400)
+    if t == 'AirRaider':       # távoli csapásmérő állás → nagy hatótávú tüzérségi torony
+        d.update(type='PowerTurret', range=640, reload=360, targetAir=False, shootType={'type': 'ArtilleryBulletType', 'speed': 4, 'lifetime': 170, 'damage': 0, 'splashDamage': 900, 'splashDamageRadius': 64, 'fragBullets': 6, 'fragBullet': {'type': 'BasicBulletType', 'damage': 60, 'speed': 3, 'lifetime': 20}})
+    if t == 'BombLauncher':    # bombavető → tüzérségi torony a saját lövedékével
+        b = d.pop('shootType', {}) or {}
+        d.update(type='PowerTurret', range=480, reload=240, targetAir=False, shootType={'type': 'ArtilleryBulletType', 'speed': 3.5, 'lifetime': 140, 'damage': 0, 'splashDamage': b.get('damage', 200) * 2, 'splashDamageRadius': 48, 'lightning': 4, 'lightningDamage': 40})
+        d.setdefault('consumePower', 4)
     if T == 'ShockwaveTower': d.setdefault('range', 170); d.setdefault('reload', 80)
     return n, d
 
