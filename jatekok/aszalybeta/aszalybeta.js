@@ -134,6 +134,21 @@ const AszalyBeta = (() => {
     { id: 'zr', n: 'Zero', w: 'ak63', b: '−10% töltési idő' },
     { id: 'bt', n: 'Botond', w: 'pkm', b: '+30 max. élet, −6% sebesség' }
   ];
+  /* Tanácsi Kút: maradandó fejlesztések aranyért (az arany ritkán esik a pályán) */
+  const META = [
+    { id: 'hp', n: 'Mélyebb kút', d: '+10 max. élet', mx: 5, c: 8 }, { id: 'dmg', n: 'Erősebb nyomás', d: '+5% sebzés', mx: 5, c: 10 },
+    { id: 'spd', n: 'Könnyű csizma', d: '+3% sebesség', mx: 5, c: 8 }, { id: 'mag', n: 'Vízérzék', d: '+10% gyűjtési távolság', mx: 5, c: 6 },
+    { id: 'arm', n: 'Vastag kesztyű', d: '+1 páncél', mx: 3, c: 18 }, { id: 'reg', n: 'Esővíz-tároló', d: '+0,2 élet/mp', mx: 3, c: 14 },
+    { id: 'cd', n: 'Pontos óra', d: '−3% töltési idő', mx: 5, c: 12 }, { id: 'xp', n: 'Tapasztalat', d: '+5% XP', mx: 5, c: 10 },
+    { id: 'rr', n: 'Új sorsolás', d: '+1 újrasorsolás körönként', mx: 3, c: 15 }, { id: 'gold', n: 'Aranyér', d: '+25% arany', mx: 3, c: 20 }
+  ];
+  const metaGet = () => { try { return JSON.parse(localStorage.getItem('hgws_aszb_meta') || '{}') || {}; } catch (_) { return {}; } };
+  const metaSet = m => { try { localStorage.setItem('hgws_aszb_meta', JSON.stringify(m)); } catch (_) {} };
+  const ml = k => (S && S.meta ? S.meta : metaGet())[k] || 0;
+  const mCost = (u, l) => u.c * (l + 1);
+  function buyMeta(i) { const u = META[i]; if (!u) return; const m = metaGet(), l = m[u.id] || 0, g = store.get('aszb_gold'), c = mCost(u, l);
+    if (l >= u.mx || g < c) { S.shop.shake = .3; S.shop.i = i; Sfx.blip(150, .15, 'square', .05, .7); return; }
+    m[u.id] = l + 1; metaSet(m); store.set('aszb_gold', g - c); S.meta = m; S.shop.i = i; stats(); Sfx.coin(); }
   const chOpen = () => true; /* zárt béta: minden karakter elérhető */
   const TAUNT = ['Ez a kert az enyém lesz!', 'Még mindig locsolsz? Nevetséges.', 'A víz elfogy. Én maradok.', 'Minden virág elszárad egyszer!'];
 
@@ -143,10 +158,11 @@ const AszalyBeta = (() => {
   const chr = () => S.ch;
   function stats() {
     const c = chr();
-    S.st = { speed: 150 * (1 + .09 * lv('csizma')) * (c === 'bt' ? .94 : c === 'kt' ? 1.08 : 1), magnet: 62 * (1 + .35 * lv('magnes')), dmg: 1 + .12 * lv('nyomas'),
-      cd: (1 - .07 * lv('idozito')) * (c === 'zr' ? .9 : 1), area: (1 + .1 * lv('fuvoka')) * (c === 'rl' ? 1.1 : 1), dur: 1 + .15 * lv('hosszabbito'),
-      armor: lv('kesztyu') + (c === 'gt' ? 1 : 0), regen: .3 * lv('gyujto'), extra: lv('tartaly'), luck: 1 + .3 * lv('lohere'), xp: c === 'gh' ? 1.1 : 1 };
-    S.P.mhp = 100 + 20 * lv('vitamin') + (c === 'gt' ? 20 : c === 'bt' ? 30 : 0);
+    const M = S.meta || {}, mv = k => M[k] || 0;
+    S.st = { speed: 150 * (1 + .09 * lv('csizma') + .03 * mv('spd')) * (c === 'bt' ? .94 : c === 'kt' ? 1.08 : 1), magnet: 62 * (1 + .35 * lv('magnes') + .1 * mv('mag')), dmg: 1 + .12 * lv('nyomas') + .05 * mv('dmg'),
+      cd: (1 - .07 * lv('idozito') - .03 * mv('cd')) * (c === 'zr' ? .9 : 1), area: (1 + .1 * lv('fuvoka')) * (c === 'rl' ? 1.1 : 1), dur: 1 + .15 * lv('hosszabbito'),
+      armor: lv('kesztyu') + (c === 'gt' ? 1 : 0) + mv('arm'), regen: .3 * lv('gyujto') + .2 * mv('reg'), extra: lv('tartaly'), luck: 1 + .3 * lv('lohere'), xp: (c === 'gh' ? 1.1 : 1) + .05 * mv('xp'), gold: 1 + .25 * mv('gold') };
+    S.P.mhp = 100 + 20 * lv('vitamin') + (c === 'gt' ? 20 : c === 'bt' ? 30 : 0) + 10 * mv('hp');
   }
   function view(G) { V.sc = G.d * clamp(Math.min(G.W, G.H) / G.d / 640, .6, 1.15); V.hw = G.W / 2 / V.sc; V.hh = G.H / 2 / V.sc; V.ring = Math.hypot(V.hw, V.hh) + 50; }
 
@@ -154,9 +170,11 @@ const AszalyBeta = (() => {
   const KEYS = { ArrowUp: 'U', w: 'U', W: 'U', ArrowDown: 'D', s: 'D', S: 'D', ArrowLeft: 'L', a: 'L', A: 'L', ArrowRight: 'R', d: 'R', D: 'R' };
   const mine = () => gEl.classList.contains('open') && G.game === me && S;
   // Esc/P: szünet (a keret Esc = bezárás kezelője elé fut)
-  addEventListener('keydown', e => { if (!mine() || !G.running || S.sel || S.over) return;
+  addEventListener('keydown', e => { if (mine() && G.running && S.shop && e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); S.shop = null; return; } if (!mine() || !G.running || S.sel || S.over) return;
     if (e.key === 'Escape' || ((e.key === 'p' || e.key === 'P') && !e.repeat)) { e.preventDefault(); e.stopImmediatePropagation(); togglePause(); } }, true);
   addEventListener('keydown', e => { if (!mine()) return; const k = KEYS[e.key];
+    if (S.shop) { if (/^[0-9]$/.test(e.key)) buyMeta((+e.key + 9) % 10); return; }
+    if (S.sel && G.running && (e.key === 'k' || e.key === 'K')) { S.shop = { t: 0, i: -1, shake: 0 }; S.meta = metaGet(); return; }
     if (S.sel && G.running) { const n = CH.length, cols = selCols(G);
       if (/^[1-6]$/.test(e.key)) return selPick(G, +e.key - 1);
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); return selPick(G, S.sel.i); }
@@ -294,8 +312,8 @@ const AszalyBeta = (() => {
     part(e.x, e.y, e.T.boss ? 30 : 5, FCOL[e.T.f] || '207,174,116', 150);
     if (e.T.god) return godDeath(G, e);
     if (e.type === 'szilard') return szDeath(G, e);
-    if (e.T.boss) { S.gems.push({ k: 'c', x: e.x, y: e.y, v: 0 }); Sfx.boom(); G.shake = 14 * G.d; if (S.bossE === e) { S.bossE = null; S.bossCD = 30; } S.bossN++; banner(e.T.n.toUpperCase() + ' LEGYŐZVE!', 2.6, '#7ef0a4'); }
-    else { S.gems.push({ k: 'x', x: e.x, y: e.y, v: e.T.xp }); const r = Math.random(), lk = S.st.luck; if (r < .011 * lk) S.gems.push({ k: 'h', x: e.x + 8, y: e.y, v: 0 }); else if (r < .0145 * lk) S.gems.push({ k: 'm', x: e.x - 8, y: e.y, v: 0 }); }
+    if (e.T.boss) { goldPile(e.x, e.y, 10 + S.bossN * 4); S.gems.push({ k: 'c', x: e.x, y: e.y, v: 0 }); Sfx.boom(); G.shake = 14 * G.d; if (S.bossE === e) { S.bossE = null; S.bossCD = 30; } S.bossN++; banner(e.T.n.toUpperCase() + ' LEGYŐZVE!', 2.6, '#7ef0a4'); }
+    else { S.gems.push({ k: 'x', x: e.x, y: e.y, v: e.T.xp }); if (Math.random() < (e.T.hp >= 52 ? .012 : .004) * S.st.luck) S.gems.push({ k: 'g', x: e.x, y: e.y - 6, v: 1 }); const r = Math.random(), lk = S.st.luck; if (r < .011 * lk) S.gems.push({ k: 'h', x: e.x + 8, y: e.y, v: 0 }); else if (r < .0145 * lk) S.gems.push({ k: 'm', x: e.x - 8, y: e.y, v: 0 }); }
     if (e.T.ai === 'split') for (let i = 0; i < 2; i++) spawn('pioca', e.x - S.P.x + rnd(-14, 14), e.y - S.P.y + rnd(-14, 14), .5);
     if (S.gems.length > 340) { const o = S.gems.findIndex(q => q.k === 'x' && !q.pull); if (o >= 0) { const v = S.gems[o].v; S.gems.splice(o, 1); const n = S.gems.find(q => q.k === 'x' && !q.pull); if (n) n.v += v; } }
     if (S.t - S.sndT > .07) { S.sndT = S.t; Sfx.blip(260 + Math.random() * 180, .05, 'triangle', .035, .6); }
@@ -383,11 +401,11 @@ const AszalyBeta = (() => {
     S.szE = null; S.bossE = null; S.szN++; S.szKill = 1; S.szRage = 0; S.dry = 0; S.heat = 0; S.bossN++;
     G.score += 5000; S.dirty = 1; G.float(G.W / 2, G.H / 2 - 60 * G.d, '+5000');
     banner('A KERT KIVIRÁGZOTT!', 4.2, '#7ef0a4'); S.melt = { x: e.x, y: e.y, l: 2.6 }; S.rainT = 12; S.green = 60; S.say = null; S.ph = 'bloom'; S.phT = 60;
-    S.gems.push({ k: 'c', x: e.x - 22, y: e.y + 8, v: 0, dbl: 1 }, { k: 'c', x: e.x + 22, y: e.y + 8, v: 0, dbl: 1 });
+    goldPile(e.x, e.y, 40); S.gems.push({ k: 'c', x: e.x - 22, y: e.y + 8, v: 0, dbl: 1 }, { k: 'c', x: e.x + 22, y: e.y + 8, v: 0, dbl: 1 });
     for (const o of S.ep) o.dead = 1; G.shake = 16 * G.d; Sfx.boom(); setTimeout(() => Sfx.perfect(), 300);
   }
   function godDeath(G, e) {
-    S.bossE = null; G.score += 50000; S.dirty = 1; S.green = 30; S.rainT = 20; S.dry = 0; S.warns = []; for (const o of S.ep) o.dead = 1; for (const o of S.en) o.dead = 1;
+    S.bossE = null; S.gold += Math.round(150 * S.st.gold); store.set('aszb_gold', store.get('aszb_gold') + Math.round(150 * S.st.gold)); G.score += 50000; S.dirty = 1; S.green = 30; S.rainT = 20; S.dry = 0; S.warns = []; for (const o of S.ep) o.dead = 1; for (const o of S.en) o.dead = 1;
     banner('AZ ASZÁLY VÉGET ÉRT!', 6, '#7ef0a4'); G.shake = 24 * G.d; Sfx.boom(); setTimeout(() => Sfx.perfect(), 400); part(e.x, e.y, 60, '255,220,140', 260, .9);
     me.overTitle = 'AZ ASZÁLY VÉGET ÉRT · ' + fmtT(S.t); G.win = true; S.ph = 'win'; setTimeout(() => { if (S && G.running) G.end(); }, 3500);
   }
@@ -566,7 +584,9 @@ const AszalyBeta = (() => {
       if (c.storm && (c.bt -= dt) <= 0) { c.bt = .55; let tg = null, bd = (c.R * 1.5) ** 2; near(c.x, c.y, c.R * 1.5, (e, dx, dy) => { const d = dx * dx + dy * dy; if (d < bd) { bd = d; tg = e; } });
         if (tg) { hurt(G, tg, 45, 0, 0, 'zivatar'); S.bolts.push({ x1: c.x + rnd(-20, 20), y1: c.y - c.R * 1.05, x2: tg.x, y2: tg.y, l: .2, s: Math.random() * 99 }); part(tg.x, tg.y, 6, '255,250,200', 140, .3); snd('zivatar', .25); } } }
   }
+  function goldPile(x, y, n) { for (let i = 0, k = Math.min(n, 12); i < k; i++) { const a = i / k * TAU; S.gems.push({ k: 'g', x: x + Math.cos(a) * 26, y: y + Math.sin(a) * 18, v: Math.round(n / k) }); } }
   function collect(G, q) {
+    if (q.k === 'g') { const v = Math.max(1, Math.round(q.v * S.st.gold)); S.gold += v; store.set('aszb_gold', store.get('aszb_gold') + v); S.dirty = 1; if (S.t - (S.gcT || -9) > .08) { S.gcT = S.t; Sfx.blip(1560, .07, 'triangle', .04, 1.4); } return; }
     const P = S.P;
     if (q.k === 'x') { P.xp += q.v * S.st.xp * (S.zapor > 0 ? 1.1 : 1); while (P.xp >= P.need) { P.xp -= P.need; P.lvl++; P.need = Math.floor(4 + P.lvl * 3.5 + P.lvl * P.lvl * .45); S.pending++; }
       if (S.t - S.gsT > .05) { S.gsT = S.t; Sfx.blip(900 + Math.random() * 300, .04, 'sine', .03); } }
@@ -613,18 +633,22 @@ const AszalyBeta = (() => {
 
   /* ---------- karakterválasztó ---------- */
   const selCols = G => G.W / G.d > 640 ? 3 : 2;
-  function selCards(G) { const d = G.d, cols = selCols(G), rows = Math.ceil(CH.length / cols), gap = 10 * d, w = Math.min((G.W - 24 * d - (cols - 1) * gap) / cols, 220 * d), h = Math.min(160 * d, (G.H - 150 * d - (rows - 1) * gap) / rows);
-    const x0 = (G.W - (cols * w + (cols - 1) * gap)) / 2, y0 = Math.max(100 * d, (G.H - (rows * h + (rows - 1) * gap)) / 2 + 20 * d);
+  function selCards(G) { const d = G.d, cols = selCols(G), rows = Math.ceil(CH.length / cols), gap = 10 * d, w = Math.min((G.W - 24 * d - (cols - 1) * gap) / cols, 220 * d), h = Math.min(160 * d, (G.H - 214 * d - (rows - 1) * gap) / rows);
+    const x0 = (G.W - (cols * w + (cols - 1) * gap)) / 2, y0 = Math.max(96 * d, (G.H - (rows * h + (rows - 1) * gap)) / 2 - 10 * d);
     return CH.map((c, i) => ({ c, i, x: x0 + (i % cols) * (w + gap), y: y0 + Math.floor(i / cols) * (h + gap), w, h })); }
+  function kutBtn(G) { const cs = selCards(G), l = cs[cs.length - 1], d = G.d, w = Math.min(300 * d, G.W - 40 * d); return { x: (G.W - w) / 2, y: l.y + l.h + 16 * d, w, h: 44 * d }; }
+  function shopRows(G) { const d = G.d, cols = G.W / d > 700 ? 2 : 1, cw = Math.min((G.W - 30 * d) / cols, 400 * d), rh = Math.min(58 * d, (G.H - 230 * d) / Math.ceil(META.length / cols)), x0 = (G.W - cols * cw) / 2;
+    return META.map((u, i) => ({ u, i, x: x0 + (i % cols) * cw + 4 * d, y: 120 * d + Math.floor(i / cols) * rh, w: cw - 8 * d, h: rh - 6 * d })); }
+  const shopClose = G => ({ x: G.W / 2 - 90 * G.d, y: G.H - 70 * G.d, w: 180 * G.d, h: 44 * G.d, t: 'VISSZA' });
   function selPick(G, i) { const c = CH[i]; if (!c || S.sel.t < .25) return; S.sel.i = i; if (!chOpen(c)) { S.sel.shake = .35; Sfx.blip(150, .15, 'square', .05, .7); return; }
-    S.ch = c.id; S.up = { [c.w]: 1 }; S.sel = null; stats(); S.P.hp = S.P.mhp; Sfx.coin(); S.started = 1; }
+    S.ch = c.id; S.up = { [c.w]: 1 }; S.sel = null; S.shop = null; S.meta = metaGet(); S.rr = 3 + (S.meta.rr || 0); stats(); S.P.hp = S.P.mhp; Sfx.coin(); S.started = 1; }
 
   /* ---------- statisztika a kör végén ---------- */
   function showStats() {
     const ov = document.querySelector('#pOver > div'), row = ov && ov.querySelector('.row'); if (!row) return; let el = document.getElementById('aszbStat');
     if (!el) { el = document.createElement('div'); el.id = 'aszbStat'; el.style.cssText = 'margin:.6rem auto .9rem;max-width:340px;font:600 .82rem Inter,sans-serif;color:#c9d6e6;text-align:left'; ov.insertBefore(el, row); }
     const c = CH.find(c => c.id === S.ch) || CH[0], tot = Object.values(S.dmgBy).reduce((a, b) => a + b, 0) || 1, list = Object.entries(S.dmgBy).sort((a, b) => b[1] - a[1]).slice(0, 8);
-    el.innerHTML = `<div style="display:flex;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin-bottom:.5rem"><span>⏱ ${fmtT(S.t)}</span><span>💀 ${S.kills.toLocaleString('hu-HU')}</span><span>⭐ ${S.P.lvl}. szint</span><span>👤 ${c.n}</span></div>`
+    el.innerHTML = `<div style="display:flex;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin-bottom:.5rem"><span>⏱ ${fmtT(S.t)}</span><span>💀 ${S.kills.toLocaleString('hu-HU')}</span><span>⭐ ${S.P.lvl}. szint</span><span>👤 ${c.n}</span><span style="color:#ffd23f">◉ ${S.gold} arany</span></div>`
       + list.map(([k, v]) => `<div style="display:flex;align-items:center;gap:.5rem;margin:.18rem 0"><span style="flex:0 0 46%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${UP[k] ? UP[k].n : k}</span><span style="flex:1;height:.5rem;border-radius:.25rem;background:rgba(255,255,255,.08);overflow:hidden"><span style="display:block;height:100%;width:${Math.max(2, v / tot * 100).toFixed(1)}%;background:${UP[k] && UP[k].evo ? '#ffd23f' : '#3aa6f5'}"></span></span><span style="flex:0 0 3.6rem;text-align:right">${Math.round(v).toLocaleString('hu-HU')}</span></div>`).join('');
     el.hidden = false;
   }
@@ -814,15 +838,16 @@ const AszalyBeta = (() => {
     init(G) {
       S = { t: 0, P: { x: 0, y: 0, hp: 100, mhp: 100, inv: 0, face: 1, walk: 0, mov: 0, lvl: 1, xp: 0, need: 7 }, up: { pisztoly: 1 }, wt: {}, en: [], pr: [], gems: [], bombs: [], clouds: [], rings: [], slashes: [], pt: [], nums: [],
         eid: 0, sT: .6, minute: 0, bossN: 0, kills: 0, pending: 0, choose: null, orb: 0, sndT: -1, gsT: -1, hudT: 0, dirty: 0, banner: null,
-        ch: 'gh', sel: { i: 0, t: 0, shake: 0 }, started: 0, over: 0, paused: 0, dmgBy: {}, evd: {}, evoQ: [], evoN: 0, rr: 3, kingK: 0,
+        ch: 'gh', gold: 0, gcT: -9, meta: metaGet(), shop: null, sel: { i: 0, t: 0, shake: 0 }, started: 0, over: 0, paused: 0, dmgBy: {}, evd: {}, evoQ: [], evoN: 0, rr: 3, kingK: 0,
         ep: [], cans: [], geys: [], hail: [], heli: [], trail: [], bolts: [], beams: [], heliA: 0, rbA: 0, rbDir: 1, rbBase: 0, rbJet: 0,
         heat: 0, zapor: 0, rainT: 0, green: 0, dry: 0, flash: 0, batT: 30, szE: null, szN: 0, szKill: 0, ph: 'run', phT: 0, wk: 0, bi: 0, bossCD: 0, bossE: null, warns: [], blasts: [], crystals: [], burst: [], cones: [], sig: {}, szRage: 0, taunt: null, say: null, melt: null, note: null, unT: 0 };
-      sndT = {}; stats(); view(G); joy = null; this.overTitle = 'KISZÁRADTÁL'; hideStats();
+      sndT = {}; S.rr = 3 + (S.meta.rr || 0); stats(); view(G); joy = null; this.overTitle = 'KISZÁRADTÁL'; hideStats();
       const last = Math.round(store.get('aszb_last', 0)); if (CH[last] && chOpen(CH[last])) S.sel.i = last;
     },
     down(G, x, y, e) {
       if (!e || e === true) return;
-      if (S.sel) { const c = selCards(G).find(c => inR(c, x, y)); if (c) selPick(G, c.i); return; }
+      if (S.shop) { const r = shopRows(G).find(r => inR(r, x, y)); if (r) buyMeta(r.i); else if (inR(shopClose(G), x, y)) { S.shop = null; Sfx.blip(500, .06, 'square', .04); } return; }
+      if (S.sel) { if (inR(kutBtn(G), x, y)) { S.shop = { t: 0, i: -1, shake: 0 }; S.meta = metaGet(); Sfx.blip(700, .07, 'square', .04); return; } const c = selCards(G).find(c => inR(c, x, y)); if (c) selPick(G, c.i); return; }
       if (S.paused) { const b = pauseBtns(G).find(b => inR(b, x, y)); if (b) { if (b.id === 'go') togglePause(); else { S.paused = 0; G.end(); } } return; }
       if (S.choose) { const c = cards(G).findIndex(c => inR(c, x, y)); if (c >= 0) return pick(G, c); const b = cardBtns(G).find(b => inR(b, x, y)); if (b) b.id === 'rr' ? reroll() : skip(); return; }
       const pb = pauseBtn(G); if (Math.hypot(x - pb.x, y - pb.y) < pb.r * 1.4) return togglePause();
@@ -835,6 +860,7 @@ const AszalyBeta = (() => {
     leave() { joy = null; K.U = K.D = K.L = K.R = 0; hideStats(); },
     update(G, dt) {
       view(G); const P = S.P;
+      if (S.shop) { S.shop.t += dt; S.shop.shake = Math.max(0, S.shop.shake - dt); }
       if (S.sel) { S.sel.t += dt; S.sel.shake = Math.max(0, S.sel.shake - dt); return; }
       if (S.paused) return;
       if (S.choose) { S.choose.t += dt; S.flash = Math.max(0, S.flash - dt); return; }
@@ -893,6 +919,7 @@ const AszalyBeta = (() => {
         if (q.k === 'x') { g.fillStyle = q.v >= 6 ? '#ffd23f' : q.v >= 3 ? '#5ee08a' : '#6cc6ff'; drop(g, x, y, (4 + Math.min(3, q.v * .4)) * sc); g.fillStyle = 'rgba(255,255,255,.7)'; circ(g, x - 1.4 * sc, y + .5 * sc, 1.1 * sc); }
         else if (q.k === 'h') { g.fillStyle = '#ff5a4d'; heart(g, x, y + Math.sin(t * 5) * 2 * sc, 8 * sc); }
         else if (q.k === 'm') ico(g, 'magnes', x, y + Math.sin(t * 5) * 2 * sc, 22 * sc);
+        else if (q.k === 'g') { const yy = y + Math.sin(t * 4 + q.x) * 1.5 * sc, sq = Math.abs(Math.cos(t * 3 + q.y)); g.fillStyle = '#b8860b'; g.beginPath(); g.ellipse(x, yy + .8 * sc, 6 * sc * (.35 + .65 * sq), 6 * sc, 0, 0, TAU); g.fill(); g.fillStyle = '#ffd23f'; g.beginPath(); g.ellipse(x, yy, 5.4 * sc * (.35 + .65 * sq), 5.4 * sc, 0, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,.8)'; circ(g, x - 1.6 * sc * sq, yy - 1.8 * sc, 1.3 * sc); }
         else { const k = (1 + .08 * Math.sin(t * 6)) * (q.dbl ? 1.25 : 1); if (q.dbl) { g.fillStyle = `rgba(255,210,63,${.25 + .15 * Math.sin(t * 8)})`; circ(g, x, y, 24 * sc); }
           g.fillStyle = q.dbl ? '#b8860b' : '#8a5a1e'; rrp(g, x - 13 * sc * k, y - 9 * sc * k, 26 * sc * k, 18 * sc * k, 3 * sc); g.fillStyle = q.dbl ? '#ffd23f' : '#e8b656'; g.fillRect(x - 13 * sc * k, y - 3 * sc, 26 * sc * k, 3 * sc); circ(g, x, y - 1 * sc, 3 * sc); } }
       // Szilárd olvadása
@@ -1024,6 +1051,7 @@ const AszalyBeta = (() => {
       const row = (keys, yy) => { let ix = 12 * d + 11 * d; for (const k of keys) { g.fillStyle = UP[k].evo ? 'rgba(80,60,4,.75)' : 'rgba(4,7,14,.6)'; circ(g, ix, yy, 12 * d); ico(g, k, ix, yy, 17 * d); const s = UP[k].evo ? '★' : S.up[k];
         g.fillStyle = S.up[k] >= mxl(k) ? '#ffd23f' : '#fff'; g.strokeText(s, ix + 9 * d, yy + 8 * d); g.fillText(s, ix + 9 * d, yy + 8 * d); ix += 27 * d; } };
       const ks = Object.keys(S.up); row(ks.filter(isW), ty); row(ks.filter(k => !isW(k)), ty + 27 * d);
+      if (S.gold) { g.font = `800 ${12 * d}px Inter, sans-serif`; g.textAlign = 'right'; const gt = S.gold + ' ARANY'; g.strokeText(gt, W - 12 * d, ty + 18 * d); g.fillStyle = '#ffd23f'; g.fillText(gt, W - 12 * d, ty + 18 * d); }
       // szünet gomb
       if (G.running && !S.sel) { const pb = pauseBtn(G); g.fillStyle = 'rgba(4,7,14,.6)'; circ(g, pb.x, pb.y, pb.r); g.fillStyle = '#e6edf5'; g.fillRect(pb.x - 5 * d, pb.y - 6 * d, 3.5 * d, 12 * d); g.fillRect(pb.x + 1.5 * d, pb.y - 6 * d, 3.5 * d, 12 * d); }
       // főellenség HP-sávja
@@ -1066,7 +1094,18 @@ const AszalyBeta = (() => {
           if (open) { ico(g, c.c.w, x + 18 * d, c.y + ps + 36 * d, 18 * d); g.textAlign = 'left'; g.fillStyle = '#bfe6ff'; g.fillText(UP[c.c.w].n, x + 31 * d, c.y + ps + 36 * d, c.w - 40 * d); g.textAlign = 'center'; g.fillStyle = '#c9c3b5'; g.fillText(c.c.b, x + c.w / 2, c.y + ps + 54 * d, c.w - 12 * d); }
           else { g.fillStyle = '#8b95a3'; g.fillText('🔒 ' + (secret ? 'Titkos karakter' : c.c.req), x + c.w / 2, c.y + ps + 40 * d, c.w - 12 * d); }
           g.font = `800 ${10 * d}px Inter, sans-serif`; g.fillStyle = 'rgba(255,255,255,.3)'; g.fillText(c.i + 1, x + 12 * d, c.y + 13 * d); }
-        g.globalAlpha = 1; }
+        const kb = kutBtn(G); btn(g, G, Object.assign({ t: 'TANÁCSI KÚT · ' + store.get('aszb_gold') + ' ARANY' }, kb), true);
+        g.globalAlpha = 1;
+        if (S.shop) { const sh = S.shop, b = Math.min(1, sh.t * 6); g.fillStyle = `rgba(2,4,9,${.94 * b})`; g.fillRect(0, 0, W, H); g.globalAlpha = b; g.textAlign = 'center'; g.textBaseline = 'middle';
+          g.font = `900 ${Math.min(28 * d, W / 14)}px Cinzel, serif`; g.fillStyle = '#ffe29a'; g.fillText('TANÁCSI KÚT', W / 2, 70 * d);
+          const gold = store.get('aszb_gold'); g.font = `800 ${14 * d}px Inter, sans-serif`; g.fillStyle = '#ffd23f'; g.fillText(gold + ' ARANY', W / 2, 98 * d);
+          for (const r of shopRows(G)) { const l = (S.meta[r.u.id] || 0), mx = l >= r.u.mx, c = mCost(r.u, l), ok = !mx && gold >= c, x = r.x + (sh.i === r.i && sh.shake > 0 ? Math.sin(sh.shake * 60) * 4 * d : 0);
+            g.fillStyle = mx ? 'rgba(60,44,4,.92)' : 'rgba(14,24,44,.95)'; rrp(g, x, r.y, r.w, r.h, 10 * d); g.strokeStyle = ok ? '#e8b656' : 'rgba(120,190,255,.3)'; g.lineWidth = (ok ? 1.8 : 1.2) * d; g.beginPath(); g.roundRect(x, r.y, r.w, r.h, 10 * d); g.stroke();
+            g.textAlign = 'left'; g.font = `800 ${13 * d}px Inter, sans-serif`; g.fillStyle = mx ? '#ffd23f' : '#fff'; g.fillText(r.u.n, x + 12 * d, r.y + r.h / 2 - 8 * d, r.w * .5);
+            g.font = `500 ${11 * d}px Inter, sans-serif`; g.fillStyle = '#b9c4d2'; g.fillText(r.u.d, x + 12 * d, r.y + r.h / 2 + 9 * d, r.w * .55);
+            for (let j = 0; j < r.u.mx; j++) { g.fillStyle = j < l ? '#ffd23f' : 'rgba(255,255,255,.15)'; circ(g, x + r.w * .62 + j * 11 * d, r.y + r.h / 2, 3.6 * d); }
+            g.textAlign = 'right'; g.font = `800 ${12 * d}px Inter, sans-serif`; g.fillStyle = mx ? '#ffd23f' : ok ? '#ffe29a' : 'rgba(255,255,255,.4)'; g.fillText(mx ? 'MAX' : c + ' ARANY', x + r.w - 12 * d, r.y + r.h / 2); }
+          g.textAlign = 'center'; btn(g, G, shopClose(G)); g.globalAlpha = 1; } }
     },
     /* kártyakép az Arcade listájához */
     art(c, x, t) { const W = c.width, H = c.height, cx = W / 2, cy = H / 2 + 6; x.fillStyle = '#9c7a4c'; x.fillRect(0, 0, W, H); x.strokeStyle = 'rgba(64,42,20,.4)'; x.lineWidth = 1.2; for (let i = 0; i < 9; i++) { const px = (i * 71) % W, py = (i * 47) % H; ln(x, px, py, px + 22, py + 9); ln(x, px + 22, py + 9, px + 30, py - 8); }
