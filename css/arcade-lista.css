@@ -92,3 +92,9 @@ body.arcl-lock{overflow:hidden}
 .rowh h2{font-size:1rem}
 }
 .al-who{font-size:.82rem;color:#7ef0a4;margin:.1rem 0 .5rem;line-height:1.4}
+
+/* csalásgyanús eredmény: a lista végén, áthúzás nélkül, figyelmeztető felirattal */
+.al-flag{opacity:.62}.al-flag b{color:#9aa3ad!important}
+.al-cheat{font-style:normal;font-size:.68rem;font-weight:800;color:#ff8a7a;background:rgba(255,90,77,.12);border:1px solid rgba(255,90,77,.35);border-radius:5px;padding:0 .3rem;white-space:nowrap}
+.al-fl{background:none;border:0;color:#8f8a7e;cursor:pointer;font-size:.85rem;padding:0 .15rem;line-height:1}.al-fl:hover{color:#ff8a7a}.al-fl.on{color:#ff5a4d}
+.al-flag>span{min-width:5.5em}.al-lbc .al-cheat{font-size:.62rem;padding:0 .25rem}

@@ -1,7 +1,7 @@
 // HGWS – kezelőfelület: tagok és rangok, tagek, filmek, zenék, csatornák, jóváhagyások, rangok szerkesztése
-import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611270115';
-import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611270115';
-import { githubRepo } from '../firebase-config.js?v=202611270115';
+import { FB, db, $, $$, esc, ROLES, roleOf, PERMS, SYSTEM_ROLES, OWNER_UID, rolesSorted, notify, audit, avatar, toDate, timeLabel, isOnline, ytId, toast, errText, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason } from './core.js?v=202611270130';
+import { modal, confirmBox, compress, STAGES } from './ui.js?v=202611270130';
+import { githubRepo } from '../firebase-config.js?v=202611270130';
 
 let C = null, current = null;
 /* e-mail címek: csak adminok és a tulaj olvashatják (emails/{uid}); a lista megnyitásakor egyszer töltjük be */
@@ -75,14 +75,17 @@ let mq = '';
 /* vendégfiókok: a jelenlétüket (guests) és a lefoglalt/moderátor által adott nevüket (guestnames) mutatja; innen át is nevezhetők */
 /* ---------- gyanús eredmények (időmanipuláció stb.): a játék nem engedte ranglistára, itt ellenőrizhetők ---------- */
 const SUS = { list: [], at: 0, fail: false, names: {} };
-async function loadSuspects() { const [s, b] = await Promise.all([FB.getDocs(FB.query(FB.collection(db, 'suspects'), FB.orderBy('at', 'desc'), FB.limit(300))).catch(() => null), import('./browse.js?v=202611270115').catch(() => null)]);
+async function loadSuspects() { FB.getDocs(FB.collection(db, 'lbflags')).then(f => { SUS.flags = f.docs.map(d => ({ id: d.id, ...d.data() })); if (current === 'gyanus' && SUS.v) suspectsPage(SUS.v, true); }).catch(() => {}); const [s, b] = await Promise.all([FB.getDocs(FB.query(FB.collection(db, 'suspects'), FB.orderBy('at', 'desc'), FB.limit(300))).catch(() => null), import('./browse.js?v=202611270130').catch(() => null)]);
   SUS.fail = !s; SUS.list = s ? s.docs.map(d => ({ id: d.id, ...d.data() })) : []; if (b) for (const g of b.GAMES) SUS.names[g.id] = g; SUS.at = Date.now(); }
 const WHY = { ido: 'Időmanipuláció (lassítás/gyorsítás)' };
 function suspectsPage(v, again) {
   C.setTitle('<i class="ic ic-shield"></i>', 'Gyanús eredmények', 'Ranglistára nem került körök ellenőrzésre');
   const row = x => { const g = SUS.names[x.game], u = !x.guest && C.U(x.uid), fmt = g && g.fmt ? g.fmt(x.score) : Number(x.score).toLocaleString('hu-HU');
     return `<div class="row" data-sid="${esc(x.id)}"><div style="flex:1;min-width:0"><b>${esc(u ? u.name : x.name || 'Vendég')}</b>${x.guest ? ' <span class="tag">vendég</span>' : ''} · ${esc(g ? g.name : x.game)} · <b>${esc(fmt)}${g && g.unit ? ' ' + esc(g.unit) : ''}</b><br><small style="color:var(--muted)">${esc(WHY[x.why] || x.why)} · ${esc(timeLabel(x.at))}</small></div><div class="ac"><button class="btn plain sm" data-sdel="${esc(x.id)}"><i class="ic ic-check"></i> Rendben, törlés a listáról</button></div></div>`; };
-  v.innerHTML = `${tabs()}${SUS.fail ? '<p class="err">Nem sikerült betölteni (publikáld a friss firestore.rules-t).</p>' : !SUS.list.length && SUS.at ? '<p style="color:var(--muted)">Nincs gyanús eredmény.</p>' : ''}<div class="list">${SUS.list.map(row).join('')}</div>${SUS.list.length > 1 ? '<div style="margin-top:.8rem"><button class="btn plain sm" data-sall>Összes törlése a listáról</button></div>' : ''}`;
+  SUS.v = v; const fl = SUS.flags || [], frow = x => { const g = SUS.names[x.game], u = C.U(x.uid), by = C.U(x.by);
+    return `<div class="row"><div style="flex:1;min-width:0"><b>${esc(u?.name && u.name !== 'Ismeretlen' ? u.name : 'Vendég / ' + x.uid.slice(0, 6))}</b> · ${esc(g ? g.name : x.game)} <span class="tag" style="color:#ff8a7a">Csalás észlelve</span><br><small style="color:var(--muted)">Jelölte: ${esc(by?.name || '?')} · ${esc(timeLabel(x.at))}</small></div><div class="ac"><button class="btn plain sm" data-fdel="${esc(x.id)}"><i class="ic ic-check"></i> Rendben, jelölés levétele</button></div></div>`; };
+  v.innerHTML = `${tabs()}${fl.length ? `<h3 style="margin:.2rem 0 .6rem">Ellenőrzésre vár (${fl.length})</h3><div class="list" style="margin-bottom:1.4rem">${fl.map(frow).join('')}</div><h3 style="margin:0 0 .6rem">Ranglistára nem került körök</h3>` : ''}${SUS.fail ? '<p class="err">Nem sikerült betölteni (publikáld a friss firestore.rules-t).</p>' : !SUS.list.length && SUS.at ? '<p style="color:var(--muted)">Nincs gyanús eredmény.</p>' : ''}<div class="list">${SUS.list.map(row).join('')}</div>${SUS.list.length > 1 ? '<div style="margin-top:.8rem"><button class="btn plain sm" data-sall>Összes törlése a listáról</button></div>' : ''}`;
+  $$('[data-fdel]', v).forEach(b => b.onclick = async () => { b.disabled = true; try { await FB.deleteDoc(FB.doc(db, 'lbflags', b.dataset.fdel)); SUS.flags = (SUS.flags || []).filter(x => x.id !== b.dataset.fdel); suspectsPage(v, true); } catch (e) { b.disabled = false; toast(errText(e)); } });
   $$('[data-sdel]', v).forEach(b => b.onclick = async () => { b.disabled = true; try { await FB.deleteDoc(FB.doc(db, 'suspects', b.dataset.sdel)); SUS.list = SUS.list.filter(x => x.id !== b.dataset.sdel); suspectsPage(v, true); } catch (e) { b.disabled = false; toast(errText(e)); } });
   const all = v.querySelector('[data-sall]'); if (all) all.onclick = async () => { if (!all.classList.contains('sure')) { all.classList.add('sure'); all.textContent = 'Biztos? Mindet törli'; return; } all.disabled = true; await Promise.all(SUS.list.map(x => FB.deleteDoc(FB.doc(db, 'suspects', x.id)).catch(() => null))); await loadSuspects(); suspectsPage(v, true); };
   if (!again || Date.now() - SUS.at > 30e3) loadSuspects().then(() => { if (current === 'gyanus') suspectsPage(v, true); }); }
@@ -834,7 +837,7 @@ async function statsPage(v) {
     const st = { nyitott: ['Nyitott', '#6cc6ff'], folyamatban: ['Folyamatban', '#ffa94d'], kesz: ['Kész', '#5ee08a'], elutasitva: ['Elutasítva', '#ff7a6e'] };
     $('#stIdea').innerHTML = s.size ? hbars(Object.entries(st).map(([k, [l, c]]) => [l, s.docs.filter(d => d.data().status === k).length, c]), ' db') : '<div class="estate"><i class="ic ic-lightbulb"></i><b>Még nincs beküldött ötlet</b></div>';
   }).catch(() => { $('#stIdea').innerHTML = '<p class="hint">Nem elérhető.</p>'; });
-  import('./browse.js?v=202611270115').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
+  import('./browse.js?v=202611270130').then(({ GAMES }) => Promise.all(GAMES.map(g => FB.getDocs(lbScores(g.id)).then(s => [g.name, s.size]).catch(() => [g.name, 0]))))
     .then(l => { $('#stArc').innerHTML = hbars(l, ' játékos'); });
 }
 const lbScores = g => FB.collection(db, 'leaderboards', g, 'scores');
