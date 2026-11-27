@@ -1,9 +1,9 @@
 // Kohóvár böngészős modkeret: bővítési pontok a motorhoz (új blokkfajták), a Mindustry-modok által
 // elvárt, de a Kohóvárból hiányzó rendszerek (logikai processzorok, memória, kijelző, kapcsoló, üzenet),
 // és a beépített modok saját kiegészítőinek betöltése. Mindig aktív.
-import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, CATS, rcost } from './adat.js?v=202611270936';
-import { SN } from './kepadat.js?v=202611270936';
-import { addSprite } from './rajz.js?v=202611270936';
+import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, CATS, rcost } from './adat.js?v=202611270939';
+import { SN } from './kepadat.js?v=202611270939';
+import { addSprite } from './rajz.js?v=202611270939';
 let Proc = null;   // a logika.js-ből, betöltéskor (körkörös importálás elkerülése)
 
 export const FW = {
@@ -25,6 +25,9 @@ export const FW = {
        linkTap(W, b, t)   – kijelölt épület mellett egy másikra koppintás; true: kezelve
        info(B)            – sorok az adatlapra */
   reg(name, def) { this.types[name] = { name, ...def }; return this.types[name]; },
+  // segédek a kiegészítőknek
+  adj(W, b) { const out = new Set(), s = b.B.s; for (let i = -1; i <= s; i++) for (const [x, y] of [[b.x + i, b.y - 1], [b.x + i, b.y + s], [b.x - 1, b.y + i], [b.x + s, b.y + i]]) { const t = W.inb(x, y) ? W.tb(x, y) : null; if (t && t !== b) out.add(t); } return [...out]; },
+  center: b => ({ x: (b.x + b.B.s / 2) * TS, y: (b.y + b.B.s / 2) * TS }),
   match(T) { for (const t of Object.values(this.types)) if (t.mindustry && t.mindustry.test(T)) return t; return null; },
   T(b) { return b && this.types[b.B.type]; },
 };
@@ -185,7 +188,20 @@ FW.reg('lmsg', {
   sel: (W, b) => `<div style="white-space:pre-wrap;font-size:14px;max-height:120px;overflow:auto">${esc(b.cfg.text || '') || '<span class="lg">Üres</span>'}</div><button class="np-button" data-fw="msg" style="width:100%;margin-top:4px">Szöveg szerkesztése</button>`,
   selClick(W, b, el, api) { if (el.dataset.fw === 'msg') api.editText('Üzenet', b.cfg.text || '', v => { b.cfg = { text: v.slice(0, 400) }; }); },
 });
-FW.parts.push('Logikai processzorok (mlog)', 'Memória', 'Kijelzők', 'Kapcsoló', 'Üzenetblokk');
+// vászon: festhető kép (a Mindustry CanvasBlock-ja: blokkonként 12×12 képpont, 8 szín)
+const CPAL = ['#362944', '#c45d9f', '#e39aac', '#f0dab1', '#6461c2', '#2ba9b4', '#93d4b5', '#f0f6e8'];
+FW.reg('lcanvas', {
+  mindustry: /^(CanvasBlock)$/,
+  convert: j => ({ res: +(j.canvasSize || 12) * (+(j.size || 1)) }),
+  init(W, b) { const n = b.B.res * b.B.res; if (!Array.isArray(b.cfg) || b.cfg.length !== n) b.cfg = new Array(n).fill(0); b.cv = null; },
+  draw(g, b, d) {
+    const R = b.B.res; if (!b.cv || b.cvV !== b.cfg) { const c = document.createElement('canvas'); c.width = c.height = R; const x = c.getContext('2d'); for (let i = 0; i < R * R; i++) { x.fillStyle = CPAL[b.cfg[i]] || CPAL[0]; x.fillRect(i % R, i / R | 0, 1, 1); } b.cv = c; b.cvV = b.cfg; }
+    g.imageSmoothingEnabled = false; g.drawImage(b.cv, d.x, d.y, d.s, d.s);
+  },
+  sel: () => `<button class="np-button" data-fw="paint" style="width:100%">Festés</button>`,
+  selClick(W, b, el, api) { if (el.dataset.fw === 'paint') api.editPixels('Vászon', b.B.res, b.B.res, b.cfg, CPAL, d => { b.cfg = d; }); },
+});
+FW.parts.push('Logikai processzorok (mlog)', 'Memória', 'Kijelzők', 'Kapcsoló', 'Üzenetblokk', 'Vászon');
 
 /* ================= alapjáték-tartalom: a Serpulo logikai blokkjai ================= */
 const LOGIC = [
@@ -202,7 +218,7 @@ const LOGIC = [
 let installed = false;
 export async function installFramework() {
   if (installed) return; installed = true;
-  ({ Proc } = await import('./logika.js?v=202611270936'));
+  ({ Proc } = await import('./logika.js?v=202611270939'));
   if (!CATS.some(c => c[0] === 'logic')) CATS.push(['logic', 'Logika', '▤']);
   BUILD_ORDER.logic = BUILD_ORDER.logic || [];
   const fix = c => Object.fromEntries(Object.entries(c).filter(([k]) => ITEMS[k]));

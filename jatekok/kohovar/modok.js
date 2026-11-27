@@ -2,12 +2,12 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270936';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611270936';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270936';
-import { FL, FLI, WL } from './vilag.js?v=202611270936';
-import { parseHjson } from './hjson.js?v=202611270936';
-import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270936';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270939';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611270939';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270939';
+import { FL, FLI, WL } from './vilag.js?v=202611270939';
+import { parseHjson } from './hjson.js?v=202611270939';
+import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270939';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [];   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
@@ -265,7 +265,7 @@ export function installMod(files, srcLabel) {
     if (T === 'ShockMine') return { ...base, type: 'mine', d: +(j.damage || 25), cnt: +(j.tendrils || 4) };
     if (T === 'LightBlock') return { ...base, type: 'lamp', power: c.power };
     if (/Incinerator$/.test(T)) return { ...base, type: 'incinerator', power: c.power, free: c.power ? 0 : 1 };
-    { const ft = FW.match(T); if (ft) return { ...base, kat: cat || ft.kat || 'logic', power: c.power, ...(ft.convert ? ft.convert(j, { inL: c.inL, stacks, itemId, liqId, unitId }) : {}), type: ft.name }; }   // a modkeret fajtái
+    { const ft = FW.match(T); if (ft) return { ...base, kat: cat || ft.kat || 'logic', power: c.power, ...(ft.convert ? ft.convert(j, { inL: c.inL, inp: c.inp, power: c.power, stacks, itemId, liqId, unitId, cons: c }) : {}), type: ft.name }; }   // a modkeret fajtái
     return null;
   };
   const pendR = [];   // a kutatási csomópontok a blokkok után (a szülő később is jöhet)

@@ -168,7 +168,7 @@ def ammo_types(call):
 
 # ---- blokkok ----
 BLOCK_ROOTS = {'Floor', 'StaticWall', 'OreBlock', 'Prop', 'TallBlock', 'SteamVent', 'GenericCrafter', 'ItemTurret', 'PowerTurret', 'LaserTurret', 'ContinuousTurret', 'LiquidTurret', 'TractorBeamTurret', 'PointDefenseTurret', 'Wall', 'Drill', 'CoreBlock', 'StackConveyor', 'PowerNode', 'LiquidRouter', 'ConsumeGenerator', 'ThermalGenerator', 'Battery', 'StorageBlock', 'ForceProjector', 'Pump', 'ItemBridge', 'OverflowDuct', 'OverflowGate', 'Sorter', 'DirectionalUnloader', 'Unloader', 'Conveyor', 'ArmoredConveyor', 'Router', 'Junction', 'DuctRouter', 'Conduit', 'LiquidJunction', 'SolarGenerator', 'NuclearReactor', 'PowerGenerator', 'OverdriveProjector', 'MendProjector', 'RegenProjector', 'SolidPump', 'LiquidSource', 'ItemSource', 'BaseTurret', 'Block', 'ShallowLiquid', 'OverlayFloor', 'StaticTree', 'TreeBlock', 'Turret', 'UnitFactory', 'Reconstructor', 'ImpactReactor', 'LiquidBridge', 'ShockwaveTower', 'BufferedItemBridge', 'DirectionalUnloader', 'RegenProjector', 'ContinuousTurret'}
-BLK_KEYS = 'size health armor itemCapacity liquidCapacity craftTime range reload maxAmmo ammoPerShot inaccuracy shootCone targetAir targetGround drillTime tier hardnessDrillMultiplier liquidBoostIntensity powerProduction itemDuration laserRange maxNodes speed displayedSpeed radius shieldHealth cooldownNormal cooldownBrokenBase reload healPercent speedBoost pumpAmount insulated absorbLasers chanceDeflect lightningChance variants attributes itemDrop playerUnmineable isLiquid isDeep drownTime liquidMultiplier mapColor shootDuration bulletDamage force damage scaledHealth buildCostMultiplier heatOutput heatRequirement unitCapModifier coolantMultiplier maxHeat'.split()
+BLK_KEYS = 'gravityRange liquidUse reloadTime intensity size health armor itemCapacity liquidCapacity craftTime range reload maxAmmo ammoPerShot inaccuracy shootCone targetAir targetGround drillTime tier hardnessDrillMultiplier liquidBoostIntensity powerProduction itemDuration laserRange maxNodes speed displayedSpeed radius shieldHealth cooldownNormal cooldownBrokenBase reload healPercent speedBoost pumpAmount insulated absorbLasers chanceDeflect lightningChance variants attributes itemDrop playerUnmineable isLiquid isDeep drownTime liquidMultiplier mapColor shootDuration bulletDamage force damage scaledHealth buildCostMultiplier heatOutput heatRequirement unitCapModifier coolantMultiplier maxHeat'.split()
 
 def drawer_layers(o, name):
     """A DrawMulti-rétegekből az ikon összeállításához szükséges sprite-nevek."""
@@ -278,9 +278,11 @@ def conv_block(var, o):
             'AirRaider': 'egyszerűsítve: tüzérségi toronyként, választható csapásmód nélkül', 'BombLauncher': 'egyszerűsítve: tüzérségi toronyként',
             'StreamExtractor': 'a nyaláb folyadékhídként működik', 'StreamRepeater': 'a nyaláb folyadékhídként működik', 'StreamRedirector': 'a nyaláb folyadékhídként működik',
             'StreamReceiver': 'a nyaláb folyadékelosztóként működik', 'StreamSplitter': 'a nyaláb folyadékelosztóként működik', 'JumpGate': 'egyszerűsítve: egységgyárként, ugrás nélkül',
-            'AdaptDrill': 'fúrómodulok nélkül', 'OreCollector': 'egyszerűsítve: fúróként', 'QuantumVortexProjector': 'egyszerűsítve: erőtérként', 'AssignedBeacon': 'egyszerűsítve: gyorsítóként',
+            'OreCollector': 'egyszerűsítve: fúróként', 'QuantumVortexProjector': 'egyszerűsítve: erőtérként', 'AssignedBeacon': 'egyszerűsítve: gyorsítóként',
             'CaptureableTurret': 'elfoglalás nélkül', 'Webber': 'egyszerűsítve: vonósugárként', 'MultTractorBeamTurret': 'egyszerűsítve: vonósugárként', 'RemoteCoreStorage': 'egyszerűsítve: raktárként', 'AccumulatingStorage': 'egyszerűsítve: raktárként'}
     if t in PART: d['_partial'] = PART[t]
+    ADDON = {'DrillModule': 'NhRadiator', 'LiquidRadiator': 'NhRadiator', 'FireExtinguisher': 'NhExtinguisher', 'GravityWell': 'NhGravityWell', 'HyperSpaceWarper': 'NhWarper'}   # a kiegészítő (modok/kiegeszitok/new-horizon.js) fajtái
+    if t in ADDON: d['type'] = ADDON[t]; d.pop('_special', None)
     if T == 'LiquidBridge' and t.startswith('Stream'): d['range'] = 5
     if t == 'OreCollector': d.setdefault('tier', 4); d.setdefault('drillTime', 400)
     if t == 'AirRaider':       # távoli csapásmérő állás → nagy hatótávú tüzérségi torony

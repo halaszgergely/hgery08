@@ -7,9 +7,9 @@
    A megyék határán kettőzés elkerülése: minden elem csak annál a megyénél jelenik meg, amelyiknek a körvonalán belül van a közepe (256 m-es maszk).
    A réteg a terep közeli (2 km-es) csonkjaihoz épül, időkerettel, és csak ha az alatta lévő domborzati csempe már betöltődött. */
 import * as THREE from 'three';
-import { ground, megyek, onTile, tileReady, inAirport } from './geo.js?v=202611270936';
-import { SU, withWorld } from './kozos.js?v=202611270936';
-import { NEVEZETES, P } from './config.js?v=202611270936';
+import { ground, megyek, onTile, tileReady, inAirport } from './geo.js?v=202611270939';
+import { SU, withWorld } from './kozos.js?v=202611270939';
+import { NEVEZETES, P } from './config.js?v=202611270939';
 
 const BASE = '../holtvaros/terkep/', T = 2048, LEAF = 2000, MASK = 256;
 const ROADW = [5.5, 7, 9, 12, 16, 24], ROADC = [[.4, .4, .39], [.33, .33, .33], [.31, .31, .32], [.29, .29, .3], [.27, .27, .28], [.25, .25, .27]];
