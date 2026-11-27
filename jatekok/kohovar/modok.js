@@ -2,11 +2,12 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270115';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270115';
-import { FL, FLI, WL } from './vilag.js?v=202611270115';
-import { parseHjson } from './hjson.js?v=202611270115';
-import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270115';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611271013';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271013';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271013';
+import { FL, FLI, WL } from './vilag.js?v=202611271013';
+import { parseHjson } from './hjson.js?v=202611271013';
+import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611271013';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [];   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
@@ -52,8 +53,9 @@ export function installMod(files, srcLabel) {
   const clr = v => String(v ?? '').replace(/\[[^\]]*\]/g, '').replace(/[[\]]/g, '').replace(/#[0-9a-fA-F]{6,8}/g, '').trim();   // a Mindustry színjelölései ([red], [#ff0000])
   const mod = { id, name: clr(meta.displayName || meta.name || id), version: clr(meta.version), author: clr(meta.author), desc: clr(meta.description), src: srcLabel, warn, added: { items: 0, liquids: 0, blocks: 0, units: 0, patched: 0, overrides: 0, maps: 0 } };
   // nyelvi fájl: a magyar az első, aztán az angol alap
-  const bundle = {}; for (const f of ['bundles/bundle.properties', 'bundles/bundle_hu.properties']) { const t = txt(f); if (t) for (const l of t.split(/\r?\n/)) { const m = l.match(/^\s*([^#=][^=]*?)\s*=\s*(.*)$/); if (m) bundle[m[1]] = m[2]; } }
-  const pre = n => id + '-' + n, label = (kind, n, j) => clr(bundle[`${kind}.${pre(n)}.name`] || bundle[`${kind}.${n}.name`] || (j && (j.localizedName || j.name)) || human(n));
+  const bundle = {}, bundleEn = {}; for (const f of ['bundles/bundle.properties', 'bundles/bundle_hu.properties']) { const t = txt(f); if (t) for (const l of t.split(/\r?\n/)) { const m = l.match(/^\s*([^#=][^=]*?)\s*=\s*(.*)$/); if (m) { bundle[m[1]] = m[2]; if (f === 'bundles/bundle.properties') bundleEn[m[1]] = m[2]; } } }
+  const en = k => bundleEn[k] || bundle[k];   // a tartalom nevei angolul, a küldetésszövegek magyarul, ha van
+  const pre = n => id + '-' + n, label = (kind, n, j) => clr(en(`${kind}.${pre(n)}.name`) || en(`${kind}.${n}.name`) || (j && (j.localizedName || j.name)) || human(n));
   const content = {}; for (const [p] of files) { const m = p.match(/^content\/(items|liquids|blocks|units|sectors|planets|status|statuses)\/(?:.*\/)?([^/]+)\.h?json$/); if (m) { const kk = m[1] === 'statuses' ? 'status' : m[1]; let j; try { j = parseHjson(txt(p)); } catch (e) { warn.push(p + ': hibás fájl'); continue; } if (j && typeof j === 'object') (content[kk] = content[kk] || []).push([m[2], j]); } }
   // sprite-ok: a fájlnév (kiterjesztés nélkül) a név; a modbeli tartalom a Mindustryhoz hasonlóan előtagot kap
   const spr = new Map(); for (const [p, d] of files) { const m = p.match(/^sprites\/(?:.*\/)?([^/]+)\.png$/); if (m) spr.set(m[1], d); }
@@ -110,6 +112,10 @@ export function installMod(files, srcLabel) {
     if (b.buildingDamageMultiplier != null) o.bdm = +b.buildingDamageMultiplier;
     const fb = b.fragBullet || b.intervalBullet; if (fb) { const f = bullet(fb); if (f) o.frag = { n: +(b.fragBullets || (b.intervalBullet ? 3 : 9)), d: f.d, sp: f.sp, life: +(fb.lifetime || 20), spl: f.spl, splR: f.splR }; }
     if (b.lifetime) o.life = +b.lifetime;
+    { const cc = v => typeof v === 'string' && /^#?[0-9a-fA-F]{6}/.test(v) ? '#' + v.replace(/^#/, '').slice(0, 6) : null;   // a lövedék kinézete
+      const bc = cc(b.backColor) || cc(b.trailColor) || cc(b.hitColor) || cc(b.lightColor) || cc(b.color), fc = cc(b.frontColor); if (bc) o.c = bc; if (fc) o.c2 = fc;
+      const w = +(b.width ?? b.bulletWidth ?? 0), h = +(b.height ?? b.bulletHeight ?? 0); if (w || h) o.sz = Math.max(.6, Math.min(3, ((w || 5) + (h || 7)) / 12));
+      if (+b.trailLength > 0) o.tr = Math.min(30, +b.trailLength); }
     if (b.knockback) o.kb = +b.knockback;
     if (/artillery/.test(t)) o.k = 'art'; else if (/missile/.test(t)) o.k = 'missile'; else if (/flak/.test(t)) { o.k = 'flak'; o.gnd = b.collidesGround ? 1 : 0; if (!o.spl) { o.spl = o.d * 3; o.splR = 20; } }
     else if (/shrapnel/.test(t)) { o.k = 'shrap'; o.len = +(b.length || 100); } else if (/rail/.test(t)) { o.k = 'rail'; o.d = +(b.damage ?? 100); }
@@ -131,6 +137,7 @@ export function installMod(files, srcLabel) {
     const U = { ...(U0 || {}), n: label('unit', n, j), fam, tier: U0 ? U0.tier : 1, hp: +(j.health ?? (U0 ? U0.hp : 200)), sp: +(j.speed ?? (U0 ? U0.sp : .5)), r: j.hitSize != null ? +j.hitSize / 2 : U0 ? U0.r : 4, armor: +(j.armor ?? (U0 ? U0.armor : 0)), mod: id };
     U.air = fam === 'air' ? 1 : 0; U.legs = fam === 'legs' ? 1 : 0; U.naval = fam === 'naval' ? 1 : 0; if (T === 'tank') U.tank = 1; if (/hover/.test(T) || j.hovering) U.hov = 1;
     if (j.mineTier != null && j.mineTier >= 0) { U.mine = +(j.mineSpeed || 1); U.mineT = +j.mineTier; if (j.mineWalls) U.mineW = 1; }
+    if (j.payloadCapacity) U.payS = Math.floor(Math.sqrt(+j.payloadCapacity) / 8 + .01);
     if (j.buildSpeed) U.build = +j.buildSpeed; if (j.itemCapacity) U.icap = +j.itemCapacity;
     const ab = {}; for (const a of j.abilities || []) { const at = String(a.type || '').replace(/^.*\./, ''); if (/ForceField/.test(at)) ab.ff = [+(a.radius || 60), +(a.regen || .1), +(a.max || 200), +(a.cooldown || 300)]; else if (/RepairField/.test(at)) ab.rep = [+(a.amount || 30), +(a.reload || 120), +(a.range || 60)]; else if (/ShieldRegen/.test(at)) ab.regen = [+(a.amount || 10), +(a.max || 100), +(a.reload || 60), +(a.range || 60)]; }
     if (Object.keys(ab).length) U.ab = ab;
@@ -264,11 +271,16 @@ export function installMod(files, srcLabel) {
     if (T === 'ShockMine') return { ...base, type: 'mine', d: +(j.damage || 25), cnt: +(j.tendrils || 4) };
     if (T === 'LightBlock') return { ...base, type: 'lamp', power: c.power };
     if (/Incinerator$/.test(T)) return { ...base, type: 'incinerator', power: c.power, free: c.power ? 0 : 1 };
+    { const ft = FW.match(T); if (ft) return { ...base, kat: cat || ft.kat || 'logic', power: c.power, ...(ft.partial ? { part: ft.partial } : {}), ...(ft.convert ? ft.convert(j, { inL: c.inL, inp: c.inp, power: c.power, stacks, itemId, liqId, unitId, cons: c }) : {}), type: ft.name }; }   // a modkeret fajtái
     return null;
   };
   const pendR = [];   // a kutatási csomópontok a blokkok után (a szülő később is jöhet)
   const ENV = /^(Floor|SteamVent|ShallowLiquid|OverlayFloor|StaticWall|StaticTree|TreeBlock|TallBlock|Prop|OreBlock|AirBlock|Cliff|SeaBush|ShrubBlock|Boulder|Rock|Seaweed|DoubleOverlayFloor|EmptyFloor|SpawnBlock)$/;
+  // a szkriptekben (extend/extendContent) megadott típusok a típus nélküli JSON-blokkokhoz
+  const ST = {}; for (const [p] of files) if (/^scripts\/.*\.js$/.test(p)) for (const m of txt(p).matchAll(/extend(?:Content)?\(\s*([\w.]+)\s*,\s*["']([\w-]+)["']/g)) ST[m[2]] = m[1].replace(/^.*\./, '');
   for (const [n, j] of content.blocks || []) {
+    if (!j.type && ST[n]) j.type = ST[n];
+    if (!j.type && /editorOnly|hidden|sandboxOnly/.test(j.buildVisibility || '')) continue;   // csak kutatási fa / szerkesztő jelölő
     const T = NT(j.type), k = pre(n);
     // a pályák környezeti blokkjai (talaj, fal, fa, kő, érc) a mod pályáihoz
     if (ENV.test(T) || (!j.type && /^(ore|floor)/i.test(n))) {
@@ -280,16 +292,18 @@ export function installMod(files, srcLabel) {
       continue;
     }
     const van = bo[n];
-    if (van && !j.type) { const cur = BLOCKS[van], B = convert(n, j, NT(SN_TYPE[cur.type] || ''), van);   // meglévő blokk módosítása (a Mindustryban a típus nélküli azonos nevű blokk felülírja az eredetit)
+    if (van && !j.type) { const cur = BLOCKS[van], wl = warn.length, B = convert(n, j, NT(cur.lammo ? 'LiquidTurret' : SN_TYPE[cur.type] || ''), van); warn.length = wl;   // meglévő blokk módosítása (a Mindustryban a típus nélküli azonos nevű blokk felülírja az eredetit)
       if (j.health) cur.hp = +j.health; if (j.requirements) cur.cost = req(j); for (const f of ['reload', 'range', 'time', 'gen', 'cap', 'tier', 'capP']) if (B && B[f] != null && j[{ reload: 'reload', range: 'range', time: 'craftTime', gen: 'powerProduction', cap: 'itemCapacity', tier: 'tier', capP: 'consumePowerBuffered' }[f]] != null) cur[f] = B[f];
       if (j.reloadTime) cur.reload = +j.reloadTime; const am = ammoMap(j); if (am && cur.ammo) for (const it in am) { const iid = itemId(it), bb = bullet(am[it], { n: +(am[it].ammoMultiplier || 2) }); if (iid && bb) cur.ammo[iid] = bb; }
-      if (j.name) cur.n = j.name; mod.added.patched++; continue; }
+      if (am && cur.lammo) for (const l in am) { const lid = liqId(l); if (lid) cur.lammo[lid] = +((am[l] && am[l].damage) || cur.lammo[lid] || 0); }
+      if (j.name) cur.n = clr(j.name); mod.added.patched++; continue; }
     let B = convert(n, j, T, k);
     if (!B) {           // ismeretlen fajta: építhető, de nem csinál semmit (díszítőelem)
-      if (!j.requirements) { warn.push(`${n}: nem támogatott blokkfajta (${T || 'Block'})`); continue; }
+      if (!j.requirements) { if (T) warn.push(`${n}: nem támogatott blokkfajta (${T})`); continue; }   // típus és költség nélkül: nem építhető, láthatatlan blokk
       B = { n: label('block', n, j), kat: CAT[String(j.category || '').toLowerCase()] || 'effect', s: +(j.size || 1), hp: +(j.health || 40 * (j.size || 1) ** 2), cost: req(j), type: 'deco', mod: id }; warn.push(`${n}: csak díszítőelemként (${T || 'Block'})`);
     }
     if (B.power === undefined) delete B.power;
+    if (Array.isArray(j._links) && j._links.length) { B.xlinks = j._links.map(p => [+p[0], +p[1]]); if (j._rotate) B.rot = 1; }   // nem négyzetes alakzat
     BLOCKS[k] = B; SN[k] = k; mod.added.blocks++;
     const im = sp(n, n + '-full'); if (im) addSprite(k, im);
     for (const suf of ['-top', '-rotator', '-team', '-heat', '-liquid', '-bottom', '-light', '-rim', '-end', '-bridge', '-arrow', '-cap', '-base', '-glow', '-mid', '-top1', '-top2', '-open', '-dir', '-0', '-1', '-2', '-edge', '-stack', '-turbine', '-middle', '-spinner', '-weave', '-plasma-0', '-plasma-1', '-plasma-2', '-plasma-3', '-lights']) { const d = sp(n + suf); if (d) addSprite(k + suf, d); }
@@ -304,9 +318,13 @@ export function installMod(files, srcLabel) {
     if (B.type === 'factory') { if (!B.plans.includes(k)) B.plans.push(k); B.pcost = B.pcost || {}; B.pcost[k] = { cost: stacks(r.requirements), time: +(r.time || 1800) / 60 }; }
     else if (B.type === 'recon' && r.previous) { const pv = unitId(r.previous); if (pv) B.up[pv] = k; } }
   for (const a of pendR) researchNode(...a);
+  // a nem teljesen működő tartalom megjelölése (a figyelmeztetésekből és az átalakító _partial mezőjéből)
+  const mark = (nm, why) => { const k = BLOCKS[pre(nm)] ? pre(nm) : bo[nm] && BLOCKS[bo[nm]] && BLOCKS[bo[nm]].mod === id ? bo[nm] : null; const o = k ? BLOCKS[k] : UNITS[pre(nm)]; if (o) o.part = o.part ? o.part + '; ' + why : why; };
+  for (const w of warn) { const m = w.match(/^([^:\s]+): (.+)$/); if (m) mark(m[1], m[2]); }
+  for (const [n, j] of [...(content.blocks || []), ...(content.units || [])]) if (j._partial) mark(n, j._partial);
   // a felülírt eredeti sprite-ok (sprites-override)
   for (const [p, d] of files) { const m = p.match(/^sprites-override\/(?:.*\/)?([^/]+)\.png$/); if (m) { addSprite(m[1], d); if (AT_HAS(m[1] + '@o')) addSprite(m[1] + '@o', d); mod.added.overrides++; } }
-  const nScripts = [...files.keys()].filter(p => /^scripts\/.*\.js$/.test(p)).length; if (nScripts) warn.push(`${nScripts} JavaScript-fájl: a szkriptek nem futnak`);
+  const nScripts = [...files.keys()].filter(p => /^scripts\/.*\.js$/.test(p)).length; if (nScripts) warn.push(files.has('kohovar-js.txt') ? `${nScripts} JavaScript-fájl: a tartalmuk előre átvéve, a látványelemeik nem futnak` : `${nScripts} JavaScript-fájl: a szkriptek nem futnak`);
   if (meta.main || [...files.keys()].some(p => /\.(class|jar|dex)$/.test(p))) warn.push('Java-kódot tartalmaz: az nem fut a böngészőben');
 
   // a gyárak terveiben szereplő modbeli egységek ára (a gyár adja)
@@ -323,16 +341,16 @@ export function installMod(files, srcLabel) {
     TECH.push({ id: id2, k: kind, key, req, need: need ? [need] : [], pl, cost: c || (kind === 'u' ? ucost(cost) : rcost(cost)), mod: id });
   }
   // bolygók és szektorok (Mindustry ContentParser: planet, sector) – a Java-ban írt bolygógenerátor nem fut, a szektorok pályája az msav
-  for (const [n, j] of content.planets || []) { const k = pre(n); MOD_PLANETS.push({ id: k, n: bundle[`planet.${k}.name`] || bundle[`planet.${n}.name`] || human(n), col: '#' + String(j.atmosphereColor || j.landCloudColor || '7f9cc8').slice(0, 6), mod: id }); }
+  for (const [n, j] of content.planets || []) { const k = pre(n); MOD_PLANETS.push({ id: k, n: en(`planet.${k}.name`) || en(`planet.${n}.name`) || human(n), col: '#' + String(j.atmosphereColor || j.landCloudColor || '7f9cc8').slice(0, 6), mod: id }); }
   for (const [n, j] of content.sectors || []) {
     const mapFile = files.has(`maps/${n}.msav`) ? `maps/${n}.msav` : `maps/${j.map || n}.msav`, map = files.get(mapFile); if (!map) { warn.push('a szektornak nincs pályája: ' + n); continue; }
     const pl = String(j.planet || 'serpulo'), k = pre(n);
-    MOD_SECTORS.push({ id: k, n: bundle[`sector.${k}.name`] || bundle[`sector.${n}.name`] || human(n), d: bundle[`sector.${k}.description`] || bundle[`sector.${n}.description`] || '', planet: pl === 'serpulo' ? 'serpulo' : MOD_PLANETS.some(p => p.id === pre(pl)) ? pre(pl) : pl,
+    MOD_SECTORS.push({ id: k, n: en(`sector.${k}.name`) || en(`sector.${n}.name`) || human(n), d: en(`sector.${k}.description`) || en(`sector.${n}.description`) || '', planet: pl === 'serpulo' ? 'serpulo' : MOD_PLANETS.some(p => p.id === pre(pl)) ? pre(pl) : pl,
       gi: j.sector ?? -1, win: +j.captureWave || 0, diff: +j.difficulty || 0, p: { alwaysUnlocked: !!j.alwaysUnlocked, captureWave: +j.captureWave || 0, startWaveTimeMultiplier: j.startWaveTimeMultiplier ?? 2 }, mapBytes: map, mapFile, txt: bundle, camp: 'serpulo', mod: id });
   }
   const used = new Set(MOD_SECTORS.filter(s => s.mod === id).map(s => s.mapFile));
   const maps = [...files.keys()].filter(p => /^maps\/[^/]+\.msav$/.test(p) && !used.has(p));
-  if (maps.length) { const pl = 'mod-' + id; MOD_PLANETS.push({ id: pl, n: mod.name, col: '#8a8f9c', mod: id }); maps.forEach((p, i) => { const nm = p.slice(5, -5); MOD_SECTORS.push({ id: pre('map-' + nm), n: bundle[`map.${nm}.name`] || human(nm), d: '', planet: pl, gi: i * 7, win: 0, diff: 0, p: { alwaysUnlocked: true }, mapBytes: files.get(p), txt: bundle, camp: 'serpulo', mod: id }); mod.added.maps++; }); }
+  if (maps.length) { const pl = 'mod-' + id; MOD_PLANETS.push({ id: pl, n: mod.name, col: '#8a8f9c', mod: id }); maps.forEach((p, i) => { const nm = p.slice(5, -5); MOD_SECTORS.push({ id: pre('map-' + nm), n: en(`map.${nm}.name`) || human(nm), d: '', planet: pl, gi: i * 7, win: 0, diff: 0, p: { alwaysUnlocked: true }, mapBytes: files.get(p), txt: bundle, camp: 'serpulo', mod: id }); mod.added.maps++; }); }
   MODS.push(mod); return mod;
 }
 
@@ -350,8 +368,9 @@ export const builtinList = () => fetch('modok/lista.json?v=' + Date.now()).then(
 // a bekapcsolt modok betöltése a játék indulása előtt; hibás mod nem állítja meg a játékot
 export async function loadMods() {
   const pref = modPrefs(), errs = [];
+  await installFramework();
   let list = []; try { list = await builtinList(); } catch (_) {}
-  for (const m of list) { if (pref[m.file] === false || (pref[m.file] !== true && !m.on)) continue; try { const buf = await fetch('modok/' + m.file + (m.v ? '?v=' + m.v : '')).then(r => r.arrayBuffer()); installMod(await readZip(buf), m.file); } catch (e) { errs.push(m.file + ': ' + e.message); } }
+  for (const m of list) { if (pref[m.file] === false || (pref[m.file] !== true && !m.on)) continue; try { const A = m.addon ? await loadAddon(m.addon, m.v) : null; const buf = await fetch('modok/' + m.file + (m.v ? '?v=' + m.v : '')).then(r => r.arrayBuffer()); const md = installMod(await readZip(buf), m.file); if (A && A.patch && md) A.patch(FW, md); } catch (e) { errs.push(m.file + ': ' + e.message); } }
   let loc = []; try { loc = await localMods(); } catch (_) {}
   for (const name of loc) { if (pref['local:' + name] === false) continue; try { installMod(await readZip(await getLocal(name)), 'local:' + name); } catch (e) { errs.push(name + ': ' + e.message); } }
   await spritesReady(); return errs;

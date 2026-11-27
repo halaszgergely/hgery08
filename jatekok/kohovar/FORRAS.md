@@ -38,7 +38,7 @@ A forráskód ebben a mappában olvasható formában érhető el, és a GPLv3 fe
 
 ## Beépített modok (`modok/`)
 
-A modok listában szerepelnek, alapból kikapcsolva. Mindegyik a saját licence alatt áll, változatlanul (a fejlesztői fájlok nélkül) csomagolva:
+A modok listában szerepelnek, alapból kikapcsolva. Mindegyik a saját licence alatt áll, a fejlesztői fájlok nélkül csomagolva. Módosítás: a JS-szkriptekben megadott értékeket (lőszerek, lövedékek, blokktípusok) az `eszkoz/jsmod.mjs` kinyerte és a mod JSON-fájljaiba írta, mert a böngészőben a szkriptek nem futnak:
 
 | Fájl | Mod | Szerző | Licenc | Forrás |
 |---|---|---|---|---|
@@ -51,3 +51,5 @@ A modok listában szerepelnek, alapból kikapcsolva. Mindegyik a saját licence 
 
 A New Horizon eredetileg Java-mod; a `new-horizon.zip` a Java-forrásból az `eszkoz/nhconv.py` (és `eszkoz/javaparse.py`) átalakítóval készült:
 nyers tartalomleírások (Hjson), a mod sprite-jai (a gyárak ikonja a rajzolórétegekből összerakva), pályái és nyelvi fájljai. A Java-kódban írt egyedi viselkedést a Kohóvár motorja valósítja meg, egyszerűsítve.
+
+A New Horizon egyedi blokkjainak viselkedése (fúrómodulok, tűzoltó, gravitációs csapda, hipertér-ugró) a `modok/kiegeszitok/new-horizon.js` kiegészítőben van, a Kohóvár modkeretére (`keret.js`) építve.

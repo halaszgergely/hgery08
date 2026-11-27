@@ -98,10 +98,47 @@ def lstack(v):
 fmt = lambda x: int(x) if isinstance(x, float) and x.is_integer() else round(x, 4) if isinstance(x, float) else x
 num = lambda x: fmt(x) if isinstance(x, (int, float)) and not isinstance(x, bool) else None
 
+PAL = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pal.json')))
+NHC = {}
+ITEMCOL = {'surgeAlloy': 'f3e979', 'phaseFabric': 'f4ba6e', 'thorium': 'f9a3c7', 'titanium': '8da1e3', 'plastanium': 'cbd97f', 'copper': 'd99d73', 'lead': '8c7fa9', 'silicon': '53565c', 'graphite': 'b2c6d2', 'sporePod': '7457ce', 'blastCompound': 'ff795e', 'pyratite': 'ffaa5f', 'metaglass': 'ebeef5', 'scrap': '777777', 'coal': '272727', 'sand': 'f7cba4'}
+def hx(c): return [int(c[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+def tohex(v): return ''.join('%02x' % max(0, min(255, round(x * 255))) for x in v)
+def evcol(n):
+    """Java színkifejezés (Color.valueOf, cpy, lerp, mul, Pal.*, NHColor.*) kiértékelése hexa színre."""
+    if isinstance(n, str): return n.lstrip('#')[:6].lower() if re.match(r'^#?[0-9a-fA-F]{6}', n) else None
+    if isinstance(n, J.Obj) and n.type == 'Color' and len(n.args) >= 3 and all(num(a) is not None for a in n.args[:3]): return tohex(n.args[:3])
+    if isinstance(n, J.Ref):
+        p = n.path.split('.')
+        if len(p) >= 3 and p[0] == 'Items' and p[-1] == 'color': return ITEMCOL.get(p[1])
+        return NHC.get(p[-1]) if p[0] in ('NHColor',) or len(p) == 1 else PAL.get(p[-1]) if p[0] in ('Pal', 'Color') else NHC.get(p[-1]) or PAL.get(p[-1])
+    if isinstance(n, J.Call):
+        if n.name == 'valueOf' and n.args: return evcol(n.args[0])
+        base = evcol(n.target) if n.target is not None else None
+        if base is None: return None
+        if n.name in ('cpy', 'a', 'shiftHue', 'shiftSaturation', 'shiftValue'): return base
+        if n.name == 'lerp' and len(n.args) >= 2:
+            o, t = evcol(n.args[0]), num(n.args[1])
+            if o is None or t is None: return base
+            a, b = hx(base), hx(o); return tohex([x + (y - x) * t for x, y in zip(a, b)])
+        if n.name == 'mul' and n.args and num(n.args[0]) is not None: return tohex([min(1, x * n.args[0]) for x in hx(base)])
+        return base
+    return None
+for f in glob.glob(JS + '/**/NHColor.java', recursive=True):
+    t = open(f, encoding='utf-8').read()
+    for m in re.finditer(r'(\w+)\s*=\s*((?:[^,;()]|\((?:[^()]|\([^()]*\))*\))+)\s*[,;]', t):
+        try: c = evcol(J.P(m.group(2)).expr())
+        except Exception: c = None
+        if c: NHC[m.group(1)] = c
 def color(v):
+    c = evcol(v)
+    if c: return c
     if isinstance(v, J.Call) and v.name == 'valueOf' and v.args and isinstance(v.args[0], str): return v.args[0].lstrip('#')[:6]
     if isinstance(v, str): return v.lstrip('#')[:6]
-    if isinstance(v, J.Ref): return {'Color.white': 'ffffff', 'Pal.accent': 'ffd37f', 'Pal.lancerLaser': 'a9d8ff'}.get(v.path)
+    if isinstance(v, J.Ref):
+        p = v.path.split('.')
+        if p[0] == 'NHColor': return NHC.get(p[-1])
+        if p[0] in ('Pal', 'Color'): return PAL.get(p[-1])
+        return NHC.get(p[-1]) or PAL.get(p[-1])
     return None
 
 # ---- egyszerű értékek másolása ----
@@ -114,7 +151,7 @@ def plain(o, keys):
     return d
 
 # ---- lövedékek ----
-BUL_KEYS = 'damage speed lifetime splashDamage splashDamageRadius homingPower homingRange pierce pierceCap pierceBuilding statusDuration lightning lightningDamage lightningLength length width height knockback buildingDamageMultiplier ammoMultiplier reloadMultiplier rangeChange collidesAir collidesGround collides sapStrength fragBullets maxRange drag instantDisappear shieldDamageMultiplier healPercent'.split()
+BUL_KEYS = 'width height trailLength damage speed lifetime splashDamage splashDamageRadius homingPower homingRange pierce pierceCap pierceBuilding statusDuration lightning lightningDamage lightningLength length width height knockback buildingDamageMultiplier ammoMultiplier reloadMultiplier rangeChange collidesAir collidesGround collides sapStrength fragBullets maxRange drag instantDisappear shieldDamageMultiplier healPercent'.split()
 VAN_BUL = {'BasicBulletType', 'ArtilleryBulletType', 'MissileBulletType', 'LaserBulletType', 'ContinuousLaserBulletType', 'ContinuousFlameBulletType', 'LightningBulletType', 'ShrapnelBulletType', 'LiquidBulletType', 'FlakBulletType', 'SapBulletType', 'RailBulletType', 'EmpBulletType', 'BombBulletType', 'ExplosionBulletType', 'PointBulletType', 'PointLaserBulletType', 'LaserBoltBulletType', 'BulletType', 'ContinuousBulletType', 'FireBulletType', 'MassDriverBolt', 'InterceptorBulletType', 'SpaceLiquidBulletType'}
 NAME_HINT = [('laser', 'LaserBulletType'), ('lightning', 'LightningBulletType'), ('missile', 'MissileBulletType'), ('artillery', 'ArtilleryBulletType'), ('shrapnel', 'ShrapnelBulletType'), ('flak', 'FlakBulletType'), ('continuous', 'ContinuousLaserBulletType'), ('bomb', 'BombBulletType'), ('rail', 'RailBulletType'), ('emp', 'EmpBulletType'), ('trail', 'BasicBulletType'), ('chain', 'LightningBulletType'), ('lightningline', 'LightningBulletType'), ('poslightning', 'LightningBulletType'), ('effectbullet', 'BasicBulletType'), ('strafe', 'LaserBulletType'), ('arc', 'LightningBulletType')]
 CTOR_DEF = {'BasicBulletType': ['speed', 'damage', 'sprite'], 'ArtilleryBulletType': ['speed', 'damage', 'sprite'], 'MissileBulletType': ['speed', 'damage', 'sprite'], 'FlakBulletType': ['speed', 'damage'], 'LaserBulletType': ['damage'], 'ContinuousLaserBulletType': ['damage'], 'LiquidBulletType': ['liquid'], 'BombBulletType': ['damage', 'radius', 'sprite'], 'ExplosionBulletType': ['splashDamage', 'splashDamageRadius'], 'RailBulletType': [], 'LaserBoltBulletType': ['speed', 'damage'], 'BulletType': ['speed', 'damage'], 'EmpBulletType': [], 'SapBulletType': [], 'ContinuousFlameBulletType': ['damage']}
@@ -143,6 +180,9 @@ def bullet(v, depth=0):
         elif pn == 'radius' and num(a) is not None: d['splashDamageRadius'] = num(a); d.setdefault('splashDamage', d.get('damage', 0))
         elif pn == 'liquid': d['liquid'] = ref_name(a)
     d.update(plain(v, BUL_KEYS))
+    for k in ('backColor', 'frontColor', 'trailColor', 'hitColor', 'lightningColor', 'lightColor'):
+        c = color(v.f.get(k))
+        if c: d[k] = c
     for c in v.calls:
         if c.name == 'setDamage':
             a = [num(x) for x in c.args[1:]]
@@ -168,7 +208,7 @@ def ammo_types(call):
 
 # ---- blokkok ----
 BLOCK_ROOTS = {'Floor', 'StaticWall', 'OreBlock', 'Prop', 'TallBlock', 'SteamVent', 'GenericCrafter', 'ItemTurret', 'PowerTurret', 'LaserTurret', 'ContinuousTurret', 'LiquidTurret', 'TractorBeamTurret', 'PointDefenseTurret', 'Wall', 'Drill', 'CoreBlock', 'StackConveyor', 'PowerNode', 'LiquidRouter', 'ConsumeGenerator', 'ThermalGenerator', 'Battery', 'StorageBlock', 'ForceProjector', 'Pump', 'ItemBridge', 'OverflowDuct', 'OverflowGate', 'Sorter', 'DirectionalUnloader', 'Unloader', 'Conveyor', 'ArmoredConveyor', 'Router', 'Junction', 'DuctRouter', 'Conduit', 'LiquidJunction', 'SolarGenerator', 'NuclearReactor', 'PowerGenerator', 'OverdriveProjector', 'MendProjector', 'RegenProjector', 'SolidPump', 'LiquidSource', 'ItemSource', 'BaseTurret', 'Block', 'ShallowLiquid', 'OverlayFloor', 'StaticTree', 'TreeBlock', 'Turret', 'UnitFactory', 'Reconstructor', 'ImpactReactor', 'LiquidBridge', 'ShockwaveTower', 'BufferedItemBridge', 'DirectionalUnloader', 'RegenProjector', 'ContinuousTurret'}
-BLK_KEYS = 'size health armor itemCapacity liquidCapacity craftTime range reload maxAmmo ammoPerShot inaccuracy shootCone targetAir targetGround drillTime tier hardnessDrillMultiplier liquidBoostIntensity powerProduction itemDuration laserRange maxNodes speed displayedSpeed radius shieldHealth cooldownNormal cooldownBrokenBase reload healPercent speedBoost pumpAmount insulated absorbLasers chanceDeflect lightningChance variants attributes itemDrop playerUnmineable isLiquid isDeep drownTime liquidMultiplier mapColor shootDuration bulletDamage force damage scaledHealth buildCostMultiplier heatOutput heatRequirement unitCapModifier coolantMultiplier maxHeat'.split()
+BLK_KEYS = 'gravityRange liquidUse reloadTime intensity size health armor itemCapacity liquidCapacity craftTime range reload maxAmmo ammoPerShot inaccuracy shootCone targetAir targetGround drillTime tier hardnessDrillMultiplier liquidBoostIntensity powerProduction itemDuration laserRange maxNodes speed displayedSpeed radius shieldHealth cooldownNormal cooldownBrokenBase reload healPercent speedBoost pumpAmount insulated absorbLasers chanceDeflect lightningChance variants attributes itemDrop playerUnmineable isLiquid isDeep drownTime liquidMultiplier mapColor shootDuration bulletDamage force damage scaledHealth buildCostMultiplier heatOutput heatRequirement unitCapModifier coolantMultiplier maxHeat'.split()
 
 def drawer_layers(o, name):
     """A DrawMulti-rétegekből az ikon összeállításához szükséges sprite-nevek."""
@@ -191,6 +231,14 @@ def drawer_layers(o, name):
     walk(dr)
     return lay
 
+def links_of(o):
+    out = []
+    for c in o.calls:
+        if c.name == 'addLink':
+            for p in c.args:
+                if isinstance(p, J.Call) and p.name == 'p' and len(p.args) >= 2 and num(p.args[0]) is not None and num(p.args[1]) is not None: out.append([int(p.args[0]), int(p.args[1])])
+    return out
+
 def links_size(o):
     """MultiBlockCrafter addLink(p(x,y)...): a teljes befoglaló méret (a Kohóvár négyzetes blokkjaihoz)."""
     s = num(o.f.get('size')) or 1; xs, ys = [0, s - 1], [0, s - 1]
@@ -212,13 +260,13 @@ TYPEMAP = {'MultiBlockCrafter': 'GenericCrafter', 'RecipeGenericCrafter': 'Gener
            'Webber': 'TractorBeamTurret', 'MultTractorBeamTurret': 'TractorBeamTurret', 'LiquidRadiator': 'Block', 'OreCollector': 'Drill',
            'StreamExtractor': 'LiquidBridge', 'StreamRepeater': 'LiquidBridge', 'StreamRedirector': 'LiquidBridge', 'StreamReceiver': 'LiquidRouter', 'StreamSplitter': 'LiquidRouter', 'ShockwaveGenerator': 'ShockwaveTower'}
 SANDBOX = {'StreamSource', 'LiquidSource', 'ItemSource', 'PlaceholderBlock', 'UnitSpawner'}
-STREAM = {'GravityWell', 'ShockwaveGenerator', 'FireExtinguisher', 'AirRaider', 'UnitSpawner', 'BombLauncher', 'HyperSpaceWarper', 'IconDisplay', 'CharacterDisplay', 'PlaceholderBlock'}
+STREAM = {'GravityWell', 'ShockwaveGenerator', 'FireExtinguisher', 'AirRaider', 'UnitSpawner', 'BombLauncher', 'HyperSpaceWarper', 'PlaceholderBlock'}
 
 def conv_block(var, o):
     n = name_of.get(id(o))
     if not n: return None
     t = o.type
-    if t in SANDBOX or 'sandbox' in str(getattr(o.f.get('buildVisibility'), 'path', '')).lower(): return None    # csak homokozóban építhető
+    if n.startswith('test-') or t in SANDBOX or 'sandbox' in str(getattr(o.f.get('buildVisibility'), 'path', '')).lower(): return None    # csak homokozóban építhető
     T = TYPEMAP.get(t) or (t if t in BLOCK_ROOTS else root(t, BLOCK_ROOTS))
     d = {'type': T if T in BLOCK_ROOTS or T in TYPEMAP.values() else 'Block', '_class': t}
     d.update(plain(o, BLK_KEYS))
@@ -269,13 +317,27 @@ def conv_block(var, o):
         elif c.name == 'consumeCoolant' and a and num(a[0]) is not None: d['coolant'] = {'type': 'ConsumeCoolant', 'amount': num(a[0])}
         elif c.name == 'ammo': d['ammoTypes'] = ammo_types(c)
     if 'consumeLiquids' in d and len(d['consumeLiquids']) == 1: d['consumeLiquid'] = d.pop('consumeLiquids')[0]
-    if t == 'MultiBlockCrafter' or t == 'MultiBlockConsumeGenerator':
-        d['size'], d['_rect'] = links_size(o)
+    lk = links_of(o)
+    if lk: d['_links'] = lk; d['_rotate'] = o.f.get('rotate') is not False
     lay = drawer_layers(o, n)
     if lay: d['_layers'] = lay
     if t in STREAM: d['_special'] = t
+    PART = {'AirRaider': 'egyszerűsítve: tüzérségi toronyként, választható csapásmód nélkül', 'BombLauncher': 'egyszerűsítve: tüzérségi toronyként',
+            'StreamExtractor': 'a nyaláb folyadékhídként működik', 'StreamRepeater': 'a nyaláb folyadékhídként működik', 'StreamRedirector': 'a nyaláb folyadékhídként működik',
+            'StreamReceiver': 'a nyaláb folyadékelosztóként működik', 'StreamSplitter': 'a nyaláb folyadékelosztóként működik', 'JumpGate': 'egyszerűsítve: egységgyárként, ugrás nélkül',
+            'OreCollector': 'egyszerűsítve: fúróként', 'QuantumVortexProjector': 'egyszerűsítve: erőtérként', 'AssignedBeacon': 'egyszerűsítve: gyorsítóként',
+            'CaptureableTurret': 'elfoglalás nélkül', 'Webber': 'egyszerűsítve: vonósugárként', 'MultTractorBeamTurret': 'egyszerűsítve: vonósugárként', 'RemoteCoreStorage': 'egyszerűsítve: raktárként', 'AccumulatingStorage': 'egyszerűsítve: raktárként'}
+    if t in PART: d['_partial'] = PART[t]
+    ADDON = {'DrillModule': 'NhRadiator', 'LiquidRadiator': 'NhRadiator', 'FireExtinguisher': 'NhExtinguisher', 'GravityWell': 'NhGravityWell', 'HyperSpaceWarper': 'NhWarper', 'IconDisplay': 'NhIconDisplay', 'CharacterDisplay': 'NhCharDisplay'}   # a kiegészítő (modok/kiegeszitok/new-horizon.js) fajtái
+    if t in ADDON: d['type'] = ADDON[t]; d.pop('_special', None)
     if T == 'LiquidBridge' and t.startswith('Stream'): d['range'] = 5
     if t == 'OreCollector': d.setdefault('tier', 4); d.setdefault('drillTime', 400)
+    if t == 'AirRaider':       # távoli csapásmérő állás → nagy hatótávú tüzérségi torony
+        d.update(type='PowerTurret', range=640, reload=360, targetAir=False, shootType={'type': 'ArtilleryBulletType', 'speed': 4, 'lifetime': 170, 'damage': 0, 'splashDamage': 900, 'splashDamageRadius': 64, 'fragBullets': 6, 'fragBullet': {'type': 'BasicBulletType', 'damage': 60, 'speed': 3, 'lifetime': 20}})
+    if t == 'BombLauncher':    # bombavető → tüzérségi torony a saját lövedékével
+        b = d.pop('shootType', {}) or {}
+        d.update(type='PowerTurret', range=480, reload=240, targetAir=False, shootType={'type': 'ArtilleryBulletType', 'speed': 3.5, 'lifetime': 140, 'damage': 0, 'splashDamage': b.get('damage', 200) * 2, 'splashDamageRadius': 48, 'lightning': 4, 'lightningDamage': 40})
+        d.setdefault('consumePower', 4)
     if T == 'ShockwaveTower': d.setdefault('range', 170); d.setdefault('reload', 80)
     return n, d
 
@@ -426,13 +488,14 @@ for f in glob.glob(os.path.join(SRC, 'assets/sprites-override/**/*.png'), recurs
 made = 0
 for f in glob.glob(os.path.join(OUT, 'content/blocks/*.json')):
     d = json.load(open(f)); n = os.path.basename(f)[:-5]
-    if n in sp or n + '-full' in sp or n + '-preview' in sp: continue
+    if (n in sp or n + '-full' in sp or n + '-preview' in sp) and not d.get('_links'): continue
     lay = [l for l in d.get('_layers', []) if l in sp]
     if not lay: continue
     ims = [Image.open(sp[l]).convert('RGBA') for l in lay]
-    W = max(i.width for i in ims); H = max(i.height for i in ims); S = max(W, H)
-    base = Image.new('RGBA', (S, S))
-    for im in ims: base.alpha_composite(im, ((S - im.width) // 2, (S - im.height) // 2))
+    W = max(i.width for i in ims); H = max(i.height for i in ims)
+    if not d.get('_links'): W = H = max(W, H)       # a négyzetes blokkok ikonja négyzetes
+    base = Image.new('RGBA', (W, H))
+    for im in ims: base.alpha_composite(im, ((W - im.width) // 2, (H - im.height) // 2))
     base.save(os.path.join(OUT, 'sprites', n + '.png')); made += 1
 
 for f in glob.glob(os.path.join(SRC, 'assets/maps/*.msav')): shutil.copy(f, os.path.join(OUT, 'maps'))

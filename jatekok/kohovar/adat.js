@@ -1,6 +1,7 @@
 // Kohóvár – a játék adatai: anyagok, folyadékok, blokkok, egységek, kutatási fa, hullámok, szektorok.
 // A játékmenet és a számértékek a Mindustry (Anuke) Serpulo-tartalmát követik: https://store.steampowered.com/app/1127400/Mindustry/
 // Saját kód és saját rajzolt grafika.
+import { EN } from './nevek.js?v=202611271013';
 
 export const TS = 8;            // egy mező mérete világegységben
 export const TPS = 60;          // szimulációs lépés másodpercenként
@@ -574,3 +575,6 @@ export function freeSector(o, seed) {
   const ores = {}; for (const k in M.ores) ores[k] = M.ores[k] * o.ore; for (const k of EXTRA_ORES) ores[k] = .7 * o.ore;   // a modok ércei a szabad játék térképein
   return { id: 'free_' + seed, free: 1, n: 'Szabad játék – ' + M.n, d: '', w, h, ores, sand: M.sand, biome: M.biome, biomes: M.biomes, water: M.water, win: o.win, wt: o.wt, threat: F('diff')[2], wo: F('diff')[3], sp: o.sp, start: F('start')[2], endless: o.win === 0, unlockAll: o.res === 'all', fog: o.fog, ranked: freeRanked(o) };
 }
+
+// a tartalom nevei angolul (eredeti Mindustry); a menük és a küldetésszövegek magyarok
+for (const [T, o] of [[BLOCKS, EN.b], [ITEMS, EN.i], [LIQUIDS, EN.l], [UNITS, EN.u]]) for (const k in o) if (T[k]) T[k].n = o[k];

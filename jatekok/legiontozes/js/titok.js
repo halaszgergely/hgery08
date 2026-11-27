@@ -2,8 +2,8 @@
    Ha a játékos elég közel ér, 10 másodperces visszaszámlálás indul, majd kilövés: láng, füst, dübörgés, rázkódó kamera,
    a rakéta függőlegesen emelkedik, aztán lassan megdől és eltűnik az égen. Távolodás után újra élesedik. Pontot nem ad. */
 import * as THREE from 'three';
-import { P, NEVEZETES, SZIN } from './config.js?v=202611270115';
-import { ground } from './geo.js?v=202611270115';
+import { P, NEVEZETES, SZIN } from './config.js?v=202611271013';
+import { ground } from './geo.js?v=202611271013';
 
 export function createRocket(scene, { hud, audio }) {
   const [PX, PZ] = P(NEVEZETES.raketa[0], NEVEZETES.raketa[1]), root = new THREE.Group(); root.position.set(PX, 0, PZ); scene.add(root);

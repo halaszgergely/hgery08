@@ -1,7 +1,7 @@
 // Víz-fegyverek: vízpisztoly, locsolótömlő, vízbomba, öntözőpuska, vízágyú (+ a locsolókocsi és a tank fecskendője). Találat: elázás, nem vér.
 import * as THREE from 'three';
-import * as W from './world.js?v=202611270115';
-import { hurt } from './physics.js?v=202611270115';
+import * as W from './world.js?v=202611271013';
+import { hurt } from './physics.js?v=202611271013';
 
 export const WEAPONS = [
   { id: 'kez', n: 'Puszta kéz', icon: '✋', rate: 2, ammo: Infinity },

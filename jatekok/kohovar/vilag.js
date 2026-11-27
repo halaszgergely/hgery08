@@ -1,7 +1,8 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611270115';
-import { toWorld } from './msav.js?v=202611270115';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611270115';
+import { genMapSerpulo } from './terkep.js?v=202611271013';
+import { FW } from './keret.js?v=202611271013';
+import { toWorld } from './msav.js?v=202611271013';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271013';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -278,7 +279,9 @@ export class World {
       case 'mender': case 'overdrive': b.bst = 0; break;
       case 'mine': b.cd = 0; break;
     }
+    { const FT = FW.types[B.type]; if (FT && FT.init) { if (b.cfg && typeof b.cfg === 'object') b.cfg = structuredClone(b.cfg); FT.init(this, b); } }
     for (let yy = 0; yy < B.s; yy++) for (let xx = 0; xx < B.s; xx++) { const i = (y + yy) * this.w + x + xx; this.bt[i] = b; if (this.prop && this.prop[i]) { this.prop[i] = 0; this.propV = (this.propV || 0) + 1; } }
+    if (B.xlinks) { b.xt = []; for (const [X, Y] of FW.extra(B, x, y, rot)) if (this.inb(X, Y) && !this.bt[Y * this.w + X]) { const i = Y * this.w + X; this.bt[i] = b; b.xt.push(i); } }   // a nem négyzetes blokk további mezői
     this.scan(b);
     this.blds.push(b); this.ver++; this.pdirty = 1; this.fdirty = 1;
     if (B.type === 'shield') this.shields.push(b);
@@ -308,6 +311,7 @@ export class World {
   remB(b, boom) {
     const B = b.B;
     for (let yy = 0; yy < B.s; yy++) for (let xx = 0; xx < B.s; xx++) { const i = (b.y + yy) * this.w + b.x + xx; if (this.bt[i] === b) this.bt[i] = null; }
+    for (const i of b.xt || []) if (this.bt[i] === b) this.bt[i] = null;
     const k = this.blds.indexOf(b); if (k >= 0) this.blds.splice(k, 1);
     for (const o of b.links || []) o.inl = o.inl.filter(z => z !== b);
     for (const o of b.inl) if (o.links) o.links = o.links.filter(z => z !== b);
@@ -340,8 +344,9 @@ export class World {
   }
   // Erekir: új mag csak magzónára tehető (Mindustry CoreBlock.requiresCoreZone)
   zoneOk(B, x, y) { if (!B.zone) return false; const z = FL.indexOf('core-zone'); for (let yy = 0; yy < B.s; yy++) for (let xx = 0; xx < B.s; xx++) { if (!this.inb(x + xx, y + yy)) return false; const i = (y + yy) * this.w + x + xx; if (this.floor[i] !== z || (this.bt[i] && this.bt[i].team === PLAYER)) return false; } return true; }
-  canPlace(t, x, y) {
+  canPlace(t, x, y, rot = 0) {
     const B = BLOCKS[t], s = B.s; if (!this.okTiles(B, x, y, true)) return false;
+    if (B.xlinks) for (const [X, Y] of FW.extra(B, x, y, rot)) { if (!this.inb(X, Y)) return false; const i = Y * this.w + X; if (this.wall[i] || this.bt[i] || !this.seen[i] || (this.fl(i).deep && !B.float) || this.plans.some(p => !p.brk && X >= p.x && Y >= p.y && X < p.x + p.B.s && Y < p.y + p.B.s)) return false; }
     const any = fn => { for (let yy = 0; yy < s; yy++) for (let xx = 0; xx < s; xx++) if (fn((y + yy) * this.w + x + xx)) return true; return false; };
     if (B.type === 'drill') return any(i => this.mineItem(i, B.tier));
     if (B.attr && B.aMin) { let s2 = 0; for (let yy = 0; yy < s; yy++) for (let xx = 0; xx < s; xx++) s2 += this.fl((y + yy) * this.w + x + xx)[B.attr] || 0; return s2 >= B.aMin - .001; }
@@ -354,7 +359,7 @@ export class World {
     const B = BLOCKS[t]; if (B.type === 'core' && !this.zoneOk(B, x, y)) [x, y] = this.coreSpot(t);
     const o = this.tb(x, y);
     if (o && o.t === t && B.rot && B.type !== 'turret' && o.x === x && o.y === y) { if (o.rot !== rot) { o.rot = rot; this.ver++; this.pdirty = 1; if (B.type === 'beamdrill' || B.type === 'wcrafter') this.scan(o); } return true; }   // azonos blokk: csak elforgatja
-    if (!this.canPlace(t, x, y)) return false;
+    if (!this.canPlace(t, x, y, rot)) return false;
     this.plans.push({ t, B, x, y, rot, cfg: cfg ?? null, prog: 0, paid: {}, brk: false });
     return true;
   }
@@ -453,6 +458,7 @@ export class World {
   offer(t, it, src, d = 0) {
     if (!t || t === src || d > 8 || t.dead || (src && src.team !== undefined && t.team !== src.team)) return false;
     const B = t.B, I = t.items, cap = B.icap || 10;
+    { const FT = FW.types[B.type]; if (FT) return FT.accept ? !!FT.accept(this, t, it, src) : false; }
     switch (B.type) {
       case 'conveyor': {
         const side = this.sideOf(t, src); if (side === t.rot) return false;
@@ -523,6 +529,7 @@ export class World {
   /* ----- folyadékok ----- */
   lqAccept(t, liq, src) {
     const B = t.B; if (t.lq > .01 && t.lt !== liq) return B.type === 'incinerator';
+    { const FT = FW.types[B.type]; if (FT) return FT.lqAccept ? !!FT.lqAccept(this, t, liq, src) : false; }
     switch (B.type) {
       case 'conduit': return this.front(t) !== src && (!B.armored || src.B.type === 'conduit' || this.sideOf(t, src) === (t.rot + 2) % 4);
       case 'lrouter': case 'lbridge': return true;
@@ -556,6 +563,7 @@ export class World {
   updB(b) {
     const B = b.B, I = b.items; b.pgen = 0; b.pneed = 0; if (b.hit > 0) b.hit--;
     const ts = b.odT > this.tick ? b.odM : 1;
+    { const FT = FW.types[B.type]; if (FT) { if (FT.update) FT.update(this, b, ts); return; } }
     switch (B.type) {
       case 'conveyor': {
         const L = b.cv, v = B.mv * ts;
@@ -815,6 +823,7 @@ export class World {
   countU(t) { let n = 0; for (const u of this.units) if (u.team === PLAYER && u.t === t && !u.dead) n++; return n; }
   outUnit(b, ut) {
     const fb = this.front(b);
+    { const FT = fb && !fb.dead && FW.types[fb.B.type]; if (FT && FT.payAccept && FT.payAccept(this, fb, { u: ut }, b)) return; }   // rakománytovábbító a gyár előtt
     if (fb && fb.B.type === 'recon' && fb.B.up[ut] && this.canUnit(fb.B.up[ut]) && !fb.pay && !fb.dead) { fb.pay = ut; fb.prog = 0; return; }
     const c = this.center(b), d = b.B.s * 4 + UNITS[ut].r + 4; let sx = c.x + DX[b.rot] * d, sy = c.y + DY[b.rot] * d;
     if (UNITS[ut].naval && !this.wet(sx, sy)) { let bd = 1e9; const tx = Math.floor(sx / TS), ty = Math.floor(sy / TS); for (let yy = ty - 8; yy <= ty + 8; yy++) for (let xx = tx - 8; xx <= tx + 8; xx++) { const px = (xx + .5) * TS, py = (yy + .5) * TS, q = Math.hypot(px - sx, py - sy); if (q < bd && this.wet(px, py) && !this.bt[yy * this.w + xx]) { bd = q; c.wx = px; c.wy = py; } } if (bd < 1e9) { sx = c.wx; sy = c.wy; } }
@@ -882,7 +891,7 @@ export class World {
     if (B.each || (idx === 0 && b.burst === 0)) { if (--am.n <= 0) b.ammo.pop(); }
     b.heat = 1; let off = 0; if (B.alt) { b.side = -b.side; off = B.s * 1.6 * b.side; } else if (B.shots > 1) off = ((b.burst + idx) % 4 - 1.5) * B.s * .9;
     const mz = B.s * 4 + 3, x = c.x + Math.cos(b.ang) * mz - Math.sin(b.ang) * off, y = c.y + Math.sin(b.ang) * mz + Math.cos(b.ang) * off, u = b.tgt;
-    const base = { team: b.team, c: col, st: st.st, stT: st.stT, spl: st.spl, splR: st.splR, frag: st.frag, zap: st.zap, zapD: st.zapD, d: st.d, bdm: st.bdm };
+    const base = { team: b.team, c: st.c || col, c2: st.c2, sz: st.sz, tr: st.tr, st: st.st, stT: st.stT, spl: st.spl, splR: st.splR, frag: st.frag, zap: st.zap, zapD: st.zapD, d: st.d, bdm: st.bdm };
     switch (st.k) {
       case 'shrap': { const n = B.spread || 1; for (let k = 0; k < n; k++) this.lineDmg(c.x, c.y, b.ang + (k - (n - 1) / 2) * .35, st.len, st.d, b.team, { air: 1, ground: 1, fx: col, wide: 5 }); return; }
       case 'rail': { this.lineDmg(c.x, c.y, b.ang, range, st.d, b.team, { air: 1, ground: 1, rail: 1, fx: '#f3e979', wide: 5 }); return; }
@@ -978,7 +987,7 @@ export class World {
   // egy fegyver elsütése; t: célegység vagy épület, tc: a cél pontja
   fireW(u, w, tc, t) {
     const team = u.team, foe = foeOf(team), a = Math.atan2(tc.y - u.y, tc.x - u.x), dm = u.st.od ? 1.3 : 1, col = team === ENEMY ? '#ff7a6a' : w.heal ? '#84f491' : '#ffe39a';
-    const air = w.air !== 0 ? 1 : 0, base = { team, c: col, d: (w.d || 0) * dm, spl: w.spl && w.spl * dm, splR: w.splR, st: w.st, stT: w.stT, frag: w.frag, zap: w.zap, zapD: w.zapD, heal: w.heal, ab: t && !t.U ? t : null };
+    const air = w.air !== 0 ? 1 : 0, base = { team, c: w.c || col, c2: w.c2, sz: w.sz, tr: w.tr, d: (w.d || 0) * dm, spl: w.spl && w.spl * dm, splR: w.splR, st: w.st, stT: w.stT, frag: w.frag, zap: w.zap, zapD: w.zapD, heal: w.heal, ab: t && !t.U ? t : null };
     switch (w.k) {
       case 'laser': case 'shrap': { const e = this.lineDmg(u.x, u.y, a, w.len, w.d * dm, team, { air: 1, ground: 1, pierce: w.k === 'laser' ? 6 : 0, fx: col, wide: w.wide ? 9 : 4 }); if (w.heal && team === PLAYER) this.healB((u.x + e.x) / 2, (u.y + e.y) / 2, w.len / 2, w.heal); return; }
       case 'sap': { const d = Math.hypot(tc.x - u.x, tc.y - u.y); if (t && t.U) { this.dmgU(t, w.d * dm); t.st.sap = 180; } else if (t) this.dmgB(t, w.d * dm, u); u.hp = Math.min(u.U.hp, u.hp + w.d * w.sap); this.fx.push({ k: 'laser', x: u.x, y: u.y, x2: u.x + Math.cos(a) * Math.min(d, w.len + 8), y2: u.y + Math.sin(a) * Math.min(d, w.len + 8), life: 10, max: 10, c: '#bf92f9', w: 2 }); return; }
@@ -1247,6 +1256,7 @@ export class World {
     for (const b of this.act) { if (b.off || b.dead) continue; if (b.team === PLAYER) this.updB(b); else if (b.team === ENEMY) this.updFoeTurret(b); }
     for (const u of this.units) if (u.carrier) { if (u.carrier.dead) u.carrier = null; else { u.x = u.carrier.x; u.y = u.carrier.y; } }
     if (this.onTick) this.onTick();
+    if (FW.tick) FW.tick(this);
     if (!this.player || this.player.dead) { if (this.respawn-- <= 0) this.spawnPlayer(); }
     for (const u of this.units) if (!u.dead) this.updUnit(u);
     if (this.tick % 2 === 0) { const L = this.units; for (let a = 0; a < L.length; a++) { const u = L[a]; if (u.dead || u === this.player) continue; for (let b = a + 1; b < L.length; b++) { const v = L[b]; if (v.dead || v === this.player || !!u.U.air !== !!v.U.air) continue; const dx = v.x - u.x, dy = v.y - u.y, r = u.U.r + v.U.r, d2 = dx * dx + dy * dy; if (d2 < r * r && d2 > .01) { const d = Math.sqrt(d2), f = (r - d) / d * .25; this.moveU(u, -dx * f, -dy * f); this.moveU(v, dx * f, dy * f); } } } }
