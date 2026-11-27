@@ -1,6 +1,6 @@
 // Kohóvár – a Mindustry .msav pályafájlok olvasója (az eredeti io/SaveVersion, MapIO formátum alapján).
 // A Mindustry y tengelye felfelé nő, a Kohóváré lefelé: a sorokat itt fordítjuk meg.
-import { parseHjson } from './hjson.js?v=202611271704';
+import { parseHjson } from './hjson.js?v=202611271717';
 
 async function inflate(buf) {
   const ds = new DecompressionStream('deflate'), s = new Blob([buf]).stream().pipeThrough(ds);
@@ -22,7 +22,7 @@ function base(r) {
   if (rot & 128) { ver = r.ub(); if (ver >= 1) r.ub(); if (ver >= 2) mb = r.ub(); } else return o;
   if (mb & 1) { o.items = {}; const c = r.s(); for (let k = 0; k < c; k++) { const id = r.s(); o.items[id] = r.i(); } }
   if (mb & 2) { const n = r.s(); r.p += 4 * n + 4; }
-  if (mb & 4) { const n = r.s(); r.p += 6 * n; }
+  if (mb & 4) { const n = r.s(); o.liq = {}; for (let k = 0; k < n; k++) { const id = r.s(); o.liq[id] = r.f(); } }
   if (mb & 16) r.p += 8;
   if (mb & 32) r.p += 4;
   if (ver <= 2) r.p += 1; else r.p += 2;
@@ -52,7 +52,7 @@ export async function readMsav(buf) {
     block[i] = b;
     if (he) {
       if (center) {
-        const ln = ver < 10 ? r.us() : r.i(), s0 = r.p; /* a 10 előtti mentésekben rövid (short) a blokkhossz */ r.b(); const o = base(r); o.x = i % w; o.y = (i / w) | 0; o.id = b;
+        const ln = ver < 10 ? r.us() : r.i(), s0 = r.p; /* a 10 előtti mentésekben rövid (short) a blokkhossz */ const rev = r.b(), o = base(r); o.rev = rev; if (o.ok) o.tail = r.u.slice(r.p, s0 + ln); o.x = i % w; o.y = (i / w) | 0; o.id = b;
         if (o.ok && content[1][b] === 'world-processor') try { const cl = r.i(), d = await inflate(r.u.slice(r.p, r.p + cl)), q = new Rd(d); q.ub(); const bl = q.i(); o.code = new TextDecoder().decode(d.subarray(q.p, q.p + bl)); q.p += bl; o.links = []; for (let t = q.i(), k = 0; k < t; k++) { const nm = q.utf(), lx = q.s(), ly = q.s(); o.links.push([nm, lx, ly]); } } catch (e) { }
         builds.push(o); r.p = s0 + ln;
       }
@@ -60,12 +60,12 @@ export async function readMsav(buf) {
     else if (!hd) { const c = r.ub(); for (let j = i + 1; j <= i + c; j++) block[j] = b; i += c; }
   }
   let rules = {}; try { rules = parseHjson(meta.rules || '{}'); } catch (e) { }
-  return { ver, meta, rules, names: content[1] || [], inames: content[0] || [], w, h, floor, ore, block, builds };
+  return { ver, meta, rules, names: content[1] || [], inames: content[0] || [], lnames: content[4] || [], w, h, floor, ore, block, builds };
 }
 
 /* ----- pálya → Kohóvár-világ ----- */
-import { FLOORS, WALLS, TREES, MFLOOR, MWALL, MPROP, ITEM_IDS, BLOCKS, MOD_ORE, MOD_DECO } from './adat.js?v=202611271704';
-import { SN, ISN } from './kepadat.js?v=202611271704';
+import { FLOORS, WALLS, TREES, MFLOOR, MWALL, MPROP, ITEM_IDS, BLOCKS, MOD_ORE, MOD_DECO } from './adat.js?v=202611271717';
+import { SN, ISN } from './kepadat.js?v=202611271717';
 const DECO = new Set(['pebbles', 'tendrils', 'rune-overlay', 'char-overlay']);
 let INV = null, INVN = 0;
 export function blockOf(mname) {
@@ -106,6 +106,12 @@ export function toWorld(m) {
     const t = blockOf(nm) || (/(^|-)core-/.test(nm) ? (names.includes('core-bastion') || m.rules.planet === 'erekir' ? 'bastion' : 'core') : null); if (!t) continue;   /* ismeretlen magtípus: a bolygó alapmagja */ const B = BLOCKS[t], o = (B.s - 1) >> 1, x = b.x - o, y = h - b.y + o - B.s;
     const items = {}; if (b.items) for (const id in b.items) { const it = itemOf(m.inames[id]); if (it) items[it] = b.items[id]; }
     const e = { t, x, y, rot: B.rot ? ROT[b.rot & 3] : 0, team: b.team === 1 ? 1 : b.team === 0 ? 0 : 2, hp: b.hp, items, mx: b.x, my: b.y };
+    if (B.type === 'turret' && B.ammo && b.tail && b.rev >= 1 && b.tail.length >= 9) {   // ItemTurret.read: reload, rotation, majd a lőszerlista
+      const t8 = b.tail, dv = new DataView(t8.buffer, t8.byteOffset, t8.byteLength), n = t8[8], sz = b.rev < 2 ? 3 : 4, am = [];
+      for (let k = 0, p = 9; k < n && p + sz <= t8.length; k++, p += sz) { const id = b.rev < 2 ? t8[p] : dv.getInt16(p), it = itemOf(m.inames[id]), c = dv.getInt16(p + sz - 2); if (it && B.ammo[it] && c > 0) am.push({ it, n: Math.min(c, B.maxAmmo || 30) }); }
+      if (am.length) e.ammo = am;
+    }
+    if (b.liq && (B.lcap || B.lammo)) for (const id in b.liq) { const ln = m.lnames[id], k = ln === 'cryofluid' ? 'cryo' : ln; if (k && b.liq[id] > .01) { e.lt = k; e.lq = Math.min(B.lcap || 10, b.liq[id]); break; } }
     if (B.type === 'core' && e.team === 1 && (!core || B.s > BLOCKS[core.t].s)) core = e; else mapB.push(e);
   }
   if (!core) { const sp = spawns[0] || { x: w >> 1, y: h >> 1 }; core = { t: 'core', x: w - sp.x - 2, y: h - sp.y - 2, items: {} }; }
