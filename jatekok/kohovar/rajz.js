@@ -1,9 +1,9 @@
 // Kohóvár – kirajzolás. A blokkok, egységek, anyagok és a talaj képei a Mindustry (Anuke és közreműködők, GPLv3) sprite-jai,
 // a kepek/atlasz.png atlaszból; a lövedékek, hatások, köd és kisérkép kódból rajzoltak.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271151';
-import { FW } from './keret.js?v=202611271151';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271151';
-import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271151';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271206';
+import { FW } from './keret.js?v=202611271206';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271206';
+import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271206';
 
 const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555', 0: '#4d4e58' };
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -204,7 +204,7 @@ function drawB(g, W, b, t) {
     }
     case 'repair': if (id === 'urepair') { spr(g, n, cx, cy); glow(g, n + '-glow', cx, cy, b.ps || 0); break; } spr(g, id === 'repairpt' ? 'repair-point-base' : 'block-2', cx, cy); spr(g, n + '@o', cx, cy, (b.ang ?? -Math.PI / 2) + Math.PI / 2); break;
     case 'turret': {
-      spr(g, (B.ebase ? 'reinforced-block-' : 'block-') + B.s, cx, cy); const a = (b.ang ?? -Math.PI / 2), rec = (b.heat || 0) * (B.s > 2 ? 2 : 1), hx = cx - Math.cos(a) * rec, hy = cy - Math.sin(a) * rec, hn = HEADS[id] || (B.ebase && has(n + '-preview@o') ? n + '-preview@o' : n + '@o');
+      spr(g, B.mod && has(n + '-base') ? n + '-base' : (B.ebase ? 'reinforced-block-' : 'block-') + B.s, cx, cy); const a = (b.ang ?? -Math.PI / 2), rec = (b.heat || 0) * (B.s > 2 ? 2 : 1), hx = cx - Math.cos(a) * rec, hy = cy - Math.sin(a) * rec, hn = HEADS[id] || (B.ebase && has(n + '-preview@o') ? n + '-preview@o' : n + '@o');
       if (B.lammo && b.lq > .2) { g.globalAlpha = Math.min(1, b.lq / B.lcap + .2); sprT(g, n + '-liquid', LIQUIDS[b.lt].c, 0, hx, hy, a + Math.PI / 2); g.globalAlpha = 1; }
       spr(g, hn, hx, hy, a + Math.PI / 2); if (B.lammo) spr(g, n + '-top', hx, hy, a + Math.PI / 2);
       if (b.heat > .05 && has(n + '-heat')) { g.globalCompositeOperation = 'lighter'; glow(g, n + '-heat', hx, hy, b.heat, a + Math.PI / 2); g.globalCompositeOperation = 'source-over'; }

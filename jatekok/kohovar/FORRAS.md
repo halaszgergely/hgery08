@@ -48,6 +48,7 @@ A modok listában szerepelnek, alapból kikapcsolva. Mindegyik a saját licence 
 | goldmod.zip | Gold Mod 2.0 alpha b19 | The Slaylord | GPLv3 | https://github.com/Slotterleet/GoldMod |
 | heavy-armaments-industries.zip | Heavy Armaments Industries 2.6 | Eschatologue | MIT | https://github.com/Eschatologue/Heavy-Armaments-Industries |
 | mechanical-warfare.zip | Mechanical Warfare 1.6.2 | GlennFolker, JerichoFletcher | GPLv3 | https://github.com/JerichoFletcher/mechanical-warfare |
+| sapphirium.zip | Sapphirium 18.4 | Snake (3Snake3) és társai | GPLv3 | https://github.com/3Snake3/Sapphirium |
 
 A New Horizon eredetileg Java-mod; a `new-horizon.zip` a Java-forrásból az `eszkoz/nhconv.py` (és `eszkoz/javaparse.py`) átalakítóval készült:
 nyers tartalomleírások (Hjson), a mod sprite-jai (a gyárak ikonja a rajzolórétegekből összerakva), pályái és nyelvi fájljai. A Java-kódban írt egyedi viselkedést a Kohóvár motorja valósítja meg, egyszerűsítve.
