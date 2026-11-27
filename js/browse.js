@@ -1,14 +1,14 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611271920';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611271920';
-import * as Player from './player.js?v=202611271920';
-import * as Party from './party.js?v=202611271920';
-import * as Premier from './premier.js?v=202611271920';
-import * as VP from './vplayer.js?v=202611271920';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611271920';
-import * as Promo from './promo.js?v=202611271920';
-import * as ArcL from './arcade-lista.js?v=202611271920';
-import * as Tabs from './tabs.js?v=202611271920';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611272153';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611272153';
+import * as Player from './player.js?v=202611272153';
+import * as Party from './party.js?v=202611272153';
+import * as Premier from './premier.js?v=202611272153';
+import * as VP from './vplayer.js?v=202611272153';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611272153';
+import * as Promo from './promo.js?v=202611272153';
+import * as ArcL from './arcade-lista.js?v=202611272153';
+import * as Tabs from './tabs.js?v=202611272153';
 
 let C = null;
 export function init(ctx) { C = ctx; Promo.setup({ videos: () => C.S.videos, open: id => detail(id) }); }
@@ -291,10 +291,11 @@ const EXTRA = [{ id: 'boonline', name: 'Öntöző Birodalom Online', icon: '🌍
 /* Zero Quest – zárt béta: adminok és a „Béta-tesztelő” taggel rendelkezők */
 const betaOk = () => { try { return !!C && !C.S.guest && (C.isAdmin() || (C.S.me?.tags || []).some(id => /b[eé]ta/i.test(C.S.tags.find(t => t.id === id)?.name || ''))); } catch (_) { return false; } };
 const ZQ = { id: 'zeroquest', name: 'Zero Quest', icon: '⚔️', desc: 'A Szikkadt Korona – komor akció-szerepjáték a kiszáradt Ázottföldön – zárt béta.', c: '#e8b656', demo: 1, beta: 1 };
-const extras = () => betaOk() ? [...EXTRA, ZQ] : EXTRA;
+const AB = { id: 'aszalybeta', name: 'Aszálytúlélő: A Nagy Szárazság', icon: '🌵', desc: 'Az Aszálytúlélő nagy frissítése – zárt béta, ranglista nélkül.', c: '#ff8a2a', beta: 1 };
+const extras = () => betaOk() ? [...EXTRA, ZQ, AB] : EXTRA;
 /* „A Zerosites támogatásával” – minden játék, kivéve a három klasszikust */
 const NOSPON = ['locsolo', 'vizagyu', 'csepp', 'vizfuvar'];
-[...GAMES, ...EXTRA, ZQ].forEach(g => { if (!NOSPON.includes(g.id)) g.sponsor = 'A Zerosites támogatásával'; });
+[...GAMES, ...EXTRA, ZQ, AB].forEach(g => { if (!NOSPON.includes(g.id)) g.sponsor = 'A Zerosites támogatásával'; });
 /* népszerűség: játékonkénti indításszám (plays/{játék}.n), munkamenetenként játékonként egyszer nő */
 let PLAYS = (() => { try { return JSON.parse(localStorage.getItem('hgws_plays') || '{}') || {}; } catch (_) { return {}; } })(), playsAt = 0;
 const byPop = l => l.map((g, i) => [g, i]).sort((a, b) => (PLAYS[b[0].id] || 0) - (PLAYS[a[0].id] || 0) || a[1] - b[1]).map(x => x[0]);
