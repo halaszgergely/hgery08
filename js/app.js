@@ -1,20 +1,21 @@
 // HGWS Közösség – csatornák, privát üzenetek, csoportok, filmtár
 import { FB, auth, db, notConfigured, $, $$, esc, ROLES, roleOf, applyRoles, OWNER_UID, notify, audit, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
-  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason, signOutKeep } from './core.js?v=202611271510';
-import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611271510';
-import * as Admin from './admin.js?v=202611271510';
-import * as Browse from './browse.js?v=202611271510';
-import * as Notif from './notif.js?v=202611271510';
-import * as Profile from './profile.js?v=202611271510';
-import * as Party from './party.js?v=202611271510';
-import * as Premier from './premier.js?v=202611271510';
-import * as Ideas from './ideas.js?v=202611271510';
-import * as Player from './player.js?v=202611271510';
-import * as Cmdk from './cmdk.js?v=202611271510';
-import * as Stk from './stickers.js?v=202611271510';
-import * as Friends from './friends.js?v=202611271510';
-import * as Bo from './bo-ui.js?v=202611271510';
-import { bootOut, pageIn, I } from './fx.js?v=202611271510';
+  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason, signOutKeep } from './core.js?v=202611271519';
+import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611271519';
+import * as Admin from './admin.js?v=202611271519';
+import * as Browse from './browse.js?v=202611271519';
+import * as Notif from './notif.js?v=202611271519';
+import * as Profile from './profile.js?v=202611271519';
+import * as Party from './party.js?v=202611271519';
+import * as Premier from './premier.js?v=202611271519';
+import * as Ideas from './ideas.js?v=202611271519';
+import * as Player from './player.js?v=202611271519';
+import * as Cmdk from './cmdk.js?v=202611271519';
+import * as Stk from './stickers.js?v=202611271519';
+import * as Friends from './friends.js?v=202611271519';
+import * as Bo from './bo-ui.js?v=202611271519';
+import * as Tabs from './tabs.js?v=202611271519';
+import { bootOut, pageIn, I } from './fx.js?v=202611271519';
 
 const S = {
   premieres: {},
@@ -175,6 +176,7 @@ function start() {
   zeroEgg();
   let taps = 0, tapT; $('.tlogo').addEventListener('click', e => { taps++; clearTimeout(tapT); tapT = setTimeout(() => taps = 0, 1200); if (taps >= 5) { taps = 0; e.preventDefault(); showZero(); } });
   Player.init(() => S.music.filter(t => t.visible !== false));
+  Tabs.init({ guest: () => !!S.guest, route });
   addEventListener('hashchange', route);
   document.addEventListener('click', globalClick);
   route();
@@ -217,6 +219,7 @@ function startGuest() {
   zeroEgg();
   let taps = 0, tapT; $('.tlogo').addEventListener('click', e => { taps++; clearTimeout(tapT); tapT = setTimeout(() => taps = 0, 1200); if (taps >= 5) { taps = 0; e.preventDefault(); showZero(); } });
   Player.init(() => S.music.filter(t => t.visible !== false));
+  Tabs.init({ guest: () => !!S.guest, route });
   addEventListener('hashchange', route);
   document.addEventListener('click', globalClick);
   route();
@@ -252,6 +255,9 @@ function setMode(m) {
   if (m === 'browse') { S.chat?.destroy(); S.chat = null; } else Browse.cleanup();
 }
 function route(force) {
+  const tn = Tabs.nav(); if (tn === false) return;
+  if (tn === 'force') { force = true; S.route = { mode: 'browse', view: 'home', id: '' }; }
+  Tabs.panes();
   const h = location.hash.replace(/^#\/?/, '').split('/');
   document.body.classList.remove('nav', 'mem', 'anavopen');
   closePop();

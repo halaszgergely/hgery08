@@ -31,12 +31,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/base.css?v=202611271510">
-<link rel="stylesheet" href="css/app.css?v=202611271510">
-<link rel="stylesheet" href="css/browse.css?v=202611271510">
-<link rel="stylesheet" href="css/bo.css?v=202611271510">
-<link rel="stylesheet" href="css/icons.css?v=202611271510">
-<link rel="stylesheet" href="css/theme.css?v=202611271510">
+<link rel="stylesheet" href="css/base.css?v=202611271519">
+<link rel="stylesheet" href="css/app.css?v=202611271519">
+<link rel="stylesheet" href="css/browse.css?v=202611271519">
+<link rel="stylesheet" href="css/bo.css?v=202611271519">
+<link rel="stylesheet" href="css/icons.css?v=202611271519">
+<link rel="stylesheet" href="css/theme.css?v=202611271519">
 </head>
 <body>
 <div id="boot"><img src="img/logo.webp" alt="HGWS"></div>
@@ -74,10 +74,12 @@
       <a class="ticon" href="#/dm" title="Üzenetek"><i class="ic ic-message-circle"></i><span class="tbdg" id="chatBadge" hidden></span></a>
       <button class="ticon" id="outBtn" title="Kijelentkezés"><i class="ic ic-power"></i></button>
     </div>
+    <div class="wtabs" id="wtabs" hidden><div class="ftl" role="tablist"></div><button class="ftadd" aria-label="Új fül"><i class="ic ic-plus"></i></button></div>
   </header>
 
   <!-- böngészős oldalak (kezdőlap, filmtár, lista, lejátszó, admin) -->
   <main id="page"></main>
+  <div id="tabpanes"></div>
 
   <!-- csevegés (Discord-szerű) -->
   <div id="chat" hidden>
@@ -119,6 +121,6 @@
 </div>
 
 <div id="toast"></div>
-<script type="module" src="js/app.js?v=202611271510"></script>
+<script type="module" src="js/app.js?v=202611271519"></script>
 </body>
 </html>
