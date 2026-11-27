@@ -39,6 +39,7 @@ for o in ORES: plain |= {f'ore-{o}{i}' for i in (1, 2, 3)}
 for p in PROPS: plain |= {k for k in idx if re.fullmatch(re.escape(p) + r'\d?', k)}
 plain |= {'metal-wall-1', 'metal-wall-2', 'metal-wall-3', 'reinforced-block-2', 'reinforced-block-3', 'reinforced-block-4', 'reinforced-block-5'}
 for u in ('stell', 'locus'): plain.add(u + '-treads')
+plain |= {'power-beam', 'power-beam-end', 'drill-laser', 'drill-laser-end', 'drill-laser-center', 'drill-laser-boost', 'drill-laser-boost-end', 'drill-laser-boost-center'}   # Drawf.laser textúrái (BeamNode, BeamDrill)
 for s in SECT:
     if 'sector-' + s in idx: plain.add('sector-' + s)
 def outline(im, r=3, col=(0x40, 0x40, 0x49)):
