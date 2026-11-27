@@ -2,11 +2,11 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270115';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270115';
-import { FL, FLI, WL } from './vilag.js?v=202611270115';
-import { parseHjson } from './hjson.js?v=202611270115';
-import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270115';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270914';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270914';
+import { FL, FLI, WL } from './vilag.js?v=202611270914';
+import { parseHjson } from './hjson.js?v=202611270914';
+import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270914';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [];   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
@@ -268,7 +268,11 @@ export function installMod(files, srcLabel) {
   };
   const pendR = [];   // a kutatási csomópontok a blokkok után (a szülő később is jöhet)
   const ENV = /^(Floor|SteamVent|ShallowLiquid|OverlayFloor|StaticWall|StaticTree|TreeBlock|TallBlock|Prop|OreBlock|AirBlock|Cliff|SeaBush|ShrubBlock|Boulder|Rock|Seaweed|DoubleOverlayFloor|EmptyFloor|SpawnBlock)$/;
+  // a szkriptekben (extend/extendContent) megadott típusok a típus nélküli JSON-blokkokhoz
+  const ST = {}; for (const [p] of files) if (/^scripts\/.*\.js$/.test(p)) for (const m of txt(p).matchAll(/extend(?:Content)?\(\s*([\w.]+)\s*,\s*["']([\w-]+)["']/g)) ST[m[2]] = m[1].replace(/^.*\./, '');
   for (const [n, j] of content.blocks || []) {
+    if (!j.type && ST[n]) j.type = ST[n];
+    if (!j.type && /editorOnly|hidden|sandboxOnly/.test(j.buildVisibility || '')) continue;   // csak kutatási fa / szerkesztő jelölő
     const T = NT(j.type), k = pre(n);
     // a pályák környezeti blokkjai (talaj, fal, fa, kő, érc) a mod pályáihoz
     if (ENV.test(T) || (!j.type && /^(ore|floor)/i.test(n))) {
@@ -280,13 +284,14 @@ export function installMod(files, srcLabel) {
       continue;
     }
     const van = bo[n];
-    if (van && !j.type) { const cur = BLOCKS[van], B = convert(n, j, NT(SN_TYPE[cur.type] || ''), van);   // meglévő blokk módosítása (a Mindustryban a típus nélküli azonos nevű blokk felülírja az eredetit)
+    if (van && !j.type) { const cur = BLOCKS[van], wl = warn.length, B = convert(n, j, NT(cur.lammo ? 'LiquidTurret' : SN_TYPE[cur.type] || ''), van); warn.length = wl;   // meglévő blokk módosítása (a Mindustryban a típus nélküli azonos nevű blokk felülírja az eredetit)
       if (j.health) cur.hp = +j.health; if (j.requirements) cur.cost = req(j); for (const f of ['reload', 'range', 'time', 'gen', 'cap', 'tier', 'capP']) if (B && B[f] != null && j[{ reload: 'reload', range: 'range', time: 'craftTime', gen: 'powerProduction', cap: 'itemCapacity', tier: 'tier', capP: 'consumePowerBuffered' }[f]] != null) cur[f] = B[f];
       if (j.reloadTime) cur.reload = +j.reloadTime; const am = ammoMap(j); if (am && cur.ammo) for (const it in am) { const iid = itemId(it), bb = bullet(am[it], { n: +(am[it].ammoMultiplier || 2) }); if (iid && bb) cur.ammo[iid] = bb; }
-      if (j.name) cur.n = j.name; mod.added.patched++; continue; }
+      if (am && cur.lammo) for (const l in am) { const lid = liqId(l); if (lid) cur.lammo[lid] = +((am[l] && am[l].damage) || cur.lammo[lid] || 0); }
+      if (j.name) cur.n = clr(j.name); mod.added.patched++; continue; }
     let B = convert(n, j, T, k);
     if (!B) {           // ismeretlen fajta: építhető, de nem csinál semmit (díszítőelem)
-      if (!j.requirements) { warn.push(`${n}: nem támogatott blokkfajta (${T || 'Block'})`); continue; }
+      if (!j.requirements) { if (T) warn.push(`${n}: nem támogatott blokkfajta (${T})`); continue; }   // típus és költség nélkül: nem építhető, láthatatlan blokk
       B = { n: label('block', n, j), kat: CAT[String(j.category || '').toLowerCase()] || 'effect', s: +(j.size || 1), hp: +(j.health || 40 * (j.size || 1) ** 2), cost: req(j), type: 'deco', mod: id }; warn.push(`${n}: csak díszítőelemként (${T || 'Block'})`);
     }
     if (B.power === undefined) delete B.power;
