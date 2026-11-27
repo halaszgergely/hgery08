@@ -1,5 +1,5 @@
 // Fejlesztői menü (Konami-kód: ↑↑↓↓←→←→BA): repülés, isten mód, jármű-spawn, időjárás, napszak. Aktiválás után a mentés kikapcsol.
-import { VEH } from './vehicles.js?v=202611271009';
+import { VEH } from './vehicles.js?v=202611271013';
 
 export function createDev(ctx) {
   const D = { on: false, open: false, god: false, noWanted: false };
