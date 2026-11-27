@@ -1,6 +1,6 @@
 // Kohóvár – a Mindustry .msav pályafájlok olvasója (az eredeti io/SaveVersion, MapIO formátum alapján).
 // A Mindustry y tengelye felfelé nő, a Kohóváré lefelé: a sorokat itt fordítjuk meg.
-import { parseHjson } from './hjson.js?v=202611271847';
+import { parseHjson } from './hjson.js?v=202611271857';
 
 async function inflate(buf) {
   const ds = new DecompressionStream('deflate'), s = new Blob([buf]).stream().pipeThrough(ds);
@@ -64,8 +64,8 @@ export async function readMsav(buf) {
 }
 
 /* ----- pálya → Kohóvár-világ ----- */
-import { FLOORS, WALLS, TREES, MFLOOR, MWALL, MPROP, ITEM_IDS, BLOCKS, MOD_ORE, MOD_DECO } from './adat.js?v=202611271847';
-import { SN, ISN } from './kepadat.js?v=202611271847';
+import { FLOORS, WALLS, TREES, MFLOOR, MWALL, MPROP, ITEM_IDS, BLOCKS, MOD_ORE, MOD_DECO } from './adat.js?v=202611271857';
+import { SN, ISN } from './kepadat.js?v=202611271857';
 const DECO = new Set(['pebbles', 'tendrils', 'rune-overlay', 'char-overlay']);
 let INV = null, INVN = 0;
 export function blockOf(mname) {

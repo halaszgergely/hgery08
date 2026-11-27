@@ -2,19 +2,19 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271847';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271847';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271847';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss, drawLanding } from './rajz.js?v=202611271847';
-import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271847';
-import { JS } from './jsapi.js?v=202611271847';
-import { initCloud, changed as cloudChanged, push as cloudPush, flush as cloudFlush } from './felho.js?v=202611271847';
-import { MP, initMp, canMp, listRooms, createRoom, joinRoomId, leave as mpLeave, inviteLink, roster, hostStart, hostEnd, hostTick, hostSend, guestFrame } from './mp.js?v=202611271847';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271847';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271847';
-import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271847';
-import { toWorld } from './msav.js?v=202611271847';
-import { Story } from './logika.js?v=202611271847';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271857';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271857';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271857';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss, drawLanding } from './rajz.js?v=202611271857';
+import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271857';
+import { JS } from './jsapi.js?v=202611271857';
+import { initCloud, changed as cloudChanged, push as cloudPush, flush as cloudFlush } from './felho.js?v=202611271857';
+import { MP, initMp, canMp, listRooms, createRoom, joinRoomId, leave as mpLeave, inviteLink, roster, hostStart, hostEnd, hostTick, hostSend, guestFrame } from './mp.js?v=202611271857';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271857';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271857';
+import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271857';
+import { toWorld } from './msav.js?v=202611271857';
+import { Story } from './logika.js?v=202611271857';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -721,7 +721,7 @@ function pickAt(tx, ty) { const b = W.tb(tx, ty); if (!b || b.t === 'core' || !d
 function linkClick(a, b) {
   { const FT = FW.types[a.B.type]; if (FT && FT.linkTap) { if (FT.linkTap(W, a, b)) { selHtml(); return true; } return false; } }
   if (a.B.type === 'node' && isPow(b) && b.B.type !== 'diode') { if (W.nodeDist(a, b) <= a.B.range * TS) { W.toggleLink(a, b); selHtml(); return true; } return false; }
-  if ((a.B.type === 'bridge' || a.B.type === 'lbridge') && b.t === a.t) { if ((a.x === b.x || a.y === b.y) && Math.abs(a.x - b.x) + Math.abs(a.y - b.y) <= a.B.range) { a.link = a.link === b.i ? -1 : b.i; if (b.link === a.i) b.link = -1; selB = b; selHtml(); return true; } }
+  if ((a.B.type === 'bridge' || a.B.type === 'lbridge') && !a.B.dir && b.t === a.t) { if ((a.x === b.x || a.y === b.y) && Math.abs(a.x - b.x) + Math.abs(a.y - b.y) <= a.B.range) { a.link = a.link === b.i ? -1 : b.i; if (b.link === a.i) b.link = -1; selB = b; selHtml(); return true; } }
   if (a.B.type === 'driver' && b.t === a.t) { if (Math.hypot(a.x - b.x, a.y - b.y) * TS <= a.B.range) { a.link = a.link === b.i ? -1 : b.i; if (b.link === a.i) b.link = -1; selHtml(); return true; } }
   return false;
 }
