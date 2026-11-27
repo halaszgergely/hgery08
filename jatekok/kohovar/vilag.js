@@ -1,7 +1,8 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611270923';
-import { toWorld } from './msav.js?v=202611270923';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611270923';
+import { genMapSerpulo } from './terkep.js?v=202611270936';
+import { FW } from './keret.js?v=202611270936';
+import { toWorld } from './msav.js?v=202611270936';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611270936';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -278,6 +279,7 @@ export class World {
       case 'mender': case 'overdrive': b.bst = 0; break;
       case 'mine': b.cd = 0; break;
     }
+    { const FT = FW.types[B.type]; if (FT && FT.init) { if (b.cfg && typeof b.cfg === 'object') b.cfg = structuredClone(b.cfg); FT.init(this, b); } }
     for (let yy = 0; yy < B.s; yy++) for (let xx = 0; xx < B.s; xx++) { const i = (y + yy) * this.w + x + xx; this.bt[i] = b; if (this.prop && this.prop[i]) { this.prop[i] = 0; this.propV = (this.propV || 0) + 1; } }
     this.scan(b);
     this.blds.push(b); this.ver++; this.pdirty = 1; this.fdirty = 1;
@@ -453,6 +455,7 @@ export class World {
   offer(t, it, src, d = 0) {
     if (!t || t === src || d > 8 || t.dead || (src && src.team !== undefined && t.team !== src.team)) return false;
     const B = t.B, I = t.items, cap = B.icap || 10;
+    { const FT = FW.types[B.type]; if (FT) return FT.accept ? !!FT.accept(this, t, it, src) : false; }
     switch (B.type) {
       case 'conveyor': {
         const side = this.sideOf(t, src); if (side === t.rot) return false;
@@ -523,6 +526,7 @@ export class World {
   /* ----- folyadékok ----- */
   lqAccept(t, liq, src) {
     const B = t.B; if (t.lq > .01 && t.lt !== liq) return B.type === 'incinerator';
+    { const FT = FW.types[B.type]; if (FT) return FT.lqAccept ? !!FT.lqAccept(this, t, liq, src) : false; }
     switch (B.type) {
       case 'conduit': return this.front(t) !== src && (!B.armored || src.B.type === 'conduit' || this.sideOf(t, src) === (t.rot + 2) % 4);
       case 'lrouter': case 'lbridge': return true;
@@ -556,6 +560,7 @@ export class World {
   updB(b) {
     const B = b.B, I = b.items; b.pgen = 0; b.pneed = 0; if (b.hit > 0) b.hit--;
     const ts = b.odT > this.tick ? b.odM : 1;
+    { const FT = FW.types[B.type]; if (FT) { if (FT.update) FT.update(this, b, ts); return; } }
     switch (B.type) {
       case 'conveyor': {
         const L = b.cv, v = B.mv * ts;

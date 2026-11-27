@@ -2,13 +2,14 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611270923';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611270923';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611270923';
-import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611270923';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611270923';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611270923';
-import { Story } from './logika.js?v=202611270923';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611270936';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611270936';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611270936';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611270936';
+import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611270936';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611270936';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611270936';
+import { Story } from './logika.js?v=202611270936';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -61,6 +62,10 @@ function closeDlg(id) {
   const k = id ? STACK.findIndex(d => d.id === id) : STACK.length - 1; if (k < 0) return; const d = STACK.splice(k, 1)[0]; $(d.id).hidden = true; if (STACK.length) $(STACK[STACK.length - 1].id).hidden = false; if (d.onClose) d.onClose();
   if (!W && !STACK.length) showMenu();
 }
+// a modkeret szövegszerkesztője (processzorkód, üzenet)
+let txtCb = null;
+const FWAPI = { editText(title, text, cb, code) { $('#txtT').textContent = title; const a = $('#txtA'); a.value = text; a.className = code ? 'code' : ''; txtCb = cb; paused = true; showDlg('#dText', () => { paused = false; txtCb = null; }); setTimeout(() => a.focus(), 0); } };
+$('#txtOk').onclick = () => { if (txtCb) txtCb($('#txtA').value); txtCb = null; closeDlg('#dText'); if (selB) selHtml(); };
 const closeAll = () => { while (STACK.length) { const d = STACK.pop(); $(d.id).hidden = true; } };
 document.addEventListener('click', e => { const b = e.target.closest('[data-back]'); if (!b) return; const d = b.closest('.dlg,#planet'); if (d) closeDlg('#' + d.id); });
 
@@ -389,7 +394,7 @@ function endGame(won) {
 $('#endOk').onclick = () => closeDlg('#dEnd');
 
 /* ---------- építőpaletta (PlacementFragment) ---------- */
-const CATICON = { turret: 'turret', prod: 'production', dist: 'distribution', liquid: 'liquid', power: 'power', def: 'defense', craft: 'crafting', units: 'units', effect: 'effect' };
+const CATICON = { logic: 'logic', turret: 'turret', prod: 'production', dist: 'distribution', liquid: 'liquid', power: 'power', def: 'defense', craft: 'crafting', units: 'units', effect: 'effect' };
 function buildPalette() {
   if (!BUILD_ORDER[cat].some(done)) { const c0 = CATS.find(c => BUILD_ORDER[c[0]].some(done)); if (c0) cat = c0[0]; }
   $('#cats').innerHTML = CATS.map(([id, n]) => BUILD_ORDER[id].some(done) ? `<button data-c="${id}" class="${id === cat ? 'on' : ''}" title="${esc(n)}">${ic(CATICON[id] || 'box')}</button>` : '').join('');
@@ -403,6 +408,7 @@ $('#binfo').onclick = e => { if (e.target.closest('.q')) { const t = hoverBlock 
 const ps = v => (v * 60).toFixed(v * 60 < 10 ? 1 : 0) + '/mp';
 function stats(B, full) {
   const o = [], til = v => (v / TS).toFixed(1) + ' mező';
+  { const FT = FW.types[B.type]; if (FT && FT.info) o.push(...FT.info(B)); }
   if (B.part) o.push(`<span class="bad">${ic('warning', 'xs')} Nem működik teljesen: ${esc(B.part)}</span>`);
   switch (B.type) {
     case 'turret': {
@@ -470,6 +476,7 @@ function selHtml() {
   if (B.type === 'recon') h += `<div>${b.pay ? `${esc(UNITS[b.pay].n)} → ${esc(UNITS[B.up[b.pay]].n)}` : '<span class="lg">Egységre vár</span>'}: ${costHtml(B.inp, b.items)}</div>` + bar(b.prog, '#ffd37f', Math.round(b.prog * 100) + '%');
   if (B.type === 'launchpad' || (B.type === 'crafter' && B.time)) h += bar(B.type === 'launchpad' ? b.prog / B.time : b.prog, '#ffd37f', Math.round((B.type === 'launchpad' ? b.prog / B.time : b.prog) * 100) + '%');
   if (b === W.core) h += `<div class="lg">Tárhely: ${W.coreCap()} / anyag</div>`;
+  { const FT = FW.types[B.type]; if (FT && FT.sel) h += FT.sel(W, b); }
   const el = $('#sel'); el.hidden = false; if (el.dataset.h !== h) { el.innerHTML = h; el.dataset.h = h; }
   const z = SET.ui / 100, c = W.center(b), sx = ((c.x - cam.x) * cam.z + cv.width / 2) / z, sy = ((c.y + B.s * TS / 2 - cam.y) * cam.z + cv.height / 2) / z + 8;
   el.style.left = Math.max(4, Math.min(innerWidth / z - 304, sx - 150)) + 'px'; el.style.top = Math.max(70, Math.min(innerHeight / z - el.offsetHeight - 4, sy)) + 'px';
@@ -479,6 +486,7 @@ $('#sel').onclick = e => {
   if (t.dataset.x) { selB = null; $('#sel').hidden = true; return; }
   if (t.dataset.i) selB.cfg = selB.cfg === t.dataset.i ? null : t.dataset.i;
   if (t.dataset.u) { selB.cfg = +t.dataset.u; selB.prog = 0; }
+  if (t.dataset.fw) { const FT = FW.types[selB.B.type]; if (FT && FT.selClick) FT.selClick(W, selB, t, FWAPI); }
   selHtml();
 };
 
@@ -511,6 +519,7 @@ cv.addEventListener('pointerdown', e => {
   if (selBlock) { M.drag = [tx, ty]; return; }
   const b = W.inb(tx, ty) && W.seen[ty * W.w + tx] ? W.tb(tx, ty) : null;
   if (selB && b && b !== selB && linkClick(selB, b)) return;
+  { const FT = b && FW.types[b.B.type]; if (FT && FT.tap && FT.tap(W, b)) { if (selB === b) selHtml(); return; } }
   if (b && b.B.door) { b.open = !b.open; W.fdirty = 1; return; }
   if (b) { selB = b; selHtml(); return; }
   const i = ty * W.w + tx, p = W.player;
@@ -531,13 +540,14 @@ window.addEventListener('pointerup', e => {
 cv.addEventListener('wheel', e => { e.preventDefault(); if (!W) return; cam.z = Math.max(1.5, Math.min(9, cam.z * (e.deltaY > 0 ? .88 : 1.14))); }, { passive: false });
 function pickAt(tx, ty) { const b = W.tb(tx, ty); if (!b || b.t === 'core' || !done(b.t)) return; selBlock = b.t; rot = b.rot; cat = BLOCKS[b.t].kat || cat; buildPalette(); showInfo(selBlock); }
 function linkClick(a, b) {
+  { const FT = FW.types[a.B.type]; if (FT && FT.linkTap) { if (FT.linkTap(W, a, b)) { selHtml(); return true; } return false; } }
   if (a.B.type === 'node' && isPow(b) && b.B.type !== 'diode') { if (W.nodeDist(a, b) <= a.B.range * TS) { W.toggleLink(a, b); selHtml(); return true; } return false; }
   if ((a.B.type === 'bridge' || a.B.type === 'lbridge') && b.t === a.t) { if ((a.x === b.x || a.y === b.y) && Math.abs(a.x - b.x) + Math.abs(a.y - b.y) <= a.B.range) { a.link = a.link === b.i ? -1 : b.i; if (b.link === a.i) b.link = -1; selB = b; selHtml(); return true; } }
   if (a.B.type === 'driver' && b.t === a.t) { if (Math.hypot(a.x - b.x, a.y - b.y) * TS <= a.B.range) { a.link = a.link === b.i ? -1 : b.i; if (b.link === a.i) b.link = -1; selHtml(); return true; } }
   return false;
 }
 window.addEventListener('keydown', e => {
-  const k = e.key.toLowerCase(), typing = e.target.tagName === 'INPUT' && e.target.type !== 'range';
+  const k = e.key.toLowerCase(), typing = (e.target.tagName === 'INPUT' && e.target.type !== 'range') || e.target.tagName === 'TEXTAREA';
   if (k === 'escape') { if (STACK.length) { closeDlg(); return; } if (!W) { if (subOpen >= 0) { subOpen = -1; buildMenu(); } return; } }
   if (!W || typing || STACK.length) return; keys.add(k);
   if (k === 'r') rot = (rot + (e.shiftKey ? 3 : 1)) % 4;
@@ -638,6 +648,7 @@ function overlay(gx, z) {
   if (selB && !selB.dead) {
     const B = selB.B, s = B.s * TS, c = W.center(selB); gx.strokeStyle = '#ffd37f'; gx.lineWidth = 2 / z; gx.strokeRect(selB.x * TS - 1, selB.y * TS - 1, s + 2, s + 2);
     const R = RANGE(B) + (B.type === 'turret' ? W.rangeBonus(selB) : 0); if (R) ring(c.x, c.y, R, B.type === 'bridge' || B.type === 'lbridge');
+    { const FT = FW.types[B.type]; if (FT && FT.overlay) FT.overlay(gx, W, selB); }
     if (B.type === 'driver' && selB.link >= 0 && W.bt[selB.link]) { const o = W.center(W.bt[selB.link]); gx.strokeStyle = 'rgba(255,211,127,.8)'; gx.lineWidth = lw; gx.beginPath(); gx.moveTo(c.x, c.y); gx.lineTo(o.x, o.y); gx.stroke(); }
   } else if (!selBlock && W.inb(tx, ty)) {
     const i = ty * W.w + tx; if (!W.tb(tx, ty) && W.seen[i] && W.player && W.mineItem(i, W.player.U.mineT, W.player.U.mineW ? 'w' : 1)) { gx.strokeStyle = 'rgba(255,255,255,.5)'; gx.lineWidth = lw; gx.strokeRect(tx * TS, ty * TS, TS, TS); }
@@ -669,7 +680,8 @@ async function showMods() {
   showDlg('#dMods'); const pref = modPrefs(), list = await builtinList(); let loc = []; try { loc = await localMods(); } catch (_) {}
   const on = (key, def) => pref[key] === undefined ? def : pref[key], loaded = src => MODS.find(m => m.src === src);
   const row = (key, title, isOn, local, li) => { const m = loaded(key) || (li && { name: li.name, version: li.version, author: li.author }); return `<div class="modr np-pane"><div class="grow"><div class="nm">${esc(li ? li.name : m ? m.name : title)}${m && m.version ? ' <span class="lg">' + esc(m.version) + '</span>' : ''}</div>${m && m.author ? `<div class="lg" style="font-size:16px">${esc(m.author)}</div>` : ''}${m && m.added ? `<div class="lg" style="font-size:14px">${m.added.blocks} blokk · ${m.added.units} egység · ${m.added.items} anyag · ${m.added.liquids} folyadék${m.added.patched ? ' · ' + m.added.patched + ' módosított' : ''}${m.added.maps ? ' · ' + m.added.maps + ' pálya' : ''}</div>${m.warn.length ? `<details class="mwarn"><summary class="bad">${m.warn.length} eltérés</summary><div>${m.warn.map(esc).join('<br>')}</div></details>` : ''}` : ''}</div><button class="b np-button sm" data-k="${esc(key)}" data-on="${isOn ? 1 : 0}" style="width:150px">${isOn ? ic('cancel', 's') + 'Letiltás' : ic('ok', 's') + 'Engedélyezés'}</button>${local ? `<button class="b np-button sm" data-del="${esc(local)}" style="width:56px">${ic('trash', 's')}</button>` : ''}</div>`; };
-  $('#modList').innerHTML = (list.map(m => row(m.file, m.name || m.file, on(m.file, !!m.on), null, m)).join('') + loc.map(n => row('local:' + n, n, on('local:' + n, true), n)).join('')) || '<div class="lg">Nem találhatók modok.</div>';
+  const fwRow = `<div class="modr np-pane fwrow"><div class="grow"><div class="nm">${esc(FW.name)} <span class="lg">${FW.version}</span></div><div class="lg" style="font-size:16px">Kohóvár</div><div class="lg" style="font-size:14px">${FW.parts.map(esc).join(' · ')}${FW.addons.length ? ' · ' + FW.addons.length + ' kiegészítő' : ''}</div></div><div class="fwon">${ic('ok', 'xs')} Mindig aktív</div></div>`;
+  $('#modList').innerHTML = fwRow + (list.map(m => row(m.file, m.name || m.file, on(m.file, !!m.on), null, m)).join('') + loc.map(n => row('local:' + n, n, on('local:' + n, true), n)).join('')) || '<div class="lg">Nem találhatók modok.</div>';
   $('#modMsg').innerHTML = (modDirty ? '<div class="bad" style="margin:8px 0">Újratöltés szükséges</div>' : '') + modErrs.map(e => `<div class="bad">${esc(e)}</div>`).join('');
   $('#modApply').hidden = !modDirty;
 }
@@ -691,4 +703,4 @@ loadAtlas().then(() => loadMods()).then(errs => {
   modErrs = errs; prepContent(); addModSectors(MOD_SECTORS, MOD_PLANETS); NODE = Object.fromEntries(TECH.map(t => [t.id, t])); TPOS = null;
   ready = true; buildMenu(); try { menuWorld(); } catch (_) { MW = null; }
 }, () => { $('#mcol').innerHTML = '<div class="fb bad" style="height:auto;padding:14px">A grafika betöltése nem sikerült – frissítsd az oldalt.</div>'; });
-window.__KV = { get W() { return W; }, S, start, SECTORS, freeSector, BL: BLOCKS, UN: UNITS, cam, retex() { TER = makeTerrain(W); }, showPlanet, showCustom, showPlay, showTech, showDb, showSet, showMods, showLoad, openPM, closeDlg, STACK };
+window.__KV = { get W() { return W; }, FWT: FW.types, get selB() { return selB; }, set selB(v) { selB = v; }, S, start, SECTORS, freeSector, BL: BLOCKS, UN: UNITS, cam, retex() { TER = makeTerrain(W); }, showPlanet, showCustom, showPlay, showTech, showDb, showSet, showMods, showLoad, openPM, closeDlg, STACK };

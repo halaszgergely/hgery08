@@ -1,8 +1,8 @@
 // Kohóvár – a Mindustry-pályák története: célkitűzések (game/MapObjectives) és világprocesszorok (logic/LExecutor, mlog).
 // A koordináták a pályafájlban a Mindustry rendszerében vannak (csempe, y felfelé); itt fordítjuk át.
-import { TS, ITEMS, BLOCKS, UNITS, STATUS } from './adat.js?v=202611270923';
-import { PLAYER, ENEMY, DERELICT } from './vilag.js?v=202611270923';
-import { blockOf, itemOf } from './msav.js?v=202611270923';
+import { TS, ITEMS, BLOCKS, UNITS, STATUS } from './adat.js?v=202611270936';
+import { PLAYER, ENEMY, DERELICT } from './vilag.js?v=202611270936';
+import { blockOf, itemOf } from './msav.js?v=202611270936';
 
 const TEAM = { derelict: DERELICT, sharded: PLAYER, crux: ENEMY, malis: ENEMY, 0: DERELICT, 1: PLAYER, 2: ENEMY, 3: ENEMY };
 const ST = { burning: 'burn', freezing: 'freeze', wet: 'wet', tarred: 'tar', melting: 'melt', sapped: 'sap', overdrive: 'od', fast: 'od', overclock: 'od' };
@@ -77,7 +77,7 @@ export class Story {
 
 /* ---------- világprocesszor: mlog-értelmező ---------- */
 const tok = l => { const o = []; let i = 0; while (i < l.length) { if (l[i] === ' ') { i++; continue; } if (l[i] === '"') { const j = l.indexOf('"', i + 1); o.push(l.slice(i, j < 0 ? l.length : j + 1)); i = j < 0 ? l.length : j + 1; } else { let j = i; while (j < l.length && l[j] !== ' ') j++; o.push(l.slice(i, j)); i = j; } } return o; };
-class Proc {
+export class Proc {
   constructor(S, s) {
     this.S = S; this.W = S.W; this.code = s.code.split('\n').map(l => l.trim()).filter(l => l).map(tok); this.labels = {};
     this.pc = 0; this.v = {}; this.wt = 0; this.halt = false; this.unit = null; this.ipt = 8;
@@ -113,7 +113,7 @@ class Proc {
     const W = this.W, S = this.S, [op, a, b, c, d, e, f, g] = l;
     switch (op) {
       case 'set': this.set(a, this.val(b)); break;
-      case 'op': { const x = this.num(c), y = this.num(d); const r = { add: x + y, sub: x - y, mul: x * y, div: x / y, idiv: Math.floor(x / y), mod: x % y, pow: x ** y, equal: +(x === y), notEqual: +(x !== y), land: +(x && y), lessThan: +(x < y), lessThanEq: +(x <= y), greaterThan: +(x > y), greaterThanEq: +(x >= y), or: x | y, and: x & y, xor: x ^ y, not: ~x, max: Math.max(x, y), min: Math.min(x, y), abs: Math.abs(x), floor: Math.floor(x), ceil: Math.ceil(x), sqrt: Math.sqrt(x), rand: Math.random() * x, len: Math.hypot(x, y), angle: (Math.atan2(y, x) * 180 / Math.PI + 360) % 360, sin: Math.sin(x * Math.PI / 180), cos: Math.cos(x * Math.PI / 180), log: Math.log(x), shl: x << y, shr: x >> y }[b]; this.set(a, Number.isFinite(r) ? r : 0); break; }
+      case 'op': { const x = this.num(c), y = this.num(d); const r = { add: x + y, sub: x - y, mul: x * y, div: x / y, idiv: Math.floor(x / y), mod: x % y, pow: x ** y, equal: +(x === y), notEqual: +(x !== y), land: +(x && y), lessThan: +(x < y), lessThanEq: +(x <= y), greaterThan: +(x > y), greaterThanEq: +(x >= y), or: x | y, and: x & y, xor: x ^ y, not: ~x, max: Math.max(x, y), min: Math.min(x, y), abs: Math.abs(x), floor: Math.floor(x), ceil: Math.ceil(x), sqrt: Math.sqrt(x), rand: Math.random() * x, len: Math.hypot(x, y), angle: (Math.atan2(y, x) * 180 / Math.PI + 360) % 360, sin: Math.sin(x * Math.PI / 180), cos: Math.cos(x * Math.PI / 180), log: Math.log(x), shl: x << y, shr: x >> y }[a]; this.set(b, Number.isFinite(r) ? r : 0); break; }   // op művelet eredmény x y
       case 'jump': if (this.cmp(b, c, d)) this.pc = +a; break;
       case 'wait': this.wt = Math.max(0, this.num(a) * 60); break;
       case 'stop': this.halt = true; break;
