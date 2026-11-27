@@ -2,13 +2,13 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611270112';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611270112';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611270112';
-import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611270112';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611270112';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611270112';
-import { Story } from './logika.js?v=202611270112';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611270115';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611270115';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611270115';
+import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611270115';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611270115';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611270115';
+import { Story } from './logika.js?v=202611270115';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -417,7 +417,8 @@ function stats(B, full) {
     case 'drill': o.push(`Fúrható: ${ITEM_IDS.filter(k => ITEMS[k].h <= B.tier && ['copper', 'lead', 'sand', 'coal', 'scrap', 'titanium', 'thorium'].includes(k)).map(itI).join('')}`, `Sebesség (teljes ércen): <b>${(60 / (B.time + 50) * B.s * B.s).toFixed(2)}/mp</b>`, `Vízzel <b>${(B.boost * B.boost).toFixed(2)}×</b> gyorsabb`); break;
     case 'crafter': {
       const inp = [...Object.entries(B.inp || {}).map(([k, n]) => itI(k) + n), ...(B.inL ? [lqI(B.inL[0]) + ps(B.inL[1])] : [])], out = [...Object.entries(B.out || {}).map(([k, n]) => itI(k) + n), ...(B.outL ? [lqI(B.outL[0]) + ps(B.outL[1])] : []), ...(B.sep ? [Object.keys(B.sep).map(itI).join('')] : [])];
-      o.push(`Bemenet: ${inp.join(' + ') || '—'}`, `Kimenet: ${out.join(' ')}`); if (B.time) o.push(`Gyártási idő: <b>${(B.time / 60).toFixed(2)} mp</b>`); if (B.attr) o.push({ spores: 'Spórás talajon gyorsabb', heat: 'Forró talajon gyorsabb', oil: 'Homokon, palán, kátrányon termel' }[B.attr] || ''); break;
+      if (B.recipes) o.push(...B.recipes.map(r => `${Object.entries(r.inp).map(([k, n]) => itI(k) + n).join(' + ') || '—'} → ${Object.entries(r.out).map(([k, n]) => itI(k) + n).join(' ')} <span class="lg">${(r.time / 60).toFixed(1)} mp</span>`));
+      else o.push(`Bemenet: ${inp.join(' + ') || '—'}`, `Kimenet: ${out.join(' ')}`); if (B.time && !B.recipes) o.push(`Gyártási idő: <b>${(B.time / 60).toFixed(2)} mp</b>`); if (B.attr) o.push({ spores: 'Spórás talajon gyorsabb', heat: 'Forró talajon gyorsabb', oil: 'Homokon, palán, kátrányon termel' }[B.attr] || ''); break;
     }
     case 'conveyor': case 'sconv': o.push(`Sebesség: <b>${B.speed} tárgy/mp</b>`); break;
     case 'bridge': case 'lbridge': o.push(`Hatótáv: <b>${B.range} mező</b>`); break;

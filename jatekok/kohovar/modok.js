@@ -2,11 +2,11 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270112';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270112';
-import { FL, FLI, WL } from './vilag.js?v=202611270112';
-import { parseHjson } from './hjson.js?v=202611270112';
-import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270112';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270115';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270115';
+import { FL, FLI, WL } from './vilag.js?v=202611270115';
+import { parseHjson } from './hjson.js?v=202611270115';
+import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270115';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [];   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
@@ -193,6 +193,12 @@ export function installMod(files, srcLabel) {
       if (j.attribute) { B.attr = { heat: 'heat', spores: 'spores', oil: 'oil', steam: 'steam', water: 'water' }[j.attribute] || null; B.aScale = +(j.boostScale ?? 1); B.aMax = +(j.maxBoost || 2); if (j.baseEfficiency != null) B.aBase = +j.baseEfficiency; if (j.minEfficiency) B.aMin = +j.minEfficiency; }
       if (j.heatRequirement) { B.heatReq = +j.heatRequirement; B.heatMax = +(j.maxEfficiency || 4); }
       if (j.heatOutput) { B.heatOut = +j.heatOutput; B.rot = 1; }
+      const rl = j.recipes || j._recipes;          // több recept (a New Horizon receptjei)
+      if (Array.isArray(rl) && rl.length) {
+        const rs = rl.map(r => ({ inp: stacks(r.inputItem || r.consumeItems), out: stacks(r.outputItem || r.outputItems), time: +(r.craftTime || j.craftTime || 60), ...((r.inputLiquid || [])[0] ? { inL: liqOf(r.inputLiquid[0]) } : {}) })).filter(r => Object.keys(r.out).length || Object.keys(r.inp).length);
+        if (B.inp && Object.keys(B.inp).length && B.out) rs.unshift({ inp: B.inp, out: B.out, time: B.time, inL: B.inL });
+        if (rs.length) { B.recipes = rs.map(r => { if (!r.inL) delete r.inL; return r; }); B.inpAll = {}; const oa = new Set(); for (const r of rs) { for (const k in r.inp) B.inpAll[k] = Math.max(B.inpAll[k] || 0, r.inp[k]); for (const k in r.out) oa.add(k); } B.outAll = [...oa]; if (!B.out) B.out = rs[0].out; if (!B.inp || !Object.keys(B.inp).length) B.inp = rs[0].inp; }
+      }
       return B;
     }
     if (T === 'HeatProducer') return { ...base, type: 'heater', rot: 1, heatOut: +(j.heatOutput || 3), power: c.power, inL: c.inL, fuel: c.inp && Object.keys(c.inp)[0], dur: +(j.craftTime || 120), lcap: +(j.liquidCapacity || 20) };
