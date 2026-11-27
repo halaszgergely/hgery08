@@ -1,6 +1,6 @@
 // A Mindustry JS-modok szkriptjeiből kinyeri a tartalomleírásokat (lőszerek, lövedékek, számértékek),
 // és a mod JSON-fájljaiba írja őket. Csak a gépünkön, a beépített (átnézett, szabad licencű) modokra fut –
-// a böngészőben a modok szkriptjei nem futnak.
+// a böngészőben ezen felül a Kohóvár JS API (jsapi.js) futtatja a szkripteket; ez az eszköz a tartalmat előre is átveszi.
 // Használat: node jsmod.mjs <mod mappa>
 import fs from 'fs';
 import path from 'path';

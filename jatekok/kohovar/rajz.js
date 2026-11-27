@@ -1,9 +1,9 @@
 // Kohóvár – kirajzolás. A blokkok, egységek, anyagok és a talaj képei a Mindustry (Anuke és közreműködők, GPLv3) sprite-jai,
 // a kepek/atlasz.png atlaszból; a lövedékek, hatások, köd és kisérkép kódból rajzoltak.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271110';
-import { FW } from './keret.js?v=202611271110';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271110';
-import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271110';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271126';
+import { FW } from './keret.js?v=202611271126';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271126';
+import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271126';
 
 const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555', 0: '#4d4e58' };
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -39,7 +39,7 @@ function tint(n, col, mul) {
   if (mul) { x.globalCompositeOperation = 'destination-in'; x.drawImage(r[4] || IMG, r[0], r[1], r[2], r[3], 0, 0, r[2], r[3]); }
   TC.set(key, c); return c;
 }
-const sprT = (g, n, col, mul, x, y, rot, sx, sy, w, h) => { const c = tint(n, col, mul); if (c) spr(g, n, x, y, rot, sx, sy, w, h, c); };
+export const sprT = (g, n, col, mul, x, y, rot, sx, sy, w, h) => { const c = tint(n, col, mul); if (c) spr(g, n, x, y, rot, sx, sy, w, h, c); };
 const glow = (g, n, x, y, a, rot) => { if (a <= .02 || !AT[n]) return; g.globalAlpha = Math.min(1, a); spr(g, n, x, y, rot); g.globalAlpha = 1; };
 export function itemSq(g, it, x, y, s = 5) { spr(g, 'item-' + ISN[it], x, y, 0, null, null, s, s); }
 
@@ -126,6 +126,7 @@ function drawB(g, W, b, t) {
     g.save(); g.translate(mx * TS, my * TS); g.rotate(-(b.rot || 0) * Math.PI / 2); g.translate(-B.s * TS / 2, -B.s * TS / 2);
     drawB(g, W, Object.assign(Object.create(b), { __rx: 1, x: 0, y: 0, rot: 0 }), t); g.restore(); return;
   }
+  if (b.B.js && W && !b.__natD && !b.__rx && FW.js) { b.__natD = 1; try { FW.js.draw(g, W, b, () => drawB(g, W, b, t)); } finally { b.__natD = 0; } return; }
   const B = b.B, s = B.s * TS, x = b.x * TS, y = b.y * TS, cx = x + s / 2, cy = y + s / 2, id = b.t, n = SN[id], R = b.rot * Math.PI / 2, wk = b.work || 0;
   const liqRect = (liq, a, inset = .12) => { if (!liq || a <= .02) return; g.globalAlpha = Math.min(1, a); g.fillStyle = LIQUIDS[liq].c; g.fillRect(x + s * inset, y + s * inset, s * (1 - 2 * inset), s * (1 - 2 * inset)); g.globalAlpha = 1; };
   switch (B.type) {
@@ -286,7 +287,7 @@ export function render(g, W, R) {
     if (u.dead || !!u.U.air !== !!pass) continue; const r = u.U.r;
     if (u.x < vx0 - 80 || u.x > vx1 + 80 || u.y < vy0 - 80 || u.y > vy1 + 80) continue;
     if (u.U.air) { g.globalAlpha = .25; sprT(g, u.t + '@o', '#000000', 0, u.x - 3 - r * .25, u.y + 3 + r * .25, u.rot + Math.PI / 2); g.globalAlpha = 1; }
-    drawUnit(g, u.t, u.team, u.x, u.y, u.aim != null && !u.U.air ? u.aim : u.rot, u.walk);
+    if (u.U.js && FW.js) FW.js.drawUnit(g, W, u, () => drawUnit(g, u.t, u.team, u.x, u.y, u.aim != null && !u.U.air ? u.aim : u.rot, u.walk)); else drawUnit(g, u.t, u.team, u.x, u.y, u.aim != null && !u.U.air ? u.aim : u.rot, u.walk);
     if (u.U.air && Math.hypot(u.vx, u.vy) > .3) { g.fillStyle = u.team === ENEMY ? 'rgba(255,120,100,.8)' : 'rgba(255,211,127,.8)'; circ(g, u.x - Math.cos(u.rot) * r, u.y - Math.sin(u.rot) * r, 1 + r * .08 + Math.random() * .6); }
     for (const k in u.st) if (k !== 'od') { g.fillStyle = STATUS[k].c; g.globalAlpha = .4; circ(g, u.x, u.y, r * .8); g.globalAlpha = 1; }
     if (u.hit > 0) { g.fillStyle = `rgba(255,255,255,${u.hit / 12})`; circ(g, u.x, u.y, r); }
@@ -326,6 +327,7 @@ export function render(g, W, R) {
       case 'launch': g.fillStyle = f.c; g.globalAlpha = k; circ(g, f.x, f.y - (1 - k) * 90, 3 + k * 3); g.fillRect(f.x - 1, f.y - (1 - k) * 90, 2, (1 - k) * 60); g.globalAlpha = 1; break;
     }
   }
+  if (FW.js) FW.js.render(g, W);
   if (W.fog) { const tx0 = Math.max(0, Math.floor(vx0 / TS) - 1), ty0 = Math.max(0, Math.floor(vy0 / TS) - 1), tx1 = Math.min(W.w, Math.ceil(vx1 / TS) + 1), ty1 = Math.min(W.h, Math.ceil(vy1 / TS) + 1); if (tx1 > tx0 && ty1 > ty0) { g.imageSmoothingEnabled = true; g.drawImage(ter.fog, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * TS, ty0 * TS, (tx1 - tx0) * TS, (ty1 - ty0) * TS); } }
   g.imageSmoothingEnabled = false;
   if (ui) ui(g, z);

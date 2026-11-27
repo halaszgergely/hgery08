@@ -1,8 +1,8 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611271110';
-import { FW } from './keret.js?v=202611271110';
-import { toWorld } from './msav.js?v=202611271110';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271110';
+import { genMapSerpulo } from './terkep.js?v=202611271126';
+import { FW } from './keret.js?v=202611271126';
+import { toWorld } from './msav.js?v=202611271126';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271126';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -287,6 +287,7 @@ export class World {
     if (B.type === 'shield') this.shields.push(b);
     if (team === PLAYER) { const c = this.center(b); this.reveal(c.x, c.y, Math.ceil(B.s / 2 + (B.type === 'turret' ? B.range / TS + 2 : B.type === 'core' ? 20 : 6))); }
     if (team === ENEMY) { this.eteam = 1; if (B.type === 'core') this.ecores = (this.ecores || 0) + 1; }
+    if (B.js && FW.js) FW.js.placed(this, b);
     return b;
   }
   scan(b) {           // a blokk alatti talaj: érc, folyadék, hő / spóra / olaj
@@ -317,6 +318,7 @@ export class World {
     for (const o of b.inl) if (o.links) o.links = o.links.filter(z => z !== b);
     if (B.type === 'shield') this.shields = this.shields.filter(z => z !== b);
     b.dead = 1; this.ver++; this.pdirty = 1; this.fdirty = 1;
+    if (FW.js && boom) { if (B.js) FW.js.destroyed(this, b); FW.js.ev('BlockDestroyEvent', () => ({ tile: FW.js.tile(b.x, b.y) })); }
     if (b.team === ENEMY && B.type === 'core') this.ecores--;
     if (boom) { const c = this.center(b); this.boom(c.x, c.y, B.s * 7, '#ffb347'); this.fx.push({ k: 'rubble', x: b.x, y: b.y, s: B.s, life: 1800, max: 1800 }); if (b.team === PLAYER && B.type !== 'core' && this.rebuild.length < 400) this.rebuild.push([b.t, b.x, b.y, b.rot, b.cfg]); }
   }
@@ -346,6 +348,7 @@ export class World {
   zoneOk(B, x, y) { if (!B.zone) return false; const z = FL.indexOf('core-zone'); for (let yy = 0; yy < B.s; yy++) for (let xx = 0; xx < B.s; xx++) { if (!this.inb(x + xx, y + yy)) return false; const i = (y + yy) * this.w + x + xx; if (this.floor[i] !== z || (this.bt[i] && this.bt[i].team === PLAYER)) return false; } return true; }
   canPlace(t, x, y, rot = 0) {
     const B = BLOCKS[t], s = B.s; if (!this.okTiles(B, x, y, true)) return false;
+    if (B.js && FW.js && !FW.js.canPlace(this, B, x, y, rot)) return false;
     if (B.xlinks) for (const [X, Y] of FW.extra(B, x, y, rot)) { if (!this.inb(X, Y)) return false; const i = Y * this.w + X; if (this.wall[i] || this.bt[i] || !this.seen[i] || (this.fl(i).deep && !B.float) || this.plans.some(p => !p.brk && X >= p.x && Y >= p.y && X < p.x + p.B.s && Y < p.y + p.B.s)) return false; }
     const any = fn => { for (let yy = 0; yy < s; yy++) for (let xx = 0; xx < s; xx++) if (fn((y + yy) * this.w + x + xx)) return true; return false; };
     if (B.type === 'drill') return any(i => this.mineItem(i, B.tier));
@@ -392,6 +395,7 @@ export class World {
       if (o.lq && b.B.lcap && 'lq' in b) { b.lq = Math.min(b.B.lcap, (b.lq || 0) + o.lq); b.lt = o.lt; }
       if (b.B.type === 'recon' && o.t === b.t && o.items) b.items = { ...o.items };
     }
+    if (FW.js) FW.js.ev('BlockBuildEndEvent', () => ({ tile: FW.js.tile(b.x, b.y), team: FW.js.team(b.team), unit: this.player ? FW.js.unit(this.player) : null, breaking: false, config: b.cfg ?? null }));
     this.stats.built++; this.stats.placed[b.t] = (this.stats.placed[b.t] || 0) + 1; const T = b.B.type;
     if (T === 'bridge' || T === 'lbridge') { const pb = this['last_' + b.t], d = pb ? Math.abs(pb.x - b.x) + Math.abs(pb.y - b.y) : 0; if (pb && !pb.dead && pb.link < 0 && (pb.x === b.x || pb.y === b.y) && d > 0 && d <= b.B.range) pb.link = b.i; this['last_' + b.t] = b; }
     if (T === 'node') this.autoLink(b); else if (isPow(b)) this.linkToNodes(b);
@@ -466,6 +470,7 @@ export class World {
   offer(t, it, src, d = 0) {
     if (!t || t === src || d > 8 || t.dead || (src && src.team !== undefined && t.team !== src.team)) return false;
     const B = t.B, I = t.items, cap = B.icap || 10;
+    if (B.js && FW.js && !FW.js.accept(this, t, it, src)) return false;
     { const FT = FW.types[B.type]; if (FT) return FT.accept ? !!FT.accept(this, t, it, src) : false; }
     switch (B.type) {
       case 'conveyor': {
@@ -569,6 +574,7 @@ export class World {
 
   /* ----- épület-frissítés ----- */
   updB(b) {
+    if (b.B.js && !b.__nat && FW.js) { b.__nat = 1; try { FW.js.upd(this, b, () => this.updB(b)); } finally { b.__nat = 0; } return; }
     const B = b.B, I = b.items; b.pgen = 0; b.pneed = 0; if (b.hit > 0) b.hit--;
     const ts = b.odT > this.tick ? b.odM : 1;
     { const FT = FW.types[B.type]; if (FT) { if (FT.update) FT.update(this, b, ts); return; } }
@@ -941,7 +947,7 @@ export class World {
   /* ----- egységek ----- */
   spawnU(t, team, x, y) {
     const U = UNITS[t], u = { t, U, team, x, y, vx: 0, vy: 0, hp: U.hp, sh: 0, rot: 0, wc: U.w.map(() => 0), tgt: null, id: this.tick * 1000 + this.units.length, walk: 0, stack: null, mt: 0, st: {}, ffh: U.ab && U.ab.ff ? U.ab.ff[2] : 0, ffb: 0 };
-    this.units.push(u); return u;
+    this.units.push(u); if (FW.js) FW.js.ev('UnitCreateEvent', () => ({ unit: FW.js.unit(u), spawner: null })); return u;
   }
   spawnPlayer() { const c = this.center(this.core); this.player = this.spawnU(this.core.B.unit, PLAYER, c.x, c.y); this.player.ctl = 1; }
   dmgU(u, d, raw) {
@@ -950,7 +956,7 @@ export class World {
     if (u.sh > 0) { const a = Math.min(u.sh, d); u.sh -= a; d -= a; }
     u.hp -= d; u.hit = 6;
     if (u.hp <= 0) {
-      u.dead = 1; this.boom(u.x, u.y, u.U.r * 2.2, u.team === ENEMY ? '#f25555' : '#ffd37f');
+      u.dead = 1; if (FW.js) FW.js.ev('UnitDestroyEvent', () => ({ unit: FW.js.unit(u) })); this.boom(u.x, u.y, u.U.r * 2.2, u.team === ENEMY ? '#f25555' : '#ffd37f');
       if (u.team === ENEMY) this.stats.kills++;
       if (u === this.player) { this.respawn = 150; this.msg('Az egységed megsemmisült – újraéledés a magnál', 'bad'); }
     }
@@ -1239,13 +1245,13 @@ export class World {
       const dz = (this.rules.dropZoneRadius ?? 300); if (dz > 0) for (const sp of this.spawns) { const x = (sp.x + .5) * TS, y = (sp.y + .5) * TS; for (const b of [...this.blds]) { const c = this.center(b); if (b.team === PLAYER && b !== this.core && Math.hypot(c.x - x, c.y - y) < dz) this.remB(b, 1); } for (const u of this.units) if (u.team === PLAYER && !u.U.air && Math.hypot(u.x - x, u.y - y) < dz) this.dmgU(u, 1e9, 1); }   // a ledobási zóna mindent elpusztít
       this.wtimer = (this.rules.waveSpacing || 7200) * (this.sec.wsm || 1);
       for (const sp of this.spawns) this.fx.push({ k: 'ring', x: (sp.x + .5) * TS, y: (sp.y + .5) * TS, r: dz / 2 || 48, life: 40, max: 40, c: '#f25555' });
-      if (this.onWave) this.onWave(this.wave); return;
+      if (FW.js) FW.js.ev('WaveEvent', {}); if (this.onWave) this.onWave(this.wave); return;
     }
     const list = waveUnits(this.wave + 1, this.sec); this.wave++;
     list.forEach(([t, sh, eff], k) => { const sp = this.spawns[k % this.spawns.length], a = Math.random() * Math.PI * 2, r = Math.random() * 18 + UNITS[t].r, u = this.spawnU(t, ENEMY, (sp.x + .5) * TS + Math.cos(a) * r, (sp.y + .5) * TS + Math.sin(a) * r); u.sh = sh; if (eff) u.st[eff] = 1e9; });
     this.wtimer = this.sec.wt * 60;
     for (const sp of this.spawns) this.fx.push({ k: 'ring', x: (sp.x + .5) * TS, y: (sp.y + .5) * TS, r: 48, life: 40, max: 40, c: '#f25555' });
-    if (this.onWave) this.onWave(this.wave);
+    if (FW.js) FW.js.ev('WaveEvent', {}); if (this.onWave) this.onWave(this.wave);
   }
   enemies() { return this.nEn; }
 
@@ -1267,8 +1273,9 @@ export class World {
     if (this.onTick) this.onTick();
     if (this.rules.infiniteResources && this.tick % 30 === 0) { const c = this.core.items, cap = this.coreCap(); for (const k of ITEM_IDS) c[k] = cap; }   // homokozó
     if (FW.tick) FW.tick(this);
+    if (FW.js) FW.js.tick(this);
     if (!this.player || this.player.dead) { if (this.respawn-- <= 0) this.spawnPlayer(); }
-    for (const u of this.units) if (!u.dead) this.updUnit(u);
+    for (const u of this.units) if (!u.dead) { this.updUnit(u); if (u.U.js && FW.js && !u.dead) FW.js.updUnit(this, u); }
     if (this.tick % 2 === 0) { const L = this.units; for (let a = 0; a < L.length; a++) { const u = L[a]; if (u.dead || u === this.player) continue; for (let b = a + 1; b < L.length; b++) { const v = L[b]; if (v.dead || v === this.player || !!u.U.air !== !!v.U.air) continue; const dx = v.x - u.x, dy = v.y - u.y, r = u.U.r + v.U.r, d2 = dx * dx + dy * dy; if (d2 < r * r && d2 > .01) { const d = Math.sqrt(d2), f = (r - d) / d * .25; this.moveU(u, -dx * f, -dy * f); this.moveU(v, dx * f, dy * f); } } } }
     this.units = this.units.filter(u => !u.dead || u === this.player);
     this.updBullets();
