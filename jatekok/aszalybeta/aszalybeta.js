@@ -91,6 +91,8 @@ const AszalyBeta = (() => {
     tartaly: { n: 'Tartalék tartály', d: '+1 lövedék a lövedékes fegyverekre', mx: 2 },
     lohere: { n: 'Négylevelű lóhere', d: 'Több ritka csepp, 5. szinten 4 kártya' },
     hosszabbito: { n: 'Hosszabbító', d: '+20% időtartam' },
+    pajzs: { n: 'Vízpajzs', d: '+20 pajzs: elnyeli a sebzést, 3 mp nyugalom után visszatöltődik' },
+    vert: { n: 'Bádogvért', d: '+2 páncél, −3% sebesség', mx: 3 },
     gyogy: { n: 'Friss víz', sp: 1, d: '+40 élet' },
     pont: { n: 'Aranycsepp', sp: 1, d: '+500 pont' },
     vizagyu: { n: 'VÍZÁGYÚ', w: 1, evo: 1, from: 'pisztoly', d: 'Hatalmas, mindenen átütő lövedék, hátralökéssel' },
@@ -143,6 +145,7 @@ const AszalyBeta = (() => {
     { id: 'rr', n: 'Új sorsolás', d: '+1 újrasorsolás körönként', mx: 3, c: 15 }, { id: 'gold', n: 'Aranyér', d: '+25% arany', mx: 3, c: 20 },
     { id: 'area', n: 'Széles permet', d: '+5% hatóterület', mx: 2, c: 25 }, { id: 'dur', n: 'Lassú párolgás', d: '+10% időtartam', mx: 2, c: 22 },
     { id: 'amt', n: 'Ikerfúvóka', d: '+1 lövedék a lövedékes fegyverekre', mx: 1, c: 120 }, { id: 'luck', n: 'Négylevelű kert', d: '+10% szerencse', mx: 3, c: 16 },
+    { id: 'shield', n: 'Kútpajzs', d: '+15 visszatöltődő pajzs', mx: 3, c: 20 },
     { id: 'rev', n: 'Forrásvíz', d: 'Egyszer feltámadsz fél élettel', mx: 1, c: 150 }, { id: 'curse', n: 'Szilárd átka', d: '+10% ellenség, +5% XP és arany', mx: 5, c: 6 }
   ];
   const metaGet = () => { try { return JSON.parse(localStorage.getItem('hgws_aszb_meta') || '{}') || {}; } catch (_) { return {}; } };
@@ -162,14 +165,14 @@ const AszalyBeta = (() => {
     const b = S.bossE && !S.bossE.dead ? S.bossE : null, P = S.P, c = S.choose;
     const d = { v: 1, at: Date.now(), score: G.score, ch: S.ch, t: S.t, P: { x: P.x, y: P.y, hp: P.hp, lvl: P.lvl, xp: P.xp, need: P.need },
       up: S.up, evd: S.evd, evoN: S.evoN, rr: S.rr, rev: S.rev, gold: S.gold, kills: S.kills, bossN: S.bossN, bi: S.bi, bossCD: S.bossCD, minute: S.minute,
-      ph: S.ph, phT: S.phT, szN: S.szN, szKill: S.szKill, dmgBy: S.dmgBy, fused: S.fused, fuseN: S.fuseN, pending: S.pending + (c && !c.evo ? 1 : 0), evoQ: S.evoQ.concat(c && c.evo ? [c.evo] : []),
+      ph: S.ph, phT: S.phT, szN: S.szN, szKill: S.szKill, dmgBy: S.dmgBy, fused: S.fused, fz: S.fz, fzW: S.fzW, pending: S.pending + (c && !c.evo ? 1 : 0), evoQ: S.evoQ.concat(c && c.evo ? [c.evo] : []),
       boss: b ? { k: b.type, f: b.hp / b.mhp, shN: b.shN || 0, sh: b.shield ? 1 : 0 } : null };
     try { localStorage.setItem(SAVE, JSON.stringify(d)); } catch (_) {}
   }
   function loadRun(G) {
     const d = saveGet(); if (!d) return;
     Object.assign(S, { ch: d.ch, t: d.t, up: d.up, evd: d.evd || {}, evoN: d.evoN || 0, rr: d.rr, rev: d.rev || 0, gold: d.gold || 0, kills: d.kills || 0, bossN: d.bossN || 0, bi: d.bi || 0, bossCD: d.bossCD || 0,
-      minute: d.minute || 0, ph: d.ph || 'run', phT: d.phT || 0, szN: d.szN || 0, szKill: d.szKill || 0, dmgBy: d.dmgBy || {}, fused: d.fused || [], fuseN: d.fuseN || 0, pending: d.pending || 0, evoQ: d.evoQ || [], sel: null, shop: null, started: 1, meta: metaGet() });
+      minute: d.minute || 0, ph: d.ph || 'run', phT: d.phT || 0, szN: d.szN || 0, szKill: d.szKill || 0, dmgBy: d.dmgBy || {}, fused: d.fused || [], fz: d.fz || '', fzW: d.fzW || '', pending: d.pending || 0, evoQ: d.evoQ || [], sel: null, shop: null, started: 1, meta: metaGet() });
     Object.assign(S.P, d.P); S.sigK = sigKeys(); stats(); S.P.hp = Math.min(S.P.mhp, d.P.hp); G.score = d.score || 0; S.dirty = 1;
     if (S.ph === 'wrath') S.wk = clamp(1 - S.phT / 240, 0, 1);
     if (S.ph === 'god' || (d.boss && d.boss.k === 'isten')) { godSpawn(G); const e = S.bossE; e.dsc = 0; e.hp = e.mhp * d.boss.f; e.shN = d.boss.sh ? Math.max(0, d.boss.shN - 1) : d.boss.shN; S.banner = null; S.say = null; }
@@ -186,9 +189,10 @@ const AszalyBeta = (() => {
   function stats() {
     const c = chr();
     const M = S.meta || {}, mv = k => M[k] || 0;
-    S.st = { speed: 150 * (1 + .12 * lv('csizma') + .03 * mv('spd')) * (c === 'bt' ? .94 : c === 'kt' ? 1.08 : 1), magnet: 62 * (1 + .45 * lv('magnes') + .1 * mv('mag')), dmg: 1 + .15 * lv('nyomas') + .05 * mv('dmg'),
+    S.st = { speed: 150 * (1 + .12 * lv('csizma') + .03 * mv('spd') - .03 * lv('vert')) * (c === 'bt' ? .94 : c === 'kt' ? 1.08 : 1), magnet: 62 * (1 + .45 * lv('magnes') + .1 * mv('mag') + (S.fz === 'heli' ? .5 : 0)), dmg: 1 + .15 * lv('nyomas') + .05 * mv('dmg'),
       cd: (1 - .08 * lv('idozito') - .03 * mv('cd')) * (c === 'zr' ? .9 : 1), area: (1 + .13 * lv('fuvoka') + .05 * mv('area')) * (c === 'rl' ? 1.1 : 1), dur: 1 + .2 * lv('hosszabbito') + .1 * mv('dur'),
-      armor: 1.5 * lv('kesztyu') + (c === 'gt' ? 1 : 0) + mv('arm'), regen: .45 * lv('gyujto') + .2 * mv('reg'), extra: lv('tartaly') + mv('amt'), luck: 1 + .3 * lv('lohere') + .1 * mv('luck'), xp: (c === 'gh' ? 1.1 : 1) + .05 * mv('xp') + .05 * mv('curse'), gold: 1 + .25 * mv('gold') + .05 * mv('curse'), curse: 1 + .1 * mv('curse') };
+      armor: 1.5 * lv('kesztyu') + 2 * lv('vert') + (c === 'gt' ? 1 : 0) + mv('arm'), regen: .45 * lv('gyujto') + .2 * mv('reg'), extra: lv('tartaly') + mv('amt'), luck: 1 + .3 * lv('lohere') + .1 * mv('luck'), xp: (c === 'gh' ? 1.1 : 1) + .05 * mv('xp') + (S.fz === 'heli' ? .2 : 0) + .05 * mv('curse'), gold: 1 + .25 * mv('gold') + .05 * mv('curse'), curse: 1 + .1 * mv('curse') };
+    S.P.msh = 20 * lv('pajzs') + 15 * mv('shield'); S.P.sh = Math.min(S.P.sh || 0, S.P.msh);
     S.P.mhp = 100 + 25 * lv('vitamin') + (c === 'gt' ? 20 : c === 'bt' ? 30 : 0) + 10 * mv('hp');
   }
   function view(G) { V.sc = G.d * clamp(Math.min(G.W, G.H) / G.d / 640, .6, 1.15); V.hw = G.W / 2 / V.sc; V.hh = G.H / 2 / V.sc; V.ring = Math.hypot(V.hw, V.hh) + 50; }
@@ -210,6 +214,7 @@ const AszalyBeta = (() => {
       else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') S.sel.i = (S.sel.i + cols) % n; else if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') S.sel.i = (S.sel.i + n - cols % n) % n;
       if (k) e.preventDefault(); return; }
     if (k) { K[k] = 1; if (G.running) e.preventDefault(); }
+    else if (G.running && S.fuse) { if (S.fuse.t >= .4) { if (/^[1-9]$/.test(e.key) && S.fuse.o[+e.key - 1]) doFuse(G, S.fuse.o[+e.key - 1]); else if (e.key === 'x' || e.key === 'X') { S.fuse = null; S.fzLater = S.P.lvl + 3; } } }
     else if (G.running && S.choose) { if (/^[1-4]$/.test(e.key)) pick(G, +e.key - 1); else if ((e.key === 'r' || e.key === 'R') && !e.repeat) reroll(); else if ((e.key === 'x' || e.key === 'X') && !e.repeat) skip(); } });
   addEventListener('keyup', e => { const k = KEYS[e.key]; if (k) K[k] = 0; });
   addEventListener('pagehide', () => { if (mine() && G.running) saveRun(G); });
@@ -241,7 +246,7 @@ const AszalyBeta = (() => {
   function pickType() {
     const m = S.t / 60, w = [];
     FAMS.forEach((f, i) => { const age = m - FAM_T[i]; if (age < 0 && S.ph === 'run') return; const fw = S.ph !== 'run' ? 1 : age < 6 ? 3 : age < 12 ? 1.4 : .6;
-      for (const k in ET) { const T = ET[k]; if (T.f !== f || T.boss) continue; if (S.ph === 'run' && (T.hp >= 110 && age < 4 || T.hp >= 52 && age < 2)) continue; w.push([k, T.w * fw]); } });
+      for (const k in ET) { const T = ET[k]; if (T.f !== f || T.boss) continue; if (S.ph === 'run' && (T.hp >= 110 && age < 4 || T.hp >= 52 && age < 2)) continue; w.push([k, T.w * fw * (T.ai === 'ranged' ? .35 : 1)]); } });
     let r = Math.random() * w.reduce((a, x) => a + x[1], 0); for (const [k, v] of w) if ((r -= v) <= 0) return k; return 'ghoul';
   }
   function spawnOne(cap) {
@@ -332,10 +337,11 @@ const AszalyBeta = (() => {
   }
   const shotAt = (e, a, sp, dmg, c) => { if (S.ep.length < 220) S.ep.push({ x: e.x, y: e.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, l: 3.4, dmg, c }); };
   function hurt(G, e, dmg, kx, ky, src) {
-    if (e.dead || e.under || e.dsc > 0) return; dmg *= S.st.dmg; if (S.fuseN && src && (src === S.sigK[0] || src === S.sigK[1])) dmg *= 1 + .5 * S.fuseN; if (e.shield) dmg *= .02;
+    if (e.dead || e.under || e.dsc > 0 || e.hp <= 0) return; dmg *= S.st.dmg; if (e.wet > S.t) dmg *= 1.2; const sigH = S.fz && src && (src === S.sigK[0] || src === S.sigK[1]); if (sigH && S.fz === 'pisztoly') { dmg *= 1.35; kx *= 2; ky *= 2; } if (e.shield) dmg *= .02;
     if (e.type === 'szilard' && (src === 'zivatar' || src === 'gyogyforras')) dmg *= 1.25;
     e.hp -= dmg; if (!e.T.boss || e.flash < -.25) e.flash = .1; if (src) S.dmgBy[src] = (S.dmgBy[src] || 0) + Math.min(dmg, dmg + e.hp);
     if (!e.T.boss) { e.kx += kx; e.ky += ky; }
+    if (sigH) fuseHit(G, e, dmg);
     if (S.nums.length < 28) S.nums.push({ x: e.x + (Math.random() - .5) * 10, y: e.y - e.r, v: Math.max(1, Math.round(dmg)), l: .6 });
     if (e.hp > 0) return;
     e.dead = 1; S.kills++; G.score += e.T.pt; S.dirty = 1;
@@ -343,13 +349,15 @@ const AszalyBeta = (() => {
     if (e.T.god) return godDeath(G, e);
     if (e.type === 'szilard') return szDeath(G, e);
     if (e.T.boss) { goldPile(e.x, e.y, 10 + S.bossN * 4); S.gems.push({ k: 'c', x: e.x, y: e.y, v: 0 }); Sfx.boom(); G.shake = 14 * G.d; if (S.bossE === e) { S.bossE = null; S.bossCD = 30; } S.bossN++; banner(e.T.n.toUpperCase() + ' LEGYŐZVE!', 2.6, '#7ef0a4'); }
-    else { S.gems.push({ k: 'x', x: e.x, y: e.y, v: e.T.xp }); if (Math.random() < (e.T.hp >= 52 ? .012 : .004) * S.st.luck) S.gems.push({ k: 'g', x: e.x, y: e.y - 6, v: 1 }); const r = Math.random(), lk = S.st.luck; if (r < .011 * lk) S.gems.push({ k: 'h', x: e.x + 8, y: e.y, v: 0 }); else if (r < .0145 * lk) S.gems.push({ k: 'm', x: e.x - 8, y: e.y, v: 0 }); }
+    else { S.gems.push({ k: 'x', x: e.x, y: e.y, v: e.T.xp }); if (Math.random() < (e.T.hp >= 52 ? .012 : .004) * S.st.luck) S.gems.push({ k: 'g', x: e.x, y: e.y - 6, v: 1 }); const r = Math.random(), lk = S.st.luck; if (r < .005 * lk) S.gems.push({ k: 'h', x: e.x + 8, y: e.y, v: 0 }); else if (r < .0145 * lk) S.gems.push({ k: 'm', x: e.x - 8, y: e.y, v: 0 }); }
     if (e.T.ai === 'split') for (let i = 0; i < 2; i++) spawn('pioca', e.x - S.P.x + rnd(-14, 14), e.y - S.P.y + rnd(-14, 14), .5);
     if (S.gems.length > 340) { const o = S.gems.findIndex(q => q.k === 'x' && !q.pull); if (o >= 0) { const v = S.gems[o].v; S.gems.splice(o, 1); const n = S.gems.find(q => q.k === 'x' && !q.pull); if (n) n.v += v; } }
     if (S.t - S.sndT > .07) { S.sndT = S.t; Sfx.blip(260 + Math.random() * 180, .05, 'triangle', .035, .6); }
   }
   function hitPlayer(G, e, dm) {
-    const P = S.P; P.hp -= Math.max(1, (dm != null ? dm : e.T.dmg) * (1 + S.t / 1600) * (S.ph === 'wrath' ? 1 + S.wk * .6 : S.ph === 'god' ? 1.2 : 1) - S.st.armor); P.inv = .6; G.shake = 10 * G.d; Sfx.hit(); if (navigator.vibrate) navigator.vibrate(40);
+    const P = S.P; let hd = Math.max(1, (dm != null ? dm : e.T.dmg) * (1 + S.t / 1600) * (S.ph === 'wrath' ? 1 + S.wk * .6 : S.ph === 'god' ? 1.2 : 1) - S.st.armor); P.shT = S.t;
+    if (P.sh > 0) { const a = Math.min(P.sh, hd); P.sh -= a; hd -= a; part(P.x, P.y, 6, '120,200,255', 120, .35); if (hd <= 0) { P.inv = .45; Sfx.blip(900, .08, 'sine', .04, .6); return; } }
+    P.hp -= hd; P.inv = .6; G.shake = 10 * G.d; Sfx.hit(); if (navigator.vibrate) navigator.vibrate(40);
     part(P.x, P.y, 8, '255,90,77', 120, .4);
     if (P.hp <= 0 && S.rev > 0) { S.rev--; P.hp = P.mhp * .5; P.inv = 3; S.flash = .5; banner('FORRÁSVÍZ: FELTÁMADTÁL!', 2.6, '#6cc6ff'); S.rings.push({ x: P.x, y: P.y, R: 260, l: 1, w: 1 });
       near(P.x, P.y, 260, (o, dx, dy) => { const d = Math.hypot(dx, dy) || 1; if (!o.T.boss) { o.kx += dx / d * 600; o.ky += dy / d * 600; } }); for (const o of S.ep) o.dead = 1; Sfx.perfect(); return; }
@@ -373,7 +381,7 @@ const AszalyBeta = (() => {
       if (ai === 'wobble') { const w = Math.sin(S.t * (e.T.flap ? 7 : 4.5) + e.ph) * v * (e.T.flap ? .45 : .9); mx += -dy / dd * w; my += dx / dd * w; }
       else if (ai === 'flank' && dd > 110) { const o = e.side * Math.min(1, (dd - 110) / 260) * 1.1, c = Math.cos(o), sn = Math.sin(o); mx = (dx * c - dy * sn) / dd * v; my = (dx * sn + dy * c) / dd * v; }
       else if (ai === 'ranged') { const keep = 250; if (dd < keep - 50) { mx = -mx * .7; my = -my * .7; } else if (dd < keep + 30) { mx = -dy / dd * v * .4 * e.side; my = dx / dd * v * .4 * e.side; }
-        if (e.at <= 0 && dd < 520) { e.at = 2.4 + Math.random(); shotAt(e, Math.atan2(dy, dx), 200, e.T.dmg, e.T.f === 'halo' ? '190,110,255' : e.T.f === 'varos' ? '255,200,120' : null); } }
+        if (e.at <= 0 && dd < 520) { e.at = 3.6 + Math.random() * 1.5; shotAt(e, Math.atan2(dy, dx), 190, e.T.dmg, e.T.f === 'halo' ? '190,110,255' : e.T.f === 'varos' ? '255,200,120' : null); } }
       else if (ai === 'charge') { if (!e.chg) e.chg = { st: 'walk' }; const c = e.chg;
         if (c.st === 'walk' && dd < 260 && e.at <= 0) { c.st = 'wind'; c.t = .5; c.a = Math.atan2(dy, dx); }
         if (c.st === 'wind') { mx = my = 0; if ((c.t -= dt) <= 0) { c.st = 'dash'; c.t = .55; } }
@@ -453,7 +461,7 @@ const AszalyBeta = (() => {
   };
   let sndT = {};
   const snd = (k, gap = .08) => { if ((S.t - (sndT[k] || -9)) < gap) return; sndT[k] = S.t; SND[k](); };
-  function ready(k, base, dt) { S.wt[k] = (S.wt[k] || 0) - dt; if (S.wt[k] > 0) return false; S.wt[k] = Math.max(0, S.wt[k] + base * S.st.cd); return true; }
+  function ready(k, base, dt) { S.wt[k] = (S.wt[k] || 0) - dt; if (S.wt[k] > 0) return false; S.wt[k] = Math.max(0, S.wt[k] + base * S.st.cd * (S.fz === 'rainbird' && (k === S.sigK[0]) ? .7 : 1)); return true; }
   const puddleR = () => { const L = lv('pocsolya'), E = lv('gyogyforras'); return (E ? 121 : L ? 52 + L * 9 : 0) * S.st.area * (S.dry > 0 ? .62 : 1); };
   function weapons(G, dt) {
     const P = S.P, ar = S.st.area, du = S.st.dur, ex = S.st.extra; let L;
@@ -602,6 +610,11 @@ const AszalyBeta = (() => {
       if ((L || Ev) && ready('pkm', Ev ? .06 : L >= 7 ? .065 : L >= 3 ? .08 : .1, dt)) { const tg = nearest(520); if (!tg) S.wt.pkm = .1; else { const sp = P.mov && L < 3 ? .4 : .15, a = Math.atan2(tg.y - P.y, tg.x - P.x) + rnd(-sp, sp), dirs = Ev ? [0, Math.PI] : L >= 8 ? [-.1, 0, .1] : L >= 4 ? [-.06, .06] : [0];
         for (const o of dirs) shoot(P.x, P.y - 2, a + o, 580, Ev ? 12 : 4 + L * 1.4 + (L >= 2) * 2, { r: 3.5, pierce: Ev ? 99 : L >= 5 ? 2 : 1, slow: L >= 5 || Ev ? .4 : 0, src: Ev ? 'pkmevo' : 'pkm', kind: 'bullet', life: .85 }); snd('pkm', .07); } } }
     for (const c of S.cones) c.l -= dt; S.cones = S.cones.filter(c => c.l > 0);
+    if (S.fz === 'szoro') { S.fzA = (S.fzA || 0) + dt * 2.2; for (let i = 0; i < 2; i++) { const a = S.fzA + i * Math.PI, ox = P.x + Math.cos(a) * 92 * ar, oy = P.y + Math.sin(a) * 92 * ar; near(ox, oy, 16, e => { if (S.t < (e.fzT || 0)) return; e.fzT = S.t + .35; hurt(G, e, 34, Math.cos(a) * 220, Math.sin(a) * 220, 'fuzio'); }); } }
+    else if (S.fz === 'ostor' && ready('fzO', 2, dt)) { const R = 160 * ar; S.rings.push({ x: P.x, y: P.y, R, l: 1, w: 1, c: '120,220,140' }); near(P.x, P.y, R, (e, dx, dy) => { const d = Math.hypot(dx, dy) || 1; hurt(G, e, 34, dx / d * 220, dy / d * 220, 'fuzio'); }); snd('tuzolto'); }
+    else if (S.fz === 'felho' && ready('fzF', 1, dt)) { if (!S.fzC || S.fzC.life <= .4) { S.fzC = { x: P.x, y: P.y, R: 100 * ar, life: 99, l0: 0, tk: 0, dmg: 9, src: 'fuzio' }; S.clouds.push(S.fzC); } }
+    else if (S.fz === 'kanna' && ready('fzK', 3, dt)) { for (let i = 0; i < 4; i++) { const a = i / 4 * TAU + S.t; S.cans.push({ x: P.x, y: P.y, vx: Math.cos(a) * 430, vy: Math.sin(a) * 430, ret: 0, hit: new Set(), rot: 0, dmg: 28, src: 'fuzio', big: 1 }); } snd('kanna'); }
+    if (S.fzC) { S.fzC.x += (P.x - S.fzC.x) * Math.min(1, dt * 3); S.fzC.y += (P.y - S.fzC.y) * Math.min(1, dt * 3); S.fzC.life = 99; }
 
     for (const p of S.pr) { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) { p.dead = 1; continue; }
       near(p.x, p.y, p.r, e => { if (p.dead || p.hit.includes(e.id)) return; p.hit.push(e.id); hurt(G, e, p.dmg, p.vx * .25 * (p.kb || 1), p.vy * .25 * (p.kb || 1), p.src);
@@ -633,18 +646,46 @@ const AszalyBeta = (() => {
   function checkUnlocks() {}
 
   /* ---------- szintlépés ---------- */
-  /* fúzió: a kimaxolt saját fegyver elnyel egy másik kimaxolt fegyvert (az tovább működik a háttérben), +50% sebzés és felszabaduló hely */
-  for (const k of Object.keys(UP)) if (UP[k].w && !UP[k].sig && !UP[k].hid) UP['f_' + k] = { n: 'FÚZIÓ: ' + UP[k].n.toUpperCase(), sp: 1, fz: k, d: 'A saját fegyvered elnyeli: +50% sebzés, és felszabadul egy hely' };
+  /* fúzió: körönként egyszer; a kimaxolt (vagy evolvált) saját fegyver egy kimaxolt fegyverrel egyedi képességet kap.
+     A társfegyver tovább működik, de nem foglal helyet. */
+  const FZ = {
+    pisztoly: { n: 'Nyomásmag', d: 'A saját fegyvered +35% sebzést és kétszeres hátralökést kap' },
+    szoro: { n: 'Arany körforgás', d: 'Két nehéz aranycsepp kering körülötted, és mindent elsöpör' },
+    ostor: { n: 'Pörgő csapás', d: '2 mp-enként vízcsapás söpör körbe körülötted' },
+    bomba: { n: 'Robbanó találat', d: 'A saját fegyvered találatai 18% eséllyel felrobbannak' },
+    felho: { n: 'Saját vihar', d: 'Lassító esőfelhő kísér mindenhová' },
+    pocsolya: { n: 'Gyógyító víz', d: 'A saját fegyvered minden találata gyógyít egy keveset' },
+    sugar: { n: 'Láncvillám', d: 'A találatok 35% eséllyel átugranak egy közeli ellenségre' },
+    rainbird: { n: 'Szaporított ütem', d: 'A saját fegyvered 30%-kal gyorsabban tüzel' },
+    kanna: { n: 'Kannazápor', d: '3 mp-enként négy kanna repül szét körülötted' },
+    gejzir: { n: 'Feltörő forrás', d: 'A találatok 12% eséllyel gejzírt fakasztanak' },
+    jeg: { n: 'Fagyos mag', d: 'A saját fegyvered találatai megfagyasztanak' },
+    heli: { n: 'Légi felderítés', d: '+50% gyűjtési távolság és +20% XP' },
+    cso: { n: 'Átáztatás', d: 'A találat átáztat: lassít, és +20% sebzést kap mindentől' }
+  };
+  UP.fuzio = { n: 'Fúzió', sp: 1, hid: 1, d: '' };
   const sigKeys = () => { const w = (CH.find(c => c.id === S.ch) || CH[0]).w, r = EVOR.find(r => r[0] === w); return [w, r ? r[2] : '']; };
-  function fuseCands() { const [w, e] = sigKeys(); if (!(lv(w) >= mxl(w) || lv(e))) return [];
-    return Object.keys(S.up).filter(k => isW(k) && k !== w && k !== e && !S.fused.includes(k) && (UP[k].evo || lv(k) >= mxl(k))); }
+  const baseW = k => UP[k] && UP[k].evo ? UP[k].from : k;
+  function fuseCands() { if (S.fz) return []; const [w, e] = sigKeys(); if (!(lv(w) >= mxl(w) || lv(e))) return [];
+    return Object.keys(S.up).filter(k => isW(k) && k !== w && k !== e && FZ[baseW(k)] && (UP[k].evo || lv(k) >= mxl(k))); }
+  function fuseRows(G) { const d = G.d, o = S.fuse.o, cols = G.W / d > 760 && o.length > 3 ? 2 : 1, cw = Math.min((G.W - 30 * d) / cols, 420 * d), rh = Math.min(84 * d, (G.H - 290 * d) / Math.ceil(o.length / cols)), x0 = (G.W - cols * cw) / 2;
+    return o.map((k, i) => ({ k, x: x0 + (i % cols) * cw + 5 * d, y: 190 * d + Math.floor(i / cols) * rh, w: cw - 10 * d, h: rh - 10 * d })); }
+  const fuseLater = G => ({ x: G.W / 2 - 90 * G.d, y: G.H - 72 * G.d, w: 180 * G.d, h: 44 * G.d, t: 'KÉSŐBB' });
+  function doFuse(G, k) { const P = S.P; S.fz = baseW(k); S.fzW = k; S.fused = [k]; S.fuse = null; P.inv = Math.max(P.inv, 1); S.flash = .5; stats();
+    banner('FÚZIÓ: ' + FZ[S.fz].n.toUpperCase(), 3, '#ff8a2a'); Sfx.boom(); setTimeout(() => Sfx.perfect(), 220); }
+  function fuseHit(G, e, dmg) { const f = S.fz, P = S.P;
+    if (f === 'bomba' && Math.random() < .18) { S.rings.push({ x: e.x, y: e.y, R: 64, l: 1, c: '255,170,60' }); near(e.x, e.y, 64, (o, dx, dy) => { const d = Math.hypot(dx, dy) || 1; hurt(G, o, 26, dx / d * 160, dy / d * 160, 'fuzio'); }); }
+    else if (f === 'sugar' && Math.random() < .35) { let b = null, bd = 140 * 140; near(e.x, e.y, 140, (o, dx, dy) => { const q = dx * dx + dy * dy; if (o !== e && q < bd) { bd = q; b = o; } }); if (b) { S.bolts.push({ x1: e.x, y1: e.y, x2: b.x, y2: b.y, l: .2, s: Math.random() * 99 }); hurt(G, b, dmg * .5, 0, 0, 'fuzio'); } }
+    else if (f === 'gejzir' && Math.random() < .12) S.geys.push({ x: e.x, y: e.y, t: -.3, R: 42, dmg: 30, life: .55, tk: 0, src: 'fuzio' });
+    else if (f === 'jeg') { if (e.T.boss) e.slow = Math.max(e.slow, 1); else e.freeze = Math.max(e.freeze, .6); }
+    else if (f === 'pocsolya') P.hp = Math.min(P.mhp, P.hp + .35);
+    else if (f === 'cso') { e.wet = S.t + 2.5; e.slow = Math.max(e.slow, 1); } }
   const nW = () => Object.keys(S.up).filter(k => isW(k) && !S.fused.includes(k)).length, nP = () => Object.keys(S.up).filter(k => !isW(k)).length;
   function offer() {
     const av = Object.keys(UP).filter(k => { const u = UP[k], c = lv(k); if (u.sp || u.evo || c >= mxl(k) || S.evd[k]) return false; if (u.hid && !c) return false; if (u.sig && u.sig !== S.ch) return false;
       if (!c && (isW(k) ? nW() >= MAXW : nP() >= MAXP)) return false; if (k === 'pisztoly' && S.up.por) return false; return true; });
     for (let i = av.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[av[i], av[j]] = [av[j], av[i]]; }
     const sg = av.findIndex(k => UP[k].sig); if (sg > 0 && Math.random() < .55) av.unshift(av.splice(sg, 1)[0]);
-    const fc = fuseCands(); if (fc.length && Math.random() < .6) av.unshift('f_' + fc[Math.floor(Math.random() * fc.length)]);
     const n = lv('lohere') >= 5 ? 4 : 3, o = av.slice(0, n); for (const k of ['gyogy', 'pont']) if (o.length < 3) o.push(k); return o;
   }
   function openChoice() { S.choose = { o: offer(), t: 0 }; joy = null; Sfx.perfect(); }
@@ -652,7 +693,6 @@ const AszalyBeta = (() => {
   function pick(G, i) {
     const c = S.choose; if (!c || c.t < .35 || !c.o[i]) return; const k = c.o[i], P = S.P;
     if (c.evo) { const [from] = c.evo; delete S.up[from]; S.up[k] = MAXLV; S.evd[from] = 1; S.evoN++; stats(); S.choose = null; P.inv = Math.max(P.inv, .9); Sfx.boom(); return; }
-    if (UP[k].fz) { S.fused.push(UP[k].fz); S.fuseN++; S.choose = null; P.inv = Math.max(P.inv, .9); S.flash = .4; banner('FÚZIÓ! ' + UP[sigKeys()[lv(sigKeys()[1]) ? 1 : 0]].n.toUpperCase() + ' +' + S.fuseN * 50 + '%', 2.6, '#ffd23f'); Sfx.boom(); setTimeout(() => Sfx.perfect(), 200); return; }
     if (k === 'gyogy') P.hp = Math.min(P.mhp, P.hp + 40); else if (k === 'pont') { G.score += 500; S.dirty = 1; }
     else { S.up[k] = lv(k) + 1; stats(); if (k === 'vitamin') P.hp = Math.min(P.mhp, P.hp + 25); }
     S.choose = null; P.inv = Math.max(P.inv, .7); Sfx.coin();
@@ -730,6 +770,8 @@ const AszalyBeta = (() => {
     gyogy(g) { g.fillStyle = '#3aa6f5'; drop(g, 0, 1, 7.5); g.fillStyle = '#fff'; g.fillRect(-1.2, -2, 2.4, 8); g.fillRect(-4, .8, 8, 2.4); },
     pont(g) { g.fillStyle = '#ffd23f'; drop(g, 0, 1, 7.5); g.fillStyle = 'rgba(255,255,255,.75)'; circ(g, -2.5, 1.5, 1.8); },
     /* saját fegyverek */
+    pajzs(g) { g.fillStyle = 'rgba(108,198,255,.3)'; circ(g, 0, 0, 10); g.strokeStyle = '#6cc6ff'; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, 10, 0, TAU); g.stroke(); g.fillStyle = '#bfe9ff'; g.beginPath(); g.moveTo(0, -6); g.lineTo(5, -3.5); g.lineTo(4, 3); g.lineTo(0, 7); g.lineTo(-4, 3); g.lineTo(-5, -3.5); g.closePath(); g.fill(); g.fillStyle = '#3aa6f5'; drop(g, 0, 0, 2.4); },
+    vert(g) { g.fillStyle = '#9aa3ae'; g.beginPath(); g.moveTo(-8, -8); g.lineTo(8, -8); g.lineTo(9, 2); g.quadraticCurveTo(0, 11, -9, 2); g.closePath(); g.fill(); g.fillStyle = '#c9d3de'; g.fillRect(-1.2, -8, 2.4, 15); g.fillStyle = '#5a6672'; for (const [x, y] of [[-5, -5], [5, -5], [-5, 1], [5, 1]]) circ(g, x, y, 1); },
     aranyfej(g) { g.strokeStyle = '#7a4a24'; g.lineWidth = 2.6; g.lineCap = 'round'; ln(g, -6, 10, 2, -2); g.fillStyle = '#ffd23f'; rrp(g, -1, -7, 8, 6, 1.5); g.fillRect(-6, -6, 18, 2.4); g.fillStyle = 'rgba(255,236,150,.6)'; circ(g, 3, -5, 7); g.fillStyle = '#ffd23f'; circ(g, 3, -5, 2.4); },
     rele(g) { g.save(); g.rotate(.3); g.fillStyle = '#2a5ab8'; rrp(g, -7, -7, 14, 14, 2); g.strokeStyle = '#bfe8ff'; g.lineWidth = 1.6; g.strokeRect(-3.5, -3.5, 7, 7); g.restore(); g.fillStyle = 'rgba(108,198,255,.5)'; circ(g, 8, -8, 2.4); },
     veszgomb(g) { g.fillStyle = '#e8c030'; rrp(g, -9, -1, 18, 10, 2); g.fillStyle = '#d8342a'; g.beginPath(); g.ellipse(0, -1, 7.5, 5, 0, Math.PI, 0); g.fill(); g.fillRect(-7.5, -2, 15, 2.5); g.fillStyle = 'rgba(255,255,255,.45)'; g.beginPath(); g.ellipse(-2.5, -4, 2.4, 1.2, 0, 0, TAU); g.fill(); },
@@ -738,7 +780,7 @@ const AszalyBeta = (() => {
     pkm(g) { g.fillStyle = '#7a4a24'; g.fillRect(-12, -2, 6, 4); g.fillStyle = '#2a2a30'; g.fillRect(-6, -4, 12, 6); g.fillRect(6, -2.5, 7, 2.4); g.fillStyle = '#ffd23f'; g.fillRect(12, -3.4, 2, 3.4); g.fillStyle = '#e8b656'; for (let i = 0; i < 4; i++) g.fillRect(-4 + i * 2.6, -7, 1.6, 3); g.fillStyle = '#4fb7ff'; rrp(g, -4, 2, 8, 7, 1.5); }
   };
   function ico(g, k, x, y, s) { g.save(); g.translate(x, y); g.scale(s / 24, s / 24); const u = UP[k];
-    if (u && (u.evo || u.fz)) { g.fillStyle = 'rgba(255,210,63,.3)'; circ(g, 0, 0, 12); g.strokeStyle = u.fz ? '#ff8a2a' : '#ffd23f'; g.lineWidth = 1.6; g.beginPath(); g.arc(0, 0, 11.5, 0, TAU); g.stroke(); IC[u.fz ? (S ? sigKeys()[0] : 'pisztoly') : u.from](g);
+    if (u && u.evo) { g.fillStyle = 'rgba(255,210,63,.3)'; circ(g, 0, 0, 12); g.strokeStyle = u.fz ? '#ff8a2a' : '#ffd23f'; g.lineWidth = 1.6; g.beginPath(); g.arc(0, 0, 11.5, 0, TAU); g.stroke(); IC[u.from](g);
       g.fillStyle = '#ffd23f'; g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 2 : 4.4; g.lineTo(8 + Math.cos(a) * r, -8 + Math.sin(a) * r); } g.fill(); }
     else IC[k](g); g.restore(); }
 
@@ -881,7 +923,7 @@ const AszalyBeta = (() => {
     init(G) {
       S = { t: 0, P: { x: 0, y: 0, hp: 100, mhp: 100, inv: 0, face: 1, walk: 0, mov: 0, lvl: 1, xp: 0, need: 7 }, up: { pisztoly: 1 }, wt: {}, en: [], pr: [], gems: [], bombs: [], clouds: [], rings: [], slashes: [], pt: [], nums: [],
         eid: 0, sT: .6, minute: 0, bossN: 0, kills: 0, pending: 0, choose: null, orb: 0, sndT: -1, gsT: -1, hudT: 0, dirty: 0, banner: null,
-        ch: 'gh', fused: [], fuseN: 0, sigK: ['', ''], gold: 0, gcT: -9, meta: metaGet(), shop: null, sel: { i: 0, t: 0, shake: 0 }, started: 0, over: 0, paused: 0, dmgBy: {}, evd: {}, evoQ: [], evoN: 0, rr: 3, kingK: 0,
+        ch: 'gh', fused: [], fz: '', fzW: '', fuse: null, fzLater: 0, sigK: ['', ''], gold: 0, gcT: -9, meta: metaGet(), shop: null, sel: { i: 0, t: 0, shake: 0 }, started: 0, over: 0, paused: 0, dmgBy: {}, evd: {}, evoQ: [], evoN: 0, rr: 3, kingK: 0,
         ep: [], cans: [], geys: [], hail: [], heli: [], trail: [], bolts: [], beams: [], heliA: 0, rbA: 0, rbDir: 1, rbBase: 0, rbJet: 0,
         heat: 0, zapor: 0, rainT: 0, green: 0, dry: 0, flash: 0, batT: 30, szE: null, szN: 0, szKill: 0, ph: 'run', phT: 0, wk: 0, bi: 0, bossCD: 0, bossE: null, warns: [], blasts: [], crystals: [], burst: [], cones: [], sig: {}, szRage: 0, taunt: null, say: null, melt: null, note: null, unT: 0 };
       S.hasSave = saveGet(); sndT = {}; S.rr = 3 + (S.meta.rr || 0); stats(); view(G); joy = null; this.overTitle = 'KISZÁRADTÁL'; hideStats();
@@ -892,6 +934,7 @@ const AszalyBeta = (() => {
       if (S.shop) { const r = shopRows(G).find(r => inR(r, x, y)); if (r) buyMeta(r.i); else if (inR(shopClose(G), x, y)) { S.shop = null; Sfx.blip(500, .06, 'square', .04); } return; }
       if (S.sel) { if (S.hasSave && inR(contBtn(G), x, y)) return loadRun(G); if (inR(kutBtn(G), x, y)) { S.shop = { t: 0, i: -1, shake: 0 }; S.meta = metaGet(); Sfx.blip(700, .07, 'square', .04); return; } const c = selCards(G).find(c => inR(c, x, y)); if (c) selPick(G, c.i); return; }
       if (S.paused) { const b = pauseBtns(G).find(b => inR(b, x, y)); if (b) { if (b.id === 'go') togglePause(); else { S.paused = 0; G.end(); } } return; }
+      if (S.fuse) { if (S.fuse.t < .4) return; const r = fuseRows(G).find(r => inR(r, x, y)); if (r) return doFuse(G, r.k); if (inR(fuseLater(G), x, y)) { S.fuse = null; S.fzLater = S.P.lvl + 3; } return; }
       if (S.choose) { const c = cards(G).findIndex(c => inR(c, x, y)); if (c >= 0) return pick(G, c); const b = cardBtns(G).find(b => inR(b, x, y)); if (b) b.id === 'rr' ? reroll() : skip(); return; }
       const pb = pauseBtn(G); if (Math.hypot(x - pb.x, y - pb.y) < pb.r * 1.4) return togglePause();
       try { e.target.setPointerCapture(e.pointerId); } catch (_) {}
@@ -906,8 +949,10 @@ const AszalyBeta = (() => {
       if (S.shop) { S.shop.t += dt; S.shop.shake = Math.max(0, S.shop.shake - dt); }
       if (S.sel) { S.sel.t += dt; S.sel.shake = Math.max(0, S.sel.shake - dt); return; }
       if (S.paused) return;
+      if (S.fuse) { S.fuse.t += dt; return; }
       if (S.choose) { S.choose.t += dt; S.flash = Math.max(0, S.flash - dt); return; }
       if (S.evoQ.length) return openEvo(S.evoQ.shift());
+      if (S.pending > 0 && !S.fz && S.P.lvl >= S.fzLater && fuseCands().length) { S.fuse = { o: fuseCands(), t: 0 }; joy = null; Sfx.perfect(); setTimeout(() => Sfx.blip(988, .3, 'triangle', .06, 1.5), 200); return; }
       if (S.pending > 0) { S.pending--; return openChoice(); }
       S.t += dt; const st = S.st;
       if (S.t < .02) store.set('aszb_last', CH.findIndex(c => c.id === S.ch));
@@ -918,6 +963,7 @@ const AszalyBeta = (() => {
         if (m > dz) { const k = Math.min(1, (m - dz) / (mr - dz)) / m; mx = dx * k; my = dy * k; if (m > mr) { joy.ox = joy.x - dx / m * mr; joy.oy = joy.y - dy / m * mr; } } }
       const mm = Math.hypot(mx, my);
       if (mm > .05) { P.x += mx * st.speed * dt; P.y += my * st.speed * dt; if (Math.abs(mx) > .15) P.face = mx > 0 ? 1 : -1; P.walk += dt * mm * 11; P.mov = 1; } else P.mov = 0;
+      if (P.msh > 0 && S.t - (P.shT || -9) > 3) P.sh = Math.min(P.msh, (P.sh || 0) + P.msh * .3 * dt);
       P.inv = Math.max(0, P.inv - dt); if (st.regen) P.hp = Math.min(P.mhp, P.hp + st.regen * dt);
       for (const k of ['heat', 'zapor', 'rainT', 'green', 'dry', 'flash']) if (S[k] > 0) S[k] = Math.max(0, S[k] - dt);
       spawner(G, dt); phases(G, dt); gridBuild(); enemies(G, dt); if (!G.running) return; weapons(G, dt);
@@ -1032,7 +1078,9 @@ const AszalyBeta = (() => {
         for (let i = -6; i <= 6; i++) { const px = cx + ca * R * i / 6, py = cy + sa * R * i / 6; ln(g, px, py, px - sa * 7 * sc, py + ca * 7 * sc); g.fillStyle = 'rgba(150,215,255,.55)'; circ(g, px - sa * 12 * sc + Math.sin(t * 30 + i) * 3 * sc, py + ca * 12 * sc, 6 * sc); } }
       drawPlayer(g, G, t);
       // élet a játékos alatt
-      { const w = 36 * sc, x = W / 2 - w / 2, y = H / 2 + 23 * sc; g.fillStyle = 'rgba(0,0,0,.55)'; rrp(g, x - 1, y - 1, w + 2, 5 * sc + 2, 2 * sc); g.fillStyle = P.hp / P.mhp > .35 ? '#5ee08a' : '#ff5a4d'; rrp(g, x, y, w * Math.max(0, P.hp / P.mhp), 5 * sc, 2 * sc); }
+      { const w = 36 * sc, x = W / 2 - w / 2, y = H / 2 + 23 * sc; g.fillStyle = 'rgba(0,0,0,.55)'; rrp(g, x - 1, y - 1, w + 2, 5 * sc + 2, 2 * sc); g.fillStyle = P.hp / P.mhp > .35 ? '#5ee08a' : '#ff5a4d'; rrp(g, x, y, w * Math.max(0, P.hp / P.mhp), 5 * sc, 2 * sc);
+        if (P.msh > 0) { g.fillStyle = 'rgba(0,0,0,.55)'; rrp(g, x - 1, y + 6 * sc, w + 2, 3.5 * sc + 2, 2 * sc); if (P.sh > 0) { g.fillStyle = '#6cc6ff'; rrp(g, x, y + 6 * sc + 1, w * P.sh / P.msh, 3.5 * sc, 1.5 * sc); }
+          if (P.sh > 1) { g.strokeStyle = `rgba(140,210,255,${.25 + .35 * P.sh / P.msh})`; g.lineWidth = 2 * d; g.beginPath(); g.arc(W / 2, H / 2 - 2 * sc, 24 * sc, 0, TAU); g.stroke(); } } }
       // szórófej cseppjei / körforgó
       let L;
       if ((L = lv('szoro'))) { const n = L + 1, R = (56 + L * 4) * ar * sc; for (let i = 0; i < n; i++) { const a = S.orb + i / n * TAU, x = W / 2 + Math.cos(a) * R, y = H / 2 + Math.sin(a) * R;
@@ -1095,7 +1143,7 @@ const AszalyBeta = (() => {
       const row = (keys, yy) => { let ix = 12 * d + 11 * d; for (const k of keys) { g.fillStyle = UP[k].evo ? 'rgba(80,60,4,.75)' : 'rgba(4,7,14,.6)'; circ(g, ix, yy, 12 * d); ico(g, k, ix, yy, 17 * d); const s = UP[k].evo ? '★' : S.up[k];
         g.fillStyle = S.up[k] >= mxl(k) ? '#ffd23f' : '#fff'; g.strokeText(s, ix + 9 * d, yy + 8 * d); g.fillText(s, ix + 9 * d, yy + 8 * d); ix += 27 * d; } };
       const ks = Object.keys(S.up); row(ks.filter(isW), ty); row(ks.filter(k => !isW(k)), ty + 27 * d);
-      if (S.gold) { g.font = `800 ${12 * d}px Inter, sans-serif`; g.textAlign = 'right'; const gt = S.gold + ' ARANY'; g.strokeText(gt, W - 12 * d, ty + 18 * d); g.fillStyle = '#ffd23f'; g.fillText(gt, W - 12 * d, ty + 18 * d); }
+      if (S.gold || S.st.armor) { g.font = `800 ${12 * d}px Inter, sans-serif`; g.textAlign = 'right'; const gt = (S.st.armor ? '🛡 ' + (Math.round(S.st.armor * 10) / 10) + '  ' : '') + (S.gold ? S.gold + ' ARANY' : ''); g.strokeText(gt, W - 12 * d, ty + 18 * d); g.fillStyle = '#ffd23f'; g.fillText(gt, W - 12 * d, ty + 18 * d); }
       // szünet gomb
       if (G.running && !S.sel) { const pb = pauseBtn(G); g.fillStyle = 'rgba(4,7,14,.6)'; circ(g, pb.x, pb.y, pb.r); g.fillStyle = '#e6edf5'; g.fillRect(pb.x - 5 * d, pb.y - 6 * d, 3.5 * d, 12 * d); g.fillRect(pb.x + 1.5 * d, pb.y - 6 * d, 3.5 * d, 12 * d); }
       // főellenség HP-sávja
@@ -1119,6 +1167,17 @@ const AszalyBeta = (() => {
           if (!u.sp && !ev) { const tag = nw ? (isW(c.k) ? 'ÚJ FEGYVER' : 'ÚJ') : (cur + 1) + '. SZINT'; g.font = `800 ${10.5 * d}px Inter, sans-serif`; const tw = g.measureText(tag).width + 14 * d; g.fillStyle = nw ? '#e8b656' : 'rgba(120,190,255,.22)'; rrp(g, c.x + c.w - tw - 10 * d, c.y + 10 * d, tw, 18 * d, 9 * d); g.fillStyle = nw ? '#1a1004' : '#bfe6ff'; g.textAlign = 'center'; g.fillText(tag, c.x + c.w - tw / 2 - 10 * d, c.y + 19.5 * d); } }
         for (const b of cardBtns(G)) btn(g, G, b);
         g.globalAlpha = 1; }
+      // fúzió
+      if (S.fuse && G.running) { const a = Math.min(1, S.fuse.t * 5), [sk, se] = sigKeys(), sg = lv(se) ? se : sk; g.fillStyle = `rgba(12,5,2,${.9 * a})`; g.fillRect(0, 0, W, H); g.globalAlpha = a; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.font = `900 ${Math.min(32 * d, W / 11)}px Cinzel, serif`; g.fillStyle = '#ff8a2a'; g.fillText('FÚZIÓ', W / 2, 74 * d);
+        g.save(); g.shadowColor = '#ff8a2a'; g.shadowBlur = (12 + 6 * Math.sin(t * 5)) * d; g.fillStyle = 'rgba(60,26,6,.95)'; circ(g, W / 2, 128 * d, 30 * d); g.restore(); ico(g, sg, W / 2, 128 * d, 42 * d);
+        g.font = `800 ${13 * d}px Inter, sans-serif`; g.fillStyle = '#ffd23f'; g.fillText(UP[sg].n, W / 2, 170 * d, W - 20 * d);
+        fuseRows(G).forEach((r, i) => { const f = FZ[baseW(r.k)]; g.fillStyle = 'rgba(40,18,6,.96)'; rrp(g, r.x, r.y, r.w, r.h, 12 * d); g.strokeStyle = '#ff8a2a'; g.lineWidth = 1.6 * d; g.beginPath(); g.roundRect(r.x, r.y, r.w, r.h, 12 * d); g.stroke();
+          const cy = r.y + r.h / 2; g.fillStyle = 'rgba(255,138,42,.15)'; circ(g, r.x + 32 * d, cy, 22 * d); ico(g, r.k, r.x + 32 * d, cy, 30 * d);
+          g.textAlign = 'left'; g.font = `800 ${14.5 * d}px Inter, sans-serif`; g.fillStyle = '#ffd23f'; g.fillText(f.n, r.x + 64 * d, cy - 11 * d, r.w - 96 * d);
+          g.font = `500 ${11.5 * d}px Inter, sans-serif`; g.fillStyle = '#e8d6c0'; g.fillText(f.d, r.x + 64 * d, cy + 9 * d, r.w - 76 * d);
+          g.font = `700 ${10 * d}px Inter, sans-serif`; g.fillStyle = 'rgba(255,220,180,.55)'; g.textAlign = 'right'; g.fillText(UP[r.k].n, r.x + r.w - 10 * d, r.y + 12 * d, r.w * .4); });
+        g.textAlign = 'center'; btn(g, G, fuseLater(G)); g.globalAlpha = 1; }
       // szünet: build lista
       if (S.paused && G.running) { g.fillStyle = 'rgba(2,4,9,.86)'; g.fillRect(0, 0, W, H); g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `900 ${Math.min(30 * d, W / 13)}px Cinzel, serif`; g.fillStyle = '#ffe29a'; g.fillText('SZÜNET', W / 2, 92 * d);
         const ks = Object.keys(S.up).sort((a, b) => isW(b) - isW(a)), cols = W / d > 700 ? 2 : 1, cw = Math.min((W - 30 * d) / cols, 420 * d), rh = Math.min(48 * d, (H - 230 * d) / Math.ceil(ks.length / cols)), x0 = (W - cols * cw) / 2;
