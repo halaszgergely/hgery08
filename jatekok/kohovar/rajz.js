@@ -1,9 +1,9 @@
 // Kohóvár – kirajzolás. A blokkok, egységek, anyagok és a talaj képei a Mindustry (Anuke és közreműködők, GPLv3) sprite-jai,
 // a kepek/atlasz.png atlaszból; a lövedékek, hatások, köd és kisérkép kódból rajzoltak.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271824';
-import { FW } from './keret.js?v=202611271824';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271824';
-import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271824';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271847';
+import { FW } from './keret.js?v=202611271847';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271847';
+import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271847';
 
 const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555', 0: '#4d4e58' };
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -108,14 +108,17 @@ export function makeTerrain(W) {
   { const g = mini.getContext('2d'), im = g.createImageData(w, h), D = im.data, fc = FL.map(k => rgb(FLOORS[k].c)), wc = WL.map(k => rgb(WALLS[k])), oc = ITEM_IDS.map(k => rgb(ITEMS[k].c));
     for (let i = 0; i < N; i++) { const d = depth[i]; let c; if (!d) c = W.ore[i] ? oc[W.ore[i] - 1] : fc[W.floor[i]]; else if (d > 3) c = [6, 6, 7]; else { const b = wc[W.wall[i] - 1], m = d === 1 ? 1 : d === 2 ? .5 : .2; c = [b[0] * m, b[1] * m, b[2] * m]; } D[i * 4] = c[0]; D[i * 4 + 1] = c[1]; D[i * 4 + 2] = c[2]; D[i * 4 + 3] = 255; }
     g.putImageData(im, 0, 0); }
-  // köd: a felfedezetlen rész szürkén látszik (csak a körvonalak), a felfedezett átlátszó
+  // köd (Mindustry Rules.staticColor / dynamicColor): a felfedezetlen rész fekete, a felfedezett, de most nem látott rész félig sötét
   const fog = document.createElement('canvas'); fog.width = w; fog.height = h; const fg = fog.getContext('2d'), fim = fg.createImageData(w, h), FD = fim.data;
-  for (let i = 0; i < N; i++) { const d = depth[i], f = FLOORS[FL[W.floor[i]]], c = !d ? (f.liq ? [43, 47, 55] : [56, 57, 62]) : d <= 2 ? [36, 37, 41] : [15, 15, 17], n = (hash(i % w, (i / w) | 0, 99) - .5) * 5; FD[i * 4] = c[0] + n; FD[i * 4 + 1] = c[1] + n; FD[i * 4 + 2] = c[2] + n; FD[i * 4 + 3] = W.seen && W.seen[i] ? 0 : 255; }
+  const fa = i => !W.seen || !W.seen[i] ? 255 : !W.vis || W.vis[i] ? 0 : 128;
+  for (let i = 0; i < N; i++) FD[i * 4 + 3] = fa(i);
   fg.putImageData(fim, 0, 0); if (W.seenNew) W.seenNew.length = 0;
   function update() {
-    const L = W.seenNew; if (!L || !L.length) return; let x0 = w, y0 = h, x1 = 0, y1 = 0;
-    for (const i of L) { FD[i * 4 + 3] = 0; const x = i % w, y = (i - x) / w; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
-    L.length = 0; fg.putImageData(fim, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+    if (W.fog && W.updVis && (!W.vis || (W.mpGuest && performance.now() - (W.visT || 0) > 80))) { W.updVis(); W.visT = performance.now(); }   // vendégként nincs szimulációs lépés: itt frissül
+    if (W.visFull) { W.visFull = 0; for (let i = 0; i < N; i++) FD[i * 4 + 3] = fa(i); fg.putImageData(fim, 0, 0); if (W.visChg) W.visChg.length = 0; if (W.seenNew) W.seenNew.length = 0; return; }
+    let x0 = w, y0 = h, x1 = -1, y1 = 0;
+    for (const L of [W.seenNew, W.visChg]) { if (!L || !L.length) continue; for (const i of L) { FD[i * 4 + 3] = fa(i); const x = i % w, y = (i - x) / w; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } L.length = 0; }
+    if (x1 >= 0) fg.putImageData(fim, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);
   }
   return { chunk, mini, fog, update, depth };
 }
@@ -302,7 +305,8 @@ export function render(g, W, R) {
   if (!W.hideSpawns) for (const sp of W.spawns) spr(g, 'spawn', (sp.x + .5) * TS, (sp.y + .5) * TS);
   for (const f of W.fx) if (f.k === 'rubble') { g.fillStyle = `rgba(20,18,16,${.45 * f.life / f.max})`; g.fillRect(f.x * TS + 1, f.y * TS + 1, f.s * TS - 2, f.s * TS - 2); }
   const vb = [], flat = [];
-  for (const b of W.blds) if ((b.x + b.B.s) * TS >= vx0 && b.x * TS <= vx1 && (b.y + b.B.s) * TS >= vy0 && b.y * TS <= vy1) (b.cv || b.B.type === 'sconv' || b.B.type === 'conduit' ? flat : vb).push(b);
+  const hid = b => W.fog && b.team !== PLAYER && !b.wv;   // a még nem látott idegen épület rejtve marad
+  for (const b of W.blds) if (!hid(b) && (b.x + b.B.s) * TS >= vx0 && b.x * TS <= vx1 && (b.y + b.B.s) * TS >= vy0 && b.y * TS <= vy1) (b.cv || b.B.type === 'sconv' || b.B.type === 'conduit' ? flat : vb).push(b);
   for (const b of flat) drawB(g, W, b, t);
   for (const b of flat) {
     if (b.cv) for (const e of b.cv) { const p = e.p - .5; itemSq(g, e.it, (b.x + .5 + DX[b.rot] * p) * TS, (b.y + .5 + DY[b.rot] * p) * TS); }
@@ -329,7 +333,7 @@ export function render(g, W, R) {
   }
   for (const s of W.shields) if (s.on) { const c = W.center(s); g.fillStyle = `rgba(255,211,127,${.06 + (s.hit > 0 ? .1 : 0)})`; g.strokeStyle = `rgba(255,211,127,${.55 * (1 - s.sh / s.B.shp) + .2})`; g.lineWidth = 1; g.beginPath(); for (let k = 0; k <= 6; k++) g.lineTo(c.x + Math.cos(k * Math.PI / 3) * s.rad, c.y + Math.sin(k * Math.PI / 3) * s.rad); g.fill(); g.stroke(); }
   for (const pass of [0, 1]) for (const u of W.units) {
-    if (u.dead || !!u.U.air !== !!pass) continue; const r = u.U.r;
+    if (u.dead || !!u.U.air !== !!pass) continue; const r = u.U.r; if (u.team !== PLAYER && !W.visAt(u.x, u.y)) continue;
     if (u.x < vx0 - 80 || u.x > vx1 + 80 || u.y < vy0 - 80 || u.y > vy1 + 80) continue;
     if (u.U.air) { g.globalAlpha = .25; sprT(g, u.t + '@o', '#000000', 0, u.x - 3 - r * .25, u.y + 3 + r * .25, u.rot + Math.PI / 2); g.globalAlpha = 1; }
     if (u.U.js && FW.js) FW.js.drawUnit(g, W, u, () => drawUnit(g, u.t, u.team, u.x, u.y, u.aim != null && !u.U.air ? u.aim : u.rot, u.walk)); else drawUnit(g, u.t, u.team, u.x, u.y, u.aim != null && !u.U.air ? u.aim : u.rot, u.walk);
@@ -387,8 +391,8 @@ export { drawB, buildTime };
 export function minimap(c, W, ter, cam, vw, vh) {
   const g = c.getContext('2d'), sx = c.width / W.w, sy = c.height / W.h; g.imageSmoothingEnabled = sx < 1;
   g.drawImage(ter.mini, 0, 0, c.width, c.height);
-  for (const b of W.blds) { g.fillStyle = TEAM[b.team ?? PLAYER]; g.fillRect(b.x * sx, b.y * sy, Math.max(1, b.B.s * sx), Math.max(1, b.B.s * sy)); }
-  for (const u of W.units) { if (u.dead) continue; const big = u === W.player ? 3 : Math.max(2, u.U.r * sx / 4); g.fillStyle = u.team === ENEMY ? '#ff4a3d' : u === W.player ? '#fff' : '#ffd37f'; g.fillRect(u.x / TS * sx - big / 2, u.y / TS * sy - big / 2, big, big); }
+  for (const b of W.blds) { if (W.fog && b.team !== PLAYER && !b.wv) continue; g.fillStyle = TEAM[b.team ?? PLAYER]; g.fillRect(b.x * sx, b.y * sy, Math.max(1, b.B.s * sx), Math.max(1, b.B.s * sy)); }
+  for (const u of W.units) { if (u.dead || (u.team !== PLAYER && !W.visAt(u.x, u.y))) continue; const big = u === W.player ? 3 : Math.max(2, u.U.r * sx / 4); g.fillStyle = u.team === ENEMY ? '#ff4a3d' : u === W.player ? '#fff' : '#ffd37f'; g.fillRect(u.x / TS * sx - big / 2, u.y / TS * sy - big / 2, big, big); }
   for (const sp of W.spawns) { g.strokeStyle = '#ff4a3d'; g.lineWidth = 1; g.strokeRect(sp.x * sx - 3, sp.y * sy - 3, 6, 6); }
   if (W.fog) { g.imageSmoothingEnabled = true; g.drawImage(ter.fog, 0, 0, c.width, c.height); }
   g.strokeStyle = '#fff'; g.lineWidth = 1; g.strokeRect((cam.x - vw / 2 / cam.z) / TS * sx, (cam.y - vh / 2 / cam.z) / TS * sy, vw / cam.z / TS * sx, vh / cam.z / TS * sy);
