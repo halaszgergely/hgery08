@@ -289,13 +289,13 @@ function over() {
   $('#oBest').textContent = (nb ? '🏆 ÚJ REKORD!' : 'Rekord: ' + (G.game.sfmt ? G.game.sfmt(prev) : bigNum(prev)) + (G.game.unit || '')) + (G.win || store.get('wins_' + G.game.id) ? ' · 🏆 ×' + store.get('wins_' + G.game.id) : '');
   if (cheat) $('#oBest').textContent = '⏱ Időmanipuláció észlelve – ez a kör nem számít';
   setTimeout(() => { UI.pOver.hidden = false; }, 450); hud(); renderCards();
-  if (window.top !== window && G.score > 0 && !cheat) parent.postMessage({ hgws: 'score', game: G.game.id, score: G.score, win: !!G.win }, location.origin);
-  if (window.top !== window && G.score > 0 && cheat) parent.postMessage({ hgws: 'suspect', game: G.game.id, score: G.score, why: 'ido' }, location.origin); // moderátori ellenőrzésre
+  if (window.top !== window && G.score > 0 && !cheat && !G.game.nolb) parent.postMessage({ hgws: 'score', game: G.game.id, score: G.score, win: !!G.win }, location.origin);
+  if (window.top !== window && G.score > 0 && cheat && !G.game.nolb) parent.postMessage({ hgws: 'suspect', game: G.game.id, score: G.score, why: 'ido' }, location.origin); // moderátori ellenőrzésre
 }
 function close() { if (G.game && G.game.leave) G.game.leave(G); if (G.running && G.score > 0) over(); /* kilépéskor is számít az addig elért pontszám */ G.running = false; cancelAnimationFrame(G.raf); gEl.classList.remove('open'); document.body.classList.remove('locked'); renderCards(); window.HGWS_TO_LIST?.(); }
 $('#gQuit').onclick = () => { if (G.running) over(); };
 // lapbezárás / elnavigálás játék közben: az addig elért pontszám rekordként megmarad, és ha lehet, felmegy a ranglistára
-addEventListener('pagehide', () => { try { if (G.running && G.game && !G.game.ext && G.score > 0 && !IdoOr.bad) { if (G.score > store.get('best_' + G.game.id)) store.set('best_' + G.game.id, G.score); if (window.top !== window) parent.postMessage({ hgws: 'score', game: G.game.id, score: G.score }, location.origin); } } catch (_) {} });
+addEventListener('pagehide', () => { try { if (G.running && G.game && !G.game.ext && !G.game.nolb && G.score > 0 && !IdoOr.bad) { if (G.score > store.get('best_' + G.game.id)) store.set('best_' + G.game.id, G.score); if (window.top !== window) parent.postMessage({ hgws: 'score', game: G.game.id, score: G.score }, location.origin); } } catch (_) {} });
 $('#pGo').onclick = start; $('#oAgain').onclick = start; $('#oExit').onclick = close; $('#gClose').onclick = close;
 addEventListener('keydown', e => { if (!gEl.classList.contains('open')) return; if (e.key === 'Escape') close();
   // R: teljes újrakezdés (a rövid ügyességi játékoknál); halál után vagy a kezdőképernyőn bármelyik akciógomb indít
