@@ -1,13 +1,14 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611271514';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611271514';
-import * as Player from './player.js?v=202611271514';
-import * as Party from './party.js?v=202611271514';
-import * as Premier from './premier.js?v=202611271514';
-import * as VP from './vplayer.js?v=202611271514';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611271514';
-import * as Promo from './promo.js?v=202611271514';
-import * as ArcL from './arcade-lista.js?v=202611271514';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611271520';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611271520';
+import * as Player from './player.js?v=202611271520';
+import * as Party from './party.js?v=202611271520';
+import * as Premier from './premier.js?v=202611271520';
+import * as VP from './vplayer.js?v=202611271520';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611271520';
+import * as Promo from './promo.js?v=202611271520';
+import * as ArcL from './arcade-lista.js?v=202611271520';
+import * as Tabs from './tabs.js?v=202611271520';
 
 let C = null;
 export function init(ctx) { C = ctx; Promo.setup({ videos: () => C.S.videos, open: id => detail(id) }); }
@@ -340,7 +341,8 @@ function playing(id) { clearInterval(nowT); nowT = 0; const u = C.uid(); if (!u)
 let actC = null, actAt = 0;
 const WHO = {}; // moderátori nézet: játékonként az éppen játszók neve
 async function activeNow() { if (actC && Date.now() - actAt < 100e3) return actC; const o = {}, w = {}; try { const b = bucket(), [p, c] = await Promise.all([b - 1, b].map(x => FB.getDoc(pnRef(x)).then(s => s.data()?.u || {}).catch(() => ({})))); const all = { ...p, ...c }; Object.entries(all).map(([id, g]) => ({ id, g })).forEach(d => { const g = d.g; if (typeof g !== 'string') return; o[g] = (o[g] || 0) + 1; const u = S().users.get(d.id); (w[g] = w[g] || []).push(u ? u.name : FORCED.get(d.id) || S().guests?.get(d.id)?.nick || 'Vendég'); }); } catch (_) {} for (const k in WHO) delete WHO[k]; Object.assign(WHO, w); actC = o; actAt = Date.now(); return o; }
-addEventListener('hashchange', () => { if (!/^#\/arcade\/\w/.test(location.hash)) playing(''); }); addEventListener('pagehide', () => playing(''));
+const nowSync = () => { if (!/^#\/arcade\/\w/.test(location.hash)) playing(Tabs.games()[0] || ''); };
+addEventListener('hashchange', nowSync); addEventListener('hgws-tabs', nowSync); addEventListener('pagehide', () => playing(''));
 const arcCtx = { best, active: () => activeNow(), who: id => C.isMod() ? (WHO[id] || []) : [], num: bigNum, beta: () => betaOk(), fmt: (id, v) => { const g = GAMES.find(x => x.id === id); return g && g.fmt ? g.fmt(v) : null; }, playsNow: () => PLAYS, plays: () => loadPlays(),
   profile: (uid, nick) => lbProfile(uid, nick),
   mod: () => C.isMod(), flag: (game, uid, on) => setFlag(game, uid, on),
@@ -348,7 +350,7 @@ const arcCtx = { best, active: () => activeNow(), who: id => C.isMod() ? (WHO[id
   top: async id => { const g = GAMES.find(x => x.id === id); return (await topOf(id, 10)).map(r => ({ name: lbName(r.uid, r.nick), me: r.uid === C.uid(), flag: r.flag, uid: r.uid, game: id, score: g && g.fmt ? g.fmt(r.score) : bigNum(r.score) + (g && g.unit ? ' ' + g.unit : '') })); } };
 function arcadeRow() { return ArcL.homeRow(arcCtx); }
 /* ha a tagek vagy a saját fiók megváltozik, a zárt béta jogosultságot újraküldjük az Arcade-nak */
-export function tagsChanged() { const f = $('.arcframe'); if (f) sendBoards(f.contentWindow); }
+export function tagsChanged() { Tabs.frames().forEach(f => sendBoards(f.contentWindow)); }
 export const watchGuestNames = () => watchForced();
 /* moderátor (és afölött): vendég átnevezése. Vissza: { ok } | { err, free? } – free: a legközelebbi szabad név, ha a kért foglalt */
 export async function modRenameGuest(uid, raw) { if (!C.isMod() || typeof uid !== 'string' || !/^[\w-]{6,128}$/.test(uid)) return { err: 'Nincs jogosultság.' };
@@ -381,9 +383,9 @@ export function arcade(id) {
   const [gid, rid] = String(id || '').split('.'), g = [...GAMES, ...extras()].find(x => x.id === gid);
   if (!g) { playing(''); ArcL.render($('#page'), arcCtx); const ps = Promo.stripHtml(); if (ps) { ($('#page .arcl') || $('#page')).insertAdjacentHTML('afterbegin', `<div class="pstripw arc">${ps}</div>`); Promo.wire(); } awardChampions(); return; } // játék nélkül: az új listaoldal
   ArcL.played(g.id); playing(g.id);
-  $('#page').innerHTML = `<iframe class="arcframe" src="arcade.html${new URL(import.meta.url).search}${g ? '#play=' + g.id + (rid && /^\w+$/.test(rid) ? '.' + rid : '') : ''}" title="HGWS Arcade" allow="autoplay; fullscreen"></iframe>`;
-  const f = $('.arcframe');
-  f.addEventListener('load', () => { try { f.contentWindow.focus(); } catch (_) {} });
+  $('#page').innerHTML = ''; // a játék a fül saját iframe-jében fut (másik fülre váltva is életben marad)
+  const f = Tabs.mountGame(g.id, `arcade.html${new URL(import.meta.url).search}#play=${g.id}${rid && /^\w+$/.test(rid) ? '.' + rid : ''}`, g.name, g.icon);
+  try { if (f && f.contentDocument?.readyState === 'complete') f.contentWindow.focus(); } catch (_) {}
   awardChampions();
 }
 
@@ -564,7 +566,7 @@ export async function lbProfile(uid, nick) {
 let synced = false; const syncBest = {}; // az első szinkron (régi helyi rekordok) csak az örök listára megy, a munkamenet közbeni új rekord a hetire is
 addEventListener('message', async e => {
   if (e.origin !== location.origin || !e.data?.hgws) return;
-  const fr = $('.arcframe'); if (!fr || e.source !== fr.contentWindow) return;
+  const fr = Tabs.frames().find(f => f.contentWindow === e.source); if (!fr) return;
   if (e.data.hgws === 'suspect') { saveSuspect(e.data.game, e.data.score, e.data.why); return; }
   if (e.data.hgws === 'score') { await saveScore(e.data.game, e.data.score, !!e.data.win, false, typeof e.data.lg === 'number' ? e.data.lg : undefined); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbreq') sendBoards(fr.contentWindow);
@@ -575,7 +577,7 @@ addEventListener('message', async e => {
   if (e.data.hgws === 'sync' && !guest() && C.uid()) { const first = !synced; synced = true; let ch = 0; for (const [g, v] of Object.entries(e.data.bests || {})) if (v > (syncBest[g] || 0)) { syncBest[g] = v; ch = 1; await saveScore(g, v, false, first); } if (ch) sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'nickreq') { await renameNick(); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'lbprof') lbProfile(e.data.uid, e.data.nick);
-  if (e.data.hgws === 'nav' && (e.data.to === '#/birodalom' || e.data.to === '#/arcade')) location.hash = e.data.to;
+  if (e.data.hgws === 'nav' && (e.data.to === '#/birodalom' || e.data.to === '#/arcade') && Tabs.leave(fr)) location.hash = e.data.to;
   if (e.data.hgws === 'lbdel') { await delScore(e.data.game, e.data.uid); sendBoards(fr.contentWindow); }
   if (e.data.hgws === 'ghostreq') fr.contentWindow.postMessage({ hgws: 'ghosts', data: await ghostList(e.data.tracks), guest: guest() }, location.origin);
   if (e.data.hgws === 'ghostsave') await ghostSave(e.data);
