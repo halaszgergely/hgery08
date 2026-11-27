@@ -13,56 +13,56 @@ const AszalyBeta = (() => {
   /* ellenségek: élet, sebesség, sebzés, sugár, csepp (XP), pont */
   /* ellenségek (a Nagy Szárazság öt családja): élet, sebesség, sebzés, sugár, csepp (XP), pont, család, viselkedés, súly */
   const ET = {
-    ghoul: { hp: 5, sp: 60, dmg: 5, r: 11, xp: 1, pt: 10, f: 'kert', ai: 'chase', w: 3, n: 'Aszott földműves' },
-    szalmabab: { hp: 12, sp: 80, dmg: 7, r: 13, xp: 2, pt: 22, f: 'kert', ai: 'charge', w: 2, n: 'Szalmabáb-őr' },
-    tovis: { hp: 12, sp: 0, dmg: 7, r: 13, xp: 2, pt: 22, f: 'kert', ai: 'trap', w: 1, n: 'Tövisinda' },
-    hollok: { hp: 5, sp: 132, dmg: 5, r: 11, xp: 1, pt: 10, f: 'kert', ai: 'wobble', w: 3, pack: 6, flap: 1, n: 'Hamuhollók' },
-    farkas: { hp: 12, sp: 104, dmg: 7, r: 13, xp: 2, pt: 22, f: 'kert', ai: 'flank', w: 2, pack: 3, n: 'Szikkadt farkas' },
-    vadkan: { hp: 52, sp: 80, dmg: 14, r: 17, xp: 5, pt: 70, f: 'kert', ai: 'charge', w: 1, n: 'Tövishátú vadkan' },
-    porliderc: { hp: 12, sp: 60, dmg: 7, r: 13, xp: 2, pt: 22, f: 'kert', ai: 'wobble', w: 2, ghost: 1, n: 'Porlidérc' },
-    banya: { hp: 26, sp: 42, dmg: 10, r: 14, xp: 3, pt: 42, f: 'kert', ai: 'summon', w: 1, sum: 'tovis', n: 'Gyökérbanya' },
-    futo: { hp: 12, sp: 132, dmg: 7, r: 13, xp: 2, pt: 22, f: 'sivatag', ai: 'ranged', w: 2, n: 'Pusztai gyíkfutó' },
-    sogolem: { hp: 110, sp: 42, dmg: 19, r: 20, xp: 8, pt: 106, f: 'sivatag', ai: 'chase', w: 1, n: 'Sókristály-gólem' },
-    delibab: { hp: 12, sp: 104, dmg: 7, r: 13, xp: 2, pt: 22, f: 'sivatag', ai: 'wobble', w: 2, ghost: 1, n: 'Délibáb-lovas' },
-    keselyuember: { hp: 12, sp: 104, dmg: 7, r: 13, xp: 2, pt: 22, f: 'sivatag', ai: 'charge', w: 2, n: 'Keselyű-dögész' },
-    obeliszk: { hp: 52, sp: 0, dmg: 14, r: 17, xp: 5, pt: 70, f: 'sivatag', ai: 'ranged', w: 1, n: 'Napszem-obeliszk' },
-    szkarabeusz: { hp: 26, sp: 80, dmg: 10, r: 14, xp: 3, pt: 42, f: 'sivatag', ai: 'charge', w: 2, spin: 1, n: 'Bronzszkarabeusz' },
-    skorpio: { hp: 52, sp: 60, dmg: 14, r: 17, xp: 5, pt: 70, f: 'sivatag', ai: 'ranged', w: 1, n: 'Kőfarkú skorpió' },
-    ijasz: { hp: 12, sp: 80, dmg: 7, r: 13, xp: 2, pt: 22, f: 'sivatag', ai: 'ranged', w: 2, n: 'Nomád íjász' },
-    zsoldos: { hp: 26, sp: 60, dmg: 10, r: 14, xp: 3, pt: 42, f: 'varos', ai: 'chase', w: 3, n: 'Szomjas zsoldos' },
-    adoszedo: { hp: 26, sp: 60, dmg: 10, r: 14, xp: 3, pt: 42, f: 'varos', ai: 'chase', w: 1, n: 'Vízadó-szedő' },
-    mag: { hp: 26, sp: 60, dmg: 10, r: 14, xp: 3, pt: 42, f: 'varos', ai: 'chase', w: 2, n: 'Máglyapap' },
-    kopo: { hp: 12, sp: 132, dmg: 7, r: 13, xp: 2, pt: 22, f: 'varos', ai: 'flank', w: 2, pack: 2, n: 'Parázskopó' },
-    kutmimik: { hp: 52, sp: 0, dmg: 14, r: 17, xp: 5, pt: 70, f: 'varos', ai: 'trap', w: 1, n: 'Kútmimik' },
-    szamszerij: { hp: 12, sp: 42, dmg: 7, r: 13, xp: 2, pt: 22, f: 'varos', ai: 'ranged', w: 2, n: 'Várfali számszeríjász' },
-    hirnok: { hp: 26, sp: 80, dmg: 10, r: 14, xp: 3, pt: 42, f: 'varos', ai: 'summon', w: 1, n: 'Tilalmi hírnök' },
-    pajzsfal: { hp: 110, sp: 42, dmg: 19, r: 20, xp: 8, pt: 106, f: 'varos', ai: 'chase', w: 1, n: 'Pajzsfal-őr' },
-    csontnaga: { hp: 52, sp: 80, dmg: 14, r: 17, xp: 5, pt: 70, f: 'meder', ai: 'chase', w: 2, n: 'Csontnaga' },
-    iszap: { hp: 26, sp: 60, dmg: 10, r: 14, xp: 3, pt: 42, f: 'meder', ai: 'split', w: 2, n: 'Iszapkísértet' },
-    raklovag: { hp: 52, sp: 60, dmg: 14, r: 17, xp: 5, pt: 70, f: 'meder', ai: 'chase', w: 1, n: 'Rákpáncélos lovag' },
-    zsilip: { hp: 110, sp: 42, dmg: 19, r: 20, xp: 8, pt: 106, f: 'meder', ai: 'chase', w: 1, n: 'Zsilipőr' },
-    reves: { hp: 12, sp: 60, dmg: 7, r: 13, xp: 2, pt: 22, f: 'meder', ai: 'wobble', w: 2, ghost: 1, n: 'Fulladt révész' },
-    nimfa: { hp: 26, sp: 60, dmg: 10, r: 14, xp: 3, pt: 42, f: 'meder', ai: 'chase', w: 1, n: 'Szikkadt nimfa' },
-    pioca: { hp: 12, sp: 60, dmg: 7, r: 13, xp: 2, pt: 22, f: 'meder', ai: 'chase', w: 2, n: 'Óriáspióca' },
-    kultista: { hp: 26, sp: 60, dmg: 10, r: 14, xp: 3, pt: 42, f: 'halo', ai: 'heal', w: 1, n: 'Árnyprotokoll-kultista' },
-    lancoslovag: { hp: 52, sp: 60, dmg: 14, r: 17, xp: 5, pt: 70, f: 'halo', ai: 'chase', w: 1, n: 'Láncra vert lovag' },
-    runaszem: { hp: 12, sp: 80, dmg: 7, r: 13, xp: 2, pt: 22, f: 'halo', ai: 'ranged', w: 2, n: 'Megfigyelő rúnaszem' },
-    hibagolem: { hp: 52, sp: 60, dmg: 14, r: 17, xp: 5, pt: 70, f: 'halo', ai: 'tele', w: 1, n: 'Hibakód-gólem' },
-    letraor: { hp: 12, sp: 60, dmg: 7, r: 13, xp: 2, pt: 22, f: 'halo', ai: 'chase', w: 2, n: 'Bukott létraőr' },
-    kodliderc: { hp: 12, sp: 80, dmg: 7, r: 13, xp: 2, pt: 22, f: 'halo', ai: 'wobble', w: 2, n: 'Kódlidérc' },
-    tonpecset: { hp: 5, sp: 0, dmg: 5, r: 11, xp: 1, pt: 10, f: 'halo', ai: 'trap', w: 1, n: 'TON-pecsét' },
-    arnyfarkas: { hp: 26, sp: 132, dmg: 10, r: 14, xp: 3, pt: 42, f: 'halo', ai: 'flank', w: 2, pack: 3, n: 'Árnyfarkas' },
-    watchdog: { hp: 2100, sp: 70, dmg: 16, r: 34, xp: 0, pt: 1500, boss: 1, art: 'wdk', sz: 120, n: 'Watchdog Lovag' },
-    kiraly: { hp: 4800, sp: 56, dmg: 20, r: 38, xp: 0, pt: 2500, boss: 1, art: 'kk', sz: 130, n: 'Kaktuszkirály' },
-    ladder: { hp: 7600, sp: 54, dmg: 20, r: 34, xp: 0, pt: 3500, boss: 1, art: 'ldm', sz: 120, n: 'Ladder Mester' },
-    fereg: { hp: 12000, sp: 140, dmg: 26, r: 40, xp: 0, pt: 4500, boss: 1, art: 'hf', sz: 150, n: 'Homokféreg' },
-    boszi: { hp: 17000, sp: 64, dmg: 24, r: 34, xp: 0, pt: 6000, boss: 1, art: 'stw', sz: 120, n: 'Structured Text Boszorkány' },
-    szilard: { hp: 27000, sp: 50, dmg: 28, r: 36, xp: 0, pt: 10000, boss: 1, final: 1, art: 'szl', sz: 130, n: 'Szikkadt Szilárd' },
-    isten: { hp: 700000, sp: 30, dmg: 40, r: 95, xp: 0, pt: 0, boss: 1, god: 1, art: 'god', sz: 420, n: 'Szikkadt Szilárd, az Aszály Istene' }
+    ghoul: { hp: 5, sp: 60, dmg: 5, r: 13, xp: 1, pt: 10, f: 'kert', ai: 'chase', w: 3, n: 'Aszott földműves' },
+    szalmabab: { hp: 12, sp: 80, dmg: 7, r: 15, xp: 2, pt: 22, f: 'kert', ai: 'charge', w: 2, n: 'Szalmabáb-őr' },
+    tovis: { hp: 12, sp: 0, dmg: 7, r: 15, xp: 2, pt: 22, f: 'kert', ai: 'trap', w: 1, n: 'Tövisinda' },
+    hollok: { hp: 5, sp: 132, dmg: 5, r: 13, xp: 1, pt: 10, f: 'kert', ai: 'wobble', w: 3, pack: 6, flap: 1, n: 'Hamuhollók' },
+    farkas: { hp: 12, sp: 104, dmg: 7, r: 15, xp: 2, pt: 22, f: 'kert', ai: 'flank', w: 2, pack: 3, n: 'Szikkadt farkas' },
+    vadkan: { hp: 52, sp: 80, dmg: 14, r: 20, xp: 5, pt: 70, f: 'kert', ai: 'charge', w: 1, n: 'Tövishátú vadkan' },
+    porliderc: { hp: 12, sp: 60, dmg: 7, r: 15, xp: 2, pt: 22, f: 'kert', ai: 'wobble', w: 2, ghost: 1, n: 'Porlidérc' },
+    banya: { hp: 26, sp: 42, dmg: 10, r: 16, xp: 3, pt: 42, f: 'kert', ai: 'summon', w: 1, sum: 'tovis', n: 'Gyökérbanya' },
+    futo: { hp: 12, sp: 132, dmg: 7, r: 15, xp: 2, pt: 22, f: 'sivatag', ai: 'ranged', w: 2, n: 'Pusztai gyíkfutó' },
+    sogolem: { hp: 110, sp: 42, dmg: 19, r: 23, xp: 8, pt: 106, f: 'sivatag', ai: 'chase', w: 1, n: 'Sókristály-gólem' },
+    delibab: { hp: 12, sp: 104, dmg: 7, r: 15, xp: 2, pt: 22, f: 'sivatag', ai: 'wobble', w: 2, ghost: 1, n: 'Délibáb-lovas' },
+    keselyuember: { hp: 12, sp: 104, dmg: 7, r: 15, xp: 2, pt: 22, f: 'sivatag', ai: 'charge', w: 2, n: 'Keselyű-dögész' },
+    obeliszk: { hp: 52, sp: 0, dmg: 14, r: 20, xp: 5, pt: 70, f: 'sivatag', ai: 'ranged', w: 1, n: 'Napszem-obeliszk' },
+    szkarabeusz: { hp: 26, sp: 80, dmg: 10, r: 16, xp: 3, pt: 42, f: 'sivatag', ai: 'charge', w: 2, spin: 1, n: 'Bronzszkarabeusz' },
+    skorpio: { hp: 52, sp: 60, dmg: 14, r: 20, xp: 5, pt: 70, f: 'sivatag', ai: 'ranged', w: 1, n: 'Kőfarkú skorpió' },
+    ijasz: { hp: 12, sp: 80, dmg: 7, r: 15, xp: 2, pt: 22, f: 'sivatag', ai: 'ranged', w: 2, n: 'Nomád íjász' },
+    zsoldos: { hp: 26, sp: 60, dmg: 10, r: 16, xp: 3, pt: 42, f: 'varos', ai: 'chase', w: 3, n: 'Szomjas zsoldos' },
+    adoszedo: { hp: 26, sp: 60, dmg: 10, r: 16, xp: 3, pt: 42, f: 'varos', ai: 'chase', w: 1, n: 'Vízadó-szedő' },
+    mag: { hp: 26, sp: 60, dmg: 10, r: 16, xp: 3, pt: 42, f: 'varos', ai: 'chase', w: 2, n: 'Máglyapap' },
+    kopo: { hp: 12, sp: 132, dmg: 7, r: 15, xp: 2, pt: 22, f: 'varos', ai: 'flank', w: 2, pack: 2, n: 'Parázskopó' },
+    kutmimik: { hp: 52, sp: 0, dmg: 14, r: 20, xp: 5, pt: 70, f: 'varos', ai: 'trap', w: 1, n: 'Kútmimik' },
+    szamszerij: { hp: 12, sp: 42, dmg: 7, r: 15, xp: 2, pt: 22, f: 'varos', ai: 'ranged', w: 2, n: 'Várfali számszeríjász' },
+    hirnok: { hp: 26, sp: 80, dmg: 10, r: 16, xp: 3, pt: 42, f: 'varos', ai: 'summon', w: 1, n: 'Tilalmi hírnök' },
+    pajzsfal: { hp: 110, sp: 42, dmg: 19, r: 23, xp: 8, pt: 106, f: 'varos', ai: 'chase', w: 1, n: 'Pajzsfal-őr' },
+    csontnaga: { hp: 52, sp: 80, dmg: 14, r: 20, xp: 5, pt: 70, f: 'meder', ai: 'chase', w: 2, n: 'Csontnaga' },
+    iszap: { hp: 26, sp: 60, dmg: 10, r: 16, xp: 3, pt: 42, f: 'meder', ai: 'split', w: 2, n: 'Iszapkísértet' },
+    raklovag: { hp: 52, sp: 60, dmg: 14, r: 20, xp: 5, pt: 70, f: 'meder', ai: 'chase', w: 1, n: 'Rákpáncélos lovag' },
+    zsilip: { hp: 110, sp: 42, dmg: 19, r: 23, xp: 8, pt: 106, f: 'meder', ai: 'chase', w: 1, n: 'Zsilipőr' },
+    reves: { hp: 12, sp: 60, dmg: 7, r: 15, xp: 2, pt: 22, f: 'meder', ai: 'wobble', w: 2, ghost: 1, n: 'Fulladt révész' },
+    nimfa: { hp: 26, sp: 60, dmg: 10, r: 16, xp: 3, pt: 42, f: 'meder', ai: 'chase', w: 1, n: 'Szikkadt nimfa' },
+    pioca: { hp: 12, sp: 60, dmg: 7, r: 15, xp: 2, pt: 22, f: 'meder', ai: 'chase', w: 2, n: 'Óriáspióca' },
+    kultista: { hp: 26, sp: 60, dmg: 10, r: 16, xp: 3, pt: 42, f: 'halo', ai: 'heal', w: 1, n: 'Árnyprotokoll-kultista' },
+    lancoslovag: { hp: 52, sp: 60, dmg: 14, r: 20, xp: 5, pt: 70, f: 'halo', ai: 'chase', w: 1, n: 'Láncra vert lovag' },
+    runaszem: { hp: 12, sp: 80, dmg: 7, r: 15, xp: 2, pt: 22, f: 'halo', ai: 'ranged', w: 2, n: 'Megfigyelő rúnaszem' },
+    hibagolem: { hp: 52, sp: 60, dmg: 14, r: 20, xp: 5, pt: 70, f: 'halo', ai: 'tele', w: 1, n: 'Hibakód-gólem' },
+    letraor: { hp: 12, sp: 60, dmg: 7, r: 15, xp: 2, pt: 22, f: 'halo', ai: 'chase', w: 2, n: 'Bukott létraőr' },
+    kodliderc: { hp: 12, sp: 80, dmg: 7, r: 15, xp: 2, pt: 22, f: 'halo', ai: 'wobble', w: 2, n: 'Kódlidérc' },
+    tonpecset: { hp: 5, sp: 0, dmg: 5, r: 13, xp: 1, pt: 10, f: 'halo', ai: 'trap', w: 1, n: 'TON-pecsét' },
+    arnyfarkas: { hp: 26, sp: 132, dmg: 10, r: 16, xp: 3, pt: 42, f: 'halo', ai: 'flank', w: 2, pack: 3, n: 'Árnyfarkas' },
+    watchdog: { hp: 1700, sp: 70, dmg: 16, r: 34, xp: 0, pt: 1500, boss: 1, art: 'wdk', sz: 120, n: 'Watchdog Lovag' },
+    kiraly: { hp: 3800, sp: 56, dmg: 20, r: 38, xp: 0, pt: 2500, boss: 1, art: 'kk', sz: 130, n: 'Kaktuszkirály' },
+    ladder: { hp: 6000, sp: 54, dmg: 20, r: 34, xp: 0, pt: 3500, boss: 1, art: 'ldm', sz: 120, n: 'Ladder Mester' },
+    fereg: { hp: 9500, sp: 140, dmg: 26, r: 40, xp: 0, pt: 4500, boss: 1, art: 'hf', sz: 150, n: 'Homokféreg' },
+    boszi: { hp: 13500, sp: 64, dmg: 24, r: 34, xp: 0, pt: 6000, boss: 1, art: 'stw', sz: 120, n: 'Structured Text Boszorkány' },
+    szilard: { hp: 21000, sp: 50, dmg: 28, r: 36, xp: 0, pt: 10000, boss: 1, final: 1, art: 'szl', sz: 130, n: 'Szikkadt Szilárd' },
+    isten: { hp: 500000, sp: 30, dmg: 40, r: 95, xp: 0, pt: 0, boss: 1, god: 1, art: 'god', sz: 420, n: 'Szikkadt Szilárd, az Aszály Istene' }
   };
-  const FAMS = ['kert', 'sivatag', 'varos', 'meder', 'halo'], FAM_T = [0, 10, 20, 30, 40];
+  const FAMS = ['kert', 'sivatag', 'varos', 'meder', 'halo'], FAM_T = [0, 6, 12, 18, 24];
   const FCOL = { kert: '150,160,80', sivatag: '207,174,116', varos: '160,120,100', meder: '110,150,140', halo: '150,90,170' };
-  const BOSSQ = [[8, 'watchdog'], [16, 'kiraly'], [24, 'ladder'], [32, 'fereg'], [40, 'boszi'], [50, 'szilard']];
+  const BOSSQ = [[5, 'watchdog'], [10, 'kiraly'], [15, 'ladder'], [20, 'fereg'], [25, 'boszi'], [30, 'szilard']];
 
   /* fejlesztések: w = fegyver (szintenkénti leírás), a többi passzív; evo = fejlődött fegyver; mx = szintkorlát */
   const UP = {
@@ -107,12 +107,12 @@ const AszalyBeta = (() => {
     legiflotta: { n: 'HGWS LÉGIFLOTTA', w: 1, evo: 1, from: 'heli', d: 'Négy helikopter, széles permetsávval' },
     csatorna: { n: 'ÖNTÖZŐCSATORNA', w: 1, evo: 1, from: 'cso', d: 'Széles, hosszan sebző és lassító vízcsatorna' },
     /* saját fegyverek: csak a saját karakterük kapja meg */
-    aranyfej: { n: 'Arany locsolófej', w: 1, sig: 'gh', d: ['Forgó, átütő aranysugarak', '+1 sugár', 'Messzebb ér, gyorsabban forog', '+1 sugár, erősebb', 'Kritikus találatok'] },
-    rele: { n: 'Relékocka', w: 1, sig: 'rl', d: ['Keringő kocka, ami rálő a legközelebbire', '+1 kocka', 'Gyorsabb tüzelés', '+1 kocka, átütés', '+1 kocka, erősebb'] },
-    veszgomb: { n: 'Vészleállító', w: 1, sig: 'gt', d: ['Megállító mező: sebez és megfagyaszt', 'Nagyobb mező', 'Erősebb, tovább fagyaszt', 'Gyakoribb', 'Egyszerre két mező'] },
-    pid: { n: 'PID-örvény', w: 1, sig: 'kt', d: ['Vízörvény-legyező; ismételt találatnál erősödik', 'Gyorsabban erősödik', '+1 legyező', 'Szélesebb, messzebb ér', '+1 legyező, erősebb'] },
-    ak63: { n: 'Magas nyomású AK63', w: 1, sig: 'zr', d: ['Gyors sorozat a legközelebbire', '+2 lövés a sorozatban', 'Átüt egy ellenségen', 'Gyakoribb sorozat', '+3 lövés, hátralökés'] },
-    pkm: { n: 'Magas nyomású PKM', w: 1, sig: 'bt', d: ['Folyamatos géppuskatűz', 'Erősebb lövedékek', 'Pontosabb, gyorsabb', 'Két csőből tüzel', 'Lassító, átütő lövedékek'] },
+    aranyfej: { n: 'Arany locsolófej', w: 1, mx: 8, sig: 'gh', d: ['Forgó, átütő aranysugarak', '+1 sugár', 'Messzebb ér, gyorsabban forog', '+1 sugár, erősebb', 'Kritikus találatok', '+1 sugár', 'Gyorsabb forgás, erősebb', 'Átütőbb, nagyobb kritikus esély'] },
+    rele: { n: 'Relékocka', w: 1, mx: 8, sig: 'rl', d: ['Keringő kocka, ami rálő a legközelebbire', '+1 kocka', 'Gyorsabb tüzelés', '+1 kocka, átütés', '+1 kocka, erősebb', 'Erősebb lövések', 'Gyorsabb tüzelés', 'Átütő lövések, erősebb'] },
+    veszgomb: { n: 'Vészleállító', w: 1, mx: 8, sig: 'gt', d: ['Megállító mező: sebez és megfagyaszt', 'Nagyobb mező', 'Erősebb, tovább fagyaszt', 'Gyakoribb', 'Egyszerre két mező', 'Nagyobb mező', 'Gyakoribb, erősebb', 'Három mező egyszerre'] },
+    pid: { n: 'PID-örvény', w: 1, mx: 8, sig: 'kt', d: ['Vízörvény-legyező; ismételt találatnál erősödik', 'Gyorsabban erősödik', '+1 legyező', 'Szélesebb, messzebb ér', '+1 legyező, erősebb', 'Gyorsabb örvény', 'Szélesebb legyező', '+1 legyező, erősebb'] },
+    ak63: { n: 'Magas nyomású AK63', w: 1, mx: 8, sig: 'zr', d: ['Gyors sorozat a legközelebbire', '+2 lövés a sorozatban', 'Átüt egy ellenségen', 'Gyakoribb sorozat', '+3 lövés, hátralökés', '+2 lövés', 'Gyorsabb sorozat', 'Átütőbb, erősebb'] },
+    pkm: { n: 'Magas nyomású PKM', w: 1, mx: 8, sig: 'bt', d: ['Folyamatos géppuskatűz', 'Erősebb lövedékek', 'Pontosabb, gyorsabb', 'Két csőből tüzel', 'Lassító, átütő lövedékek', 'Erősebb lövedékek', 'Gyorsabb tűz', 'Három csőből tüzel'] },
     aranyfejevo: { n: 'AZ ARANY LOCSOLÓFEJ', w: 1, evo: 1, from: 'aranyfej', d: 'Kilenc aranysugár, 10 mp-enként gyógyító aranyhullám' },
     releevo: { n: 'ZÁRT SZABÁLYKÖR', w: 1, evo: 1, from: 'rele', d: 'Öt kocka, köztük sebző áramvonalak' },
     veszevo: { n: 'VÉSZLEÁLLÍTÓ HÁLÓZAT', w: 1, evo: 1, from: 'veszgomb', d: 'Három óriási mező, 30 mp-enként minden megáll' },
@@ -206,15 +206,15 @@ const AszalyBeta = (() => {
   /* ---------- ellenségek ---------- */
   function edge() { const w = V.hw + 34, h = V.hh + 34, r = Math.random() * (w + h) * 2, s = Math.random() < .5 ? -1 : 1; return r < w * 2 ? [r - w, s * h] : [s * w, r - w * 2 - h]; }
   function spawn(type, ox, oy, mul = 1) {
-    const T = ET[type], P = S.P, m = S.t / 60, hm = (1 + Math.pow(m, 1.15) * .2) * (S.ph === 'wrath' ? 1.25 + S.wk * 1.25 : S.ph === 'god' ? 2.4 : 1);
+    const T = ET[type], P = S.P, m = S.t / 40, hm = (1 + Math.pow(m, 1.15) * .2) * (S.ph === 'wrath' ? 1.25 + S.wk * 1.25 : S.ph === 'god' ? 2.4 : 1);
     const hp = (T.boss ? T.hp * (1 + S.bossN * .04) : T.hp * hm) * mul;
     const e = { id: ++S.eid, type, T, x: P.x + ox, y: P.y + oy, hp, mhp: hp, r: T.r, sp: T.sp * (.9 + Math.random() * .2), flash: 0, kx: 0, ky: 0, slow: 0, freeze: 0, air: 0, oT: 0, rbT: 0, csT: 0, ph: Math.random() * 6, at: 1 + Math.random() * 2, side: Math.random() < .5 ? -1 : 1 };
     S.en.push(e); return e;
   }
   function pickType() {
     const m = S.t / 60, w = [];
-    FAMS.forEach((f, i) => { const age = m - FAM_T[i]; if (age < 0 && S.ph === 'run') return; const fw = S.ph !== 'run' ? 1 : age < 10 ? 3 : age < 20 ? 1.4 : .6;
-      for (const k in ET) { const T = ET[k]; if (T.f !== f || T.boss) continue; if (S.ph === 'run' && (T.hp >= 110 && age < 6 || T.hp >= 52 && age < 3)) continue; w.push([k, T.w * fw]); } });
+    FAMS.forEach((f, i) => { const age = m - FAM_T[i]; if (age < 0 && S.ph === 'run') return; const fw = S.ph !== 'run' ? 1 : age < 6 ? 3 : age < 12 ? 1.4 : .6;
+      for (const k in ET) { const T = ET[k]; if (T.f !== f || T.boss) continue; if (S.ph === 'run' && (T.hp >= 110 && age < 4 || T.hp >= 52 && age < 2)) continue; w.push([k, T.w * fw]); } });
     let r = Math.random() * w.reduce((a, x) => a + x[1], 0); for (const [k, v] of w) if ((r -= v) <= 0) return k; return 'ghoul';
   }
   function spawnOne(cap) {
@@ -232,8 +232,8 @@ const AszalyBeta = (() => {
     if (S.ph === 'descent' || S.ph === 'win') return;
     const cap = Math.round(clamp(Math.round(V.hw * V.hh / 420), 150, 300) * S.st.curse * (S.ph === 'bloom' ? .25 : S.ph === 'god' ? .45 : 1));
     S.sT -= dt;
-    const rate = S.ph === 'bloom' ? 1.4 : S.ph === 'wrath' ? Math.max(.09, .2 - S.wk * .1) : S.ph === 'god' ? .55 : Math.max(.16, .5 - S.t * .0006);
-    while (S.sT <= 0) { S.sT += rate / S.st.curse; for (let i = 0, n = 1 + Math.floor(Math.min(S.t, 3000) / 300); i < n && S.en.length < cap; i++) spawnOne(cap); }
+    const rate = S.ph === 'bloom' ? 1.4 : S.ph === 'wrath' ? Math.max(.09, .2 - S.wk * .1) : S.ph === 'god' ? .55 : Math.max(.16, .5 - S.t * .0009);
+    while (S.sT <= 0) { S.sT += rate / S.st.curse; for (let i = 0, n = 1 + Math.floor(Math.min(S.t, 2000) / 200); i < n && S.en.length < cap; i++) spawnOne(cap); }
     if (S.ph !== 'run' && S.ph !== 'wrath') return;
     // varjúraj
     if (S.t > 60 && (S.batT -= dt) <= 0) { S.batT = 26 + Math.random() * 10; const [ox, oy] = edge(); for (let i = 0, n = 8 + Math.floor(S.t / 120); i < n && S.en.length < cap + 20; i++) spawn('hollok', ox + rnd(-40, 40), oy + rnd(-40, 40)); }
@@ -243,14 +243,14 @@ const AszalyBeta = (() => {
     if (m > S.minute) { S.minute = m;
       if (!S.bossE) { const fi = FAMS.reduce((a, f, i) => S.t / 60 >= FAM_T[i] ? i : a, 0), ks = Object.keys(ET).filter(k => ET[k].f === FAMS[fi] && ET[k].ai !== 'trap' && ET[k].hp <= 26), ty = ks[m % ks.length] || 'ghoul', n = 12 + Math.min(m, 40) * 2, a0 = Math.random() * TAU;
         for (let i = 0; i < n; i++) { const a = a0 + i / n * TAU; spawn(ty, Math.cos(a) * (V.hw + 40) * 1.42, Math.sin(a) * (V.hh + 40) * 1.42); } }
-      if (S.ph === 'run' && (m === 5 || m === 10) && !S.szE) { S.taunt = { l: 3.2, txt: TAUNT[m === 5 ? 0 : 1], puff: 0 }; Sfx.blip(110, .5, 'sawtooth', .06, .5); }
+      if (S.ph === 'run' && (m === 3 || m === 8) && !S.szE) { S.taunt = { l: 3.2, txt: TAUNT[m === 3 ? 0 : 1], puff: 0 }; Sfx.blip(110, .5, 'sawtooth', .06, .5); }
       if (S.ph === 'run' && m >= 1 && m % 3 === 1) { if (Math.random() < .5) { S.heat = 20; banner('HŐHULLÁM!', 2.2); Sfx.blip(300, .6, 'sawtooth', .05, .4); }
         else { S.zapor = 20; S.rainT = Math.max(S.rainT, 4); for (const q of S.gems) q.pull = 1; banner('ZÁPOR! +10% XP', 2.2, '#6cc6ff'); Sfx.splash(); } } }
   }
   /* szakaszok: virágzás (1 perc) → Szilárd haragja (10 perc) → leereszkedés → az Aszály Istene */
   function phases(G, dt) {
-    if (S.ph === 'bloom') { S.phT -= dt; S.green = Math.max(S.green, 1.5); if (S.phT <= 0) { S.ph = 'wrath'; S.phT = 600; S.wk = 0; S.green = 0; banner('SZILÁRD HARAGJÁNAK ASZÁLYA ELINDULT!', 5, '#ff7a2a'); G.shake = 14 * G.d; Sfx.boom(); [220, 185, 147, 110].forEach((f, i) => setTimeout(() => Sfx.blip(f, .4, 'sawtooth', .07, .7), i * 240)); } }
-    else if (S.ph === 'wrath') { S.phT -= dt; S.wk = clamp(1 - S.phT / 600, 0, 1); S.dry = Math.max(S.dry, .4); if (S.phT <= 0) descent(G); }
+    if (S.ph === 'bloom') { S.phT -= dt; S.green = Math.max(S.green, 1.5); if (S.phT <= 0) { S.ph = 'wrath'; S.phT = 360; S.wk = 0; S.green = 0; banner('SZILÁRD HARAGJÁNAK ASZÁLYA ELINDULT!', 5, '#ff7a2a'); G.shake = 14 * G.d; Sfx.boom(); [220, 185, 147, 110].forEach((f, i) => setTimeout(() => Sfx.blip(f, .4, 'sawtooth', .07, .7), i * 240)); } }
+    else if (S.ph === 'wrath') { S.phT -= dt; S.wk = clamp(1 - S.phT / 360, 0, 1); S.dry = Math.max(S.dry, .4); if (S.phT <= 0) descent(G); }
     else if (S.ph === 'descent') { S.phT -= dt; S.dry = Math.max(S.dry, .4); if (S.phT <= 0) godSpawn(G); }
     for (const w of S.warns) { w.t += dt; if (w.t >= w.d) { w.dead = 1; blast(G, w); } }
     for (const f of S.blasts) f.l -= dt;
@@ -322,7 +322,7 @@ const AszalyBeta = (() => {
     if (S.t - S.sndT > .07) { S.sndT = S.t; Sfx.blip(260 + Math.random() * 180, .05, 'triangle', .035, .6); }
   }
   function hitPlayer(G, e, dm) {
-    const P = S.P; P.hp -= Math.max(1, (dm != null ? dm : e.T.dmg) * (1 + S.t / 2400) * (S.ph === 'wrath' ? 1 + S.wk * .6 : S.ph === 'god' ? 1.2 : 1) - S.st.armor); P.inv = .6; G.shake = 10 * G.d; Sfx.hit(); if (navigator.vibrate) navigator.vibrate(40);
+    const P = S.P; P.hp -= Math.max(1, (dm != null ? dm : e.T.dmg) * (1 + S.t / 1600) * (S.ph === 'wrath' ? 1 + S.wk * .6 : S.ph === 'god' ? 1.2 : 1) - S.st.armor); P.inv = .6; G.shake = 10 * G.d; Sfx.hit(); if (navigator.vibrate) navigator.vibrate(40);
     part(P.x, P.y, 8, '255,90,77', 120, .4);
     if (P.hp <= 0 && S.rev > 0) { S.rev--; P.hp = P.mhp * .5; P.inv = 3; S.flash = .5; banner('FORRÁSVÍZ: FELTÁMADTÁL!', 2.6, '#6cc6ff'); S.rings.push({ x: P.x, y: P.y, R: 260, l: 1, w: 1 });
       near(P.x, P.y, 260, (o, dx, dy) => { const d = Math.hypot(dx, dy) || 1; if (!o.T.boss) { o.kx += dx / d * 600; o.ky += dy / d * 600; } }); for (const o of S.ep) o.dead = 1; Sfx.perfect(); return; }
@@ -542,37 +542,37 @@ const AszalyBeta = (() => {
     // ---- saját fegyverek ----
     const shoot = (x, y, a, sp, dmg, o) => S.pr.push(Object.assign({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: 5, dmg, pierce: 1, life: .9, hit: [] }, o)), SG = S.sig;
     { const Ev = lv('aranyfejevo'); L = lv('aranyfej');
-      if ((L || Ev) && ready('aranyfej', Ev ? .45 : L >= 3 ? .6 : .72, dt)) { SG.ga = (SG.ga || 0) + (Ev ? .5 : .32); const n = Ev ? 9 : 3 + (L >= 2) + (L >= 4), cr = L >= 5 || Ev ? .2 : 0;
-        for (let i = 0; i < n; i++) shoot(P.x, P.y - 4, SG.ga + i * TAU / n, 400, (Ev ? 26 : 8 + L * 3) * (Math.random() < cr ? 2 : 1), { r: 6, pierce: Ev ? 4 : 2, life: L >= 3 || Ev ? 1.1 : .8, src: Ev ? 'aranyfejevo' : 'aranyfej', kind: 'gold' });
+      if ((L || Ev) && ready('aranyfej', Ev ? .45 : L >= 7 ? .5 : L >= 3 ? .6 : .72, dt)) { SG.ga = (SG.ga || 0) + (Ev ? .5 : .32); const n = Ev ? 9 : 3 + (L >= 2) + (L >= 4) + (L >= 6), cr = Ev ? .25 : L >= 8 ? .3 : L >= 5 ? .2 : 0;
+        for (let i = 0; i < n; i++) shoot(P.x, P.y - 4, SG.ga + i * TAU / n, 400, (Ev ? 26 : 8 + L * 3) * (Math.random() < cr ? 2 : 1), { r: 6, pierce: Ev ? 4 : L >= 8 ? 3 : 2, life: L >= 3 || Ev ? 1.1 : .8, src: Ev ? 'aranyfejevo' : 'aranyfej', kind: 'gold' });
         snd('gold', .25); }
       if (Ev && (SG.wave = (SG.wave ?? 10) - dt) <= 0) { SG.wave = 10; const R = 240 * ar; S.rings.push({ x: P.x, y: P.y, R, l: 1, w: 1, c: '255,210,63' }); P.hp = Math.min(P.mhp, P.hp + 12);
         near(P.x, P.y, R, (e, dx, dy) => { const d = Math.hypot(dx, dy) || 1; hurt(G, e, 40, dx / d * 200, dy / d * 200, 'aranyfejevo'); }); Sfx.perfect(); } }
     { const Ev = lv('releevo'); L = lv('rele');
       if (L || Ev) { const n = Ev ? 5 : 1 + (L >= 2) + (L >= 4) + (L >= 5); SG.ra = (SG.ra || 0) + dt * 1.6; SG.cubes = []; for (let i = 0; i < n; i++) { const a = SG.ra + i * TAU / n; SG.cubes.push({ x: P.x + Math.cos(a) * 52, y: P.y + Math.sin(a) * 52 }); }
-        if (ready('rele', Ev ? .4 : L >= 3 ? .55 : .8, dt)) { const tg = nearest(460); if (tg) { for (const c of SG.cubes) shoot(c.x, c.y, Math.atan2(tg.y - c.y, tg.x - c.x), 460, Ev ? 22 : 7 + L * 2.5, { r: 5, pierce: L >= 4 || Ev ? 2 : 1, src: Ev ? 'releevo' : 'rele', kind: 'cube' }); snd('cube', .2); } else S.wt.rele = .1; }
+        if (ready('rele', Ev ? .4 : L >= 7 ? .42 : L >= 3 ? .55 : .8, dt)) { const tg = nearest(460); if (tg) { for (const c of SG.cubes) shoot(c.x, c.y, Math.atan2(tg.y - c.y, tg.x - c.x), 460, Ev ? 22 : 7 + L * 2.5 + (L >= 6) * 4, { r: 5, pierce: Ev || L >= 8 ? 3 : L >= 4 ? 2 : 1, src: Ev ? 'releevo' : 'rele', kind: 'cube' }); snd('cube', .2); } else S.wt.rele = .1; }
         if (Ev && (SG.zt = (SG.zt || 0) - dt) <= 0) { SG.zt = .25; for (let i = 0; i < n; i++) { const a = SG.cubes[i], b = SG.cubes[(i + 1) % n]; for (let k = 1; k < 4; k++) near(a.x + (b.x - a.x) * k / 4, a.y + (b.y - a.y) * k / 4, 14, e => hurt(G, e, 9, 0, 0, 'releevo')); } } }
       else SG.cubes = null; }
     { const Ev = lv('veszevo'); L = lv('veszgomb');
-      if ((L || Ev) && ready('veszgomb', Ev ? 3.5 : L >= 4 ? 4.2 : 5.5, dt)) { const n = Ev ? 3 : L >= 5 ? 2 : 1;
-        for (let i = 0; i < n; i++) { const c = i ? (randEnemy(320) || P) : P, R = (Ev ? 160 : 90 + (L >= 2) * 25 + (L >= 3) * 10) * ar, fz = Ev ? 2 : L >= 3 ? 1.6 : 1.1;
+      if ((L || Ev) && ready('veszgomb', Ev ? 3.5 : L >= 7 ? 3.6 : L >= 4 ? 4.2 : 5.5, dt)) { const n = Ev || L >= 8 ? 3 : L >= 5 ? 2 : 1;
+        for (let i = 0; i < n; i++) { const c = i ? (randEnemy(320) || P) : P, R = (Ev ? 160 : 90 + (L >= 2) * 25 + (L >= 3) * 10 + (L >= 6) * 25) * ar, fz = Ev ? 2 : L >= 3 ? 1.6 : 1.1;
           S.rings.push({ x: c.x, y: c.y, R, l: 1, w: 1, c: '255,80,60' }); near(c.x, c.y, R, e => { hurt(G, e, Ev ? 40 : 8 + L * 5, 0, 0, Ev ? 'veszevo' : 'veszgomb'); if (e.T.boss) e.slow = Math.max(e.slow, fz); else e.freeze = Math.max(e.freeze, fz); }); }
         Sfx.blip(520, .25, 'square', .05, .5); }
       if (Ev && (SG.big = (SG.big ?? 30) - dt) <= 0) { SG.big = 30; for (const e of S.en) { if (e.dead || e.under) continue; if (e.T.boss) e.slow = 3; else e.freeze = Math.max(e.freeze, 3); } for (const o of S.ep) o.dead = 1; banner('VÉSZLEÁLLÍTÁS!', 1.6, '#ff5a4d'); } }
     { const Ev = lv('pidevo'); L = lv('pid');
       if (Ev) { SG.pa = (SG.pa || 0) + dt * 4; if (ready('pid', .2, dt)) { near(P.x, P.y, 140 * ar, e => hurt(G, e, 14, 0, 0, 'pidevo')); let b = null; for (const e of S.en) if (!e.dead && !e.under && Math.abs(e.x - P.x) < V.hw && Math.abs(e.y - P.y) < V.hh && (!b || e.hp > b.hp)) b = e; if (b) hurt(G, b, 30, 0, 0, 'pidevo'); } }
-      else if (L && ready('pid', 1.1, dt)) { const tg = nearest(360), base = tg ? Math.atan2(tg.y - P.y, tg.x - P.x) : (P.face > 0 ? 0 : Math.PI), n = 1 + (L >= 3) + (L >= 5), R = (150 + (L >= 4) * 40) * ar, wd = .5 + (L >= 4) * .2;
+      else if (L && ready('pid', L >= 6 ? .8 : 1.1, dt)) { const tg = nearest(360), base = tg ? Math.atan2(tg.y - P.y, tg.x - P.x) : (P.face > 0 ? 0 : Math.PI), n = 1 + (L >= 3) + (L >= 5) + (L >= 8), R = (150 + (L >= 4) * 40 + (L >= 7) * 30) * ar, wd = .5 + (L >= 4) * .2 + (L >= 7) * .15;
         for (let i = 0; i < n; i++) { const a = base + (i - (n - 1) / 2) * .9; S.cones.push({ x: P.x, y: P.y, a, R, w: wd, l: .3 });
           near(P.x, P.y, R, (e, dx, dy) => { let da = Math.atan2(dy, dx) - a; da = Math.atan2(Math.sin(da), Math.cos(da)); if (Math.abs(da) < wd) { e.pidI = Math.min((e.pidI || 0) + (L >= 2 ? 6 : 3), 60); hurt(G, e, 12 + L * 3 + e.pidI, Math.cos(a) * 120, Math.sin(a) * 120, 'pid'); } }); }
         Sfx.noise(.15, .06, 2200); } }
     { const Ev = lv('ak63evo'); L = lv('ak63');
-      if ((L || Ev) && ready('ak63', Ev ? .9 : L >= 4 ? 1 : 1.4, dt)) { const tg = nearest(560); if (!tg) S.wt.ak63 = .15; else { const n = Ev ? 12 : 3 + (L >= 2) * 2 + (L >= 5) * 3; for (let i = 0; i < n; i++) S.burst.push({ t: i * .06, k: 'ak', L, Ev }); if (Ev) S.burst.push({ t: n * .06 + .05, k: 'broom' }); } } }
+      if ((L || Ev) && ready('ak63', Ev ? .9 : L >= 7 ? .8 : L >= 4 ? 1 : 1.4, dt)) { const tg = nearest(560); if (!tg) S.wt.ak63 = .15; else { const n = Ev ? 12 : 3 + (L >= 2) * 2 + (L >= 5) * 3 + (L >= 6) * 2; for (let i = 0; i < n; i++) S.burst.push({ t: i * .06, k: 'ak', L, Ev }); if (Ev) S.burst.push({ t: n * .06 + .05, k: 'broom' }); } } }
     for (const b of S.burst) { if ((b.t -= dt) > 0) continue; b.dead = 1;
-      if (b.k === 'ak') { const tg = nearest(560); if (tg) { shoot(P.x, P.y - 4, Math.atan2(tg.y - P.y, tg.x - P.x) + rnd(-.06, .06), 640, b.Ev ? 24 : 10 + b.L * 3, { r: 4, pierce: b.Ev ? 3 : b.L >= 3 ? 2 : 1, kb: b.L >= 5 || b.Ev ? 1.6 : 1, src: b.Ev ? 'ak63evo' : 'ak63', kind: 'bullet', life: .8 }); snd('ak', .05); } }
+      if (b.k === 'ak') { const tg = nearest(560); if (tg) { shoot(P.x, P.y - 4, Math.atan2(tg.y - P.y, tg.x - P.x) + rnd(-.06, .06), 640, b.Ev ? 24 : 10 + b.L * 3, { r: 4, pierce: b.Ev ? 3 : b.L >= 8 ? 3 : b.L >= 3 ? 2 : 1, kb: b.L >= 5 || b.Ev ? 1.6 : 1, src: b.Ev ? 'ak63evo' : 'ak63', kind: 'bullet', life: .8 }); snd('ak', .05); } }
       else { const tg = nearest(400), a = tg ? Math.atan2(tg.y - P.y, tg.x - P.x) : 0, R = 200 * ar; S.cones.push({ x: P.x, y: P.y, a, R, w: .9, l: .45, gold: 1 }); Sfx.noise(.2, .1, 1200);
         near(P.x, P.y, R, (e, dx, dy) => { let da = Math.atan2(dy, dx) - a; da = Math.atan2(Math.sin(da), Math.cos(da)); if (Math.abs(da) < .9) hurt(G, e, 45, Math.cos(a) * 300, Math.sin(a) * 300, 'ak63evo'); }); } }
     S.burst = S.burst.filter(b => !b.dead);
     { const Ev = lv('pkmevo'); L = lv('pkm');
-      if ((L || Ev) && ready('pkm', Ev ? .06 : L >= 3 ? .08 : .1, dt)) { const tg = nearest(520); if (!tg) S.wt.pkm = .1; else { const sp = P.mov && L < 3 ? .4 : .15, a = Math.atan2(tg.y - P.y, tg.x - P.x) + rnd(-sp, sp), dirs = Ev ? [0, Math.PI] : L >= 4 ? [-.06, .06] : [0];
+      if ((L || Ev) && ready('pkm', Ev ? .06 : L >= 7 ? .065 : L >= 3 ? .08 : .1, dt)) { const tg = nearest(520); if (!tg) S.wt.pkm = .1; else { const sp = P.mov && L < 3 ? .4 : .15, a = Math.atan2(tg.y - P.y, tg.x - P.x) + rnd(-sp, sp), dirs = Ev ? [0, Math.PI] : L >= 8 ? [-.1, 0, .1] : L >= 4 ? [-.06, .06] : [0];
         for (const o of dirs) shoot(P.x, P.y - 2, a + o, 580, Ev ? 12 : 4 + L * 1.4 + (L >= 2) * 2, { r: 3.5, pierce: Ev ? 99 : L >= 5 ? 2 : 1, slow: L >= 5 || Ev ? .4 : 0, src: Ev ? 'pkmevo' : 'pkm', kind: 'bullet', life: .85 }); snd('pkm', .07); } } }
     for (const c of S.cones) c.l -= dt; S.cones = S.cones.filter(c => c.l > 0);
 
@@ -600,7 +600,7 @@ const AszalyBeta = (() => {
     else { for (let i = 0, n = q.dbl ? 2 : 1; i < n; i++) { const ev = evoAvail(); if (ev) S.evoQ.push(ev); else S.pending++; }
       P.hp = Math.min(P.mhp, P.hp + 30); G.score += q.dbl ? 500 : 250; S.dirty = 1; G.float(G.W / 2, G.H / 2 - 40 * G.d, q.dbl ? 'DUPLA KINCS! +500' : 'KINCS! +250'); }
   }
-  function evoAvail() { for (const r of EVOR) if (lv(r[0]) >= MAXLV && lv(r[1]) >= 1 && !S.up[r[2]] && !S.evoQ.some(q => q[2] === r[2])) return r; return null; }
+  function evoAvail() { for (const r of EVOR) if (lv(r[0]) >= mxl(r[0]) && lv(r[1]) >= 1 && !S.up[r[2]] && !S.evoQ.some(q => q[2] === r[2])) return r; return null; }
 
   /* ---------- karakterek feloldása ---------- */
   function checkUnlocks() {}
@@ -611,6 +611,7 @@ const AszalyBeta = (() => {
     const av = Object.keys(UP).filter(k => { const u = UP[k], c = lv(k); if (u.sp || u.evo || c >= mxl(k) || S.evd[k]) return false; if (u.hid && !c) return false; if (u.sig && u.sig !== S.ch) return false;
       if (!c && (isW(k) ? nW() >= MAXW : nP() >= MAXP)) return false; if (k === 'pisztoly' && S.up.por) return false; return true; });
     for (let i = av.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[av[i], av[j]] = [av[j], av[i]]; }
+    const sg = av.findIndex(k => UP[k].sig); if (sg > 0 && Math.random() < .55) av.unshift(av.splice(sg, 1)[0]);
     const n = lv('lohere') >= 5 ? 4 : 3, o = av.slice(0, n); for (const k of ['gyogy', 'pont']) if (o.length < 3) o.push(k); return o;
   }
   function openChoice() { S.choose = { o: offer(), t: 0 }; joy = null; Sfx.perfect(); }
@@ -798,7 +799,7 @@ const AszalyBeta = (() => {
     for (const k in BA) add(k, BA[k], k === 'kiraly' ? '24 0 152 300' : '0 0 200 300', k === 'kiraly' ? 152 / 300 : 2 / 3); }
   function buildSpr() { loadArt(); let miss = 0;
     for (const k in ET) { const T = ET[k], A = ART && ART[k]; if (!A || !A.im.complete || !A.im.naturalWidth) { miss = 1; continue; }
-      const sh = (T.boss ? T.sz : T.r * 2.9), sw = T.boss ? sh * A.ar : sh, c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(sw * V.sc)); c.height = Math.max(1, Math.ceil(sh * V.sc)); c.getContext('2d').drawImage(A.im, 0, 0, c.width, c.height);
+      const sh = (T.boss ? T.sz * 1.15 : T.r * 3.4), sw = T.boss ? sh * A.ar : sh, c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(sw * V.sc)); c.height = Math.max(1, Math.ceil(sh * V.sc)); c.getContext('2d').drawImage(A.im, 0, 0, c.width, c.height);
       const w = document.createElement('canvas'); w.width = c.width; w.height = c.height; const y = w.getContext('2d'); y.drawImage(c, 0, 0); y.globalCompositeOperation = 'source-atop'; y.fillStyle = 'rgba(255,255,255,.8)'; y.fillRect(0, 0, w.width, w.height);
       SPR[k] = { c, w, sw: c.width, sh: c.height, sz: Math.max(c.width, c.height), oy: (T.r * .9 - sh * (T.boss ? .42 : .383)) * V.sc }; }
     artMiss = miss;
