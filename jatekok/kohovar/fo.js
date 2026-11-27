@@ -2,19 +2,19 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271431';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271431';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271431';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss, drawLanding } from './rajz.js?v=202611271431';
-import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271431';
-import { JS } from './jsapi.js?v=202611271431';
-import { initCloud, changed as cloudChanged, push as cloudPush, flush as cloudFlush } from './felho.js?v=202611271431';
-import { MP, initMp, canMp, listRooms, createRoom, joinRoomId, leave as mpLeave, inviteLink, roster, hostStart, hostEnd, hostTick, hostSend, guestFrame } from './mp.js?v=202611271431';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271431';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271431';
-import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271431';
-import { toWorld } from './msav.js?v=202611271431';
-import { Story } from './logika.js?v=202611271431';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271432';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271432';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271432';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss, drawLanding } from './rajz.js?v=202611271432';
+import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271432';
+import { JS } from './jsapi.js?v=202611271432';
+import { initCloud, changed as cloudChanged, push as cloudPush, flush as cloudFlush } from './felho.js?v=202611271432';
+import { MP, initMp, canMp, listRooms, createRoom, joinRoomId, leave as mpLeave, inviteLink, roster, hostStart, hostEnd, hostTick, hostSend, guestFrame } from './mp.js?v=202611271432';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271432';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271432';
+import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271432';
+import { toWorld } from './msav.js?v=202611271432';
+import { Story } from './logika.js?v=202611271432';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -733,6 +733,7 @@ window.addEventListener('keydown', e => {
   if (k === ' ') { e.preventDefault(); togglePause(); }
   if (k === 'm') { bigMap = !bigMap; sizeMini(); }
   if (k === 'g') { const n = W.rally(M.wx, M.wy); if (n) W.msg(`${n} egység gyülekezik`); }
+  if (k === 'shift') W.rallied = 1;   // parancsmódba lépés (Mindustry CommandModeObjective)
   if (k === 'escape' && CMD.size) { CMD.clear(); return; }
   if (k === 'escape') { if (bigMap) { bigMap = false; sizeMini(); } else if (selBlock || selB) { selBlock = null; selB = null; $('#sel').hidden = true; buildPalette(); showInfo(null); } else openPM(); }
   if (k === 'e' && selB && selB.B.type !== 'core') W.unplan(selB);

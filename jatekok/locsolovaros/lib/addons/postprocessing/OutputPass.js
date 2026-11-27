@@ -10,8 +10,8 @@ import {
 	NeutralToneMapping,
 	SRGBTransfer
 } from 'three';
-import { Pass, FullScreenQuad } from './Pass.js?v=202611271431';
-import { OutputShader } from '../shaders/OutputShader.js?v=202611271431';
+import { Pass, FullScreenQuad } from './Pass.js?v=202611271432';
+import { OutputShader } from '../shaders/OutputShader.js?v=202611271432';
 
 class OutputPass extends Pass {
 
