@@ -122,9 +122,21 @@ for (const [n, o] of Object.entries(CONTENT)) {
   const j = {};
   if (o.__ammo) { const a = o.__ammo, am = {}; for (let i = 0; i + 1 < a.length; i += 2) { const k = a[i] && a[i][REF], b = bulletJson(a[i + 1]); if (k && b) am[k] = b; } if (Object.keys(am).length) j.ammoTypes = am; }
   for (const k of ['shootType', 'bullet']) if (k in o) { const b = bulletJson(o[k]); if (b) j.shootType = b; }
+  if ('mech' in o && o.mech && o.mech.__name) j.mech = o.mech.__name;
   for (const k of ['reload', 'range', 'health', 'size', 'shots', 'spread', 'inaccuracy', 'craftTime', 'powerProduction', 'itemCapacity', 'speed', 'hitsize', 'mineTier', 'buildSpeed', 'armor']) if (k in o && num(o[k])) j[k] = o[k];
   j.__type = o.__type;
   out[n] = j;
+}
+// a régi (v5) Mech-ek egységként, a MechPad-ek a hozzájuk tartozó mech nevével
+const UDIR = path.join(DIR, 'content', 'units');
+for (const [n, o] of Object.entries(CONTENT)) {
+  if (o.__type === 'MechPad' && o.mech && o.mech.__name) out[n].mech = o.mech.__name;
+  if (o.__type !== 'Mech') continue;
+  const u = { type: o.flying === true ? 'flying' : 'mech', health: num(o.health) ? o.health : 200, speed: num(o.speed) ? o.speed : .5, hitSize: 8 };
+  if (num(o.itemCapacity)) u.itemCapacity = o.itemCapacity; if (num(o.buildPower)) u.buildSpeed = o.buildPower; if (num(o.drillPower)) { u.mineTier = Math.min(4, Math.round(o.drillPower / 2)); u.mineSpeed = num(o.mineSpeed) ? o.mineSpeed : 1; }
+  const w = o.weapon; if (w && w.__type) { const b = bulletJson(w.bullet); if (b && typeof b === 'object') u.weapons = [{ reload: num(w.reload) ? w.reload : 20, x: num(o.weaponOffsetX) ? o.weaponOffsetX : 4, alternate: !!w.alternate, shoot: { shots: num(w.shots) ? w.shots : 1, spread: num(w.inaccuracy) ? w.inaccuracy : 0 }, bullet: b }]; }
+  fs.mkdirSync(UDIR, { recursive: true }); const f = path.join(UDIR, n + '.json');
+  if (!fs.existsSync(f)) { fs.writeFileSync(f, JSON.stringify(u, null, 1)); console.log('mech →', n); }
 }
 // a mod JSON-fájljaiba írás (csak a hiányzó mezők)
 const files = [];
@@ -143,4 +155,5 @@ for (const [name, j] of Object.entries(out)) {
   fs.writeFileSync(f, txt); n++;
   console.log(name, Object.keys(add).join(','));
 }
+fs.writeFileSync(path.join(DIR, 'kohovar-js.txt'), 'A szkriptek tartalmát a Kohóvár eszkoz/jsmod.mjs eszköze átvette a JSON-fájlokba.\n');
 console.log('kiegészített fájl:', n, '/ szkriptbeli tartalom:', Object.keys(out).length);

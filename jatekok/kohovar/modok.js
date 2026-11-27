@@ -2,12 +2,12 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270941';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611270941';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270941';
-import { FL, FLI, WL } from './vilag.js?v=202611270941';
-import { parseHjson } from './hjson.js?v=202611270941';
-import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270941';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270948';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611270948';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270948';
+import { FL, FLI, WL } from './vilag.js?v=202611270948';
+import { parseHjson } from './hjson.js?v=202611270948';
+import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270948';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [];   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
@@ -265,7 +265,7 @@ export function installMod(files, srcLabel) {
     if (T === 'ShockMine') return { ...base, type: 'mine', d: +(j.damage || 25), cnt: +(j.tendrils || 4) };
     if (T === 'LightBlock') return { ...base, type: 'lamp', power: c.power };
     if (/Incinerator$/.test(T)) return { ...base, type: 'incinerator', power: c.power, free: c.power ? 0 : 1 };
-    { const ft = FW.match(T); if (ft) return { ...base, kat: cat || ft.kat || 'logic', power: c.power, ...(ft.convert ? ft.convert(j, { inL: c.inL, inp: c.inp, power: c.power, stacks, itemId, liqId, unitId, cons: c }) : {}), type: ft.name }; }   // a modkeret fajtái
+    { const ft = FW.match(T); if (ft) return { ...base, kat: cat || ft.kat || 'logic', power: c.power, ...(ft.partial ? { part: ft.partial } : {}), ...(ft.convert ? ft.convert(j, { inL: c.inL, inp: c.inp, power: c.power, stacks, itemId, liqId, unitId, cons: c }) : {}), type: ft.name }; }   // a modkeret fajtái
     return null;
   };
   const pendR = [];   // a kutatási csomópontok a blokkok után (a szülő később is jöhet)
@@ -297,7 +297,7 @@ export function installMod(files, srcLabel) {
       B = { n: label('block', n, j), kat: CAT[String(j.category || '').toLowerCase()] || 'effect', s: +(j.size || 1), hp: +(j.health || 40 * (j.size || 1) ** 2), cost: req(j), type: 'deco', mod: id }; warn.push(`${n}: csak díszítőelemként (${T || 'Block'})`);
     }
     if (B.power === undefined) delete B.power;
-    if (Array.isArray(j._links) && j._links.length) { B.links = j._links.map(p => [+p[0], +p[1]]); if (j._rotate) B.rot = 1; }   // nem négyzetes alakzat
+    if (Array.isArray(j._links) && j._links.length) { B.xlinks = j._links.map(p => [+p[0], +p[1]]); if (j._rotate) B.rot = 1; }   // nem négyzetes alakzat
     BLOCKS[k] = B; SN[k] = k; mod.added.blocks++;
     const im = sp(n, n + '-full'); if (im) addSprite(k, im);
     for (const suf of ['-top', '-rotator', '-team', '-heat', '-liquid', '-bottom', '-light', '-rim', '-end', '-bridge', '-arrow', '-cap', '-base', '-glow', '-mid', '-top1', '-top2', '-open', '-dir', '-0', '-1', '-2', '-edge', '-stack', '-turbine', '-middle', '-spinner', '-weave', '-plasma-0', '-plasma-1', '-plasma-2', '-plasma-3', '-lights']) { const d = sp(n + suf); if (d) addSprite(k + suf, d); }
@@ -318,7 +318,7 @@ export function installMod(files, srcLabel) {
   for (const [n, j] of [...(content.blocks || []), ...(content.units || [])]) if (j._partial) mark(n, j._partial);
   // a felülírt eredeti sprite-ok (sprites-override)
   for (const [p, d] of files) { const m = p.match(/^sprites-override\/(?:.*\/)?([^/]+)\.png$/); if (m) { addSprite(m[1], d); if (AT_HAS(m[1] + '@o')) addSprite(m[1] + '@o', d); mod.added.overrides++; } }
-  const nScripts = [...files.keys()].filter(p => /^scripts\/.*\.js$/.test(p)).length; if (nScripts) warn.push(`${nScripts} JavaScript-fájl: a szkriptek nem futnak`);
+  const nScripts = [...files.keys()].filter(p => /^scripts\/.*\.js$/.test(p)).length; if (nScripts) warn.push(files.has('kohovar-js.txt') ? `${nScripts} JavaScript-fájl: a tartalmuk előre átvéve, a látványelemeik nem futnak` : `${nScripts} JavaScript-fájl: a szkriptek nem futnak`);
   if (meta.main || [...files.keys()].some(p => /\.(class|jar|dex)$/.test(p))) warn.push('Java-kódot tartalmaz: az nem fut a böngészőben');
 
   // a gyárak terveiben szereplő modbeli egységek ára (a gyár adja)

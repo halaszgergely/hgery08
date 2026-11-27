@@ -1,9 +1,9 @@
 // Kohóvár böngészős modkeret: bővítési pontok a motorhoz (új blokkfajták), a Mindustry-modok által
 // elvárt, de a Kohóvárból hiányzó rendszerek (logikai processzorok, memória, kijelző, kapcsoló, üzenet),
 // és a beépített modok saját kiegészítőinek betöltése. Mindig aktív.
-import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, CATS, rcost } from './adat.js?v=202611270941';
-import { SN } from './kepadat.js?v=202611270941';
-import { addSprite } from './rajz.js?v=202611270941';
+import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, CATS, rcost } from './adat.js?v=202611270948';
+import { SN, ISN } from './kepadat.js?v=202611270948';
+import { addSprite, drawUnit, spr } from './rajz.js?v=202611270948';
 let Proc = null;   // a logika.js-ből, betöltéskor (körkörös importálás elkerülése)
 
 export const FW = {
@@ -25,10 +25,10 @@ export const FW = {
        linkTap(W, b, t)   – kijelölt épület mellett egy másikra koppintás; true: kezelve
        info(B)            – sorok az adatlapra */
   reg(name, def) { this.types[name] = { name, ...def }; return this.types[name]; },
-  // nem négyzetes blokkok (Mindustry-modok MultiBlock-ja): a fő négyzet + B.links mezők (Mindustry-eltolások, y felfelé, forgatással)
+  // nem négyzetes blokkok (Mindustry-modok MultiBlock-ja): a fő négyzet + B.xlinks mezők (Mindustry-eltolások, y felfelé, forgatással)
   extra(B, x, y, rot = 0) {
-    if (!B.links) return []; const s = B.s, off = (s - 1) >> 1, sh = (s + 1) % 2, cx = x + off, cy = y + (s - 1 - off), out = [];
-    for (const [px, py] of B.links) { const [rx, ry] = [[px, py], [-py + sh, px], [-px + sh, -py + sh], [py, -px + sh]][rot & 3]; out.push([cx + rx, cy - ry]); }
+    if (!B.xlinks) return []; const s = B.s, off = (s - 1) >> 1, sh = (s + 1) % 2, cx = x + off, cy = y + (s - 1 - off), out = [];
+    for (const [px, py] of B.xlinks) { const [rx, ry] = [[px, py], [-py + sh, px], [-px + sh, -py + sh], [py, -px + sh]][rot & 3]; out.push([cx + rx, cy - ry]); }
     return out;
   },
   rect(B, x, y, rot) { let x0 = x, y0 = y, x1 = x + B.s, y1 = y + B.s; for (const [tx, ty] of this.extra(B, x, y, rot)) { x0 = Math.min(x0, tx); y0 = Math.min(y0, ty); x1 = Math.max(x1, tx + 1); y1 = Math.max(y1, ty + 1); } return { x0, y0, x1, y1 }; },
@@ -210,6 +210,151 @@ FW.reg('lcanvas', {
 });
 FW.parts.push('Logikai processzorok (mlog)', 'Memória', 'Kijelzők', 'Kapcsoló', 'Üzenetblokk', 'Vászon');
 
+
+/* ================= rakomány (payload): egységek és blokkok szállítása ================= */
+// rakomány: { u: egységtípus } vagy { b: blokkazonosító }
+const payCost = p => p.u ? (UNITS[p.u] && (UNITS[p.u].cost || {})) || {} : (BLOCKS[p.b] && BLOCKS[p.b].cost) || {};
+const payFits = (B, p) => p.u ? (UNITS[p.u] ? UNITS[p.u].r * 2 / TS : 1) <= (B.maxPay || 99) : (BLOCKS[p.b] ? BLOCKS[p.b].s : 1) <= (B.maxPay || 99);
+// rakomány továbbadása a blokk elé: rakománytovábbító / átépítő / (egységnél) kiengedés a szabadba
+FW.pushPay = (W, b, p, dir = b.rot) => {
+  const fb = W.front(b, dir);
+  if (fb && !fb.dead) {
+    const FT = FW.types[fb.B.type]; if (FT && FT.payAccept) return !!FT.payAccept(W, fb, p, b);
+    if (p.u && fb.B.type === 'recon' && fb.B.up[p.u] && W.canUnit(fb.B.up[p.u]) && !fb.pay) { fb.pay = p.u; fb.prog = 0; return true; }
+    return false;
+  }
+  if (p.u) { const r0 = b.rot; b.rot = dir; W.outUnit(b, p.u); b.rot = r0; return true; }
+  return false;
+};
+const drawPay = (g, p, x, y, a, team) => { if (!p) return; if (p.u) drawUnit(g, p.u, team, x, y, a, 0); else if (p.b) { g.fillStyle = 'rgba(0,0,0,.35)'; const s = BLOCKS[p.b].s * TS; g.fillRect(x - s / 2, y - s / 2, s, s); FW.sprBlock && FW.sprBlock(g, p.b, x, y); } };
+FW.sprBlock = (g, id, x, y) => spr(g, SN[id] || id, x, y);
+FW.sprItem = (g, it, x, y, s) => spr(g, 'item-' + (ISN[it] || it), x, y, 0, null, null, s, s);
+const payTxt = p => !p ? '<span class="lg">Üres</span>' : esc(p.u ? UNITS[p.u].n : BLOCKS[p.b].n);
+
+// rakomány-szállítószalag / -elosztó
+const pconv = router => ({
+  mindustry: router ? /^(PayloadRouter)$/ : /^(PayloadConveyor)$/,
+  convert: j => ({ s: +(j.size || 3), rot: 1, mt: +(j.moveTime || 45), maxPay: +(j.size || 3) }),
+  init(W, b) { b.pl = null; b.pp = 0; b.od = b.rot; },
+  payAccept(W, b, p, src) { if (b.pl || !payFits(b.B, p)) return false; if (src && W.front(b) === src && !router) return false; b.pl = p; b.pp = 0; b.from = src ? src.i : -1; return true; },
+  update(W, b, ts) {
+    if (!b.pl) { b.work = 0; return; }
+    b.pp = Math.min(1, b.pp + ts / b.B.mt); b.work = 1;
+    if (b.pp < 1) return;
+    if (router) { for (let k = 0; k < 4; k++) { const d = (b.od + k) & 3, f = W.front(b, d); if (f && f.i === b.from) continue; if (FW.pushPay(W, b, b.pl, d)) { b.pl = null; b.od = (d + 1) & 3; return; } } }
+    else if (FW.pushPay(W, b, b.pl)) b.pl = null;
+  },
+  draw(g, b, d) { d.spr(g, d.n, d.cx, d.cy, router ? 0 : b.rot * Math.PI / 2); if (d.has(d.n + '-top')) d.spr(g, d.n + '-top', d.cx, d.cy, router ? 0 : b.rot * Math.PI / 2); if (b.pl) { const k = (b.pp - .5) * d.s; drawPay(g, b.pl, d.cx + DX[b.rot] * (router ? 0 : k), d.cy + DY[b.rot] * (router ? 0 : k), b.rot * Math.PI / 2 + Math.PI / 2, b.team); } },
+  sel: (W, b) => `<div style="font-size:14px">Rakomány: ${payTxt(b.pl)}</div>`,
+  info: B => [`Szállítási idő: <b>${(B.mt / 60).toFixed(2)} mp</b>`, `Legnagyobb rakomány: <b>${B.maxPay}×${B.maxPay}</b>`],
+});
+FW.reg('pconv', pconv(false));
+FW.reg('prouter', pconv(true));
+
+// rakomány-tömegszállító: a linkelt párjának küldi a rakományt
+FW.reg('pdriver', {
+  mindustry: /^(PayloadMassDriver)$/,
+  convert: (j, h) => ({ s: +(j.size || 3), range: +(j.range || 440), reload: +(j.reload || 130), maxPay: +(j.maxPayloadSize || 3), power: h.power || 1 }),
+  init(W, b) { b.pl = null; b.rl = 0; if (!Array.isArray(b.cfg)) b.cfg = null; },
+  payAccept(W, b, p) { if (b.pl || !payFits(b.B, p)) return false; b.pl = p; return true; },
+  update(W, b, ts) {
+    b.pneed = b.B.power; b.rl = Math.min(b.B.reload, b.rl + ts * (b.ps || 0)); b.work = b.pl ? 1 : 0; if (!b.pl) return;
+    const t = b.cfg ? W.tb(b.cfg[0], b.cfg[1]) : null;
+    if (t && !t.dead && t.B.type === 'pdriver' && t !== b) { if (b.rl >= b.B.reload && !t.pl) { t.pl = b.pl; b.pl = null; b.rl = 0; const a = FW.center(b), c = FW.center(t); W.fx.push({ k: 'laser', x: a.x, y: a.y, x2: c.x, y2: c.y, c: '#ffd37f', life: 12, max: 12, w: 2 }); } }
+    else for (let d = 0; d < 4; d++) if (FW.pushPay(W, b, b.pl, d)) { b.pl = null; break; }
+  },
+  linkTap(W, b, t) { if (t.B.type !== 'pdriver' || t === b) return false; const a = FW.center(b), c = FW.center(t); if (Math.hypot(a.x - c.x, a.y - c.y) > b.B.range) return false; b.cfg = b.cfg && b.cfg[0] === t.x && b.cfg[1] === t.y ? null : [t.x, t.y]; return true; },
+  overlay(g, W, b) { const a = FW.center(b); g.strokeStyle = 'rgba(255,211,127,.5)'; g.beginPath(); g.arc(a.x, a.y, b.B.range, 0, 7); g.stroke(); const t = b.cfg && W.tb(b.cfg[0], b.cfg[1]); if (t) { const c = FW.center(t); g.strokeStyle = '#ffd37f'; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(c.x, c.y); g.stroke(); } },
+  draw(g, b, d) { d.spr(g, d.has(d.n + '-base') ? d.n + '-base' : d.n, d.cx, d.cy); if (d.has(d.n + '-top')) d.spr(g, d.n + '-top', d.cx, d.cy); if (b.pl) drawPay(g, b.pl, d.cx, d.cy, -Math.PI / 2, b.team); },
+  sel: (W, b) => `<div style="font-size:14px">Rakomány: ${payTxt(b.pl)}</div>`,
+  info: B => [`Hatótáv: <b>${(B.range / TS).toFixed(1)} mező</b>`],
+});
+
+// rakománybontó: a rakományt (egység/blokk) visszabontja anyagra, és kiadja
+FW.reg('pdecon', {
+  mindustry: /^(PayloadDeconstructor)$/,
+  convert: (j, h) => ({ s: +(j.size || 3), sp: +(j.deconstructSpeed || 1), maxPay: +(j.maxPayloadSize || 4), power: h.power || 0, icap: 1e9 }),
+  init(W, b) { b.pl = null; b.prog = 0; },
+  payAccept(W, b, p) { if (b.pl || !payFits(b.B, p)) return false; b.pl = p; b.prog = 0; return true; },
+  update(W, b, ts) {
+    if (b.pl) { b.pneed = b.B.power; const cost = payCost(b.pl), tot = Math.max(1, Object.values(cost).reduce((s, x) => s + x, 0)); b.prog += ts * (b.B.power ? b.ps || 0 : 1) * b.B.sp * 2 / tot; b.work = 1;
+      if (b.prog >= 1) { for (const k in cost) b.items[k] = (b.items[k] || 0) + cost[k]; b.pl = null; b.prog = 0; } }
+    else b.work = 0;
+    if (Object.keys(b.items).some(k => b.items[k] > 0)) W.dump(b);
+  },
+  draw(g, b, d) { d.spr(g, d.n, d.cx, d.cy); if (b.pl) { g.globalAlpha = 1 - b.prog * .8; drawPay(g, b.pl, d.cx, d.cy, -Math.PI / 2, b.team); g.globalAlpha = 1; } if (d.has(d.n + '-top')) d.spr(g, d.n + '-top', d.cx, d.cy); },
+  sel: (W, b) => `<div style="font-size:14px">Bontás: ${payTxt(b.pl)} ${b.pl ? Math.round(b.prog * 100) + '%' : ''}</div>`,
+  info: () => ['A beérkező rakományt anyagra bontja'],
+});
+
+// blokkgyártó: a kiválasztott blokkot rakományként legyártja (a kész blokk továbbítható, bontható)
+FW.reg('pcons', {
+  mindustry: /^(Constructor)$/, partial: 'a kész blokk csak szállítható és bontható, lerakni nem lehet',
+  convert: (j, h) => ({ s: +(j.size || 3), rot: 1, sp: +(j.buildSpeed || .4), minS: +(j.minBlockSize || 1), maxS: +(j.maxBlockSize || 2), power: h.power || 0, icap: 400 }),
+  init(W, b) { b.pl = null; b.prog = 0; },
+  accept(W, b, it) { const c = b.cfg && BLOCKS[b.cfg] ? BLOCKS[b.cfg].cost : null; if (!c || !c[it] || (b.items[it] || 0) >= c[it] * 2) return false; b.items[it] = (b.items[it] || 0) + 1; return true; },
+  update(W, b, ts) {
+    if (b.pl) { b.work = 0; if (FW.pushPay(W, b, b.pl)) b.pl = null; return; }
+    const B = BLOCKS[b.cfg]; if (!B) { b.work = 0; return; }
+    for (const k in B.cost) if ((b.items[k] || 0) < B.cost[k]) { b.work = 0; return; }
+    b.pneed = b.B.power; const tot = Math.max(1, Object.values(B.cost).reduce((s, x) => s + x, 0));
+    b.prog += ts * (b.B.power ? b.ps || 0 : 1) * b.B.sp * 3 / tot; b.work = 1;
+    if (b.prog >= 1) { for (const k in B.cost) b.items[k] -= B.cost[k]; b.pl = { b: b.cfg }; b.prog = 0; }
+  },
+  draw(g, b, d) { d.spr(g, d.n, d.cx, d.cy); if (b.pl) drawPay(g, b.pl, d.cx, d.cy, 0, b.team); else if (b.cfg && b.prog > 0) { g.globalAlpha = b.prog * .7; drawPay(g, { b: b.cfg }, d.cx, d.cy, 0, b.team); g.globalAlpha = 1; } if (d.has(d.n + '-top')) d.spr(g, d.n + '-top', d.cx, d.cy, b.rot * Math.PI / 2); },
+  sel(W, b) { const L = Object.keys(BLOCKS).filter(k => { const B = BLOCKS[k]; return B.s >= b.B.minS && B.s <= b.B.maxS && B.type !== 'core' && Object.keys(B.cost).length && W.canBuild?.(k) !== false && FW.done?.(k) !== false; }).slice(0, 60);
+    return `<div style="font-size:14px">Gyárt: ${b.cfg && BLOCKS[b.cfg] ? esc(BLOCKS[b.cfg].n) + ' ' + Math.round(b.prog * 100) + '%' : '<span class="lg">válassz</span>'}</div><div class="ipick">${L.map(k => `<button class="${b.cfg === k ? 'on' : ''}" data-fw="b:${k}" title="${esc(BLOCKS[k].n)}"><img src="${FW.blockIcon ? FW.blockIcon(k) : ''}" style="width:24px;height:24px;image-rendering:pixelated"></button>`).join('')}</div>`; },
+  selClick(W, b, el) { const v = el.dataset.fw; if (v && v.startsWith('b:')) { b.cfg = v.slice(2) === b.cfg ? null : v.slice(2); b.prog = 0; } },
+  info: B => [`Blokkméret: <b>${B.minS}–${B.maxS}</b>`],
+});
+
+// teherdrónok: a rakodóállomás a kirakodópontokra viszi az anyagot (a kirakodópont anyaga beállítható)
+FW.reg('cargoload', {
+  mindustry: /^(UnitCargoLoader)$/,
+  convert: (j, h) => ({ icap: +(j.itemCapacity || 200), trip: 20, power: h.power || 0 }),
+  init(W, b) { b.cd = 0; },
+  accept(W, b, it) { const n = Object.values(b.items).reduce((s, x) => s + x, 0); if (n >= b.B.icap) return false; b.items[it] = (b.items[it] || 0) + 1; return true; },
+  update(W, b, ts) {
+    b.pneed = b.B.power; if (b.B.power && (b.ps || 0) < .3) { b.work = 0; return; }
+    if ((b.cd -= ts) > 0) return; b.cd = 30;
+    const pts = W.blds.filter(o => !o.dead && o.team === b.team && o.B.type === 'cargoun'), a = FW.center(b); b.work = 0;
+    for (const it of Object.keys(b.items)) { if (b.items[it] <= 0) continue;
+      const t = pts.filter(o => (o.cfg === it || o.cfg == null) && Object.values(o.items).reduce((s, x) => s + x, 0) < o.B.icap).sort((p, q) => Math.hypot(FW.center(p).x - a.x, FW.center(p).y - a.y) - Math.hypot(FW.center(q).x - a.x, FW.center(q).y - a.y))[0];
+      if (!t) continue; const n = Math.min(b.items[it], b.B.trip, t.B.icap - Object.values(t.items).reduce((s, x) => s + x, 0)); if (n <= 0) continue;
+      b.items[it] -= n; t.items[it] = (t.items[it] || 0) + n; b.work = 1; const c = FW.center(t); W.fx.push({ k: 'xfer', x: a.x, y: a.y, x2: c.x, y2: c.y, c: ITEMS[it].c, life: 30, max: 30 }); break; }
+  },
+  info: () => ['Teherdrónokkal a kirakodópontokra szállítja az anyagot'],
+});
+FW.reg('cargoun', {
+  mindustry: /^(UnitCargoUnloadPoint)$/,
+  convert: j => ({ icap: +(j.itemCapacity || 100), cfg: 'item' }),
+  update(W, b) { if (Object.values(b.items).some(x => x > 0)) W.dump(b); },
+  info: () => ['A teherdrónok ide hozzák a beállított anyagot'],
+});
+FW.parts.push('Rakomány (szállítószalag, elosztó, tömegszállító, bontó, blokkgyártó)', 'Teherdrónok');
+
+// mechváltó pad (régi Mindustry MechPad): a közelben álló játékos a pad mechjére vált
+FW.reg('mechpad', {
+  mindustry: /^(MechPad)$/,
+  convert: (j, h) => ({ mech: j.mech || null, power: h.power || 0 }),
+  update(W, b) { b.pneed = b.B.power; b.work = b.ps || (b.B.power ? 0 : 1); },
+  tap(W, b) {
+    const p = W.player, mk = b.B.mech && (UNITS[b.B.mod + '-' + b.B.mech] ? b.B.mod + '-' + b.B.mech : UNITS[b.B.mech] ? b.B.mech : null), c = FW.center(b);
+    if (!p || p.dead || !mk || b.team !== p.team || Math.hypot(p.x - c.x, p.y - c.y) > b.B.s * TS * 1.5 || (b.B.power && (b.ps || 0) < .5)) return false;
+    if (p.t === mk) mk && (p.t = W.core.B.unit); else p.t = mk;
+    p.U = UNITS[p.t]; p.hp = p.U.hp; p.wc = p.U.w.map(() => 0); W.fx.push({ k: 'ring', x: p.x, y: p.y, r: 16, life: 30, max: 30, c: '#ffd37f' }); return true;
+  },
+  info: B => [B.mech ? 'A játékos a pad mechjére válthat (újra koppintva vissza)' : ''],
+});
+FW.parts.push('Mechváltó pad');
+
+// összeszerelő-modul: a szomszédos egységösszeszerelőt (a Kohóvárban gyárként működik) gyorsítja
+FW.reg('asmmod', {
+  mindustry: /^(UnitAssemblerModule)$/, partial: 'egyszerűsítve: a szomszédos összeszerelőt gyorsítja (+50%), szintet nem emel',
+  convert: (j, h) => ({ power: h.power || 0, rot: 1 }),
+  update(W, b) { b.pneed = b.B.power; const on = !b.B.power || (b.ps || 0) > .5; b.work = on ? 1 : 0; if (!on) return; for (const t of FW.adj(W, b)) if (t.B.type === 'factory') { t.odT = W.tick + 2; t.odM = Math.max(t.odT > W.tick && t.odM > 1 ? t.odM : 1, 1.5); } },
+});
+
 /* ================= alapjáték-tartalom: a Serpulo logikai blokkjai ================= */
 const LOGIC = [
   ['micro-processor', 'Mikroprocesszor', 1, { copper: 90, lead: 50, silicon: 50 }, 'lproc', { ipt: 2, range: 8 * 10 }, 'gpress'],
@@ -225,7 +370,7 @@ const LOGIC = [
 let installed = false;
 export async function installFramework() {
   if (installed) return; installed = true;
-  ({ Proc } = await import('./logika.js?v=202611270941'));
+  ({ Proc } = await import('./logika.js?v=202611270948'));
   if (!CATS.some(c => c[0] === 'logic')) CATS.push(['logic', 'Logika', '▤']);
   BUILD_ORDER.logic = BUILD_ORDER.logic || [];
   const fix = c => Object.fromEntries(Object.entries(c).filter(([k]) => ITEMS[k]));

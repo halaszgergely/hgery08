@@ -1,9 +1,9 @@
 // Körözés (1–5 csillag): a Vízügyi Ellenőrzés autókkal üldöz, 3 csillagtól útzárat épít, 4-től helikopter, 5-nél páncélautók.
 // Ha egy egység sem látja a játékost, a csillagok egyenként elfogynak. Átfestés a Locsolófej Szervizben.
 import * as THREE from 'three';
-import * as W from './world.js?v=202611270941';
-import { stepVehicle } from './physics.js?v=202611270941';
-import { steerTo, laneOff } from './traffic.js?v=202611270941';
+import * as W from './world.js?v=202611270948';
+import { stepVehicle } from './physics.js?v=202611270948';
+import { steerTo, laneOff } from './traffic.js?v=202611270948';
 
 const TH = [0, 1, 8, 20, 40, 70], PTS = { ped: 1, runover: 3, cop: 6, copcar: 2, theft: 2, wreck: 5, mission: 0 };
 export function createWanted(ctx) {
