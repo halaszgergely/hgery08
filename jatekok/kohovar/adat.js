@@ -1,7 +1,7 @@
 // Kohóvár – a játék adatai: anyagok, folyadékok, blokkok, egységek, kutatási fa, hullámok, szektorok.
 // A játékmenet és a számértékek a Mindustry (Anuke) Serpulo-tartalmát követik: https://store.steampowered.com/app/1127400/Mindustry/
 // Saját kód és saját rajzolt grafika.
-import { EN } from './nevek.js?v=202611271847';
+import { EN } from './nevek.js?v=202611271857';
 
 export const TS = 8;            // egy mező mérete világegységben
 export const TPS = 60;          // szimulációs lépés másodpercenként
@@ -304,11 +304,11 @@ export const BLOCKS = {
   /* ===== Erekir (pl: 'e') – a Mindustry Erekir-tartalma ===== */
   duct:       B('Csatorna', 'dist', 1, 90, { beryllium: 1 }, 'conveyor', { rot: 1, speed: 8, mv: .06, duct: 1, pl: 'e' }),
   aduct:      B('Páncélozott csatorna', 'dist', 1, 140, { beryllium: 2, tungsten: 1 }, 'conveyor', { rot: 1, speed: 8, mv: .06, duct: 1, armored: 1, pl: 'e' }),
-  drouter:    B('Csatornaelosztó', 'dist', 1, 90, { beryllium: 10 }, 'router', { rot: 1, fwd: 1, pl: 'e' }),
-  dbridge:    B('Csatornahíd', 'dist', 1, 90, { beryllium: 15 }, 'bridge', { range: 4, cfg: 'link', tt: 4, pl: 'e' }),
-  oduct:      B('Túlfolyó csatorna', 'dist', 1, 90, { graphite: 8, beryllium: 8 }, 'overflow', { pl: 'e' }),
-  uduct:      B('Alulfolyó csatorna', 'dist', 1, 90, { graphite: 8, beryllium: 8 }, 'overflow', { inv: 1, pl: 'e' }),
-  dunloader:  B('Csatorna-kirakodó', 'dist', 1, 120, { graphite: 20, silicon: 20, tungsten: 10 }, 'unloader', { cfg: 'item', pl: 'e' }),
+  drouter:    B('Csatornaelosztó', 'dist', 1, 90, { beryllium: 10 }, 'router', { rot: 1, duct: 1, cfg: 'item', pl: 'e' }),   // Mindustry DuctRouter
+  dbridge:    B('Csatornahíd', 'dist', 1, 90, { beryllium: 15 }, 'bridge', { range: 4, rot: 1, dir: 1, cap: 4, sp: 4, pl: 'e' }),   // Mindustry DuctBridge: irányított, magától a szemközti hídhoz kapcsol
+  oduct:      B('Túlfolyó csatorna', 'dist', 1, 90, { graphite: 8, beryllium: 8 }, 'overflow', { rot: 1, duct: 1, pl: 'e' }),
+  uduct:      B('Alulfolyó csatorna', 'dist', 1, 90, { graphite: 8, beryllium: 8 }, 'overflow', { rot: 1, duct: 1, inv: 1, pl: 'e' }),
+  dunloader:  B('Csatorna-kirakodó', 'dist', 1, 120, { graphite: 20, silicon: 20, tungsten: 10 }, 'unloader', { rot: 1, duct: 1, cfg: 'item', pl: 'e' }),   // DirectionalUnloader: hátulról előre, magból nem
   pbore:      B('Plazmafúró', 'prod', 2, 160, { beryllium: 40 }, 'beamdrill', { rot: 1, tier: 3, time: 160, range: 5, power: .15, boostL: .25 / 60, boostLiq: 'hydrogen', boost: 2.5, icap: 10, lcap: 10, pl: 'e' }),
   lpbore:     B('Nagy plazmafúró', 'prod', 3, 360, { silicon: 100, oxide: 25, beryllium: 100, tungsten: 70 }, 'beamdrill', { rot: 1, tier: 5, time: 100, range: 6, power: .8, needL: ['hydrogen', .5 / 60], icap: 20, lcap: 20, pl: 'e' }),
   idrill:     B('Ütvefúró', 'prod', 4, 640, { silicon: 70, beryllium: 90, graphite: 60 }, 'drill', { tier: 6, time: 720, power: 160 / 60, needL: ['water', 10 / 60], icap: 40, lcap: 40, warm: .01, rotS: 0, burst: 1, block: 'thorium', pl: 'e' }),
@@ -331,7 +331,7 @@ export const BLOCKS = {
   rconduit:   B('Megerősített cső', 'liquid', 1, 250, { beryllium: 2 }, 'conduit', { rot: 1, lcap: 50, lmove: 1, armored: 1, pl: 'e' }),
   rpumpE:     B('Megerősített szivattyú', 'liquid', 2, 160, { beryllium: 40, tungsten: 30, silicon: 20 }, 'pump', { amt: 80 / 60 / 4, lcap: 160, needL: ['hydrogen', 1.5 / 60], pl: 'e' }),
   rljunc:     B('Megerősített csőkereszteződés', 'liquid', 1, 250, { graphite: 4, beryllium: 8 }, 'ljunction', { pl: 'e' }),
-  rlbridge:   B('Megerősített csőhíd', 'liquid', 1, 250, { graphite: 8, beryllium: 20 }, 'lbridge', { range: 4, lcap: 120, lmove: 1, cfg: 'link', float: 1, pl: 'e' }),
+  rlbridge:   B('Megerősített csőhíd', 'liquid', 1, 250, { graphite: 8, beryllium: 20 }, 'lbridge', { range: 4, lcap: 120, lmove: 1, rot: 1, dir: 1, float: 1, pl: 'e' }),   // DirectionLiquidBridge
   rlrouter:   B('Megerősített folyadékelosztó', 'liquid', 1, 250, { graphite: 8, beryllium: 4 }, 'lrouter', { lcap: 150, lmove: 1, pl: 'e' }),
   rlcont:     B('Megerősített folyadéktároló', 'liquid', 2, 400, { tungsten: 10, beryllium: 16 }, 'lrouter', { lcap: 1000, lmove: 1, pl: 'e' }),
   rltank:     B('Megerősített folyadéktartály', 'liquid', 3, 900, { tungsten: 40, beryllium: 50 }, 'lrouter', { lcap: 2700, lmove: 1, pl: 'e' }),

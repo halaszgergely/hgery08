@@ -1,10 +1,10 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611271847';
-import { FW } from './keret.js?v=202611271847';
-import { toWorld } from './msav.js?v=202611271847';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271847';
-import { SN } from './kepadat.js?v=202611271847';
-import { BCM, FOGB, FOGU } from './epitesido.js?v=202611271847';
+import { genMapSerpulo } from './terkep.js?v=202611271857';
+import { FW } from './keret.js?v=202611271857';
+import { toWorld } from './msav.js?v=202611271857';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271857';
+import { SN } from './kepadat.js?v=202611271857';
+import { BCM, FOGB, FOGU } from './epitesido.js?v=202611271857';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -441,7 +441,7 @@ export class World {
     }
     if (FW.js) FW.js.ev('BlockBuildEndEvent', () => ({ tile: FW.js.tile(b.x, b.y), team: FW.js.team(b.team), unit: this.player ? FW.js.unit(this.player) : null, breaking: false, config: b.cfg ?? null }));
     this.stats.built++; this.stats.placed[b.t] = (this.stats.placed[b.t] || 0) + 1; const T = b.B.type;
-    if (T === 'bridge' || T === 'lbridge') { const pb = this['last_' + b.t], d = pb ? Math.abs(pb.x - b.x) + Math.abs(pb.y - b.y) : 0; if (pb && !pb.dead && pb.link < 0 && (pb.x === b.x || pb.y === b.y) && d > 0 && d <= b.B.range) pb.link = b.i; this['last_' + b.t] = b; }
+    if ((T === 'bridge' || T === 'lbridge') && !b.B.dir) { const pb = this['last_' + b.t], d = pb ? Math.abs(pb.x - b.x) + Math.abs(pb.y - b.y) : 0; if (pb && !pb.dead && pb.link < 0 && (pb.x === b.x || pb.y === b.y) && d > 0 && d <= b.B.range) pb.link = b.i; this['last_' + b.t] = b; }
     if (T === 'node') this.autoLink(b); else if (isPow(b)) this.linkToNodes(b);
   }
   // építés kezdetekor a felülírt épületek eltűnnek (nem jár értük visszatérítés, mint a Mindustryban)
@@ -535,15 +535,16 @@ export class World {
         const dir = (this.sideOf(t, src) + 2) % 4, q = t.jb[dir]; if (q.length >= 6) return false;
         if (!this.tb(t.x + DX[dir], t.y + DY[dir])) return false; q.push({ it, tm: this.tick }); return true;
       }
-      case 'router': if (t.buf) return false; t.buf = it; t.from = src; t.rt = 0; return true;
-      case 'sorter': case 'overflow': {
+      case 'router': if (B.duct) return this.ductIn(t, it, src); if (t.buf) return false; t.buf = it; t.from = src; t.rt = 0; return true;
+      case 'sorter': case 'overflow': if (B.duct) return this.ductIn(t, it, src); {
         if (src.B.type === 'sorter' || src.B.type === 'overflow') return false;
         const dir = (this.sideOf(t, src) + 2) % 4, fwd = this.tb(t.x + DX[dir], t.y + DY[dir]), a = this.tb(t.x + DX[(dir + 1) % 4], t.y + DY[(dir + 1) % 4]), c = this.tb(t.x + DX[(dir + 3) % 4], t.y + DY[(dir + 3) % 4]);
         const sides = () => { t.flip = !t.flip; const [f1, f2] = t.flip ? [a, c] : [c, a]; return this.offer(f1, it, t, d + 1) || this.offer(f2, it, t, d + 1); };
         if (B.type === 'sorter') return ((it === t.cfg) !== !!B.inv) ? this.offer(fwd, it, t, d + 1) : sides();
         return B.inv ? sides() || this.offer(fwd, it, t, d + 1) : this.offer(fwd, it, t, d + 1) || sides();
       }
-      case 'bridge': { if (t.buf.length >= 12) return false; const L = this.linkB(t); if (!L || src === L) return false; t.buf.push(it); return true; }
+      case 'bridge': if (B.dir) { if (!this.linkB(t) || t.buf.length >= B.cap || this.sideOf(t, src) === t.rot) return false; t.buf.push(it); return true; }
+      { if (t.buf.length >= 12) return false; const L = this.linkB(t); if (!L || src === L) return false; t.buf.push(it); return true; }
       case 'driver': if (this.linkB(t) && sum(I) < B.cap) { I[it] = (I[it] || 0) + 1; return true; } return false;
       case 'core': this.addCore(it, 1, 0, t.team); return true;
       case 'storage': if (this.linked(t)) { this.addCore(it, 1, 0, t.team); return true; } if ((I[it] || 0) >= B.cap) return false; I[it] = (I[it] || 0) + 1; return true;
@@ -575,7 +576,27 @@ export class World {
     }
     b.di = (b.di + 1) % n; return false;
   }
+  // Mindustry DuctRouter / OverflowDuct: egyetlen tárgy, csak hátulról fogad; (1 - 1/speed) haladás után adja tovább
+  ductIn(t, it, src) { if (t.buf || !src || this.sideOf(t, src) !== (t.rot + 2) % 4) return false; t.buf = it; t.dp = -1; return true; }
+  updDuct(b, ts) {
+    if (!b.buf) { b.dp = 0; return; } b.dp = (b.dp || 0) + ts * .5; if (b.dp < .75) return;
+    const B = b.B, it = b.buf, at = d => { const o = this.tb(b.x + DX[d], b.y + DY[d]); return o && o.team === b.team && this.offer(o, it, b); };
+    let ok = false;
+    if (B.type === 'router') {
+      const back = (b.rot + 2) % 4; for (let k = 0; k < 4 && !ok; k++) { const d = (b.di || 0) % 4; b.di = (d + 1) % 4; if (d === back) continue; if (b.cfg && (it === b.cfg) !== (d === b.rot)) continue; if (at(d)) ok = true; }   // incrementDump: minden vizsgált szomszéd után lép
+    } else {
+      const l = (b.rot + 1) % 4, r = (b.rot + 3) % 4, [s1, s2] = b.flip ? [r, l] : [l, r];
+      if (B.inv) ok = at(s1) || at(s2) || at(b.rot); else ok = at(b.rot) || at(s1) || at(s2);
+      if (ok) b.flip = !b.flip;
+    }
+    if (ok) { b.buf = null; b.dp %= .75; }
+  }
   linkB(t) {
+    if (t.B.dir) {     // Mindustry DirectionBridge.findLink: a forgatás irányában az első azonos híd (csapattárs) a hatótávon belül
+      if (t.lkT === this.tick && t.lkV === this.ver) return t.lk; let L = null;
+      for (let i = 1; i <= t.B.range && !L; i++) { const o = this.tb(t.x + DX[t.rot] * i, t.y + DY[t.rot] * i); if (o && o !== t && o.t === t.t && o.team === t.team && !o.dead) L = o; }
+      t.lk = L; t.lkT = this.tick; t.lkV = this.ver; t.link = L ? L.y * this.w + L.x : -1; return L;
+    }
     if (t.link < 0) return null; const o = this.bt[t.link];
     if (!o || o === t || o.dead || o.t !== t.t) { t.link = -1; return null; }
     if (t.B.type === 'driver') { if (Math.hypot(o.x - t.x, o.y - t.y) * TS > t.B.range) { t.link = -1; return null; } return o; }
@@ -589,7 +610,8 @@ export class World {
     { const FT = FW.types[B.type]; if (FT) return FT.lqAccept ? !!FT.lqAccept(this, t, liq, src) : false; }
     switch (B.type) {
       case 'conduit': return this.front(t) !== src && (!B.armored || src.B.type === 'conduit' || this.sideOf(t, src) === (t.rot + 2) % 4);
-      case 'lrouter': case 'lbridge': return true;
+      case 'lrouter': return true;
+      case 'lbridge': return !B.dir || ((!!this.linkB(t) || (src && src.t === t.t && this.linkB(src) === t)) && (!src || this.sideOf(t, src) !== t.rot));
       case 'incinerator': return t.ps > .5 || !!B.free;
       case 'turret': return B.lammo ? liq in B.lammo : !!(B.cool || B.coolReq) && LIQUIDS[liq].hc > 0;
       case 'drill': case 'beamdrill': return liq === (B.needL ? B.needL[0] : B.boostLiq || 'water');
@@ -637,8 +659,14 @@ export class World {
         break;
       }
       case 'junction': for (let d = 0; d < 4; d++) { const q = b.jb[d]; if (q.length && this.tick - q[0].tm >= 26 / ts && this.offer(this.tb(b.x + DX[d], b.y + DY[d]), q[0].it, b)) q.shift(); } break;
-      case 'router': if (b.buf && (b.rt += ts) >= 8) { const nb = this.nbs(b), n = nb.length; for (let k = 0; k < n; k++) { const t = nb[(b.di + k) % n]; if (t === b.from && t.B.type === 'overflow') continue; if (this.offer(t, b.buf, b)) { b.buf = null; b.di = (b.di + k + 1) % n; break; } } } break;
-      case 'bridge': {
+      case 'overflow': if (B.duct) this.updDuct(b, ts); break;
+      case 'router': if (B.duct) { this.updDuct(b, ts); break; } if (b.buf && (b.rt += ts) >= 8) { const nb = this.nbs(b), n = nb.length; for (let k = 0; k < n; k++) { const t = nb[(b.di + k) % n]; if (t === b.from && t.B.type === 'overflow') continue; if (this.offer(t, b.buf, b)) { b.buf = null; b.di = (b.di + k + 1) % n; break; } } } break;
+      case 'bridge': if (B.dir) {      // DuctBridge.updateTile: speed tickenként egy tárgy a következő hídnak; ha nincs, előre adja tovább
+        const L = this.linkB(b);
+        if (L) { if (b.buf.length && L.buf.length < L.B.cap) { b.prog = (b.prog || 0) + ts; while (b.prog > B.sp && b.buf.length && L.buf.length < L.B.cap) { L.buf.push(b.buf.shift()); b.prog -= B.sp; } } }
+        else if (b.buf.length && this.offer(this.tb(b.x + DX[b.rot], b.y + DY[b.rot]), b.buf[0], b)) b.buf.shift();
+        break;
+      } else {
         const L = this.linkB(b); let e = 1; if (B.power) { b.pneed = B.power; e = b.ps; }
         if (L) { if (e > .1 && this.tick % B.tt === 0 && b.buf.length && L.buf.length < 12) L.buf.push(b.buf.shift()); }
         else if (b.buf.length) {
@@ -650,10 +678,17 @@ export class World {
       case 'lbridge': {
         const L = this.linkB(b); let e = 1; if (B.power) { b.pneed = B.power; e = b.ps; }
         if (L) { if (e > .1 && b.lq > 0) { const f = this.lqPush(L, b.lt, b.lq, B.lcap, b); b.lq -= f; } }
-        else if (b.lq > 0) { let inc = null; for (const o of this.blds) if (o.t === b.t && o.link === b.i) { inc = o; break; } this.lqDump(b, 'lq', b.lt, inc); }
+        else if (b.lq > 0) { if (B.dir) { const f = this.lqPush(this.tb(b.x + DX[b.rot], b.y + DY[b.rot]), b.lt, b.lq, B.lcap, b); b.lq -= f; } else { let inc = null; for (const o of this.blds) if (o.t === b.t && o.link === b.i) { inc = o; break; } this.lqDump(b, 'lq', b.lt, inc); } }
         break;
       }
-      case 'unloader': if (this.tick % 5 === 0) {
+      case 'unloader': if (B.duct) {     // Mindustry DirectionalUnloader: 4 tickenként egy tárgy a hátsó épületből az elülsőbe; magból / maghoz kötött tárolóból nem
+        if ((b.ut = (b.ut || 0) + ts) < 4) break; b.ut %= 4;
+        const fr = this.tb(b.x + DX[b.rot], b.y + DY[b.rot]), bk = this.tb(b.x - DX[b.rot], b.y - DY[b.rot]);
+        if (!fr || !bk || fr.team !== b.team || bk.team !== b.team || !bk.items || bk.B.type === 'core' || bk.B.type === 'turret' || this.linked(bk)) break;
+        if (b.cfg) { if ((bk.items[b.cfg] || 0) > 0 && this.offer(fr, b.cfg, b)) bk.items[b.cfg]--; break; }
+        for (let k = 0; k < ITEM_IDS.length; k++) { const j = ((b.uoff || 0) + k) % ITEM_IDS.length, it = ITEM_IDS[j]; if ((bk.items[it] || 0) > 0 && this.offer(fr, it, b)) { bk.items[it]--; b.uoff = j + 1; break; } }
+        break;
+      } else if (this.tick % 5 === 0) {
         const nb = this.nbs(b), src = [], dst = []; for (const o of nb) { if (o.B.type === 'core' || o.B.type === 'storage') src.push(o.B.type === 'core' || this.linked(o) ? this.coreOf(b.team) || o : o); else dst.push(o); }
         if (!src.length || !dst.length) break;
         let it = b.cfg;
@@ -678,7 +713,7 @@ export class World {
         const eff = (B.power ? b.ps : 1) * (needOk ? 1 : 0);
         if (tot < cap && b.dCnt > 0 && eff > 0) {
           let opt = 0; if (B.needL) b.lq -= B.needL[1] * ts; else if (b.lq >= B.boostL * ts && b.lt === (B.boostLiq || 'water')) { b.lq -= B.boostL * ts; opt = 1; }
-          const speed = (1 + (B.boost - 1) * opt) * eff;
+          const speed = (1 + ((B.boost || 1) - 1) * opt) * eff;
           b.warm = b.warm < speed ? Math.min(speed, b.warm + wsp) : Math.max(speed, b.warm - wsp);
           b.prog += ts * b.dCnt * speed * b.warm; b.work = Math.min(1, b.warm);
           const delay = B.time + (B.burst ? 0 : 50 * ITEMS[b.dItem].h);
