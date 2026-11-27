@@ -3,8 +3,8 @@
 // 2 jelzés), játék közben semmit nem ír és nem olvas – így nem fogy a napi keret.
 // A gazda → vendég forgalom érdeklődés szerint szűrt: csak a vendég nézete körüli egységek, lövedékek és épületállapotok mennek,
 // az épületállapotból is csak az, ami megváltozott. A vendég a bemenetét (mozgás, célzás, lövés) és a műveleteit (építés, bontás…) küldi.
-import { TS, BLOCKS, UNITS, ITEMS } from './adat.js?v=202611271408';
-import { joinRoom, localSignal, fireSignal } from '../../js/net.js?v=202611271408';
+import { TS, BLOCKS, UNITS, ITEMS } from './adat.js?v=202611271431';
+import { joinRoom, localSignal, fireSignal } from '../../js/net.js?v=202611271431';
 
 const GAME = 'kohovar', CH = 48000, SNAP = 100, DSTATE = 200;
 export const MP = { on: false, host: false, guest: false, room: null, roomId: null, me: null, name: '', peers: new Map(), research: null, myUnit: -1, status: '', mods: [] };
@@ -22,7 +22,7 @@ const r1 = v => Math.round(v * 10) / 10, r2 = v => Math.round(v * 100) / 100;
 export async function initMp(f) {
   F = f;
   if (LOCAL) { MP.me = Q.get('uid') || 'u' + Math.random().toString(36).slice(2, 7); MP.name = Q.get('name') || 'Teszt'; sig = localSignal('kohovar_net'); return true; }
-  try { core = await import('../../js/core.js?v=202611271408'); } catch (_) { core = null; }
+  try { core = await import('../../js/core.js?v=202611271431'); } catch (_) { core = null; }
   if (!core || core.notConfigured || !core.auth) return false;
   return new Promise(ok => core.FB.onAuthStateChanged(core.auth, async u => {
     if (u && !u.isAnonymous) { MP.me = u.uid; MP.name = u.displayName || 'Tag'; try { const s = await core.FB.getDoc(core.FB.doc(core.db, 'users', u.uid)); if (s.exists()) MP.name = s.data().name || MP.name; } catch (_) {} sig = fireSignal(core.FB, core.db); }
@@ -95,6 +95,7 @@ function hostAct(W, p, m) {
     case 'mine': if (p.unit && !p.unit.dead) p.unit.mine = a[0] == null ? -1 : a[0] | 0; break;
     case 'state': { const o = b(); if (o && o.team === 1) { const s = a[2] || {}; for (const k of ['cfg', 'open', 'off', 'link']) if (k in s) o[k] = s[k]; W.ver++; W.fdirty = 1; } break; }
     case 'rally': W.rally(a[0], a[1]); break;
+    case 'cmd': { const ids = new Set(a[0] || []), L = W.units.filter(u => ids.has(u.id)), t = a[3] ? (a[3][0] === 'u' ? W.units.find(u => u.id === a[3][1] && u.team === 2) : W.tb(a[3][1], a[3][2])) : null; W.command(L, +a[1] || 0, +a[2] || 0, t && (t.U || t.team === 2) ? t : null); break; }
     case 'wave': W.nextWave(); break;
   }
 }
@@ -197,6 +198,7 @@ function guestOverrides(W) {
   W.prioritize = (x, y) => { if (!W.planAt(x, y)) return false; act('prio', x, y); return true; };
   W.toggleLink = (a, b) => { act('link', a.x, a.y, b.x, b.y); };
   W.rally = (x, y) => { act('rally', x, y); return 0; };
+  W.command = (L, x, y, t) => { act('cmd', L.map(u => u.id), x, y, t ? (t.U ? ['u', t.id] : ['b', t.x, t.y]) : null); return L.length; };
   W.nextWave = () => act('wave');
   W.mpState = b => act('state', b.x, b.y, { cfg: b.cfg ?? null, open: !!b.open, off: !!b.off, link: b.link ?? -1 });
   W.mpMine = i => act('mine', i);

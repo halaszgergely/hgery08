@@ -1,8 +1,8 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611271408';
-import { FW } from './keret.js?v=202611271408';
-import { toWorld } from './msav.js?v=202611271408';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271408';
+import { genMapSerpulo } from './terkep.js?v=202611271431';
+import { FW } from './keret.js?v=202611271431';
+import { toWorld } from './msav.js?v=202611271431';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271431';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -1054,6 +1054,7 @@ export class World {
     if (u.carrier) return;
     if (u.lc != null && u.lmove && this.tick - u.lc < 600) { this.steer(u, u.lmove.x, u.lmove.y, u.lmove.r || 2); return; }   // világprocesszor irányítja (Mindustry LogicAI, 10 mp után visszaáll)
     if (u.team === ENEMY) return U.air ? this.aiAir(u) : this.aiGround(u);
+    if (u.cmd) return this.aiDefend(u);   // parancsot kapott: a bányászok és építők is követik
     if (U.miner) return this.aiMiner(u);
     if (U.rebuild && this.aiBuilder(u)) return;
     return this.aiDefend(u);
@@ -1111,19 +1112,20 @@ export class World {
   }
   aiDefend(u) {
     const U = u.U, home = u.home || this.center(this.core), W0 = U.w[0];
-    if (this.tick % 15 === (u.id % 15) || (u.tgt && u.tgt.dead)) u.tgt = U.rng ? this.nearestU(home.x, home.y, 300, ENEMY, 1, 1) || (this.eteam ? (b => b && this.bref(b))(this.nearestB(home.x, home.y, 160, q => q.team === ENEMY && isSolid(q), 1)) : null) : null;   // a célpontot a lőhelyzetig követi (a fal mögé nem lő); a gyülekezőpont közelében az ellenséges épületeket is támadja
+    if (u.cmd && u.cmd.k === 'atk') { if (u.cmd.t.dead) { u.cmd = { k: 'move' }; u.home = { x: u.x, y: u.y }; u.tgt = null; } else u.tgt = u.cmd.t; }   // kijelölt célpont: amíg él, azt támadja
+    if (!(u.cmd && u.cmd.k === 'atk') && (this.tick % 15 === (u.id % 15) || (u.tgt && u.tgt.dead))) u.tgt = u.cmd ? (U.rng ? this.nearestU(u.x, u.y, U.rng, ENEMY, 1, 1) : null) : U.rng ? this.nearestU(home.x, home.y, 300, ENEMY, 1, 1) || (this.eteam ? (b => b && this.bref(b))(this.nearestB(home.x, home.y, 160, q => q.team === ENEMY && isSolid(q), 1)) : null) : null;   // a célpontot a lőhelyzetig követi (a fal mögé nem lő); a gyülekezőpont közelében az ellenséges épületeket is támadja
     const t = u.tgt;
     if (t && !t.dead) {
       const d = Math.hypot(t.x - u.x, t.y - u.y) - (t.bl ? t.U.r : 0);
       if (W0.k === 'boom') { this.steer(u, t.x, t.y); if (d < 12) this.fireW(u, W0, t, t); return; }
-      const see = U.lob || this.losT(u.x, u.y, t.x, t.y); this.steer(u, t.x, t.y, U.bomber || !see ? 0 : U.rng * .75); u.aim = Math.atan2(t.y - u.y, t.x - u.x);
+      const see = U.lob || this.losT(u.x, u.y, t.x, t.y); if (u.cmd && u.cmd.k === 'move') this.steer(u, home.x, home.y, 4); else this.steer(u, t.x, t.y, U.bomber || !see ? 0 : U.rng * .75);   // vonulás közben csak a hatótávon belülire lő, nem üldöz u.aim = Math.atan2(t.y - u.y, t.x - u.x);
       if (U.bomber) { if (d < W0.splR * .6 && u.wc[0] <= 0) { this.fireW(u, W0, t, t); u.wc[0] = W0.rl; } } else if (see) this.attack(u, t);
       return;
     }
     u.aim = null;
     if (W0 && W0.heal && this.tick % 30 === u.id % 30) { const c = this.nearestB(u.x, u.y, 400, b => b.hp < b.B.hp); u.fix = c; }
     if (u.fix && !u.fix.dead && u.fix.hp < u.fix.B.hp) { const c = this.center(u.fix), d = Math.hypot(c.x - u.x, c.y - u.y); this.steer(u, c.x, c.y, Math.max(20, U.rng * .6)); if (d < Math.max(30, U.rng) && u.wc[0] <= 0) { u.fix.hp = Math.min(u.fix.B.hp, u.fix.hp + u.fix.B.hp * W0.heal / 100); u.fix.heal = 12; u.wc[0] = W0.rl; this.fx.push({ k: 'laser', x: u.x, y: u.y, x2: c.x, y2: c.y, life: 8, max: 8, c: '#84f491', w: 1.5 }); } return; }
-    this.steer(u, home.x + Math.cos(u.id) * (16 + U.r), home.y + Math.sin(u.id) * (16 + U.r), 4);
+    if (u.cmd) this.steer(u, home.x, home.y, 4); else this.steer(u, home.x + Math.cos(u.id) * (16 + U.r), home.y + Math.sin(u.id) * (16 + U.r), 4);
   }
   aiBuilder(u) {
     if (!this.plans.length && this.rebuild.length && !this.nEn && this.tick % 20 === u.id % 20) { const [t, x, y, rot, cfg] = this.rebuild.shift(); this.plan(t, x, y, rot, cfg); }
@@ -1221,6 +1223,15 @@ export class World {
       pl.prog = np;
     }
     if (pl.prog >= 1) { const k = this.plans.indexOf(pl); if (k >= 0) this.plans.splice(k, 1); this.finishPlan(pl); }
+  }
+  // parancsmód (Mindustry RTS): a kijelölt egységek odavonulnak / megtámadják a célt
+  command(L, x, y, t) {
+    let n = 0; const tg = t ? (t.U ? t : this.bref(t)) : null;
+    for (const u of L) { if (!u || u.dead || u.team !== PLAYER || u === this.player || typeof u.ctl === 'object') continue;
+      if (tg) { u.cmd = { k: 'atk', t: tg }; u.tgt = tg; u.home = { x: tg.x, y: tg.y }; }
+      else { u.cmd = { k: 'move' }; u.tgt = null; u.home = { x: x + Math.cos(n * 2.4) * Math.sqrt(n) * (8 + u.U.r), y: y + Math.sin(n * 2.4) * Math.sqrt(n) * (8 + u.U.r) }; }
+      n++; }
+    return n;
   }
   rally(x, y) { this.rallied = 1; let n = 0; for (const u of this.units) if (u.team === PLAYER && u !== this.player && !u.U.miner) { u.home = { x: x + Math.cos(n * 2.4) * Math.sqrt(n) * 9, y: y + Math.sin(n * 2.4) * Math.sqrt(n) * 9 }; n++; } return n; }
 

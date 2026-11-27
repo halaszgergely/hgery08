@@ -2,19 +2,19 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271408';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271408';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271408';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss, drawLanding } from './rajz.js?v=202611271408';
-import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271408';
-import { JS } from './jsapi.js?v=202611271408';
-import { initCloud, changed as cloudChanged, push as cloudPush, flush as cloudFlush } from './felho.js?v=202611271408';
-import { MP, initMp, canMp, listRooms, createRoom, joinRoomId, leave as mpLeave, inviteLink, roster, hostStart, hostEnd, hostTick, hostSend, guestFrame } from './mp.js?v=202611271408';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271408';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271408';
-import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271408';
-import { toWorld } from './msav.js?v=202611271408';
-import { Story } from './logika.js?v=202611271408';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271431';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271431';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271431';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss, drawLanding } from './rajz.js?v=202611271431';
+import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271431';
+import { JS } from './jsapi.js?v=202611271431';
+import { initCloud, changed as cloudChanged, push as cloudPush, flush as cloudFlush } from './felho.js?v=202611271431';
+import { MP, initMp, canMp, listRooms, createRoom, joinRoomId, leave as mpLeave, inviteLink, roster, hostStart, hostEnd, hostTick, hostSend, guestFrame } from './mp.js?v=202611271431';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271431';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271431';
+import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271431';
+import { toWorld } from './msav.js?v=202611271431';
+import { Story } from './logika.js?v=202611271431';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -646,6 +646,21 @@ $('#sel').onclick = e => {
   selHtml();
 };
 
+/* ---------- parancsmód (Mindustry: Shift + egér) ---------- */
+const CMD = new Set();
+const cmdUnits = () => W.units.filter(u => !u.dead && u.team === 1 && u !== W.player && typeof u.ctl !== 'object' && !u.carrier);
+function cmdSelect() {
+  const [ax, ay] = M.box, x0 = Math.min(ax, M.wx), x1 = Math.max(ax, M.wx), y0 = Math.min(ay, M.wy), y1 = Math.max(ay, M.wy);
+  if (x1 - x0 < 3 && y1 - y0 < 3) { let best = null, bd = 1e9; for (const u of cmdUnits()) { const d = Math.hypot(u.x - M.wx, u.y - M.wy); if (d < u.U.r + 4 && d < bd) { bd = d; best = u; } } CMD.clear(); if (best) CMD.add(best); return; }
+  CMD.clear(); for (const u of cmdUnits()) if (u.x >= x0 - u.U.r && u.x <= x1 + u.U.r && u.y >= y0 - u.U.r && u.y <= y1 + u.U.r) CMD.add(u);
+}
+function cmdIssue() {
+  let t = null, bd = 1e9; for (const u of W.units) { if (u.dead || u.team !== 2) continue; const d = Math.hypot(u.x - M.wx, u.y - M.wy); if (d < u.U.r + 6 && d < bd) { bd = d; t = u; } }
+  if (!t) { const [tx, ty] = tileAt(M.wx, M.wy), b = W.inb(tx, ty) && W.seen[ty * W.w + tx] ? W.tb(tx, ty) : null; if (b && b.team === 2) t = b; }
+  const n = W.command([...CMD], M.wx, M.wy, t); if (!n) return;
+  const c = t ? (t.U ? t : W.center(t)) : { x: M.wx, y: M.wy }; W.fx.push({ k: 'ring', x: c.x, y: c.y, r: 10, life: 20, max: 20, c: t ? '#f25555' : '#ffd37f' });
+}
+
 /* ---------- bevitel ---------- */
 const tileAt = (wx, wy) => [Math.floor(wx / TS), Math.floor(wy / TS)];
 function originOf(t, tx, ty) { if (BLOCKS[t].type === 'core') return W.coreSpot(t); const o = Math.floor((BLOCKS[t].s - 1) / 2); return [tx - o, ty - o]; }
@@ -670,6 +685,10 @@ cv.addEventListener('pointerdown', e => {
   if (!W) { if (subOpen >= 0) { subOpen = -1; buildMenu(); } return; } updMouse(e); cv.setPointerCapture(e.pointerId);
   const [tx, ty] = tileAt(M.wx, M.wy);
   if (e.button === 1) { pickAt(tx, ty); return; }
+  if (keys.has('shift') && (e.button === 0 || e.button === 2)) {   // parancsmód (Shift): bal húzás kijelöl, jobb klikk parancsot ad
+    if (e.button === 0) { M.box = [M.wx, M.wy]; return; }
+    if (CMD.size) { cmdIssue(); return; }
+  }
   if (e.button === 2) { if (selBlock && !(W.inb(tx, ty) && (W.tb(tx, ty) || W.planAt(tx, ty)))) { selBlock = null; buildPalette(); showInfo(null); return; } M.rdrag = [tx, ty]; return; }   // építés közben is töröl, ha van alatta valami
   if (e.button !== 0) return;
   if (selBlock) { M.drag = [tx, ty]; return; }
@@ -688,6 +707,7 @@ window.addEventListener('pointermove', e => { updMouse(e); });
 window.addEventListener('pointerup', e => {
   if (!W) { M.l = false; return; }
   updMouse(e); const [tx, ty] = tileAt(M.wx, M.wy);
+  if (e.button === 0 && M.box) { cmdSelect(); M.box = null; return; }
   if (e.button === 0) { M.l = false; if (M.drag && selBlock) { const pa = M.drag[0] === tx && M.drag[1] === ty && W.planAt(tx, ty); if (pa && pa.t !== selBlock) W.prioritize(tx, ty); else { for (const p of linePlans(selBlock, M.drag, [tx, ty])) W.plan(p.t, p.x, p.y, p.rot); if (pa) W.prioritize(tx, ty); } } M.drag = null; }
   if (e.button === 2 && M.rdrag) {
     const [ax, ay] = M.rdrag, x0 = Math.min(ax, tx), x1 = Math.max(ax, tx), y0 = Math.min(ay, ty), y1 = Math.max(ay, ty), seen = new Set();
@@ -713,6 +733,7 @@ window.addEventListener('keydown', e => {
   if (k === ' ') { e.preventDefault(); togglePause(); }
   if (k === 'm') { bigMap = !bigMap; sizeMini(); }
   if (k === 'g') { const n = W.rally(M.wx, M.wy); if (n) W.msg(`${n} egység gyülekezik`); }
+  if (k === 'escape' && CMD.size) { CMD.clear(); return; }
   if (k === 'escape') { if (bigMap) { bigMap = false; sizeMini(); } else if (selBlock || selB) { selBlock = null; selB = null; $('#sel').hidden = true; buildPalette(); showInfo(null); } else openPM(); }
   if (k === 'e' && selB && selB.B.type !== 'core') W.unplan(selB);
   if (/^[1-9]$/.test(k)) { const t = BUILD_ORDER[cat].filter(done)[+k - 1]; if (t) { selBlock = t; buildPalette(); showInfo(t); } }
@@ -791,6 +812,12 @@ function storyOverlay(gx, z) {
   gx.textBaseline = 'alphabetic';
 }
 function overlay(gx, z) {
+  if (CMD.size || M.box) {   // parancsmód: kijelölt egységek, kijelölő téglalap
+    for (const u of CMD) { if (u.dead || !W.units.includes(u)) { CMD.delete(u); continue; } gx.strokeStyle = 'rgba(255,211,127,.9)'; gx.lineWidth = 1.2 / z * 2; gx.beginPath(); gx.arc(u.x, u.y, u.U.r + 2.5, 0, 7); gx.stroke();
+      const h = u.cmd && u.cmd.k === 'move' && u.home; if (h && Math.hypot(h.x - u.x, h.y - u.y) > 6) { gx.setLineDash([2, 2]); gx.globalAlpha = .5; gx.beginPath(); gx.moveTo(u.x, u.y); gx.lineTo(h.x, h.y); gx.stroke(); gx.setLineDash([]); gx.globalAlpha = 1; }
+      const t = u.cmd && u.cmd.k === 'atk' && u.cmd.t; if (t && !t.dead) { gx.strokeStyle = 'rgba(242,85,85,.9)'; gx.beginPath(); gx.arc(t.x, t.y, t.U.r + 3, 0, 7); gx.stroke(); } }
+    if (M.box && keys.has('shift')) { const [ax, ay] = M.box; gx.strokeStyle = 'rgba(255,211,127,.9)'; gx.fillStyle = 'rgba(255,211,127,.12)'; gx.lineWidth = 1.5 / z * 2; gx.fillRect(Math.min(ax, M.wx), Math.min(ay, M.wy), Math.abs(M.wx - ax), Math.abs(M.wy - ay)); gx.strokeRect(Math.min(ax, M.wx), Math.min(ay, M.wy), Math.abs(M.wx - ax), Math.abs(M.wy - ay)); }
+  }
   if (LAND && W.core) { drawLanding(gx, W, Math.min(1, LAND.t / LAND.D), T + LAND.t); return; }
   storyOverlay(gx, z);
   const [tx, ty] = tileAt(M.wx, M.wy), lw = 1.5 / z, ring = (x, y, R, cross) => { gx.strokeStyle = 'rgba(255,211,127,.6)'; gx.lineWidth = lw; gx.setLineDash([3, 3]); gx.beginPath(); if (cross) { gx.rect(x - R - 4, y - 4, R * 2 + 8, 8); gx.rect(x - 4, y - R - 4, 8, R * 2 + 8); } else gx.arc(x, y, R, 0, 7); gx.stroke(); gx.setLineDash([]); };

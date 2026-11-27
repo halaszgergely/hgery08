@@ -132,5 +132,34 @@ for f in glob.glob(f'{root}/core/assets/maps/{PL}/*.msav'):
 # a tartalom nevei (szektor, bolygó) angolul, a tutorial/küldetésszöveg magyarul
 ENG = lambda k: re.match(r'^(sector\.[^.]+\.(name|description|details)|planet\.[^.]+\.name)$', k) and not k.startswith(('sector.curcapture', 'sector.capture', 'sector.lost'))
 TXT = {k: (en.get(k) if ENG(k) and en.get(k) else hu.get(k, en.get(k))) for k in sorted(need) if hu.get(k, en.get(k))}
+# a magyar küldetésszövegekben a tartalom (blokk, tárgy, folyadék, egység) neve angolul álljon, ahogy a játékban mindenhol
+CN = {}
+for k, v in en.items():
+    m = re.match(r'^(block|item|liquid|unit)\.([\w-]+)\.name$', k)
+    if m and hu.get(k): CN[m.group(2)] = (hu[k], v)
+def flex(w):   # a ragozott alak: a/á, e/é váltakozás, bármilyen rag
+    out = ''
+    for ch in w: out += {'a': '[aá]', 'á': '[aá]', 'e': '[eé]', 'é': '[eé]', 'o': '[oó]', 'ó': '[oó]', 'ö': '[öő]', 'ő': '[öő]', 'u': '[uú]', 'ú': '[uú]', 'ü': '[üű]', 'ű': '[üű]', 'i': '[ií]', 'í': '[ií]'}.get(ch, re.escape(ch))
+    return out
+SPEC = {'ólom': r'ól[oó]?m', 'víz': r'v[ií]z(?!i(?![a-záéíóöőúüű]))'}   # a „vízi” (hajó-) nem a víz
+PATS = []
+for key, (h, e) in CN.items():   # érc: „rézérc” → „Copper Ore”
+    if re.match(r'^item\.', 'item.' + key) and ('item.' + key + '.name') in en and len(h) >= 3 and ' ' not in h: PATS.append((re.compile(r'(?<![\wáéíóöőúüű])' + (SPEC.get(h.lower()) or flex(h.lower())) + r'\s*-?érc[a-záéíóöőúüű]*', re.I), e + ' Ore', key))
+for key, (h, e) in sorted(CN.items(), key=lambda kv: -len(kv[1][0])):
+    h0 = h.strip().lower()
+    if len(h0) < 3 or h0 == e.lower(): continue
+    words = h0.split(); last = words[-1]
+    pat = r'(?<![\wáéíóöőúüű])' + r'\s+'.join(re.escape(w) for w in words[:-1]) + (r'\s+' if words[:-1] else '') + (SPEC.get(last) or flex(last)) + r'[a-záéíóöőúüű]*'
+    PATS.append((re.compile(pat, re.I), e, key))
+def en_names(s):
+    s = re.sub(r':([\w-]+): \[accent\][^\[]*\[\]', lambda m: f':{m.group(1)}: [accent]{CN[m.group(1)][1]}[]' if m.group(1) in CN else m.group(0), s)   # ikonos hivatkozás
+    parts = re.split(r'(\[[^\]]*\]|:[\w-]+:|\{\d+\})', s)   # a jelölőket és ikonokat nem bántjuk
+    for i in range(0, len(parts), 2):
+        t = parts[i]
+        for rx, e, key in PATS: t = rx.sub(e, t)
+        parts[i] = t
+    return ''.join(parts)
+for k in list(TXT):
+    if not ENG(k) and TXT[k] != en.get(k): TXT[k] = en_names(TXT[k])
 json.dump({'grid': GRID, 'presets': list(PRE.values()), 'tree': TREE, 'txt': TXT}, open(out, 'w'), ensure_ascii=False, separators=(',', ':'))
 print('rács', len(GRID), 'szektor', len(PRE), 'szöveg', len(TXT))
