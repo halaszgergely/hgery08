@@ -1,10 +1,10 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611271717';
-import { FW } from './keret.js?v=202611271717';
-import { toWorld } from './msav.js?v=202611271717';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271717';
-import { SN } from './kepadat.js?v=202611271717';
-import { BCM } from './epitesido.js?v=202611271717';
+import { genMapSerpulo } from './terkep.js?v=202611271824';
+import { FW } from './keret.js?v=202611271824';
+import { toWorld } from './msav.js?v=202611271824';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271824';
+import { SN } from './kepadat.js?v=202611271824';
+import { BCM } from './epitesido.js?v=202611271824';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
