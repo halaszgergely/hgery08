@@ -3,10 +3,10 @@
 // objektumaira képezzük le. Ami nincs meg, az nem állítja meg a szkriptet: üres helyettesítőt kap, és a mod adatlapján
 // „hiányzó hívásként” jelenik meg. Mindig aktív; a beépített modok szkriptjei futnak, a játékos saját modjaié csak,
 // ha a modlistában engedélyezi (a szkript a lappal azonos jogokkal fut).
-import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, STATUS } from './adat.js?v=202611271151';
-import { SN, ISN, LSN } from './kepadat.js?v=202611271151';
-import { spr, has, addSprite, sprT } from './rajz.js?v=202611271151';
-import { FW } from './keret.js?v=202611271151';
+import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, STATUS } from './adat.js?v=202611271206';
+import { SN, ISN, LSN } from './kepadat.js?v=202611271206';
+import { spr, has, addSprite, sprT } from './rajz.js?v=202611271206';
+import { FW } from './keret.js?v=202611271206';
 
 export const JS = {
   name: 'Kohóvár JS API', version: '1.0',
@@ -102,11 +102,13 @@ function buildIndex() {
   for (const k in BLOCKS) { RB[SN[k] || k] = k; RB[k] = RB[k] || k; }
   for (const k in UNITS) RU[k] = k;
 }
+// a gyűjteménymezők az alap tartalmon is léteznek (a szkript bővítheti őket; a Kohóvárban hatástalan)
+const COLL = T => Object.fromEntries(['weapons', 'abilities', 'immunities', 'flags', 'targetFlags', 'parts', 'attributes', 'consumers', 'upgrades', 'plans', 'requirements', 'spawnBullets'].map(q => [q, () => { const F = T.__fields || (T.__fields = {}); return F[q] || (F[q] = DEFAULT_F[q](T)); }]));
 // meglévő (alap) tartalom módosítása a szkriptből: nem támogatott, hiányként jelezzük
 const MODM = nm => Object.fromEntries(['consumeLiquid', 'consumeLiquids', 'consumePower', 'consumeItem', 'consumeItems', 'consume', 'ammo', 'removeConsumer', 'removeConsumers', 'addUpgrade', 'requirements', 'init', 'load', 'setStats', 'setBars', 'addBar', 'removeBar'].map(m => [m, () => (...a) => { if (!/^(init|load|setStats|setBars)$/.test(m)) miss(`${nm()}.${m}()`); return { boost() { return this; }, optional() { return this; }, update() { return this; } }; }]));
 const FAC = new Map(), PRIO = new Set(['name', 'consumes', 'size', 'health', 'liquidCapacity', 'itemCapacity', 'localizedName', 'id', 'hitSize', 'speed']);
 const itemF = k => { if (!k || !ITEMS[k]) return null; const key = 'i:' + k; if (!FAC.has(key)) { const I = ITEMS[k]; FAC.set(key, { __kind: 'item', key: k, name: ISN[k] || k, localizedName: I.n, color: Col.hex(String(I.c || '#fff').slice(1)), id: Object.keys(ITEMS).indexOf(k), hardness: I.hard || 0, researchRequirements: () => [], cost: I.cost || 1, flammability: I.flam || 0, explosiveness: I.expl || 0, radioactivity: I.rad || 0, charge: I.charge || 0, uiIcon: region('item-' + (ISN[k] || k)), fullIcon: region('item-' + (ISN[k] || k)), toString() { return this.name; } }); } return FAC.get(key); };
-const liqF = k => { if (!k || !LIQUIDS[k]) return null; const key = 'l:' + k; if (!FAC.has(key)) { const L = LIQUIDS[k]; FAC.set(key, { __kind: 'liquid', key: k, name: LSN[k] || k, localizedName: L.n, color: Col.hex(String(L.c || '#fff').slice(1)), id: Object.keys(LIQUIDS).indexOf(k), gas: !!L.gas, temperature: L.temp ?? .5, flammability: L.flam || 0, uiIcon: region('liquid-' + (LSN[k] || k)), toString() { return this.name; } }); } return FAC.get(key); };
+const liqF = k => { if (!k || !LIQUIDS[k]) return null; const key = 'l:' + k; if (!FAC.has(key)) { const L = LIQUIDS[k]; FAC.set(key, { __kind: 'liquid', key: k, name: LSN[k] || k, localizedName: L.n, color: Col.hex(String(L.c || '#fff').slice(1)), id: Object.keys(LIQUIDS).indexOf(k), gas: !!L.gas, temperature: L.temp ?? .5, canStayOn: new JSet(), flammability: L.flam || 0, uiIcon: region('liquid-' + (LSN[k] || k)), toString() { return this.name; } }); } return FAC.get(key); };
 const itemKey = v => v == null ? null : typeof v === 'string' ? RI[v] || RI[kebab(v)] || (ITEMS[v] ? v : null) : v.__kind === 'item' ? v.key : v.__kind === 'ref' ? itemKey(v.name) : null;
 const liqKey = v => v == null ? null : typeof v === 'string' ? RL[v] || RL[kebab(v)] || (LIQUIDS[v] ? v : null) : v.__kind === 'liquid' ? v.key : v.__kind === 'ref' ? liqKey(v.name) : null;
 const DEF = new Map();   // tartalomnév → szkriptbeli definíció (extend(X, "név", {...}))
@@ -118,7 +120,7 @@ const blockF = k => {
     hasItems: () => true, hasLiquids: () => !!B.lcap, hasPower: () => !!(B.power || B.gen), rotate: () => !!B.rot, solid: () => true, category: () => B.kat, id: () => Object.keys(BLOCKS).indexOf(k),
     region: () => region(SN[k] || k), fullIcon: () => region(SN[k] || k), uiIcon: () => region(SN[k] || k), offset: () => (B.s % 2 ? 0 : TS / 2), range: () => B.range || 0, reload: () => B.reload || 0,
     consumes: () => ({ get(t) { const n = String(t && t[STUB] || t || ''); if (/liquid/.test(n) && B.inL) return { liquid: liqF(B.inL[0]), amount: B.inL[1] }; if (/item/.test(n) && B.inp) return { items: Object.entries(B.inp).map(([i, a]) => ({ item: itemF(i), amount: a })) }; if (/power/.test(n)) return { usage: B.power || 0, capacity: B.capP || 0 }; return null; }, has: () => false }),
-    ...MODM(() => SN[k] || k), getClass: () => () => ({ getSimpleName: () => B.type, getName: () => B.type, toString: () => B.type }), researchRequirements: () => () => Object.entries(B.cost || {}).map(([i, a]) => ({ item: itemF(i), amount: a })), localizedName_: () => B.n, __key: () => k, __kind: () => 'block', isHidden: () => false, toString: () => () => SN[k] || k,
+    ...COLL(T), ...MODM(() => SN[k] || k), getClass: () => () => ({ getSimpleName: () => B.type, getName: () => B.type, toString: () => B.type }), researchRequirements: () => () => Object.entries(B.cost || {}).map(([i, a]) => ({ item: itemF(i), amount: a })), localizedName_: () => B.n, __key: () => k, __kind: () => 'block', isHidden: () => false, toString: () => () => SN[k] || k,
   };
   const p = new Proxy(T, { get(t, q) { if (typeof q === 'symbol') return undefined; if (PRIO.has(q)) return comp[q](); if (q === 'constructor' && !Object.prototype.hasOwnProperty.call(t, 'constructor')) return fn(() => null); if (q in t) return t[q]; if (comp[q]) return comp[q](); if (/^super\$/.test(q)) return () => {}; return undefined; }, set(t, q, v) { t[q] = v; return true; } });
   B.__jf = p; return p;
@@ -126,7 +128,7 @@ const blockF = k => {
 const unitDefF = k => {
   if (!k || !UNITS[k]) return null; const U = UNITS[k]; if (U.__jf) return U.__jf;
   const T = U.js || { __fields: {} };
-  const comp = { ...MODM(() => k), getClass: () => () => ({ getSimpleName: () => 'UnitType', getName: () => 'UnitType' }), researchRequirements: () => () => Object.entries(U.cost || {}).map(([i, a]) => ({ item: itemF(i), amount: a })), name: () => k, localizedName: () => U.n, health: () => U.hp, speed: () => U.sp, hitSize: () => U.r * 2, flying: () => !!U.air, armor: () => U.armor || 0, region: () => region(k), fullIcon: () => region(k), uiIcon: () => region(k), __key: () => k, __kind: () => 'unit', id: () => Object.keys(UNITS).indexOf(k), weapons: () => new Seq([]), toString: () => () => k };
+  const comp = { ...COLL(T), ...MODM(() => k), getClass: () => () => ({ getSimpleName: () => 'UnitType', getName: () => 'UnitType' }), researchRequirements: () => () => Object.entries(U.cost || {}).map(([i, a]) => ({ item: itemF(i), amount: a })), name: () => k, localizedName: () => U.n, health: () => U.hp, speed: () => U.sp, hitSize: () => U.r * 2, flying: () => !!U.air, armor: () => U.armor || 0, region: () => region(k), fullIcon: () => region(k), uiIcon: () => region(k), __key: () => k, __kind: () => 'unit', id: () => Object.keys(UNITS).indexOf(k), weapons: () => new Seq([]), toString: () => () => k };
   const p = new Proxy(T, { get(t, q) { if (typeof q === 'symbol') return undefined; if (PRIO.has(q)) return comp[q](); if (q === 'constructor' && !Object.prototype.hasOwnProperty.call(t, 'constructor')) return fn(() => null); if (q in t) return t[q]; if (comp[q]) return comp[q](); if (/^super\$/.test(q)) return () => {}; return undefined; }, set(t, q, v) { t[q] = v; return true; } });
   U.__jf = p; return p;
 };
@@ -138,7 +140,11 @@ const content = (kind, n) => {
   n = String(n); if (kind === 'item') return itemF(itemKey(n)); if (kind === 'liquid') return liqF(liqKey(n)); if (kind === 'unit') return unitDefF(unitKey(n)); if (kind === 'status') return statusF(n);
   return blockF(blockKey(n));
 };
-const ns = kind => new Proxy({}, { get: (t, p) => typeof p !== 'string' ? undefined : content(kind, ALIAS[p] || kebab(p)) || (CUR && DEF.get(kebab(p))) || (kind === 'block' ? envF(ALIAS[p] || kebab(p)) : (miss(`${kind}: ${p}`), null)) });
+// a Kohóvárban nem létező (más modból vagy újabb játékverzióból való) tartalom: a szkript beállíthatja és bővítheti, de hatástalan
+const GHOST = {};
+const ghost = (kind, n) => { const k = kind + ':' + n; if (GHOST[k]) return GHOST[k]; miss(`${kind}: ${n}`); const T = { __fields: {} }, C = COLL(T);
+  return (GHOST[k] = new Proxy(T, { get: (t, q) => typeof q !== 'string' ? undefined : q === 'name' ? n : C[q] ? C[q]() : q in t.__fields ? t.__fields[q] : /^(set|add|remove|consume|ammo|init|load)/.test(q) ? () => {} : undefined, set: (t, q, v) => { t.__fields[q] = v; return true; } })); };
+const ns = kind => new Proxy({}, { get: (t, p) => typeof p !== 'string' ? undefined : content(kind, ALIAS[p] || kebab(p)) || (CUR && DEF.get(kebab(p))) || (kind === 'block' ? envF(ALIAS[p] || kebab(p)) : kind === 'status' ? null : ghost(kind, p)) });
 // környezeti blokk (talaj, fal, érc): a Kohóvárban nem épület, csak név szerint hivatkozható
 const ENVF = {}; const envF = n => ENVF[n] || (ENVF[n] = { __kind: 'env', name: n, localizedName: n, size: 1, solid: /wall|rock|boulder|tree|pine/.test(n), isLiquid: /water|slag|oil|tar|cryo/.test(n), isFloor: () => !/wall/.test(n), isStatic: () => /wall/.test(n), isAir: () => n === 'air', asFloor() { return this; }, itemDrop: null, liquidDrop: null, attributes: { set() {}, get: () => 0 }, toString() { return n; } });
 const ALIAS = { surgealloy: 'surge-alloy', phasefabric: 'phase-fabric', sporepod: 'spore-pod', blastcompound: 'blast-compound', surgeAlloy: 'surge-alloy', phaseFabric: 'phase-fabric', sporePod: 'spore-pod', blastCompound: 'blast-compound', cryofluid: 'cryofluid', coreShard: 'core-shard', coreFoundation: 'core-foundation', coreNucleus: 'core-nucleus' };
@@ -443,7 +449,7 @@ function inst(cls, args, over) {
 // a Mindustry-osztályok alapértelmezett gyűjtemény- és objektummezői (a szkriptek ezeket bővítik: weapons.add, immunities.add…)
 const attrsF = () => { const m = new JMap(); return Object.assign(m, { set: (a, v) => m.put(String(a), v), get: a => m.get(String(a), 0), add: (a, v) => m.put(String(a), (m.get(String(a), 0) || 0) + v) }); };
 const DEFAULT_F = { weapons: () => new Seq(), abilities: () => new Seq(), parts: () => new Seq(), requirements: () => new Seq(), research: () => new Seq(), targetFlags: () => new Seq(), consumers: () => new Seq(), upgrades: () => new Seq(), plans: () => new Seq(),
-  ammoTypes: () => new JMap(), immunities: () => new JSet(), flags: () => new JSet(), attributes: attrsF, shoot: () => inst('ShootPattern', []), drawer: () => inst('DrawDefault', []), stats: () => stub('Stats', false), bars: () => stub('Bars', false), envRequired: () => 0, envEnabled: () => 1, envDisabled: () => 0 };
+  ammoTypes: () => new JMap(), spawnBullets: () => new Seq(), fragBullets: () => 0, segments: () => 0, immunities: () => new JSet(), flags: () => new JSet(), attributes: attrsF, shoot: () => inst('ShootPattern', []), drawer: () => inst('DrawDefault', []), stats: () => stub('Stats', false), bars: () => stub('Bars', false), envRequired: () => 0, envEnabled: () => 1, envDisabled: () => 0 };
 const consumesF = t => ({ remove() {}, power(v) { t.__fields.consumePower = v; }, powerCond(v) { t.__fields.consumePower = v; }, item(i, n = 1) { t.__fields.consumeItems = [{ item: i, amount: n }]; }, items(...s) { t.__fields.consumeItems = s.flat(); }, liquid(l, a) { t.__fields.consumeLiquid = { liquid: l, amount: a }; return { boost() { t.__fields.consumeLiquid.booster = true; }, optional() { return this; }, update() { return this; } }; }, powerBuffered(v) { t.__fields.consumePowerBuffered = v; }, add() { return { update() { return this; }, boost() { return this; }, optional() { return this; } }; }, get() { return null; }, has() { return false; }, coolant() {} });
 const INST_M = {
   requirements(t, cat, a, b) { t.__fields.category = cat; t.__fields.requirements = b !== undefined ? b : a; if (b !== undefined) t.__fields.buildVisibility = a; },
@@ -452,15 +458,16 @@ const INST_M = {
   consumeLiquid(t, l, a) { t.__fields.consumeLiquid = { liquid: l, amount: a }; return { boost() { t.__fields.consumeLiquid.booster = true; return this; }, optional() { return this; }, update() { return this; } }; }, consumeLiquids(t, ...s) { t.__fields.consumeLiquids = s.flat(); }, consumeCoolant(t) {}, consume(t) { return { boost() { return this; }, optional() { return this; } }; },
   outputsItems() { return false; }, setStats() {}, setBars() {}, init() {}, load() {}, add(t, x) { if (t.__cls && /Seq/.test(t.__cls)) { (t.__fields.items = t.__fields.items || []).push(x); } }, copy(t) { return inst(t.__cls, [], t.__over); },
   create(t, owner, team_, x, y, ang) { return spawnBullet(t, owner, team_, x, y, ang); }, createNet(t, team_, x, y, ang) { return spawnBullet(t, null, team_, x, y, ang); },
-  asFloor(t) { return t.__p; }, asBlock(t) { return t.__p; }, isAir() { return false; }, affinity() {}, opposite() {}, config() {}, configClear() {}, removeConsumer() {}, removeConsumers() {}, getClass(t) { return { getSimpleName: () => t.__cls, getName: () => t.__cls, toString: () => t.__cls }; }, researchRequirements(t) { const r = t.__fields.requirements; return r instanceof Seq ? r.items : Array.isArray(r) ? r : []; }, at(t, x, y) {}, range(t) { const f = t.__fields; return f.maxRange || (+(f.speed ?? 1) * +(f.lifetime ?? 40)); }, estimateDPS(t) { return +(t.__fields.damage || 0); }, isHidden() { return false; }, unlock() {}, unlocked() { return true; }, localizedName(t) { return t.__fields.localizedName || t.__fields.name; },
+  addBar() {}, removeBar() {}, setEnginesMirror() {}, setEngines() {}, asFloor(t) { return t.__p; }, asBlock(t) { return t.__p; }, isAir() { return false; }, affinity() {}, opposite() {}, config() {}, configClear() {}, removeConsumer() {}, removeConsumers() {}, getClass(t) { return { getSimpleName: () => t.__cls, getName: () => t.__cls, toString: () => t.__cls }; }, researchRequirements(t) { const r = t.__fields.requirements; return r instanceof Seq ? r.items : Array.isArray(r) ? r : []; }, at(t, x, y) {}, range(t) { const f = t.__fields; return f.maxRange || (+(f.speed ?? 1) * +(f.lifetime ?? 40)); }, estimateDPS(t) { return +(t.__fields.damage || 0); }, isHidden() { return false; }, unlock() {}, unlocked() { return true; }, localizedName(t) { return t.__fields.localizedName || t.__fields.name; },
 };
-function extend(cls, a, b) {
+function extend(cls, ...rest) {
   const cn = cls && (cls[CLS] || cls[STUB]) ? String(cls[CLS] || cls[STUB]).split('.').pop() : (cls && cls.name) || 'Block';
-  if (a && a[INST] && typeof a !== 'string') { a = null; }   // extend(Build, block, {...}): a második a blokk
-  const mk = (args, ov) => { const o = inst(cn, args, ov), t = o[INST]; for (const k of Object.keys(ov || {})) if (typeof ov[k] !== 'function') t.__fields[k] = ov[k]; return o; };
-  if (typeof a === 'string') { const o = mk([a], b || {}); const t = o[INST]; t.__name = a; t.__mod = CUR; DEF.set(a, o); if (CUR) CUR.defs.set(a, o); return o; }
-  if (a && !b && typeof a === 'object' && !a[INST]) return mk([], a);
-  return mk([], b || {});
+  // extend(Osztály, [konstruktor-argumentumok…], {felülírások}); extend(Build, blokk, {…}): a blokk nem argumentum
+  const last = rest[rest.length - 1], ov = last && typeof last === 'object' && !last[INST] && !(last instanceof Col) ? rest.pop() : {};
+  const args = rest.filter(x => !(x && x[INST] && /Build$/.test(cn)));
+  const o = inst(cn, args, ov), t = o[INST]; for (const k of Object.keys(ov)) if (typeof ov[k] !== 'function') t.__fields[k] = ov[k];
+  if (typeof args[0] === 'string' && args.length === 1 && !/Build$|Weapon$|BulletType$|Effect$|Ability$|Part$/.test(cn)) { t.__name = args[0]; t.__mod = CUR; DEF.set(args[0], o); if (CUR) CUR.defs.set(args[0], o); }
+  return o;
 }
 const cls = n => { const c = function (...a) { return inst(n, a); }; c[CLS] = n; return new Proxy(c, { get(t, p) { if (p === CLS || p === STUB) return n; if (typeof p !== 'string') return t[p]; if (p in t) return t[p]; if (/^[A-Z]/.test(p)) return (t[p] = cls(p)); if (p === 'class') return t; if (p === 'prototype' || p === 'name' || p === 'length') return t[p]; return (t[p] = stub(n + '.' + p)); }, construct(t, a) { if (n === 'Seq') return new Seq(a[0] instanceof Array ? a[0] : []); return inst(n, a); } }); };
 
@@ -507,11 +514,11 @@ const Vars = {
   tilesize: TS, mobile: false, android: false, ios: false, headless: false, steam: false, clientLoaded: true, finalWorldBounds: 250, maxSchematicSize: 64, buildingRange: 220, itemSize: 5, iconSmall: 24, iconMed: 32, iconLarge: 40, logicItems: true, enableConsole: false,
   get state() { return stateF(); }, get world() { return worldF; }, get player() { return playerF(); },
   content: {
-    getByName(t, n) { const k = String(t && (t[STUB] || t) || '').split('.').pop(); return content(k, n); }, getByID(t, i) { return null; }, block: n => content('block', n), item: n => content('item', n), liquid: n => content('liquid', n), unit: n => content('unit', n), statusEffect: n => content('status', n),
+    getByName(t, n) { const k = String(t && (t[STUB] || t) || '').split('.').pop(); return content(k, n) || DEF.get(String(n).replace(/^[\w]+-/, '')) || null; }, getByID(t, i) { return null; }, block: n => content('block', n) || envF(n), item: n => content('item', n) || DEF.get(n) || ghost('item', n), liquid: n => content('liquid', n) || DEF.get(n) || ghost('liquid', n), unit: n => content('unit', n) || DEF.get(n) || ghost('unit', n), statusEffect: n => content('status', n),
     blocks: () => new Seq(Object.keys(BLOCKS).map(blockF)), items: () => new Seq(Object.keys(ITEMS).map(itemF)), liquids: () => new Seq(Object.keys(LIQUIDS).map(liqF)), units: () => new Seq(Object.keys(UNITS).map(unitDefF)), statusEffects: () => new Seq([]), planets: () => new Seq([]), sectors: () => new Seq([]),
     getBy(t) { const k = String(t && (t[STUB] || t) || '').split('.').pop(); return k === 'item' ? this.items() : k === 'liquid' ? this.liquids() : k === 'unit' ? this.units() : this.blocks(); }, each(f) { this.blocks().each(f); }, unitCount: 0,
   },
-  mods: { locateMod(n) { const m = JS.mods.find(x => x.id === n); return m ? m.api : null; }, getMod(n) { return this.locateMod(n); }, list() { return new Seq(JS.mods.map(m => m.api)); }, getScripts() { return { runConsole: () => '' }; }, eachEnabled(f) { JS.mods.forEach(m => call(f, m.api)); }, hasContentErrors: () => false, orderedMods: () => new Seq(JS.mods.map(m => m.api)) },
+  mods: { mainLoader: () => stub('ClassLoader', false), getContentErrors: () => new Seq(), locateMod(n) { const m = JS.mods.find(x => x.id === n); return m ? m.api : null; }, getMod(n) { return this.locateMod(n); }, list() { return new Seq(JS.mods.map(m => m.api)); }, getScripts() { return { runConsole: () => '' }; }, eachEnabled(f) { JS.mods.forEach(m => call(f, m.api)); }, hasContentErrors: () => false, orderedMods: () => new Seq(JS.mods.map(m => m.api)) },
   ui: new Proxy({ showInfo: t => msg(t), showInfoToast: t => msg(t), showInfoFade: t => msg(t), showInfoText: (a, b) => msg(b || a), showErrorMessage: t => msg(t), showException: (t) => msg(t), announce: t => msg(t), showLabel: t => msg(t), showText: (a, b) => msg(b || a), showOkText: (a, b) => msg(b || a), hudfrag: { showToast: (a, b) => msg(typeof a === 'string' ? a : b), showUnlock() {}, showLand() {} } }, { get: (t, p) => p in t ? t[p] : typeof p === 'string' ? (t[p] = stub('Vars.ui.' + p)) : undefined }),
   tree: { loadSound: () => stub('Sound', false), loadMusic: () => stub('Music', false), get: () => stub('Fi', false), loadTexture: () => null }, netClient: stub('Vars.netClient', false), netServer: stub('Vars.netServer', false), renderer: stub('Vars.renderer', false), control: stub('Vars.control', false), schematics: stub('Vars.schematics', false), platform: stub('Vars.platform', false), maps: stub('Vars.maps', false), dataDirectory: stub('Fi', false), modDirectory: stub('Fi', false),
   net: { client: () => false, server: () => false, active: () => false, send() {}, handleClient() {}, handleServer() {} }, logic: { skipWave() { if (CW) CW.nextWave(); }, runWave() { if (CW) CW.nextWave(); }, gameOver() {}, play() {}, reset() {}, isWaitingWave: () => false },
@@ -535,7 +542,7 @@ const BASE = {
   Tmp: { v1: new Vec2(), v2: new Vec2(), v3: new Vec2(), v4: new Vec2(), v5: new Vec2(), v6: new Vec2(), v31: new Vec2(), c1: new Col(), c2: new Col(), c3: new Col(), c4: new Col(), r1: {}, r2: {}, r3: {} },
   Rand: class { constructor(s) { this.s = s | 0; } random(a, b) { const r = seeded(this.s++); return b == null ? r * (a ?? 1) : a + r * (b - a); } range(a) { return (seeded(this.s++) * 2 - 1) * a; } chance(p) { return seeded(this.s++) < p; } nextFloat() { return seeded(this.s++); } nextInt(n) { return Math.floor(seeded(this.s++) * n); } setSeed(s) { this.s = s | 0; } },
   Strings: { fixed: (v, d) => (+v).toFixed(d), autoFixed: (v, d) => String(+(+v).toFixed(d)), format: (s, ...a) => String(s).replace(/@/g, () => a.shift() ?? ''), capitalize: s => String(s).charAt(0).toUpperCase() + String(s).slice(1), stripColors: s => String(s).replace(/\[[^\]]*\]/g, ''), kebabToCamel: s => String(s).replace(/-(\w)/g, (_, c) => c.toUpperCase()), camelToKebab: kebab },
-  Structs: {}, EntityMapping: { nameMap: new JMap(), idMap: [], register: () => 0, map: () => 0, customIdMap: new JMap() }, Sounds: stub('Sounds', false), Call: stub('Call'), Styles: stub('Styles', false), Icon: stub('Icon', false), Tex: stub('Tex', false), Fonts: stub('Fonts', false), Layer: new Proxy({}, { get: () => 0 }), Blending: { additive: { [STUB]: 'Blending.additive' }, normal: { [STUB]: 'Blending.normal' }, disabled: {} }, Align: stub('Align', false),
+  Structs: {}, EntityMapping: { nameMap: new JMap(), idMap: Array.from({ length: 256 }, (_, i) => i < 48 ? 1 : null), register: () => 0, map: () => 0, customIdMap: new JMap() }, Sounds: stub('Sounds', false), Call: stub('Call'), Styles: stub('Styles', false), Icon: stub('Icon', false), Tex: stub('Tex', false), Fonts: stub('Fonts', false), Layer: new Proxy({}, { get: () => 0 }), Blending: { additive: { [STUB]: 'Blending.additive' }, normal: { [STUB]: 'Blending.normal' }, disabled: {} }, Align: stub('Align', false),
   Weapon: null, Stat: stub('Stat', false), StatUnit: stub('StatUnit', false), Attribute: new Proxy({ add: n => ({ name: n, toString: () => n }), get: n => ({ name: n, toString: () => n }) }, { get: (t, p) => typeof p === 'string' ? (t[p] || (t[p] = { name: p, toString: () => p })) : undefined }), Env: new Proxy({}, { get: () => 1 }),
   Planets: new Proxy({}, { get: (t, p) => typeof p === 'string' ? { name: p, toString: () => p } : undefined }), SectorPresets: new Proxy({}, { get: (t, p) => typeof p === 'string' ? { name: p } : undefined }),
   TechTree: stub('TechTree', false), EnumSet: { of: (...a) => new Set(a), noneOf: () => new Set(), allOf: () => new Set(), copyOf: a => new Set(a) },
@@ -565,7 +572,7 @@ function rhino(src) {
 BASE.__anon = (c, a, o) => { const n = c && (c[CLS] || c[STUB]) ? String(c[CLS] || c[STUB]).split('.').pop() : 'Object'; const x = inst(n, a, o); for (const k in o) if (typeof o[k] !== 'function') x[INST].__fields[k] = o[k]; return x; };
 
 /* ---------- hibák és hiányok ---------- */
-function err(m, where, e) { if (!m) return; const s = `${where}: ${String(e && e.message || e).slice(0, 140)}`; if (m.err.length < 30 && !m.err.includes(s)) m.err.push(s); const k = String(e && e.message || '').match(/([\w$.]+) is not a function|Cannot read properties of (?:undefined|null) \(reading '([\w$]+)'\)/); if (k) miss(k[1] ? k[1] + '()' : '.' + k[2], m); }
+function err(m, where, e) { if (!m) return; if (e && e[INST]) e = { message: `${e[INST].__cls}: ${e[INST].__fields.name ?? ''}` }; const s = `${where}: ${String(e && e.message || e).slice(0, 140)}`; if (m.err.length < 30 && !m.err.includes(s)) m.err.push(s); const k = String(e && e.message || '').match(/([\w$.]+) is not a function|Cannot read properties of (?:undefined|null) \(reading '([\w$]+)'\)/); if (k) miss(k[1] ? k[1] + '()' : '.' + k[2], m); }
 
 /* ---------- egy mod szkriptjeinek futtatása (a modbetöltőből, a tartalom feldolgozása előtt) ---------- */
 export function runScripts(files, h) {
@@ -583,16 +590,18 @@ export function runScripts(files, h) {
   });
   const cache = {};
   const req = id => {
-    let rel = String(id).replace(/^\.\//, '').replace(/\.js$/, ''); if (rel.startsWith(h.id + '/')) rel = rel.slice(h.id.length + 1);
+    let rel = String(id).replace(/^\.\//, '').replace(/\.js$/, ''); for (const p of [h.id + '/', h.id.replace(/-/g, '_') + '/']) if (rel.startsWith(p)) rel = rel.slice(p.length);
     let src = scripts.get(rel), from = M;
-    if (!src) { const [mid, ...rest] = String(id).split('/'); const o = JS.mods.find(x => x.id === mid); if (o && o.files.get(rest.join('/').replace(/\.js$/, ''))) { from = o; src = o.files.get(rest.join('/').replace(/\.js$/, '')); rel = mid + ':' + rest.join('/'); } }
+    if (!src) { const [mid, ...rest] = String(id).split('/'); const o = JS.mods.find(x => x.id === mid || x.id.replace(/-/g, '_') === mid); if (o && o.files.get(rest.join('/').replace(/\.js$/, ''))) { from = o; src = o.files.get(rest.join('/').replace(/\.js$/, '')); rel = mid + ':' + rest.join('/'); } }
     if (cache[rel]) return cache[rel].exports; const mo = cache[rel] = { exports: {} }; if (!src) { miss('require: ' + id); return mo.exports; }
     let code = dec.decode(src); code = rhino(code);
     const bare = code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:\\])\/\/.*$/gm, '$1');
     for (const m of bare.matchAll(/(?:^|[;{}\s])(?:function\s*\*?\s+([A-Za-z_$][\w$]*)|var\s+([A-Za-z_$][\w$]*))/g)) loc.add(m[1] || m[2]);
     const p = CUR; CUR = from;
-    try { new Function('__G', 'module', 'exports', 'require', 'with (__G) {\n' + code + '\n}').call(undefined, own, mo, mo.exports, req); }
-    catch (e) { err(from, 'scripts/' + rel + '.js', e); }
+    let fnc = null, e0 = null; const raw = dec.decode(src), vr = s => s.replace(/\b(let|const)(\s+[A-Za-z_$])/g, 'var$2');
+    for (const v of [code, vr(code), raw, vr(raw)]) { try { fnc = new Function('__G', 'module', 'exports', 'require', 'with (__G) {\n' + v + '\n}'); break; } catch (e) { e0 = e0 || e; if (!(e instanceof SyntaxError)) break; } }
+    if (!fnc && e0) err(from, 'scripts/' + rel + '.js', e0);   // a Rhino engedékenyebb: újradeklarált let/const → var
+    if (fnc) try { fnc.call(undefined, own, mo, mo.exports, req); } catch (e) { err(from, 'scripts/' + rel + '.js', e); }
     CUR = p; return mo.exports;
   };
   CUR = M;

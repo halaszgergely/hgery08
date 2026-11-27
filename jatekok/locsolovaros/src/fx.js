@@ -1,6 +1,6 @@
 // Részecskék (víz, permet, füst, tűz, szikra, eső-csobbanás) egyetlen pontfelhőben pool-lal; lövedékek (vízcseppek) találatvizsgálattal.
 import * as THREE from 'three';
-import * as W from './world.js?v=202611271151';
+import * as W from './world.js?v=202611271206';
 
 const VS = `attribute float size; attribute vec4 rgba; varying vec4 vC; uniform float uScale;
 void main(){ vC = rgba; vec4 mv = modelViewMatrix * vec4(position,1.); gl_PointSize = size * uScale / max(.1,-mv.z); gl_Position = projectionMatrix * mv; }`;
