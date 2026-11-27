@@ -1,6 +1,6 @@
 // Járókelők: instanced testrészek, a járdahálózaton sétálnak, zebrán kelnek át; eláznak, elesnek, felállnak és elfutnak.
 import * as THREE from 'three';
-import * as W from './world.js?v=202611271522';
+import * as W from './world.js?v=202611271704';
 
 const H = W.ROADW / 2 + 1.6;
 const SKIN = [0xf0c8a8, 0xe0b08a, 0xc89070, 0x9a6a4a, 0x6a4a32], SHIRT = [0xc0392b, 0x2a6fd1, 0x27ae60, 0xf2c230, 0x8e44ad, 0xe8e8e8, 0x2c3e50, 0xd35400, 0x16a085, 0x7f8c8d, 0xe84393, 0x6c5ce7],
