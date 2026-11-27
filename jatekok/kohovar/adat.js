@@ -1,7 +1,7 @@
 // Kohóvár – a játék adatai: anyagok, folyadékok, blokkok, egységek, kutatási fa, hullámok, szektorok.
 // A játékmenet és a számértékek a Mindustry (Anuke) Serpulo-tartalmát követik: https://store.steampowered.com/app/1127400/Mindustry/
 // Saját kód és saját rajzolt grafika.
-import { EN } from './nevek.js?v=202611271028';
+import { EN } from './nevek.js?v=202611271030';
 
 export const TS = 8;            // egy mező mérete világegységben
 export const TPS = 60;          // szimulációs lépés másodpercenként
@@ -140,7 +140,7 @@ export const WALL_SAND = { 'stone-wall': 1, 'sand-wall': 2, 'dune-wall': 1, 'reg
 export const WALL_DROP = { 'graphitic-wall': 'graphite' };
 // a Mindustry-nevek → Kohóvár talaj- és faltípusok (az eredeti pályák betöltéséhez)
 export const MFLOOR = { stone: 'stone', dacite: 'dark', 'sand-floor': 'sandf', darksand: 'darksand', snow: 'snow', ice: 'ice', grass: 'grass', 'metal-floor': 'metal', 'shallow-water': 'water', 'deep-water': 'deep', moss: 'moss', 'spore-moss': 'spore', dirt: 'sporedark', shale: 'shale', basalt: 'basalt', hotrock: 'hotrock', magmarock: 'magmarock', char: 'ash', 'molten-slag': 'magma', slag: 'magma', tar: 'tar', salt: 'salt' };
-export const MWALL = { 'stone-wall': 'rock', 'snow-wall': 'snowrock', 'sand-wall': 'sandrock', 'dacite-wall': 'darkrock', 'dirt-wall': 'mossrock', 'spore-wall': 'sporerock', 'carbon-wall': 'basaltrock', 'ferric-stone-wall': 'hotwall' };
+export const MWALL = { 'stone-wall': 'rock', 'snow-wall': 'snowrock', 'sand-wall': 'sandrock', 'dacite-wall': 'darkrock', 'dirt-wall': 'mossrock', 'spore-wall': 'sporerock', 'carbon-wall': 'basaltrock', 'ferric-stone-wall': 'hotwall', shrubs: 'mossrock', 'spore-pine': 'spore-pine', 'ice-snow-wall': 'snowrock', 'dark-panel-wall': 'dark-metal', cliff: 'rock' };
 export const MPROP = new Set(['boulder', 'snow-boulder', 'sand-boulder', 'dacite-boulder', 'shale-boulder', 'basalt-boulder', 'spore-cluster', 'beryllic-boulder', 'arkyic-boulder', 'carbon-boulder', 'rhyolite-boulder', 'yellow-stone-boulder', 'red-stone-boulder', 'crystalline-boulder']);
 // biomok: f: [alap, változat], wall, sand: fúrható homokos talaj, liq: [sekély, mély], x: [különleges talaj, gyakoriság]
 export const BIO = {
