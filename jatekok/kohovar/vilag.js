@@ -1,10 +1,10 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611271857';
-import { FW } from './keret.js?v=202611271857';
-import { toWorld } from './msav.js?v=202611271857';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271857';
-import { SN } from './kepadat.js?v=202611271857';
-import { BCM, FOGB, FOGU } from './epitesido.js?v=202611271857';
+import { genMapSerpulo } from './terkep.js?v=202611271902';
+import { FW } from './keret.js?v=202611271902';
+import { toWorld } from './msav.js?v=202611271902';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271902';
+import { SN } from './kepadat.js?v=202611271902';
+import { BCM, FOGB, FOGU } from './epitesido.js?v=202611271902';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -468,10 +468,10 @@ export class World {
   toggleLink(n, b) { if (n.links.includes(b) || b.links?.includes(n)) this.unlink(n, b); else if (n.links.length < n.B.links) this.link(n, b); else return false; return true; }
   solvePower() {
     if (!this.pdirty) return; this.pdirty = 0; this.graphs = [];
-    for (const b of this.blds) { b.g = null; b.bml = null; b.bmi = null; }
+    for (const b of this.blds) { b.g = null; b.bml = null; b.bmi = null; b.bmd = null; }
     for (const b of this.blds) if (b.B.beam && b.team !== DERELICT) {          // Mindustry BeamNode: mind a 4 irányban az első áramot használó épülethez kapcsol
-      b.bml = []; const s = b.B.s, c = (s - 1) >> 1;
-      for (let d = 0; d < 4; d++) { let x = b.x + c, y = b.y + c; for (let r = 1; r <= b.B.range + c; r++) { x += DX[d]; y += DY[d]; if (!this.inb(x, y)) break; const o = this.bt[y * this.w + x]; if (!o || o === b) continue; if (o.B.insul) break; if (o.team === PLAYER && isPow(o)) { if (!b.bml.includes(o)) { b.bml.push(o); (o.bmi = o.bmi || []).push(b); } break; } } }
+      b.bml = []; b.bmd = []; const s = b.B.s, c = (s - 1) >> 1;
+      for (let d = 0; d < 4; d++) { let x = b.x + c, y = b.y + c; for (let r = 1; r <= b.B.range + c; r++) { x += DX[d]; y += DY[d]; if (!this.inb(x, y)) break; const o = this.bt[y * this.w + x]; if (!o || o === b) continue; if (o.B.insul) break; if (o.team === b.team && isPow(o)) { if (!b.bml.includes(o)) { b.bml.push(o); (o.bmi = o.bmi || []).push(b); } b.bmd.push({ o, d, x, y, r }); break; } } }
     }
     for (const b0 of this.blds) {
       if (b0.g || !isPow(b0) || b0.B.type === 'diode' || b0.team === DERELICT) continue;

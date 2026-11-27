@@ -1,5 +1,5 @@
 // Locsolóháború – hiteles szimuláció (a gazda futtatja 30 ütemmel), botok, ellenfelek, bináris állapot.
-import { mapOf, movePlayer, raycast, overlap, pointSolid, inZone, eyeH, cactusHit, PR, PH, CH, B_JUMP, B_CROUCH, B_RUN, B_FIRE, B_RELOAD, B_AIM } from './vilag.js?v=202611271857';
+import { mapOf, movePlayer, raycast, overlap, pointSolid, inZone, eyeH, cactusHit, PR, PH, CH, B_JUMP, B_CROUCH, B_RUN, B_FIRE, B_RELOAD, B_AIM } from './vilag.js?v=202611271902';
 export const TICK = 1 / 30, HIST = 32;
 export const MODES = [
   { id: 'ffa', n: 'Mindenki mindenki ellen', d: '15 kiütésig vagy 5 percig.', goal: 15, tmax: 300 },

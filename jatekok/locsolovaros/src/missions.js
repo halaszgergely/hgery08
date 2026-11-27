@@ -1,6 +1,6 @@
 // Küldetésmotor (async lépések, figyelők, időzítő, jelölők) és a 8 fő küldetés átvezető jelenetekkel.
 import * as THREE from 'three';
-import * as W from './world.js?v=202611271857';
+import * as W from './world.js?v=202611271902';
 
 /* ---------- világ-jelölők: fényoszlop + földi gyűrű ---------- */
 export function createMarkers(scene) {

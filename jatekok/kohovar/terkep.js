@@ -1,7 +1,7 @@
 // Kohóvár – térképgenerátor a Mindustry SerpuloPlanetGenerator lépései szerint:
 // ridged zajból nyílt völgyek → sejtautomata (cells) → torzítás → termek kivágása, A*-utak ecsettel → folyók →
 // zajalapú ércmezők → medián simítás → elérhetetlen részek kitöltése → technikai padló, moha / kátrány / forró kő.
-import { ITEM_IDS, FLOORS, WALLS, BIO, ORE_P } from './adat.js?v=202611271857';
+import { ITEM_IDS, FLOORS, WALLS, BIO, ORE_P } from './adat.js?v=202611271902';
 
 const FL = Object.keys(FLOORS), FLI = Object.fromEntries(FL.map((k, i) => [k, i])), WL = Object.keys(WALLS);
 
