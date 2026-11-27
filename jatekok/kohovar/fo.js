@@ -2,17 +2,18 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271253';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271253';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271253';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611271253';
-import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271253';
-import { JS } from './jsapi.js?v=202611271253';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271253';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271253';
-import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271253';
-import { toWorld } from './msav.js?v=202611271253';
-import { Story } from './logika.js?v=202611271253';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271305';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271305';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271305';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611271305';
+import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271305';
+import { JS } from './jsapi.js?v=202611271305';
+import { initCloud, changed as cloudChanged, push as cloudPush, flush as cloudFlush } from './felho.js?v=202611271305';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271305';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271305';
+import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271305';
+import { toWorld } from './msav.js?v=202611271305';
+import { Story } from './logika.js?v=202611271305';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -25,7 +26,7 @@ if (!S || !S.research) S = { research: TECH.filter(t => t.k === 'b' && !Object.k
 S.seen = S.seen || {};
 if (!S.rv) { for (const id of [...S.research]) { const B = BLOCKS[id]; for (const u of [...(B && B.plans || []), ...Object.values(B && B.up || {})]) if (!S.research.includes('u:' + u)) S.research.push('u:' + u); } S.rv = 2; }   // a korábbi mentés: a már kikutatott gyárak egységei megmaradnak
 for (const k in S.bank) if (S.bank[k] > 0) S.seen['i:' + k] = 1;
-const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); return true; } catch (_) { return false; } };
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); cloudChanged(); return true; } catch (_) { return false; } };
 if (!S.research.includes('bastion')) S.research.push('bastion');
 if (S.runs) { delete S.runs.vegtelen; for (const k in S.runs) if (k !== 'free' && !SECTORS.some(s => s.id === k)) delete S.runs[k]; }   // a régi hadjárat szektorai megszűntek
 S.free = { ...FREE_DEF, ...(S.free || {}) }; S.seed = S.seed || (Math.random() * 1e9 | 0);
@@ -696,13 +697,14 @@ $('#pRes').onclick = () => closeDlg('#dPause');
 $('#pSet').onclick = () => showSet();
 $('#pTech').onclick = () => showTech();
 $('#pDb').onclick = () => showDb();
-$('#pSave').onclick = () => quit();
+$('#pSave').onclick = () => { quit(); cloudFlush(); };
+$('#pCloud').onclick = () => { saveRun(); cloudFlush('man'); };
 $('#pAband').onclick = e => { const b = e.currentTarget; if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.querySelector('span').textContent = 'Biztos?'; return; } closeAll(); endGame(false); };
 $('#skip').onclick = () => { if (W && W.rules.waves && W.rules.waveSending && (!SEC.win || W.wave < SEC.win)) W.nextWave(); };
 function sizeMini() { if (!W) return; const c = $('#mini'), a = W.w / W.h, z = SET.ui / 100, mw = bigMap ? Math.min(innerWidth * .8, innerHeight * .8 * a) / z : 240; c.width = Math.round(mw); c.height = Math.round(mw / a); c.style.width = mw + 'px'; c.classList.toggle('big', bigMap); }
 $('#mini').onclick = e => { if (!W) return; const r = e.target.getBoundingClientRect(); cam.free = { x: (e.clientX - r.left) / r.width * W.w * TS, y: (e.clientY - r.top) / r.height * W.h * TS }; if (bigMap) { bigMap = false; sizeMini(); } };
 window.addEventListener('beforeunload', saveRun);
-document.addEventListener('visibilitychange', () => { if (document.hidden) saveRun(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { saveRun(); cloudFlush(); } });
 
 /* ---------- HUD ---------- */
 let palSig = '', fpsN = 0, fpsT = 0, fpsV = 0;
@@ -826,6 +828,11 @@ applySet(); showMenu(); requestAnimationFrame(frame);
 loadAtlas().then(() => loadMods()).then(errs => {
   modErrs = errs; prepContent(); addModSectors(MOD_SECTORS, MOD_PLANETS); NODE = Object.fromEntries(TECH.map(t => [t.id, t])); TPOS = null;
   ready = true; buildMenu(); try { menuWorld(); } catch (_) { MW = null; }
+  // felhőmentés (csak az Arcade-ból indítva, bejelentkezve)
+  initCloud({ getS: () => S, note: (t, c) => { if (W) W.msg(t, c); else { const el = $('#cnote'); el.textContent = t; el.className = 'np-pane' + (c ? ' ' + c : ''); el.hidden = false; clearTimeout(el._t); el._t = setTimeout(() => { el.hidden = true; }, 3500); } },
+    onAdmin: a => { $('#pCloud').hidden = !a; },
+    applyS: S2 => { if (W) return false; for (const k of Object.keys(S)) delete S[k]; Object.assign(S, S2); S.seen = S.seen || {}; S.runs = S.runs || {}; S.bank = S.bank || {}; S.cap = S.cap || {}; S.free = { ...FREE_DEF, ...(S.free || {}) }; S.seed = S.seed || (Math.random() * 1e9 | 0);
+      try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (_) {} TPOS = null; buildMenu(); return true; } });
 }, () => { $('#mcol').innerHTML = '<div class="fb bad" style="height:auto;padding:14px">A grafika betöltése nem sikerült – frissítsd az oldalt.</div>'; });
 FW.blockIcon = blockIcon; FW.done = done;
 window.__KV = { get W() { return W; }, get selBlock() { return selBlock; }, get rot() { return rot; }, FWT: FW.types, get selB() { return selB; }, set selB(v) { selB = v; }, S, start, SECTORS, freeSector, BL: BLOCKS, UN: UNITS, cam, retex() { TER = makeTerrain(W); }, showPlanet, showCustom, showPlay, showTech, showDb, showSet, showMods, showLoad, openPM, closeDlg, STACK };

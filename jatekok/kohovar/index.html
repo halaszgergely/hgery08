@@ -1,7 +1,7 @@
 <!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="robots" content="noindex,nofollow"><title>Kohóvár – HGWS Arcade</title>
 <link rel="icon" type="image/png" href="../../img/favicon-32.png">
-<link rel="stylesheet" href="kepek/ui/elemek.css?v=202611271253">
-<link rel="stylesheet" href="felulet.css?v=202611271253">
+<link rel="stylesheet" href="kepek/ui/elemek.css?v=202611271305">
+<link rel="stylesheet" href="felulet.css?v=202611271305">
 </head><body>
 <canvas id="c"></canvas>
 
@@ -19,6 +19,7 @@
   <div id="msgs"></div>
   <div id="annc" hidden></div>
   <div id="toast" class="np-pane" hidden></div>
+  <div id="cnote" class="np-pane" hidden></div>
   <div id="sel" class="np-pane" hidden></div>
   <div id="pal"><div id="binfo" class="np-button-edge-2" hidden></div><div class="gline"></div><div id="prow"><div id="blks" class="np-pane-2"></div><div id="cats"></div></div></div>
 </div>
@@ -60,9 +61,9 @@
 <div id="dPause" class="dlg" hidden><div class="tt">Menü</div><div class="bd" style="justify-content:center"><div class="pgrid">
   <button class="b np-button" id="pRes"><i class="ic ic-left"></i>Vissza</button><button class="b np-button" id="pSet"><i class="ic ic-settings"></i>Beállítások</button>
   <button class="b np-button" id="pTech"><i class="ic ic-tree"></i>Technológiafa</button><button class="b np-button" id="pDb"><i class="ic ic-book"></i>Adatbázis</button>
-  <button class="b np-button" id="pSlot"><i class="ic ic-save"></i><span>Mentés</span></button><button class="b np-button" id="pSave"><i class="ic ic-exit"></i>Mentés és kilépés</button><button class="b np-button" id="pAband"><i class="ic ic-exit"></i><span>Feladás</span></button>
+  <button class="b np-button" id="pSlot"><i class="ic ic-save"></i><span>Mentés</span></button><button class="b np-button" id="pCloud" hidden><i class="ic ic-upload"></i><span>Felhőbe mentés</span></button><button class="b np-button" id="pSave"><i class="ic ic-exit"></i>Mentés és kilépés</button><button class="b np-button" id="pAband"><i class="ic ic-exit"></i><span>Feladás</span></button>
 </div></div></div>
 <div id="dEnd" class="dlg" hidden><div class="tt" id="endT"></div><div class="bd" style="justify-content:center"><div class="endst" id="endP"></div><div id="endB" style="display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:12px;font-size:16px"></div></div><div class="ft"><button class="b np-button" id="endLoad" hidden><i class="ic ic-download"></i>Mentés betöltése</button><button class="b np-button" id="endOk"><i class="ic ic-ok"></i>OK</button></div></div>
 
-<script type="module" src="fo.js?v=202611271253"></script>
+<script type="module" src="fo.js?v=202611271305"></script>
 </body></html>
