@@ -2,12 +2,13 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, ORE_P, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611271110';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271110';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271110';
-import { FL, FLI, WL } from './vilag.js?v=202611271110';
-import { parseHjson } from './hjson.js?v=202611271110';
-import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611271110';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, ORE_P, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611271126';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271126';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271126';
+import { FL, FLI, WL } from './vilag.js?v=202611271126';
+import { runScripts, defJson, defKind, defClass, attachDef, scriptReport, initJsApi } from './jsapi.js?v=202611271126';
+import { parseHjson } from './hjson.js?v=202611271126';
+import { addSprite, spritesReady, has as AT_HAS, sprSize } from './rajz.js?v=202611271126';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [], MOD_MAPS = [];   // MOD_MAPS: a mod szektor nélküli pályái (egyéni játék)   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
@@ -60,6 +61,15 @@ export function installMod(files, srcLabel) {
   // sprite-ok: a fájlnév (kiterjesztés nélkül) a név; a modbeli tartalom a Mindustryhoz hasonlóan előtagot kap
   const spr = new Map(); for (const [p, d] of files) { const m = p.match(/^sprites\/(?:.*\/)?([^/]+)\.png$/); if (m) spr.set(m[1], d); }
   const sp = (...names) => { for (const n of names) if (spr.has(n)) return spr.get(n); return null; };
+  // JavaScript-szkriptek (Kohóvár JS API): a tartalom feldolgozása előtt futnak, mint a Mindustryban; a szkriptben létrehozott
+  // tartalom JSON-ként kerül a mod tartalmai közé, a felülírt metódusok a blokk / egység elkészülte után kötődnek hozzá
+  const runJS = !String(srcLabel || '').startsWith('local:') || modPrefs()['js:' + srcLabel] === true;
+  const JM = runJS ? runScripts(files, { id, name: mod.name, meta, sprites: spr, bundle: { ...bundle, ...bundleEn } }) : null;
+  if (JM) for (const [n, d] of JM.defs) {
+    const kind = defKind(d); if (!kind || kind === 'status') continue; let dj; try { dj = defJson(d, id); } catch (e) { continue; } const L = content[kind] = content[kind] || [], ex = L.find(e => e[0] === n);
+    if (ex) { for (const k in dj) if (!(k in ex[1])) ex[1][k] = dj[k]; }
+    else { if (kind === 'blocks') dj.type = dj.type || defClass(d); else if (kind === 'units') dj.type = dj.type || (dj.flying ? 'flying' : 'mech'); L.push([n, dj]); }
+  }
   const io = ITEM_OF(), lo = LIQ_OF(), bo = BLOCK_OF();
   const itemId = n => { n = String(n); return io[pre(n)] ? pre(n) : io[n] || (ITEMS[pre(n)] ? pre(n) : null); };
   const liqId = n => { n = String(n); return LIQUIDS[pre(n)] ? pre(n) : lo[n] || null; };
@@ -318,13 +328,14 @@ export function installMod(files, srcLabel) {
     if (B.type === 'factory') { if (!B.plans.includes(k)) B.plans.push(k); B.pcost = B.pcost || {}; B.pcost[k] = { cost: stacks(r.requirements), time: +(r.time || 1800) / 60 }; }
     else if (B.type === 'recon' && r.previous) { const pv = unitId(r.previous); if (pv) B.up[pv] = k; } }
   for (const a of pendR) researchNode(...a);
+  if (JM) for (const [n, d] of JM.defs) { const kind = defKind(d); if (kind === 'blocks') attachDef(JM, d, kind, BLOCKS[pre(n)] ? pre(n) : bo[n]); else if (kind === 'units') attachDef(JM, d, kind, UNITS[pre(n)] ? pre(n) : unitId(n)); }
   // a nem teljesen működő tartalom megjelölése (a figyelmeztetésekből és az átalakító _partial mezőjéből)
   const mark = (nm, why) => { const k = BLOCKS[pre(nm)] ? pre(nm) : bo[nm] && BLOCKS[bo[nm]] && BLOCKS[bo[nm]].mod === id ? bo[nm] : null; const o = k ? BLOCKS[k] : UNITS[pre(nm)]; if (o) o.part = o.part ? o.part + '; ' + why : why; };
   for (const w of warn) { const m = w.match(/^([^:\s]+): (.+)$/); if (m) mark(m[1], m[2]); }
   for (const [n, j] of [...(content.blocks || []), ...(content.units || [])]) if (j._partial) mark(n, j._partial);
   // a felülírt eredeti sprite-ok (sprites-override)
   for (const [p, d] of files) { const m = p.match(/^sprites-override\/(?:.*\/)?([^/]+)\.png$/); if (m) { addSprite(m[1], d); if (AT_HAS(m[1] + '@o')) addSprite(m[1] + '@o', d); mod.added.overrides++; } }
-  const nScripts = [...files.keys()].filter(p => /^scripts\/.*\.js$/.test(p)).length; if (nScripts) warn.push(files.has('kohovar-js.txt') ? `${nScripts} JavaScript-fájl: a tartalmuk előre átvéve, a látványelemeik nem futnak` : `${nScripts} JavaScript-fájl: a szkriptek nem futnak`);
+  const nScripts = [...files.keys()].filter(p => /^scripts\/.*\.js$/.test(p)).length; if (nScripts && !JM) warn.push(`${nScripts} JavaScript-fájl: a szkriptek nincsenek engedélyezve`);
   if (meta.main || [...files.keys()].some(p => /\.(class|jar|dex)$/.test(p))) warn.push('Java-kódot tartalmaz: az nem fut a böngészőben');
 
   // a gyárak terveiben szereplő modbeli egységek ára (a gyár adja)
@@ -351,6 +362,7 @@ export function installMod(files, srcLabel) {
   const used = new Set(MOD_SECTORS.filter(s => s.mod === id).map(s => s.mapFile));
   const maps = [...files.keys()].filter(p => /^maps\/[^/]+\.msav$/.test(p) && !used.has(p));
   for (const p of maps) { const nm = p.slice(5, -5); MOD_MAPS.push({ id: pre('map-' + nm), n: clr(en(`map.${nm}.name`) || human(nm)), bytes: files.get(p), txt: bundle, mod: id, modName: mod.name }); mod.added.maps++; }
+  if (JM) { const w0 = mod.warn; mod.js = JM; Object.defineProperty(mod, 'warn', { get: () => [...w0, ...scriptReport(JM)], enumerable: true }); }
   MODS.push(mod); return mod;
 }
 
@@ -368,10 +380,10 @@ export const builtinList = () => fetch('modok/lista.json?v=' + Date.now()).then(
 // a bekapcsolt modok betöltése a játék indulása előtt; hibás mod nem állítja meg a játékot
 export async function loadMods() {
   const pref = modPrefs(), errs = [];
-  await installFramework();
+  await installFramework(); await initJsApi(sprSize);
   let list = []; try { list = await builtinList(); } catch (_) {}
   for (const m of list) { if (pref[m.file] === false || (pref[m.file] !== true && !m.on)) continue; try { const A = m.addon ? await loadAddon(m.addon, m.v) : null; const buf = await fetch('modok/' + m.file + (m.v ? '?v=' + m.v : '')).then(r => r.arrayBuffer()); const md = installMod(await readZip(buf), m.file); if (A && A.patch && md) A.patch(FW, md); } catch (e) { errs.push(m.file + ': ' + e.message); } }
   let loc = []; try { loc = await localMods(); } catch (_) {}
   for (const name of loc) { if (pref['local:' + name] === false) continue; try { installMod(await readZip(await getLocal(name)), 'local:' + name); } catch (e) { errs.push(name + ': ' + e.message); } }
-  await spritesReady(); return errs;
+  await spritesReady(); if (FW.js) FW.js.ready(); return errs;
 }
