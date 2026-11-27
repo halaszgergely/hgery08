@@ -1,9 +1,9 @@
 // Kohóvár – kirajzolás. A blokkok, egységek, anyagok és a talaj képei a Mindustry (Anuke és közreműködők, GPLv3) sprite-jai,
 // a kepek/atlasz.png atlaszból; a lövedékek, hatások, köd és kisérkép kódból rajzoltak.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271206';
-import { FW } from './keret.js?v=202611271206';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271206';
-import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271206';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271237';
+import { FW } from './keret.js?v=202611271237';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271237';
+import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271237';
 
 const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555', 0: '#4d4e58' };
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -22,14 +22,33 @@ export const has = n => !!(AT && AT[n]);
 const PEND = [];
 export function addSprite(n, png) {
   const url = URL.createObjectURL(new Blob([png], { type: 'image/png' })), im = new Image();
-  PEND.push(new Promise(ok => { im.onload = () => { AT[n] = [0, 0, im.naturalWidth, im.naturalHeight, im, url]; TC.clear(); ok(); }; im.onerror = () => ok(); im.src = url; }));
+  PEND.push(new Promise(ok => { im.onload = () => { AT[n] = [0, 0, im.naturalWidth, im.naturalHeight, im, url]; TC.clear(); ROTC.clear(); ok(); }; im.onerror = () => ok(); im.src = url; }));
 }
 export const spritesReady = () => Promise.all(PEND.splice(0));
 // n: atlasznév; x, y: középpont világegységben; rot: radián; sx, sy: tükrözés / nyújtás; w, h: méret (alap: képpont / 4)
+const ROTC = new Map();
+function rotC(n, r, im, q, kx, ky) {
+  const k = n + '|' + q + '|' + kx + '|' + ky; let c = ROTC.get(k); if (c) return c;
+  c = document.createElement('canvas'); const w = r[2], h = r[3]; c.width = q & 1 ? h : w; c.height = q & 1 ? w : h;
+  const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.translate(c.width / 2, c.height / 2); x.rotate(q * Math.PI / 2); x.scale(kx, ky); x.drawImage(im, r[4] ? 0 : r[0], r[4] ? 0 : r[1], w, h, -w / 2, -h / 2, w, h);
+  ROTC.set(k, c); return c;
+}
+// a világ rajzfelületének ismert mátrixa (render állítja; ahol a rajz maga transzformál, ok = false)
+const TM = { g: null, ok: false, z: 1, ox: 0, oy: 0 };
 export function spr(g, n, x, y, rot, sx, sy, w, h, src) {
   const r = AT[n]; if (!r) return; const im = src || r[4] || IMG, ox = src ? 0 : r[0], oy = src ? 0 : r[1], W_ = w ?? r[2] / 4, H_ = h ?? r[3] / 4;
   if (!rot && sx == null) { g.drawImage(im, ox, oy, r[2], r[3], x - W_ / 2, y - H_ / 2, W_, H_); return; }
-  g.save(); g.translate(x, y); if (rot) g.rotate(rot); if (sx != null) g.scale(sx, sy ?? 1); g.drawImage(im, ox, oy, r[2], r[3], -W_ / 2, -H_ / 2, W_, H_); g.restore();
+  const ky = sy ?? 1, kx = sx ?? 1;
+  // 90°-os forgatás és tükrözés: előre elforgatott másolatból, transzformáció nélkül (a szalagok, blokkok többsége ilyen)
+  if (!src && (kx === 1 || kx === -1) && (ky === 1 || ky === -1)) {
+    const q4 = (rot || 0) / (Math.PI / 2), q = Math.round(q4);
+    if (Math.abs(q4 - q) < 1e-6) { const qq = ((q % 4) + 4) % 4, c = rotC(n, r, im, qq, kx, ky), odd = qq & 1, dw = odd ? H_ : W_, dh = odd ? W_ : H_; g.drawImage(c, x - dw / 2, y - dh / 2, dw, dh); return; }
+  }
+  if (TM.g === g && TM.ok) {   // a világ rajzolásakor a mátrix ismert: egyetlen setTransform save/restore és több transzformáció helyett
+    const z = TM.z, c = rot ? Math.cos(rot) : 1, s = rot ? Math.sin(rot) : 0;
+    g.setTransform(z * c * kx, z * s * kx, -z * s * ky, z * c * ky, TM.ox + z * x, TM.oy + z * y); g.drawImage(im, ox, oy, r[2], r[3], -W_ / 2, -H_ / 2, W_, H_); g.setTransform(z, 0, 0, z, TM.ox, TM.oy); return;
+  }
+  g.save(); g.translate(x, y); if (rot) g.rotate(rot); if (sx != null) g.scale(kx, ky); g.drawImage(im, ox, oy, r[2], r[3], -W_ / 2, -H_ / 2, W_, H_); g.restore();
 }
 // átszínezett sprite (mul: szorzás – a fehér részek veszik fel a színt; különben egyszínű kitöltés), gyorsítótárazva
 function tint(n, col, mul) {
@@ -123,8 +142,8 @@ function drawB(g, W, b, t) {
   if (b.B.xlinks && !b.__rx) {      // nem négyzetes blokk: a teljes alakzat közepére, forgatva rajzoljuk
     const B = b.B, rc = FW.rect(B, b.x, b.y, b.rot || 0), mx = (rc.x0 + rc.x1) / 2, my = (rc.y0 + rc.y1) / 2, w = (rc.x1 - rc.x0) * TS, h = (rc.y1 - rc.y0) * TS;
     g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(rc.x0 * TS, rc.y0 * TS, w, h);
-    g.save(); g.translate(mx * TS, my * TS); g.rotate(-(b.rot || 0) * Math.PI / 2); g.translate(-B.s * TS / 2, -B.s * TS / 2);
-    drawB(g, W, Object.assign(Object.create(b), { __rx: 1, x: 0, y: 0, rot: 0 }), t); g.restore(); return;
+    const ok = TM.ok; TM.ok = false; g.save(); g.translate(mx * TS, my * TS); g.rotate(-(b.rot || 0) * Math.PI / 2); g.translate(-B.s * TS / 2, -B.s * TS / 2);
+    drawB(g, W, Object.assign(Object.create(b), { __rx: 1, x: 0, y: 0, rot: 0 }), t); g.restore(); TM.ok = ok; return;
   }
   if (b.B.js && W && !b.__natD && !b.__rx && FW.js) { b.__natD = 1; try { FW.js.draw(g, W, b, () => drawB(g, W, b, t)); } finally { b.__natD = 0; } return; }
   const B = b.B, s = B.s * TS, x = b.x * TS, y = b.y * TS, cx = x + s / 2, cy = y + s / 2, id = b.t, n = SN[id], R = b.rot * Math.PI / 2, wk = b.work || 0;
@@ -218,10 +237,10 @@ function drawB(g, W, b, t) {
 }
 
 /* ---------- egységek (a sprite-ok felfelé néznek) ---------- */
-const seg = (g, n, x1, y1, x2, y2) => { const r = AT[n]; if (!r) return; g.save(); g.translate(x1, y1); g.rotate(Math.atan2(y2 - y1, x2 - x1)); g.drawImage(r[4] || IMG, r[0], r[1], r[2], r[3], 0, -r[3] / 8, Math.hypot(x2 - x1, y2 - y1), r[3] / 4); g.restore(); };
+const seg = (g, n, x1, y1, x2, y2) => { const r = AT[n]; if (!r) return; const tmOk = TM.ok; TM.ok = false; g.save(); g.translate(x1, y1); g.rotate(Math.atan2(y2 - y1, x2 - x1)); g.drawImage(r[4] || IMG, r[0], r[1], r[2], r[3], 0, -r[3] / 8, Math.hypot(x2 - x1, y2 - y1), r[3] / 4); g.restore(); TM.ok = tmOk; };
 export function drawUnit(g, t, team, x, y, a, walk, sc = 1) {
   const U = UNITS[t], W_ = UW[t] || [];
-  g.save(); g.translate(x, y); g.rotate(a + Math.PI / 2); if (sc !== 1) g.scale(sc, sc);
+  const tmOk = TM.ok; TM.ok = false; g.save(); g.translate(x, y); g.rotate(a + Math.PI / 2); if (sc !== 1) g.scale(sc, sc);
   const weapons = top => { for (const [wn, wx, wy, mir, tp] of W_) { if (!!tp !== top || !wn) continue; spr(g, wn + '@o', wx, -wy); if (mir) spr(g, wn + '@o', -wx, -wy, 0, -1, 1); } };
   const L = LEG[t];
   if (L) {            // lábas egység: kétízületes lábak, a lépés fázisa lábanként eltolva
@@ -238,7 +257,7 @@ export function drawUnit(g, t, team, x, y, a, walk, sc = 1) {
   weapons(false); spr(g, t + '@o', 0, 0);
   if (has(t + '-cell')) sprT(g, t + '-cell', TEAM[team], 1, 0, 0);
   weapons(true);
-  g.restore();
+  g.restore(); TM.ok = tmOk;
 }
 
 /* ---------- fő rajzolás ---------- */
@@ -252,7 +271,7 @@ export function render(g, W, R) {
     const X0 = Math.round(cx * cs * z + ox), Y0 = Math.round(cy * cs * z + oy), X1 = Math.round((cx + 1) * cs * z + ox), Y1 = Math.round((cy + 1) * cs * z + oy);
     g.drawImage(ter.chunk(cx, cy, lod), X0, Y0, X1 - X0, Y1 - Y0);
   }
-  g.setTransform(z, 0, 0, z, ox, oy);
+  g.setTransform(z, 0, 0, z, ox, oy); TM.g = g; TM.ok = true; TM.z = z; TM.ox = ox; TM.oy = oy;
   if (W.props) for (const p of W.props) { if (!W.prop[p.i]) continue; const x = (p.x + .5) * TS, y = (p.y + .5) * TS; if (x < vx0 - 40 || x > vx1 + 40 || y < vy0 - 40 || y > vy1 + 40) continue; if (p.tree && AT[p.n + '-shadow']) { g.globalAlpha = .5; spr(g, p.n + '-shadow', x + 2, y - 2, p.r); g.globalAlpha = 1; } spr(g, p.n, x, y, p.r); }   // kövek, fák
   if (!W.hideSpawns) for (const sp of W.spawns) spr(g, 'spawn', (sp.x + .5) * TS, (sp.y + .5) * TS);
   for (const f of W.fx) if (f.k === 'rubble') { g.fillStyle = `rgba(20,18,16,${.45 * f.life / f.max})`; g.fillRect(f.x * TS + 1, f.y * TS + 1, f.s * TS - 2, f.s * TS - 2); }
@@ -309,10 +328,10 @@ export function render(g, W, R) {
     if (b.k === 'drv') { g.fillStyle = '#ffd37f'; circ(g, b.x, b.y, 3); g.fillStyle = '#fff'; circ(g, b.x, b.y, 1.4); continue; }
     const a = Math.atan2(b.vy, b.vx), big = b.sz || (b.d > 40 ? 1.6 : 1);
     if (b.tr) { const L = Math.min(b.tr, 30) * Math.hypot(b.vx, b.vy) * .5; g.strokeStyle = b.c; g.globalAlpha = .45; g.lineWidth = 1.2 * big; g.beginPath(); g.moveTo(b.x, b.y); g.lineTo(b.x - Math.cos(a) * L, b.y - Math.sin(a) * L); g.stroke(); g.globalAlpha = 1; }   // csóva
-    g.save(); g.translate(b.x, b.y); g.rotate(a);
+    const tmOk = TM.ok; TM.ok = false; g.save(); g.translate(b.x, b.y); g.rotate(a);
     if (b.k === 'missile') { g.fillStyle = '#c9cbd4'; g.fillRect(-2.5, -.9, 4.5, 1.8); g.fillStyle = b.c; g.fillRect(-4, -.6, 1.6, 1.2); }
     else { g.fillStyle = b.c; g.beginPath(); g.ellipse(0, 0, 3 * big, 1.1 * big, 0, 0, 7); g.fill(); g.fillStyle = b.c2 || '#fff'; g.beginPath(); g.ellipse(.4, 0, 1.8 * big, .55 * big, 0, 0, 7); g.fill(); }
-    g.restore();
+    g.restore(); TM.ok = tmOk;
   }
   if (!R.nofx) for (const f of W.fx) {
     const k = f.life / f.max;
@@ -330,6 +349,7 @@ export function render(g, W, R) {
   }
   if (FW.js) FW.js.render(g, W);
   if (W.fog) { const tx0 = Math.max(0, Math.floor(vx0 / TS) - 1), ty0 = Math.max(0, Math.floor(vy0 / TS) - 1), tx1 = Math.min(W.w, Math.ceil(vx1 / TS) + 1), ty1 = Math.min(W.h, Math.ceil(vy1 / TS) + 1); if (tx1 > tx0 && ty1 > ty0) { g.imageSmoothingEnabled = true; g.drawImage(ter.fog, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * TS, ty0 * TS, (tx1 - tx0) * TS, (ty1 - ty0) * TS); } }
+  TM.ok = false; TM.g = null;
   g.imageSmoothingEnabled = false;
   if (ui) ui(g, z);
 }

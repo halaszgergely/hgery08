@@ -1,8 +1,8 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611271206';
-import { FW } from './keret.js?v=202611271206';
-import { toWorld } from './msav.js?v=202611271206';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271206';
+import { genMapSerpulo } from './terkep.js?v=202611271237';
+import { FW } from './keret.js?v=202611271237';
+import { toWorld } from './msav.js?v=202611271237';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271237';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -320,7 +320,7 @@ export class World {
     b.dead = 1; this.ver++; this.pdirty = 1; this.fdirty = 1;
     if (FW.js && boom) { if (B.js) FW.js.destroyed(this, b); FW.js.ev('BlockDestroyEvent', () => ({ tile: FW.js.tile(b.x, b.y) })); }
     if (b.team === ENEMY && B.type === 'core') this.ecores--;
-    if (boom) { const c = this.center(b); this.boom(c.x, c.y, B.s * 7, '#ffb347'); this.fx.push({ k: 'rubble', x: b.x, y: b.y, s: B.s, life: 1800, max: 1800 }); if (b.team === PLAYER && B.type !== 'core' && this.rebuild.length < 400) this.rebuild.push([b.t, b.x, b.y, b.rot, b.cfg]); }
+    if (boom) { const c = this.center(b); this.boom(c.x, c.y, B.s * 7, '#ffb347'); this.fx.push({ k: 'rubble', x: b.x, y: b.y, s: B.s, life: 1800, max: 1800 }); if (b.team === PLAYER && B.type !== 'core' && !this.plan(b.t, b.x, b.y, b.rot, b.cfg) && this.rebuild.length < 400) this.rebuild.push([b.t, b.x, b.y, b.rot, b.cfg]); }   // a lerombolt épület tervként marad (Mindustry: „szellem” blokk)
   }
   // ráépítés a Mindustry szabálya szerint (Block.canReplace): azonos csoportba tartozó blokk lecserélhető;
   // a „bármit cserélő” csoportokban (szállítás, folyadék, fal, torony, kivetítő) a nagyobb a kisebbet is, a többiben csak azonos méret vagy azonos fajta
@@ -357,6 +357,9 @@ export class World {
     if (B.mode === 'thermal') return any(i => this.fl(i).heat);
     return true;
   }
+  planAt(tx, ty) { return this.plans.find(q => !q.done && tx >= q.x && ty >= q.y && tx < q.x + q.B.s && ty < q.y + q.B.s) || null; }
+  // a kattintott terv a sor elejére kerül (a játékos és az építő egységek azt építik először)
+  prioritize(tx, ty) { const p = this.planAt(tx, ty); if (!p) return false; this.plans.splice(this.plans.indexOf(p), 1); this.plans.unshift(p); p.stall = false; return true; }
   // a kurzor alatti forgatható épület vagy építési terv elforgatása (R)
   rotateAt(tx, ty, d) {
     const p = this.plans.find(q => !q.brk && !q.done && tx >= q.x && ty >= q.y && tx < q.x + q.B.s && ty < q.y + q.B.s);
@@ -369,6 +372,7 @@ export class World {
     const B = BLOCKS[t]; if (B.type === 'core' && !this.zoneOk(B, x, y)) [x, y] = this.coreSpot(t);
     const o = this.tb(x, y);
     if (o && o.t === t && B.rot && B.type !== 'turret' && o.x === x && o.y === y) { if (o.rot !== rot) { o.rot = rot; this.ver++; this.pdirty = 1; if (B.type === 'beamdrill' || B.type === 'wcrafter') this.scan(o); } return true; }   // azonos blokk: csak elforgatja
+    { const q = this.plans.find(p => !p.brk && p.t === t && p.x === x && p.y === y); if (q) { q.rot = rot; if (cfg != null) q.cfg = cfg; return true; } }   // azonos terv: csak elforgatja
     if (!this.canPlace(t, x, y, rot)) return false;
     this.plans.push({ t, B, x, y, rot, cfg: cfg ?? null, prog: 0, paid: {}, brk: false });
     return true;
@@ -1165,7 +1169,13 @@ export class World {
     this.moveU(p, p.vx, p.vy);
     if (this.fog && this.tick % 6 === 0) this.reveal(p.x, p.y, 16);
     if (c.shoot) { p.rot = Math.atan2(c.my - p.y, c.mx - p.x); if (p.wc[0] <= 0) { this.fireW(p, W0, { x: c.mx, y: c.my }, this.nearestU(c.mx, c.my, 40, ENEMY, 1, 1)); p.wc[0] = W0.rl; } }
-    else if (Math.hypot(p.vx, p.vy) > .2) p.rot = Math.atan2(p.vy, p.vx);
+    else {
+      // automatikus célzás (Mindustry: mobil automata célzás): a fegyver hatótávján belüli legközelebbi ellenség – egység, aztán épület
+      let t = null; if (U.w.length && this.tick % 6 === p.id % 6) { const R = Math.max(...U.w.map(wr)); t = this.nearestU(p.x, p.y, R, ENEMY, 1, 1, true) || this.nearestB(p.x, p.y, R, b => b.team === ENEMY, true); p.atgt = t; }
+      else if (p.atgt && (p.atgt.dead || (p.atgt.U && p.atgt.team !== ENEMY))) p.atgt = null;
+      t = p.atgt; if (t) { const tc = t.U ? t : this.center(t); p.rot = Math.atan2(tc.y - p.y, tc.x - p.x); this.attack(p, t); }
+      else if (Math.hypot(p.vx, p.vy) > .2) p.rot = Math.atan2(p.vy, p.vx);
+    }
     // Mindustry MinerComp: időzítő += bányászsebesség; tárgyanként 50 + 15·keménység. A játékos tárgya a mag hatókörén (220) belül
     // azonnal a magba kerül, azon kívül a rakományba; ha az megtelt vagy más tárgy van benne, a bányászat leáll. Építés közben szünetel.
     p.mining = 0;
@@ -1345,7 +1355,9 @@ export class World {
 
   /* ----- mentés ----- */
   save() {
-    const st = b => { const o = {}; if (sum(b.items) > 0) o.i = b.items; if (b.ammo && b.ammo.length) o.a = b.ammo; if (b.lq > .5) o.l = [b.lt, Math.round(b.lq)]; if (b.oq > .5) o.o = Math.round(b.oq); if (b.pw > 1) o.p = Math.round(b.pw); if (b.burn > 0) o.b = [Math.round(b.burn), b.bm]; if (b.heat > .01 && b.B.mode) o.h = +b.heat.toFixed(2); if (b.warm > .01) o.w = +b.warm.toFixed(3); if (b.pay) o.y = b.pay; if (b.open) o.d = 1; if (b.team !== PLAYER) o.tm = b.team; if (b.off) o.off = 1; return Object.keys(o).length ? o : 0; };
+    const st = b => { const o = {}; if (sum(b.items) > 0) o.i = b.items; if (b.ammo && b.ammo.length) o.a = b.ammo; if (b.lq > .5) o.l = [b.lt, Math.round(b.lq)]; if (b.oq > .5) o.o = Math.round(b.oq); if (b.pw > 1) o.p = Math.round(b.pw); if (b.burn > 0) o.b = [Math.round(b.burn), b.bm]; if (b.heat > .01 && b.B.mode) o.h = +b.heat.toFixed(2); if (b.warm > .01) o.w = +b.warm.toFixed(3); if (b.pay) o.y = b.pay; if (b.open) o.d = 1; if (b.team !== PLAYER) o.tm = b.team; if (b.off) o.off = 1;
+      if (b.cv && b.cv.length) o.c = b.cv.map(e => [e.it, Math.round(e.p * 1000) / 1000]); if (b.st) o.s = [b.st.it, b.st.n]; if (b.jb && b.jb.some(q => q.length)) o.j = b.jb.map(q => q.map(e => e.it)); if ((b.B.type === 'router' || b.B.type === 'bridge') && b.buf != null && (!Array.isArray(b.buf) || b.buf.length)) o.r = b.buf;   // szállítás közbeni tárgyak
+      return Object.keys(o).length ? o : 0; };
     return {
       v: 2, gv: this.sec.gen === 1 ? undefined : this.sec.gen === 2 ? 2 : 3, wave: this.wave, wt: Math.round(this.wtimer), items: this.core.items, chp: Math.round(this.core.hp), kills: this.stats.kills,
       core: this.core.t, cx: this.core.x, cy: this.core.y, seen: this.fog ? rle(this.seen) : undefined, rb: this.rebuild.slice(0, 200),
@@ -1363,7 +1375,8 @@ export class World {
     for (const [t, x, y, rot, hp, cfg, link, lk, st] of s.b || []) {
       const B = BLOCKS[t]; if (!B) continue; let ok = true; for (let yy = 0; yy < B.s; yy++) for (let xx = 0; xx < B.s; xx++) if (!this.inb(x + xx, y + yy) || this.bt[(y + yy) * this.w + x + xx] || this.wall[(y + yy) * this.w + x + xx]) ok = false; if (!ok) continue;
       const b = this.addB(t, x, y, rot, cfg, st && st.tm != null ? st.tm : PLAYER); if (st && st.off) b.off = 1; b.hp = Math.min(B.hp, hp || B.hp); if (b.link !== undefined) b.link = link; if (lk) links.push([b, lk]);
-      if (st) { if (st.i) b.items = st.i; if (st.a && b.ammo) b.ammo = st.a.filter(a => B.ammo && B.ammo[a.it]); if (st.l && LIQUIDS[st.l[0]]) { b.lt = st.l[0]; b.lq = st.l[1]; } if (st.o) b.oq = st.o; if (st.p) b.pw = st.p; if (st.b) { b.burn = st.b[0]; b.bm = st.b[1]; } if (st.h) b.heat = st.h; if (st.w) b.warm = st.w; if (st.y && UNITS[st.y]) b.pay = st.y; if (st.d) b.open = true; }
+      if (st) { if (st.i) b.items = st.i; if (st.a && b.ammo) b.ammo = st.a.filter(a => B.ammo && B.ammo[a.it]); if (st.l && LIQUIDS[st.l[0]]) { b.lt = st.l[0]; b.lq = st.l[1]; } if (st.o) b.oq = st.o; if (st.p) b.pw = st.p; if (st.b) { b.burn = st.b[0]; b.bm = st.b[1]; } if (st.h) b.heat = st.h; if (st.w) b.warm = st.w; if (st.y && UNITS[st.y]) b.pay = st.y; if (st.d) b.open = true;
+        if (st.c && b.cv) b.cv = st.c.filter(e => ITEMS[e[0]]).map(([it, p]) => ({ it, p })); if (st.s && 'st' in b && ITEMS[st.s[0]]) b.st = { it: st.s[0], n: st.s[1], age: 0 }; if (st.j && b.jb) b.jb = st.j.map(q => q.filter(it => ITEMS[it]).map(it => ({ it, tm: -9999 }))); if (st.r != null) { if (Array.isArray(b.buf)) b.buf = [].concat(st.r).filter(it => ITEMS[it]); else if (ITEMS[st.r]) b.buf = st.r; } }
     }
     for (const [b, lk] of links) for (const i of lk) { const o = this.bt[i]; if (o && o.i === i) this.link(b, o); }
     for (const [t, x, y, rot, brk, cfg] of s.p || []) { if (!BLOCKS[t]) continue; if (brk) { const b = this.tb(x, y); if (b) this.unplan(b); } else this.plan(t, x, y, rot, cfg); }

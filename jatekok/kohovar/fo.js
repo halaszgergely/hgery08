@@ -2,17 +2,17 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271206';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271206';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271206';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611271206';
-import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271206';
-import { JS } from './jsapi.js?v=202611271206';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271206';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271206';
-import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271206';
-import { toWorld } from './msav.js?v=202611271206';
-import { Story } from './logika.js?v=202611271206';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271237';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271237';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271237';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611271237';
+import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271237';
+import { JS } from './jsapi.js?v=202611271237';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271237';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271237';
+import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271237';
+import { toWorld } from './msav.js?v=202611271237';
+import { Story } from './logika.js?v=202611271237';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -635,13 +635,14 @@ cv.addEventListener('pointerdown', e => {
   if (!W) { if (subOpen >= 0) { subOpen = -1; buildMenu(); } return; } updMouse(e); cv.setPointerCapture(e.pointerId);
   const [tx, ty] = tileAt(M.wx, M.wy);
   if (e.button === 1) { pickAt(tx, ty); return; }
-  if (e.button === 2) { if (selBlock) { selBlock = null; buildPalette(); showInfo(null); return; } M.rdrag = [tx, ty]; return; }
+  if (e.button === 2) { if (selBlock && !(W.inb(tx, ty) && (W.tb(tx, ty) || W.planAt(tx, ty)))) { selBlock = null; buildPalette(); showInfo(null); return; } M.rdrag = [tx, ty]; return; }   // építés közben is töröl, ha van alatta valami
   if (e.button !== 0) return;
   if (selBlock) { M.drag = [tx, ty]; return; }
   const b = W.inb(tx, ty) && W.seen[ty * W.w + tx] ? W.tb(tx, ty) : null;
   if (selB && b && b !== selB && linkClick(selB, b)) return;
   { const FT = b && FW.types[b.B.type]; if (FT && FT.tap && FT.tap(W, b)) { if (selB === b) selHtml(); return; } }
   if (b && b.B.door) { b.open = !b.open; W.fdirty = 1; return; }
+  if (!b && W.prioritize(tx, ty)) return;   // a kattintott terv épüljön először
   if (b) { selB = b; selHtml(); return; }
   { const FT = selB && !selB.dead && FW.types[selB.B.type]; if (FT && FT.pointTap && FT.pointTap(W, selB, tx, ty)) { selHtml(); return; } }
   const i = ty * W.w + tx, p = W.player;
@@ -652,7 +653,7 @@ window.addEventListener('pointermove', e => { updMouse(e); });
 window.addEventListener('pointerup', e => {
   if (!W) { M.l = false; return; }
   updMouse(e); const [tx, ty] = tileAt(M.wx, M.wy);
-  if (e.button === 0) { M.l = false; if (M.drag && selBlock) for (const p of linePlans(selBlock, M.drag, [tx, ty])) W.plan(p.t, p.x, p.y, p.rot); M.drag = null; }
+  if (e.button === 0) { M.l = false; if (M.drag && selBlock) { const pa = M.drag[0] === tx && M.drag[1] === ty && W.planAt(tx, ty); if (pa && pa.t !== selBlock) W.prioritize(tx, ty); else { for (const p of linePlans(selBlock, M.drag, [tx, ty])) W.plan(p.t, p.x, p.y, p.rot); if (pa) W.prioritize(tx, ty); } } M.drag = null; }
   if (e.button === 2 && M.rdrag) {
     const [ax, ay] = M.rdrag, x0 = Math.min(ax, tx), x1 = Math.max(ax, tx), y0 = Math.min(ay, ty), y1 = Math.max(ay, ty), seen = new Set();
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { if (W.cancelAt(x, y)) continue; const b = W.tb(x, y); if (b && !seen.has(b)) { seen.add(b); W.unplan(b); } }
@@ -827,4 +828,4 @@ loadAtlas().then(() => loadMods()).then(errs => {
   ready = true; buildMenu(); try { menuWorld(); } catch (_) { MW = null; }
 }, () => { $('#mcol').innerHTML = '<div class="fb bad" style="height:auto;padding:14px">A grafika betöltése nem sikerült – frissítsd az oldalt.</div>'; });
 FW.blockIcon = blockIcon; FW.done = done;
-window.__KV = { get W() { return W; }, FWT: FW.types, get selB() { return selB; }, set selB(v) { selB = v; }, S, start, SECTORS, freeSector, BL: BLOCKS, UN: UNITS, cam, retex() { TER = makeTerrain(W); }, showPlanet, showCustom, showPlay, showTech, showDb, showSet, showMods, showLoad, openPM, closeDlg, STACK };
+window.__KV = { get W() { return W; }, get selBlock() { return selBlock; }, get rot() { return rot; }, FWT: FW.types, get selB() { return selB; }, set selB(v) { selB = v; }, S, start, SECTORS, freeSector, BL: BLOCKS, UN: UNITS, cam, retex() { TER = makeTerrain(W); }, showPlanet, showCustom, showPlay, showTech, showDb, showSet, showMods, showLoad, openPM, closeDlg, STACK };
