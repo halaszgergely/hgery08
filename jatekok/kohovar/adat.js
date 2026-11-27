@@ -1,7 +1,7 @@
 // Kohóvár – a játék adatai: anyagok, folyadékok, blokkok, egységek, kutatási fa, hullámok, szektorok.
 // A játékmenet és a számértékek a Mindustry (Anuke) Serpulo-tartalmát követik: https://store.steampowered.com/app/1127400/Mindustry/
 // Saját kód és saját rajzolt grafika.
-import { EN } from './nevek.js?v=202611271717';
+import { EN } from './nevek.js?v=202611271824';
 
 export const TS = 8;            // egy mező mérete világegységben
 export const TPS = 60;          // szimulációs lépés másodpercenként

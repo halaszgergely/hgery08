@@ -2,19 +2,19 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271717';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271717';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271717';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss, drawLanding } from './rajz.js?v=202611271717';
-import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271717';
-import { JS } from './jsapi.js?v=202611271717';
-import { initCloud, changed as cloudChanged, push as cloudPush, flush as cloudFlush } from './felho.js?v=202611271717';
-import { MP, initMp, canMp, listRooms, createRoom, joinRoomId, leave as mpLeave, inviteLink, roster, hostStart, hostEnd, hostTick, hostSend, guestFrame } from './mp.js?v=202611271717';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271717';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271717';
-import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271717';
-import { toWorld } from './msav.js?v=202611271717';
-import { Story } from './logika.js?v=202611271717';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271824';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271824';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271824';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss, drawLanding } from './rajz.js?v=202611271824';
+import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271824';
+import { JS } from './jsapi.js?v=202611271824';
+import { initCloud, changed as cloudChanged, push as cloudPush, flush as cloudFlush } from './felho.js?v=202611271824';
+import { MP, initMp, canMp, listRooms, createRoom, joinRoomId, leave as mpLeave, inviteLink, roster, hostStart, hostEnd, hostTick, hostSend, guestFrame } from './mp.js?v=202611271824';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271824';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271824';
+import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271824';
+import { toWorld } from './msav.js?v=202611271824';
+import { Story } from './logika.js?v=202611271824';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -134,7 +134,8 @@ function drawMenuBg() {
 }
 
 /* ---------- raktár, szektorok ---------- */
-function secState(s) { if (S.cap[s.id]) return 'cap'; const n = NODE['s:' + s.id]; if (s.p.alwaysUnlocked || (n && nOpen(n)) || (!n && s.mod && S.cap.groundZero)) return 'open'; return 'lock'; }
+const secNode = s => NODE['s:' + s.id] || NODE['E/s:' + s.id] || Object.values(NODE).find(t => t.k === 's' && t.key === s.id);   // az erekiri csomópontok E/ előtagosak
+function secState(s) { if (S.cap[s.id]) return 'cap'; const n = secNode(s); if (s.p.alwaysUnlocked || (n && nOpen(n)) || (!n && s.mod && S.cap.groundZero)) return 'open'; return 'lock'; }
 // a raktár közös, de bolygónként az ott használt anyagokat mutatja (a Mindustryban a két bolygó anyagai külön vannak)
 const plItems = pl => ITEM_PL[pl] || ITEM_IDS;   // a modok bolygóin minden anyag használható
 const curPl = () => W ? (SEC.planet || 'serpulo') : pcur;
@@ -185,7 +186,7 @@ function drawPlanet() {
 }
 const THREAT = s => { const d = s.diff || 0; return d < 3 ? 'Alacsony' : d < 5 ? 'Közepes' : d < 7 ? 'Magas' : d < 9 ? 'Extrém' : 'Irtózatos'; };
 function planetInfo() {
-  const s = SECTORS.find(q => q.id === psel); if (!s) return; const st = secState(s), run = S.runs[s.id], node = NODE['s:' + s.id];
+  const s = SECTORS.find(q => q.id === psel); if (!s) return; const st = secState(s), run = S.runs[s.id], node = secNode(s);
   let h = `<div class="nm">${esc(s.n)}</div><div class="lg">${mtext(s.d)}</div>`;
   h += `<div class="row">${st === 'cap' ? '<span class="acc">Elfoglalva</span>' : st === 'lock' ? `<span class="lg">${ic('lock', 'xs')} Zárva</span>` : run ? `<span>Hullám: ${run.wave}${s.win ? '/' + s.win : ''}</span>` : '<span class="lg">Felderítetlen</span>'}</div>`;
   h += `<div class="row"><span class="lg">Ellenállás:</span><span>${THREAT(s)}</span></div><div class="row"><span class="lg">Cél:</span>${s.win ? s.win + ' hullám túlélése' : 'Az ellenséges bázis elpusztítása'}</div>`;
