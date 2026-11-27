@@ -1,8 +1,8 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611271013';
-import { FW } from './keret.js?v=202611271013';
-import { toWorld } from './msav.js?v=202611271013';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271013';
+import { genMapSerpulo } from './terkep.js?v=202611271025';
+import { FW } from './keret.js?v=202611271025';
+import { toWorld } from './msav.js?v=202611271025';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271025';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -370,7 +370,7 @@ export class World {
   cancelAt(x, y) { const n = this.plans.length; this.plans = this.plans.filter(p => { const hit = x >= p.x && y >= p.y && x < p.x + p.B.s && y < p.y + p.B.s; if (hit) { p.done = 1; for (const k in p.paid) this.addCore(k, p.paid[k], 1); } return !hit; }); return n !== this.plans.length; }
   finishPlan(p) {
     p.done = 1;
-    if (p.brk) { if (!p.b.dead) { if (p.b.team === PLAYER) for (const k in p.B.cost) this.addCore(k, Math.floor(p.B.cost[k] * REFUND), 1); this.remB(p.b); } return; }
+    if (p.brk) { if (!p.b.dead) { if (p.b.team === PLAYER) for (const k in p.B.cost) this.addCore(k, Math.floor(p.B.cost[k] * this.rm('buildCostMultiplier') * this.rm('deconstructRefundMultiplier', REFUND)), 1); this.remB(p.b); } return; }
     if (p.B.type === 'core' && this.zoneOk(p.B, p.x, p.y) && !(p.x <= this.core.x && p.y <= this.core.y && p.x + p.B.s >= this.core.x + this.core.B.s && p.y + p.B.s >= this.core.y + this.core.B.s)) { this.clearFor(p); this.addB(p.t, p.x, p.y, 0); this.capV = -1; return; }   // új mellékmag a magzónán
     if (p.B.type === 'core') {
       const old = this.core, items = old.items; this.remB(old); const nb = this.addB(p.t, p.x, p.y, 0); nb.items = items; this.core = nb;
@@ -396,7 +396,8 @@ export class World {
   }
   // a magba érkező anyag; a beérkezést számoljuk (Mindustry stats.coreItemCount), a visszatérítést nem
   addCore(k, n, refund) { const c = this.core.items; c[k] = Math.min(this.coreCap(), (c[k] || 0) + n); if (!refund) this.stats.coreIn[k] = (this.stats.coreIn[k] || 0) + n; }
-  has(cost, mult = 1) { const c = this.core.items; for (const k in cost) if ((c[k] || 0) < Math.ceil(cost[k] * mult)) return false; return true; }
+  has(cost, mult = 1) { if (this.rules.infiniteResources) return true; mult *= this.rules.buildCostMultiplier ?? 1; const c = this.core.items; for (const k in cost) if ((c[k] || 0) < Math.ceil(cost[k] * mult)) return false; return true; }
+  rm(k, d = 1) { const v = this.rules[k]; return v == null || !isFinite(v) ? d : +v; }   // szabályszorzó (Mindustry Rules)
 
   /* ----- áram ----- */
   nodeDist(n, b) { const c = this.center(n), d = this.center(b); return Math.hypot(d.x - c.x, d.y - c.y) - (b.B.s + n.B.s) * TS / 2; }
@@ -743,10 +744,10 @@ export class World {
         break;
       }
       case 'factory': {
-        const ut = B.plans[b.cfg || 0], U0 = UNITS[ut]; if (!U0) break; const pc = B.pcost && B.pcost[ut], U = pc ? { cost: pc.cost, time: pc.time } : U0; let ok = true; for (const k in U.cost) if ((I[k] || 0) < U.cost[k]) ok = false;
+        const ut = B.plans[b.cfg || 0], U0 = UNITS[ut]; if (!U0) break; const pc = B.pcost && B.pcost[ut], U = pc ? { cost: pc.cost, time: pc.time } : U0, ucm = this.rm('unitCostMultiplier'); let ok = true; for (const k in U.cost) if ((I[k] || 0) < Math.ceil(U.cost[k] * ucm)) ok = false;
         if (ok && this.canUnit(ut) && this.countU(ut) < this.core.B.ucap) {
-          b.pneed = B.power; b.prog += b.ps * ts / (U.time * 60); b.work = Math.min(1, b.work + .03);
-          if (b.prog >= 1) { b.prog = 0; for (const k in U.cost) I[k] -= U.cost[k]; this.outUnit(b, ut); }
+          b.pneed = B.power; b.prog += b.ps * ts * this.rm('unitBuildSpeedMultiplier') / (U.time * 60); b.work = Math.min(1, b.work + .03);
+          if (b.prog >= 1) { b.prog = 0; for (const k in U.cost) I[k] -= Math.ceil(U.cost[k] * ucm); this.outUnit(b, ut); }
         } else b.work *= .95;
         break;
       }
@@ -766,7 +767,7 @@ export class World {
   updGen(b, ts) {
     const B = b.B, I = b.items; let p = 0;
     switch (B.mode) {
-      case 'solar': p = B.gen; break;
+      case 'solar': p = B.gen * this.rm('solarMultiplier'); break;
       case 'thermal': p = b.attr >= (B.aMin || 0) - .001 ? B.gen * b.attr : 0; if (B.outL && p > 0) { b.oq = Math.min(B.lcap || 10, (b.oq || 0) + B.outL[1] * b.attr * ts); this.madeL[B.outL[0]] = 1; } if (B.outL) this.lqDump(b, 'oq', B.outL[0]); break;
       case 'liq': {
         let run = lqOk(b, [B.inL[0], B.inL[1] * ts]) && (b.lq2 || 0) >= B.inL2[1] * ts;
@@ -891,7 +892,7 @@ export class World {
     if (B.each || (idx === 0 && b.burst === 0)) { if (--am.n <= 0) b.ammo.pop(); }
     b.heat = 1; let off = 0; if (B.alt) { b.side = -b.side; off = B.s * 1.6 * b.side; } else if (B.shots > 1) off = ((b.burst + idx) % 4 - 1.5) * B.s * .9;
     const mz = B.s * 4 + 3, x = c.x + Math.cos(b.ang) * mz - Math.sin(b.ang) * off, y = c.y + Math.sin(b.ang) * mz + Math.cos(b.ang) * off, u = b.tgt;
-    const base = { team: b.team, c: st.c || col, c2: st.c2, sz: st.sz, tr: st.tr, st: st.st, stT: st.stT, spl: st.spl, splR: st.splR, frag: st.frag, zap: st.zap, zapD: st.zapD, d: st.d, bdm: st.bdm };
+    const bdmR = this.rm('blockDamageMultiplier'), base = { team: b.team, c: st.c || col, c2: st.c2, sz: st.sz, tr: st.tr, st: st.st, stT: st.stT, spl: st.spl && st.spl * bdmR, splR: st.splR, frag: st.frag, zap: st.zap, zapD: st.zapD, d: st.d * bdmR, bdm: st.bdm };
     switch (st.k) {
       case 'shrap': { const n = B.spread || 1; for (let k = 0; k < n; k++) this.lineDmg(c.x, c.y, b.ang + (k - (n - 1) / 2) * .35, st.len, st.d, b.team, { air: 1, ground: 1, fx: col, wide: 5 }); return; }
       case 'rail': { this.lineDmg(c.x, c.y, b.ang, range, st.d, b.team, { air: 1, ground: 1, rail: 1, fx: '#f3e979', wide: 5 }); return; }
@@ -938,7 +939,7 @@ export class World {
   spawnPlayer() { const c = this.center(this.core); this.player = this.spawnU(this.core.B.unit, PLAYER, c.x, c.y); this.player.ctl = 1; }
   dmgU(u, d, raw) {
     if (u.bl) return this.dmgB(u.bl, d);
-    if (u.dead) return; if (!raw) d = Math.max(d - u.U.armor, d * .25); if (u.st.freeze) d *= 1.25;
+    if (u.dead) return; if (!raw) d = Math.max(d - u.U.armor, d * .25); if (u.st.freeze) d *= 1.25; d /= this.rm('unitHealthMultiplier');
     if (u.sh > 0) { const a = Math.min(u.sh, d); u.sh -= a; d -= a; }
     u.hp -= d; u.hit = 6;
     if (u.hp <= 0) {
@@ -948,7 +949,7 @@ export class World {
     }
   }
   dmgB(b, d, src) {
-    if (b.dead) return;
+    if (b.dead) return; d /= this.rm('blockHealthMultiplier');
     if (b.B.zap && src && Math.random() < b.B.zap) { const c = this.center(b); this.lightning(c.x, c.y, Math.atan2(src.y - c.y, src.x - c.x), 20, b.team || PLAYER); }
     if (b.B.armor) d = Math.max(d - b.B.armor, d * .1);   // páncél (Damage.applyArmor)
     b.hp -= d; b.hit = 8;
@@ -986,7 +987,7 @@ export class World {
   }
   // egy fegyver elsütése; t: célegység vagy épület, tc: a cél pontja
   fireW(u, w, tc, t) {
-    const team = u.team, foe = foeOf(team), a = Math.atan2(tc.y - u.y, tc.x - u.x), dm = u.st.od ? 1.3 : 1, col = team === ENEMY ? '#ff7a6a' : w.heal ? '#84f491' : '#ffe39a';
+    const team = u.team, foe = foeOf(team), a = Math.atan2(tc.y - u.y, tc.x - u.x), dm = (u.st.od ? 1.3 : 1) * this.rm('unitDamageMultiplier'), col = team === ENEMY ? '#ff7a6a' : w.heal ? '#84f491' : '#ffe39a';
     const air = w.air !== 0 ? 1 : 0, base = { team, c: w.c || col, c2: w.c2, sz: w.sz, tr: w.tr, d: (w.d || 0) * dm, spl: w.spl && w.spl * dm, splR: w.splR, st: w.st, stT: w.stT, frag: w.frag, zap: w.zap, zapD: w.zapD, heal: w.heal, ab: t && !t.U ? t : null };
     switch (w.k) {
       case 'laser': case 'shrap': { const e = this.lineDmg(u.x, u.y, a, w.len, w.d * dm, team, { air: 1, ground: 1, pierce: w.k === 'laser' ? 6 : 0, fx: col, wide: w.wide ? 9 : 4 }); if (w.heal && team === PLAYER) this.healB((u.x + e.x) / 2, (u.y + e.y) / 2, w.len / 2, w.heal); return; }
@@ -1159,7 +1160,7 @@ export class World {
       const mx = (p.mine % this.w + .5) * TS, my = (Math.floor(p.mine / this.w) + .5) * TS, it = this.mineItem(p.mine, U.mineT, U.mineW ? 'w' : 1);
       if (!it || this.bt[p.mine] || Math.hypot(mx - p.x, my - p.y) > MINE_RANGE) { if (!it || this.bt[p.mine]) p.mine = -1; }
       else if (!p.building) {
-        p.mining = 1; p.mt += U.mine * (this.tsc || 1);
+        p.mining = 1; p.mt += U.mine * (this.tsc || 1) * this.rm('unitMineSpeedMultiplier');
         if (p.mt >= 50 + ITEMS[it].h * 15) {
           p.mt = 0; const cc = this.center(this.core), cap = U.icap || 30;
           if (Math.hypot(cc.x - p.x, cc.y - p.y) < CORE_RANGE && (this.core.items[it] || 0) < this.coreCap()) { this.addCore(it, 1); this.fx.push({ k: 'xfer', x: mx, y: my, x2: cc.x, y2: cc.y, life: 16, max: 16, c: ITEMS[it].c }); }
@@ -1176,12 +1177,13 @@ export class World {
   buildPlan(u, pl) {
     if (pl.done) return; const drop = () => { pl.done = 1; const k = this.plans.indexOf(pl); if (k >= 0) this.plans.splice(k, 1); for (const it in pl.paid) this.addCore(it, pl.paid[it], 1); };
     if (pl.brk ? pl.b.dead : !this.okTiles(pl.B, pl.x, pl.y, false)) return drop();
-    u.building = pl; const dp = u.U.build / buildTime(pl.B);
+    u.building = pl; const dp = u.U.build / buildTime(pl.B) * (pl.brk ? 1 : this.rm('buildSpeedMultiplier'));
     if (!pl.brk && pl.B.type !== 'core') this.clearFor(pl);
     if (pl.brk) pl.prog += dp * 2;
     else {
       const np = Math.min(1, pl.prog + dp), c = this.core.items; let ok = true; const pay = {};
-      for (const it in pl.B.cost) { const owe = Math.floor(pl.B.cost[it] * np + 1e-9) - (pl.paid[it] || 0); if (owe > 0) { if ((c[it] || 0) < owe) ok = false; pay[it] = owe; } }
+      const cm = this.rules.infiniteResources ? 0 : this.rm('buildCostMultiplier');
+      for (const it in pl.B.cost) { const owe = Math.floor(pl.B.cost[it] * cm * np + 1e-9) - (pl.paid[it] || 0); if (owe > 0) { if ((c[it] || 0) < owe) ok = false; pay[it] = owe; } }
       pl.stall = !ok; if (!ok) return;
       for (const it in pay) { c[it] -= pay[it]; pl.paid[it] = (pl.paid[it] || 0) + pay[it]; }
       pl.prog = np;
@@ -1256,6 +1258,7 @@ export class World {
     for (const b of this.act) { if (b.off || b.dead) continue; if (b.team === PLAYER) this.updB(b); else if (b.team === ENEMY) this.updFoeTurret(b); }
     for (const u of this.units) if (u.carrier) { if (u.carrier.dead) u.carrier = null; else { u.x = u.carrier.x; u.y = u.carrier.y; } }
     if (this.onTick) this.onTick();
+    if (this.rules.infiniteResources && this.tick % 30 === 0) { const c = this.core.items, cap = this.coreCap(); for (const k of ITEM_IDS) c[k] = cap; }   // homokozó
     if (FW.tick) FW.tick(this);
     if (!this.player || this.player.dead) { if (this.respawn-- <= 0) this.spawnPlayer(); }
     for (const u of this.units) if (!u.dead) this.updUnit(u);
@@ -1264,7 +1267,7 @@ export class World {
     this.updBullets();
     for (const f of this.fx) f.life--; this.fx = this.fx.filter(f => f.life > 0);
     for (const m of this.msgs) m.life--; this.msgs = this.msgs.filter(m => m.life > 0);
-    if (this.rules.waves && this.rules.waveTimer && (!this.sec.win || this.wave < this.sec.win)) { this.wtimer--; if (this.wtimer <= 0) this.nextWave(); }
+    if (this.rules.waves && this.rules.waveTimer && (!this.sec.win || this.wave < this.sec.win) && !(this.rules.waitForWaveToEnd && this.nEn > 0)) { this.wtimer--; if (this.wtimer <= 0) this.nextWave(); }
     if (this.rules.attackMode && this.eteam && !this.ecores) { this.won = true; this.derelictAll(); return; }
     if (this.sec.win && this.wave >= this.sec.win) { this.calm = ne === 0 ? (this.calm || 0) + 1 : 0; if (this.calm > 90) { this.won = true; this.derelictAll(); } }
   }

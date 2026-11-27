@@ -1,7 +1,7 @@
 // Kohóvár – térképgenerátor a Mindustry SerpuloPlanetGenerator lépései szerint:
 // ridged zajból nyílt völgyek → sejtautomata (cells) → torzítás → termek kivágása, A*-utak ecsettel → folyók →
 // zajalapú ércmezők → medián simítás → elérhetetlen részek kitöltése → technikai padló, moha / kátrány / forró kő.
-import { ITEM_IDS, FLOORS, WALLS, BIO } from './adat.js?v=202611271013';
+import { ITEM_IDS, FLOORS, WALLS, BIO, ORE_P } from './adat.js?v=202611271025';
 
 const FL = Object.keys(FLOORS), FLI = Object.fromEntries(FL.map((k, i) => [k, i])), WL = Object.keys(WALLS);
 
@@ -168,7 +168,7 @@ export function genMapSerpulo(sec, hstr, rng) {
   }
 
   // 5. ércek (BasicGenerator.ores / Serpulo): két zajfeltétel, a ritkább érc elsőbbséget kap; hulladéknál sérült fémpadló
-  const base = ['copper', 'lead', 'coal', 'titanium', 'thorium', 'scrap'], ores = [...base, ...Object.keys(sec.ores).filter(k => !base.includes(k) && k !== 'sand' && ITEM_IDS.includes(k))].filter(k => sec.ores[k]);
+  const base = ['copper', 'lead', 'coal', 'titanium', 'thorium', 'scrap'], ores = [...base, ...Object.keys(sec.ores).filter(k => !base.includes(k) && !ORE_P[k] && k !== 'sand' && ITEM_IDS.includes(k))].filter(k => sec.ores[k]);
   const freq = ores.map((k, i) => rr(-.1, .01) - i * .01 + .3 * .04 - ((sec.ores[k] || 1) - 1) * .04);
   const nOre = mkNoise(seed + 101);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -180,6 +180,10 @@ export function genMapSerpulo(sec, hstr, rng) {
       }
     }
   }
+  // a modok alapércei a Mindustry OreFilter-e szerint (Maps.addDefaultOres: simplex zaj 2 oktávval, 0,3 eséssel, a mod oreScale/oreThreshold értékével); a későbbi felülírja a korábbit
+  { const mo = Object.keys(ORE_P).filter(k => sec.ores[k] && ITEM_IDS.includes(k));
+    mo.forEach((k, n) => { const P = ORE_P[k], nz = mkNoise(seed + 777 + n * 31), thr = P.thr - (sec.ores[k] / .7 - 1) * .02;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (FLOORS[FL[floor[i]]].liq) continue; if (nz(x + 10, y + 10, 2, .3, P.scl) > thr) ore[i] = ITEM_IDS.indexOf(k) + 1; } }); }
 
   // 6. medián simítás (r = 2) a padlón és a falakon
   {

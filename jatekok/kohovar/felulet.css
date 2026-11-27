@@ -156,3 +156,6 @@ body.inarc #pal{right:60px}
 .fwrow .nm{color:#ffd37f}.fwon{color:#84f491;font-size:15px;padding:0 14px}
 .pxpal{display:grid;grid-template-columns:repeat(2,40px);gap:6px}.pxpal button{width:40px;height:40px;border:3px solid #454545;cursor:pointer}.pxpal button.on{border-color:#ffd37f}
 #modList{width:min(760px,100%);margin:0 auto}#modMsg{margin:0 auto}
+.mapsh{width:min(1100px,100%);margin:10px auto 6px;color:var(--acc)}#maps{display:block}#maps .maps{margin:0 auto}
+.rules{margin-top:10px}.rules summary{cursor:pointer;color:var(--acc)}.rrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:3px 0;font-size:16px}.rrow .rv{min-width:48px;text-align:center}.np-button.sm{padding:4px 10px;min-height:0}
+.rrow .optrow{display:flex;align-items:center;gap:6px;margin:0;flex-wrap:nowrap}.rrow .np-button.sm,.rules .np-button.sm{min-width:44px;width:auto;height:34px;padding:0 12px;font-size:16px;flex:none}.rrow .rv{line-height:34px}

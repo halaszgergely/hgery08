@@ -208,7 +208,7 @@ def ammo_types(call):
 
 # ---- blokkok ----
 BLOCK_ROOTS = {'Floor', 'StaticWall', 'OreBlock', 'Prop', 'TallBlock', 'SteamVent', 'GenericCrafter', 'ItemTurret', 'PowerTurret', 'LaserTurret', 'ContinuousTurret', 'LiquidTurret', 'TractorBeamTurret', 'PointDefenseTurret', 'Wall', 'Drill', 'CoreBlock', 'StackConveyor', 'PowerNode', 'LiquidRouter', 'ConsumeGenerator', 'ThermalGenerator', 'Battery', 'StorageBlock', 'ForceProjector', 'Pump', 'ItemBridge', 'OverflowDuct', 'OverflowGate', 'Sorter', 'DirectionalUnloader', 'Unloader', 'Conveyor', 'ArmoredConveyor', 'Router', 'Junction', 'DuctRouter', 'Conduit', 'LiquidJunction', 'SolarGenerator', 'NuclearReactor', 'PowerGenerator', 'OverdriveProjector', 'MendProjector', 'RegenProjector', 'SolidPump', 'LiquidSource', 'ItemSource', 'BaseTurret', 'Block', 'ShallowLiquid', 'OverlayFloor', 'StaticTree', 'TreeBlock', 'Turret', 'UnitFactory', 'Reconstructor', 'ImpactReactor', 'LiquidBridge', 'ShockwaveTower', 'BufferedItemBridge', 'DirectionalUnloader', 'RegenProjector', 'ContinuousTurret'}
-BLK_KEYS = 'gravityRange liquidUse reloadTime intensity size health armor itemCapacity liquidCapacity craftTime range reload maxAmmo ammoPerShot inaccuracy shootCone targetAir targetGround drillTime tier hardnessDrillMultiplier liquidBoostIntensity powerProduction itemDuration laserRange maxNodes speed displayedSpeed radius shieldHealth cooldownNormal cooldownBrokenBase reload healPercent speedBoost pumpAmount insulated absorbLasers chanceDeflect lightningChance variants attributes itemDrop playerUnmineable isLiquid isDeep drownTime liquidMultiplier mapColor shootDuration bulletDamage force damage scaledHealth buildCostMultiplier heatOutput heatRequirement unitCapModifier coolantMultiplier maxHeat'.split()
+BLK_KEYS = 'oreDefault oreThreshold oreScale wallOre gravityRange liquidUse reloadTime intensity size health armor itemCapacity liquidCapacity craftTime range reload maxAmmo ammoPerShot inaccuracy shootCone targetAir targetGround drillTime tier hardnessDrillMultiplier liquidBoostIntensity powerProduction itemDuration laserRange maxNodes speed displayedSpeed radius shieldHealth cooldownNormal cooldownBrokenBase reload healPercent speedBoost pumpAmount insulated absorbLasers chanceDeflect lightningChance variants attributes itemDrop playerUnmineable isLiquid isDeep drownTime liquidMultiplier mapColor shootDuration bulletDamage force damage scaledHealth buildCostMultiplier heatOutput heatRequirement unitCapModifier coolantMultiplier maxHeat'.split()
 
 def drawer_layers(o, name):
     """A DrawMulti-rétegekből az ikon összeállításához szükséges sprite-nevek."""
@@ -276,6 +276,7 @@ def conv_block(var, o):
     for k in ('itemDrop', 'liquidDrop', 'output', 'unitType'):
         v = o.f.get(k)
         if isinstance(v, J.Ref): d[k] = ref_name(v)
+    if T == 'OreBlock' and 'itemDrop' not in d and len(o.args) > 1 and isinstance(o.args[1], J.Ref): d['itemDrop'] = ref_name(o.args[1])   # new OreBlock(név, anyag)
     for k in ('outputItems',):
         s = stacks(o.f.get(k))
         if s: d[k] = s

@@ -1,8 +1,8 @@
 // Kohóvár – a Serpulo-hadjárat: az eredeti szektorok (SectorPresets), a bolygórács (PlanetGrid) és a technológiafa (SerpuloTechTree).
 // Az adatok: palyak/serpulo.json (eszkoz/serpulo.py generálja) és palyak/serpulo/*.msav (az eredeti pályák).
-import { BLOCKS, UNITS, ITEMS, LIQUIDS, TECH, rcost, ucost } from './adat.js?v=202611271013';
-import { LSN, SECSPR } from './kepadat.js?v=202611271013';
-import { readMsav, blockOf, itemOf } from './msav.js?v=202611271013';
+import { BLOCKS, UNITS, ITEMS, LIQUIDS, TECH, rcost, ucost } from './adat.js?v=202611271025';
+import { LSN, SECSPR } from './kepadat.js?v=202611271025';
+import { readMsav, blockOf, itemOf } from './msav.js?v=202611271025';
 
 async function bytes(p) {
   const u = new URL(p, import.meta.url);
@@ -75,7 +75,7 @@ export function addModSectors(list, planets) {
   }
 }
 const MAPS = {};
-export async function loadMap(id) { const s = SECTORS.find(q => q.id === id); return MAPS[id] || (MAPS[id] = await readMsav(s && s.mapBytes ? s.mapBytes : await bytes(`./palyak/${s && s.planet === 'erekir' ? 'erekir' : 'serpulo'}/${id}.msav`))); }
+export async function loadMap(id, s0, raw) { const s = s0 || SECTORS.find(q => q.id === id), key = s && s.mapFile ? 'f:' + s.mapFile : s && s.modMap ? 'm:' + s.modMap : id; return MAPS[key] || (MAPS[key] = await readMsav(raw || (s && s.mapBytes) || await bytes(s && s.mapFile ? `./palyak/${s.mapFile}` : `./palyak/${s && s.planet === 'erekir' ? 'erekir' : 'serpulo'}/${id}.msav`))); }
 // a pályához tartozó szövegek: az alapnyelv, a mod nyelvi fájlja, a pálya saját fordításai (MapLocales)
 export function textsFor(s, m) { const o = { ...TXT, ...(s.txt || {}) }; try { const L = JSON.parse(m.meta.locales || '{}'); Object.assign(o, L.en || {}, L.hu || {}); } catch (_) { } return o; }
 // a szektorleíró a World számára

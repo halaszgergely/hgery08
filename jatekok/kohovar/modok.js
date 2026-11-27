@@ -2,15 +2,15 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611271013';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271013';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271013';
-import { FL, FLI, WL } from './vilag.js?v=202611271013';
-import { parseHjson } from './hjson.js?v=202611271013';
-import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611271013';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, ORE_P, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611271025';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271025';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271025';
+import { FL, FLI, WL } from './vilag.js?v=202611271025';
+import { parseHjson } from './hjson.js?v=202611271025';
+import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611271025';
 
 export const MODS = [];
-export const MOD_SECTORS = [], MOD_PLANETS = [];   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
+export const MOD_SECTORS = [], MOD_PLANETS = [], MOD_MAPS = [];   // MOD_MAPS: a mod szektor nélküli pályái (egyéni játék)   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
 export const SN_TYPE = { turret: 'ItemTurret', crafter: 'GenericCrafter', drill: 'Drill', generator: 'ConsumeGenerator', wall: 'Wall', conveyor: 'Conveyor', node: 'PowerNode', battery: 'Battery', storage: 'StorageBlock', factory: 'UnitFactory', recon: 'Reconstructor', mender: 'MendProjector', pump: 'Pump' };   // a felülírt eredeti blokkok Mindustry-típusa
 
 /* ---------- HJSON (a Mindustry modjainak lazább JSON-ja) ---------- */
@@ -284,7 +284,7 @@ export function installMod(files, srcLabel) {
     const T = NT(j.type), k = pre(n);
     // a pályák környezeti blokkjai (talaj, fal, fa, kő, érc) a mod pályáihoz
     if (ENV.test(T) || (!j.type && /^(ore|floor)/i.test(n))) {
-      if (T === 'OreBlock' || /^ore/i.test(n) && !T) { const it = itemId(j.itemDrop); if (it) { if (!EXTRA_ORES.includes(it)) EXTRA_ORES.push(it); MOD_ORE[k] = it; const im = [1, 2, 3].map(v => sp(n + v, n)); im.forEach((d, v) => d && addSprite((j.wallOre ? 'ore-wall-' : 'ore-') + ISN[it] + (v + 1), d)); } continue; }
+      if (T === 'OreBlock' || /^ore/i.test(n) && !T) { const it = itemId(j.itemDrop); if (it) { if (j.oreDefault && !j.wallOre && !EXTRA_ORES.includes(it)) { EXTRA_ORES.push(it); ORE_P[it] = { thr: +(j.oreThreshold ?? .828), scl: +(j.oreScale ?? 24) }; } MOD_ORE[k] = it;   /* a generált pályákra csak az oreDefault ércek kerülnek (Mindustry Maps.addDefaultOres) */ const im = [1, 2, 3].map(v => sp(n + v, n)); im.forEach((d, v) => d && addSprite((j.wallOre ? 'ore-wall-' : 'ore-') + ISN[it] + (v + 1), d)); } continue; }
       if (T === 'OverlayFloor') { envSpr(n, k); MOD_DECO[k] = 1; continue; }
       if (/Floor|SteamVent|ShallowLiquid/.test(T)) { const v = envSpr(n, k); addFloor(k, { c: col(j.mapColor, '777777'), c2: col(j.mapColor, '777777'), ...(j.isLiquid ? { liq: liqId(j.liquidDrop) || 'water', ...(j.isDeep || j.drownTime > 0 ? { deep: 1 } : { shallow: 1 }) } : {}), ...(j.itemDrop && itemId(j.itemDrop) === 'sand' ? { ore: 'sand' } : {}), ...(T === 'SteamVent' ? { steam: 1 } : {}) }); FSPR[k] = [k, v]; continue; }
       if (/^(StaticWall|StaticTree|TreeBlock|TallBlock|Cliff)$/.test(T)) { const v = envSpr(n, k); addWall(k, col(j.mapColor, '444444')); WSPR[k] = v ? k : k; if (/Tree|Tall/.test(T)) TREES.add(k); if (j.itemDrop && itemId(j.itemDrop)) WALL_DROP[k] = itemId(j.itemDrop); if (j.attributes && j.attributes.sand) WALL_SAND[k] = +j.attributes.sand; continue; }
@@ -350,7 +350,7 @@ export function installMod(files, srcLabel) {
   }
   const used = new Set(MOD_SECTORS.filter(s => s.mod === id).map(s => s.mapFile));
   const maps = [...files.keys()].filter(p => /^maps\/[^/]+\.msav$/.test(p) && !used.has(p));
-  if (maps.length) { const pl = 'mod-' + id; MOD_PLANETS.push({ id: pl, n: mod.name, col: '#8a8f9c', mod: id }); maps.forEach((p, i) => { const nm = p.slice(5, -5); MOD_SECTORS.push({ id: pre('map-' + nm), n: en(`map.${nm}.name`) || human(nm), d: '', planet: pl, gi: i * 7, win: 0, diff: 0, p: { alwaysUnlocked: true }, mapBytes: files.get(p), txt: bundle, camp: 'serpulo', mod: id }); mod.added.maps++; }); }
+  for (const p of maps) { const nm = p.slice(5, -5); MOD_MAPS.push({ id: pre('map-' + nm), n: clr(en(`map.${nm}.name`) || human(nm)), bytes: files.get(p), txt: bundle, mod: id, modName: mod.name }); mod.added.maps++; }
   MODS.push(mod); return mod;
 }
 
