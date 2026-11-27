@@ -2,14 +2,14 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611270939';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611270939';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611270939';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611270939';
-import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611270939';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611270939';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611270939';
-import { Story } from './logika.js?v=202611270939';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611270941';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611270941';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611270941';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611270941';
+import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611270941';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611270941';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611270941';
+import { Story } from './logika.js?v=202611270941';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -652,7 +652,7 @@ function overlay(gx, z) {
   if (selBlock) {
     const [ox0, oy0] = originOf(selBlock, tx, ty), list = M.drag ? linePlans(selBlock, M.drag, [tx, ty]) : [{ t: selBlock, x: ox0, y: oy0, rot }];
     for (const p of list) {
-      const B = BLOCKS[p.t], o = W.tb(p.x, p.y), ok = W.canPlace(p.t, p.x, p.y) || (o && o.t === p.t && B.rot && B.type !== 'turret' && o.x === p.x && o.y === p.y), s = B.s * TS;
+      const B = BLOCKS[p.t], o = W.tb(p.x, p.y), ok = W.canPlace(p.t, p.x, p.y, p.rot || 0) || (o && o.t === p.t && B.rot && B.type !== 'turret' && o.x === p.x && o.y === p.y), s = B.s * TS;
       gx.globalAlpha = .55; drawB(gx, null, ghostOf(p), T); gx.globalAlpha = 1;
       gx.strokeStyle = ok ? '#ffd37f' : '#e55454'; gx.lineWidth = lw; gx.strokeRect(p.x * TS, p.y * TS, s, s);
       if (B.rot) { const cx = (p.x + B.s / 2) * TS, cy = (p.y + B.s / 2) * TS; gx.fillStyle = ok ? '#ffd37f' : '#e55454'; gx.save(); gx.translate(cx, cy); gx.rotate(p.rot * Math.PI / 2); gx.beginPath(); gx.moveTo(s / 2 + 2.5, 0); gx.lineTo(s / 2, -2); gx.lineTo(s / 2, 2); gx.fill(); gx.restore(); }

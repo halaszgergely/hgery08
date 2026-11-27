@@ -191,6 +191,14 @@ def drawer_layers(o, name):
     walk(dr)
     return lay
 
+def links_of(o):
+    out = []
+    for c in o.calls:
+        if c.name == 'addLink':
+            for p in c.args:
+                if isinstance(p, J.Call) and p.name == 'p' and len(p.args) >= 2 and num(p.args[0]) is not None and num(p.args[1]) is not None: out.append([int(p.args[0]), int(p.args[1])])
+    return out
+
 def links_size(o):
     """MultiBlockCrafter addLink(p(x,y)...): a teljes befoglaló méret (a Kohóvár négyzetes blokkjaihoz)."""
     s = num(o.f.get('size')) or 1; xs, ys = [0, s - 1], [0, s - 1]
@@ -269,13 +277,12 @@ def conv_block(var, o):
         elif c.name == 'consumeCoolant' and a and num(a[0]) is not None: d['coolant'] = {'type': 'ConsumeCoolant', 'amount': num(a[0])}
         elif c.name == 'ammo': d['ammoTypes'] = ammo_types(c)
     if 'consumeLiquids' in d and len(d['consumeLiquids']) == 1: d['consumeLiquid'] = d.pop('consumeLiquids')[0]
-    if t == 'MultiBlockCrafter' or t == 'MultiBlockConsumeGenerator':
-        d['size'], d['_rect'] = links_size(o)
+    lk = links_of(o)
+    if lk: d['_links'] = lk; d['_rotate'] = o.f.get('rotate') is not False
     lay = drawer_layers(o, n)
     if lay: d['_layers'] = lay
     if t in STREAM: d['_special'] = t
-    PART = {'MultiBlockCrafter': 'négyzetes helyet foglal (az eredeti nem négyzetes)', 'MultiBlockConsumeGenerator': 'négyzetes helyet foglal (az eredeti nem négyzetes)',
-            'AirRaider': 'egyszerűsítve: tüzérségi toronyként, választható csapásmód nélkül', 'BombLauncher': 'egyszerűsítve: tüzérségi toronyként',
+    PART = {'AirRaider': 'egyszerűsítve: tüzérségi toronyként, választható csapásmód nélkül', 'BombLauncher': 'egyszerűsítve: tüzérségi toronyként',
             'StreamExtractor': 'a nyaláb folyadékhídként működik', 'StreamRepeater': 'a nyaláb folyadékhídként működik', 'StreamRedirector': 'a nyaláb folyadékhídként működik',
             'StreamReceiver': 'a nyaláb folyadékelosztóként működik', 'StreamSplitter': 'a nyaláb folyadékelosztóként működik', 'JumpGate': 'egyszerűsítve: egységgyárként, ugrás nélkül',
             'OreCollector': 'egyszerűsítve: fúróként', 'QuantumVortexProjector': 'egyszerűsítve: erőtérként', 'AssignedBeacon': 'egyszerűsítve: gyorsítóként',
@@ -441,13 +448,14 @@ for f in glob.glob(os.path.join(SRC, 'assets/sprites-override/**/*.png'), recurs
 made = 0
 for f in glob.glob(os.path.join(OUT, 'content/blocks/*.json')):
     d = json.load(open(f)); n = os.path.basename(f)[:-5]
-    if n in sp or n + '-full' in sp or n + '-preview' in sp: continue
+    if (n in sp or n + '-full' in sp or n + '-preview' in sp) and not d.get('_links'): continue
     lay = [l for l in d.get('_layers', []) if l in sp]
     if not lay: continue
     ims = [Image.open(sp[l]).convert('RGBA') for l in lay]
-    W = max(i.width for i in ims); H = max(i.height for i in ims); S = max(W, H)
-    base = Image.new('RGBA', (S, S))
-    for im in ims: base.alpha_composite(im, ((S - im.width) // 2, (S - im.height) // 2))
+    W = max(i.width for i in ims); H = max(i.height for i in ims)
+    if not d.get('_links'): W = H = max(W, H)       # a négyzetes blokkok ikonja négyzetes
+    base = Image.new('RGBA', (W, H))
+    for im in ims: base.alpha_composite(im, ((W - im.width) // 2, (H - im.height) // 2))
     base.save(os.path.join(OUT, 'sprites', n + '.png')); made += 1
 
 for f in glob.glob(os.path.join(SRC, 'assets/maps/*.msav')): shutil.copy(f, os.path.join(OUT, 'maps'))

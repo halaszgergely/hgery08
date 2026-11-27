@@ -1,9 +1,9 @@
 // Kohóvár böngészős modkeret: bővítési pontok a motorhoz (új blokkfajták), a Mindustry-modok által
 // elvárt, de a Kohóvárból hiányzó rendszerek (logikai processzorok, memória, kijelző, kapcsoló, üzenet),
 // és a beépített modok saját kiegészítőinek betöltése. Mindig aktív.
-import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, CATS, rcost } from './adat.js?v=202611270939';
-import { SN } from './kepadat.js?v=202611270939';
-import { addSprite } from './rajz.js?v=202611270939';
+import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, CATS, rcost } from './adat.js?v=202611270941';
+import { SN } from './kepadat.js?v=202611270941';
+import { addSprite } from './rajz.js?v=202611270941';
 let Proc = null;   // a logika.js-ből, betöltéskor (körkörös importálás elkerülése)
 
 export const FW = {
@@ -25,6 +25,13 @@ export const FW = {
        linkTap(W, b, t)   – kijelölt épület mellett egy másikra koppintás; true: kezelve
        info(B)            – sorok az adatlapra */
   reg(name, def) { this.types[name] = { name, ...def }; return this.types[name]; },
+  // nem négyzetes blokkok (Mindustry-modok MultiBlock-ja): a fő négyzet + B.links mezők (Mindustry-eltolások, y felfelé, forgatással)
+  extra(B, x, y, rot = 0) {
+    if (!B.links) return []; const s = B.s, off = (s - 1) >> 1, sh = (s + 1) % 2, cx = x + off, cy = y + (s - 1 - off), out = [];
+    for (const [px, py] of B.links) { const [rx, ry] = [[px, py], [-py + sh, px], [-px + sh, -py + sh], [py, -px + sh]][rot & 3]; out.push([cx + rx, cy - ry]); }
+    return out;
+  },
+  rect(B, x, y, rot) { let x0 = x, y0 = y, x1 = x + B.s, y1 = y + B.s; for (const [tx, ty] of this.extra(B, x, y, rot)) { x0 = Math.min(x0, tx); y0 = Math.min(y0, ty); x1 = Math.max(x1, tx + 1); y1 = Math.max(y1, ty + 1); } return { x0, y0, x1, y1 }; },
   // segédek a kiegészítőknek
   adj(W, b) { const out = new Set(), s = b.B.s; for (let i = -1; i <= s; i++) for (const [x, y] of [[b.x + i, b.y - 1], [b.x + i, b.y + s], [b.x - 1, b.y + i], [b.x + s, b.y + i]]) { const t = W.inb(x, y) ? W.tb(x, y) : null; if (t && t !== b) out.add(t); } return [...out]; },
   center: b => ({ x: (b.x + b.B.s / 2) * TS, y: (b.y + b.B.s / 2) * TS }),
@@ -218,7 +225,7 @@ const LOGIC = [
 let installed = false;
 export async function installFramework() {
   if (installed) return; installed = true;
-  ({ Proc } = await import('./logika.js?v=202611270939'));
+  ({ Proc } = await import('./logika.js?v=202611270941'));
   if (!CATS.some(c => c[0] === 'logic')) CATS.push(['logic', 'Logika', '▤']);
   BUILD_ORDER.logic = BUILD_ORDER.logic || [];
   const fix = c => Object.fromEntries(Object.entries(c).filter(([k]) => ITEMS[k]));
