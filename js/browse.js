@@ -1,13 +1,13 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611270948';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611270948';
-import * as Player from './player.js?v=202611270948';
-import * as Party from './party.js?v=202611270948';
-import * as Premier from './premier.js?v=202611270948';
-import * as VP from './vplayer.js?v=202611270948';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611270948';
-import * as Promo from './promo.js?v=202611270948';
-import * as ArcL from './arcade-lista.js?v=202611270948';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611270951';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611270951';
+import * as Player from './player.js?v=202611270951';
+import * as Party from './party.js?v=202611270951';
+import * as Premier from './premier.js?v=202611270951';
+import * as VP from './vplayer.js?v=202611270951';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611270951';
+import * as Promo from './promo.js?v=202611270951';
+import * as ArcL from './arcade-lista.js?v=202611270951';
 
 let C = null;
 export function init(ctx) { C = ctx; Promo.setup({ videos: () => C.S.videos, open: id => detail(id) }); }

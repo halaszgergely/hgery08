@@ -1,9 +1,9 @@
 // Kohóvár böngészős modkeret: bővítési pontok a motorhoz (új blokkfajták), a Mindustry-modok által
 // elvárt, de a Kohóvárból hiányzó rendszerek (logikai processzorok, memória, kijelző, kapcsoló, üzenet),
 // és a beépített modok saját kiegészítőinek betöltése. Mindig aktív.
-import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, CATS, rcost } from './adat.js?v=202611270948';
-import { SN, ISN } from './kepadat.js?v=202611270948';
-import { addSprite, drawUnit, spr } from './rajz.js?v=202611270948';
+import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, CATS, rcost } from './adat.js?v=202611270951';
+import { SN, ISN } from './kepadat.js?v=202611270951';
+import { addSprite, drawUnit, spr } from './rajz.js?v=202611270951';
 let Proc = null;   // a logika.js-ből, betöltéskor (körkörös importálás elkerülése)
 
 export const FW = {
@@ -355,6 +355,22 @@ FW.reg('asmmod', {
   update(W, b) { b.pneed = b.B.power; const on = !b.B.power || (b.ps || 0) > .5; b.work = on ? 1 : 0; if (!on) return; for (const t of FW.adj(W, b)) if (t.B.type === 'factory') { t.odT = W.tick + 2; t.odM = Math.max(t.odT > W.tick && t.odM > 1 ? t.odM : 1, 1.5); } },
 });
 
+// leszállóállás (Erekir LandingPad): a raktárból (más szektorokból kilőtt anyag) fogadja a beállított anyagot
+FW.reg('landpad', {
+  mindustry: /^(LandingPad)$/,
+  convert: (j, h) => ({ cfg: 'item', icap: +(j.itemCapacity || 100), time: +(j.arrivalDuration || 150) + 120, power: h.power || 0 }),
+  init(W, b) { b.prog = 0; },
+  update(W, b, ts) {
+    b.pneed = b.B.power; const it = b.cfg, n = Object.values(b.items).reduce((s, x) => s + x, 0);
+    if (it && n === 0 && W.onLand) { b.prog += ts * (b.B.power ? b.ps || 0 : 1); b.work = 1; if (b.prog >= b.B.time) { b.prog = 0; const got = W.onLand(it, b.B.icap); if (got > 0) { b.items[it] = got; const c = FW.center(b); W.fx.push({ k: 'launch', x: c.x, y: c.y, life: 60, max: 60, c: ITEMS[it].c }); } } }
+    else b.work = 0;
+    if (n > 0) W.dump(b);
+  },
+  sel: (W, b) => `<div class="mbar"><i style="width:${Math.min(1, (b.prog || 0) / b.B.time) * 100}%;background:#ffd37f"></i><span>Érkezés ${Math.round(Math.min(1, (b.prog || 0) / b.B.time) * 100)}%</span></div>`,
+  info: B => ['A raktárból (a más szektorokból kilőtt anyagból) fogadja a beállított anyagot', `Szállítmány: <b>${B.icap}</b> db`],
+});
+FW.parts.push('Leszállóállás');
+
 /* ================= alapjáték-tartalom: a Serpulo logikai blokkjai ================= */
 const LOGIC = [
   ['micro-processor', 'Mikroprocesszor', 1, { copper: 90, lead: 50, silicon: 50 }, 'lproc', { ipt: 2, range: 8 * 10 }, 'gpress'],
@@ -370,7 +386,7 @@ const LOGIC = [
 let installed = false;
 export async function installFramework() {
   if (installed) return; installed = true;
-  ({ Proc } = await import('./logika.js?v=202611270948'));
+  ({ Proc } = await import('./logika.js?v=202611270951'));
   if (!CATS.some(c => c[0] === 'logic')) CATS.push(['logic', 'Logika', '▤']);
   BUILD_ORDER.logic = BUILD_ORDER.logic || [];
   const fix = c => Object.fromEntries(Object.entries(c).filter(([k]) => ITEMS[k]));

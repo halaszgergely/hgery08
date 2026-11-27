@@ -2,14 +2,14 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611270948';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611270948';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611270948';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611270948';
-import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611270948';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611270948';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611270948';
-import { Story } from './logika.js?v=202611270948';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611270951';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611270951';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611270951';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611270951';
+import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611270951';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611270951';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611270951';
+import { Story } from './logika.js?v=202611270951';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -388,6 +388,7 @@ async function start(sec, save) {
   if (MODS.length) sec.ranked = 0;   // modokkal nincs ranglista
   W.onWave = n => { W.msg(`${n}. hullám`); if (sec.free && sec.ranked) { if (n > (S.best || 0)) { S.best = n; persist(); } try { if (INFRAME) parent.postMessage({ hgws: 'score', game: GAME, score: n }, location.origin); } catch (_) { } } };
   W.canUnit = t => !!sec.unlockAll || S.research.includes('u:' + t);
+  W.onLand = (k, max) => { if (sec.free) return 0; const n = Math.min(max, Math.floor(S.bank[k] || 0)); if (n > 0) { S.bank[k] -= n; persist(); } return n; };
   W.onLaunch = items => { if (sec.free) return; let n = 0; for (const k in items) { S.bank[k] = (S.bank[k] || 0) + items[k]; n += items[k]; } W.msg(`Kilövés: ${n} tárgy a raktárba`); persist(); };
   const p = W.player; cam.x = p.x; cam.y = p.y;
   closeAll(); $('#menu').hidden = true; $('#hud').hidden = false; $('#pbar').hidden = true; sizeMini(); buildPalette(); saveT = performance.now(); setPauseIcon();
