@@ -2,11 +2,11 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270059';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270059';
-import { FL, FLI, WL } from './vilag.js?v=202611270059';
-import { parseHjson } from './hjson.js?v=202611270059';
-import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270059';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270107';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270107';
+import { FL, FLI, WL } from './vilag.js?v=202611270107';
+import { parseHjson } from './hjson.js?v=202611270107';
+import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270107';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [];   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
@@ -260,6 +260,7 @@ export function installMod(files, srcLabel) {
     if (/Incinerator$/.test(T)) return { ...base, type: 'incinerator', power: c.power, free: c.power ? 0 : 1 };
     return null;
   };
+  const pendR = [];   // a kutatási csomópontok a blokkok után (a szülő később is jöhet)
   const ENV = /^(Floor|SteamVent|ShallowLiquid|OverlayFloor|StaticWall|StaticTree|TreeBlock|TallBlock|Prop|OreBlock|AirBlock|Cliff|SeaBush|ShrubBlock|Boulder|Rock|Seaweed|DoubleOverlayFloor|EmptyFloor|SpawnBlock)$/;
   for (const [n, j] of content.blocks || []) {
     const T = NT(j.type), k = pre(n);
@@ -290,12 +291,13 @@ export function installMod(files, srcLabel) {
     if (B.type === 'turret') { const d = sp(n + '-preview', n); if (d) addSprite(k + '@o', d); }
     if (B.type === 'conveyor') for (let a = 0; a < 5; a++) for (let f = 0; f < 4; f++) { const d = sp(`${n}-${a}-${f}`); if (d) addSprite(`${k}-${a}-${f}`, d); }
     const kat = B.kat || 'effect'; if (BUILD_ORDER[kat]) BUILD_ORDER[kat].push(k); else (BUILD_ORDER.effect = BUILD_ORDER.effect || []).push(k);
-    researchNode(k, 'b', j.research, B.cost);
+    pendR.push([k, 'b', j.research, B.cost]);
   }
   // egységek „requirements” mezője: a gyár/átépítő tervébe veszi fel (Mindustry UnitReq)
   for (const [n, j] of content.units || []) { const r = j.requirements; if (!r || typeof r !== 'object' || Array.isArray(r)) continue; const k = UNITS[pre(n)] ? pre(n) : vanillaUnit(n); const bk = BLOCKS[pre(r.block)] ? pre(r.block) : bo[r.block]; const B = bk && BLOCKS[bk]; if (!B || !k) continue;
     if (B.type === 'factory') { if (!B.plans.includes(k)) B.plans.push(k); B.pcost = B.pcost || {}; B.pcost[k] = { cost: stacks(r.requirements), time: +(r.time || 1800) / 60 }; }
     else if (B.type === 'recon' && r.previous) { const pv = unitId(r.previous); if (pv) B.up[pv] = k; } }
+  for (const a of pendR) researchNode(...a);
   // a felülírt eredeti sprite-ok (sprites-override)
   for (const [p, d] of files) { const m = p.match(/^sprites-override\/(?:.*\/)?([^/]+)\.png$/); if (m) { addSprite(m[1], d); if (AT_HAS(m[1] + '@o')) addSprite(m[1] + '@o', d); mod.added.overrides++; } }
   const nScripts = [...files.keys()].filter(p => /^scripts\/.*\.js$/.test(p)).length; if (nScripts) warn.push(`${nScripts} JavaScript-fájl: a szkriptek nem futnak`);

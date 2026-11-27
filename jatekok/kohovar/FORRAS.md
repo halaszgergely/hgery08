@@ -42,8 +42,12 @@ A modok listában szerepelnek, alapból kikapcsolva. Mindegyik a saját licence 
 
 | Fájl | Mod | Szerző | Licenc | Forrás |
 |---|---|---|---|---|
+| new-horizon.zip | New Horizon 2.3.0 (átírt változat) | Yuria & Lao | GPLv3 | https://github.com/Yuria-Shikibe/NewHorizonMod |
 | exoprosopa.zip | Exoprosopa 0.96 | TnmSpiroct | GPLv3 | https://github.com/TnmSpiroct/Exoprosopa |
 | extended-unit-arsenal.zip | Extended unit arsenal 1.0 | Garmy | GPLv3 | https://github.com/Garmundo/Extended-unit-arsenal |
 | goldmod.zip | Gold Mod 2.0 alpha b19 | The Slaylord | GPLv3 | https://github.com/Slotterleet/GoldMod |
 | heavy-armaments-industries.zip | Heavy Armaments Industries 2.6 | Eschatologue | MIT | https://github.com/Eschatologue/Heavy-Armaments-Industries |
 | mechanical-warfare.zip | Mechanical Warfare 1.6.2 | GlennFolker, JerichoFletcher | GPLv3 | https://github.com/JerichoFletcher/mechanical-warfare |
+
+A New Horizon eredetileg Java-mod; a `new-horizon.zip` a Java-forrásból az `eszkoz/nhconv.py` (és `eszkoz/javaparse.py`) átalakítóval készült:
+nyers tartalomleírások (Hjson), a mod sprite-jai (a gyárak ikonja a rajzolórétegekből összerakva), pályái és nyelvi fájljai. A Java-kódban írt egyedi viselkedést a Kohóvár motorja valósítja meg, egyszerűsítve.

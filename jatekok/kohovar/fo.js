@@ -2,13 +2,13 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611270059';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611270059';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611270059';
-import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611270059';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611270059';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611270059';
-import { Story } from './logika.js?v=202611270059';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611270107';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611270107';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611270107';
+import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611270107';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611270107';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611270107';
+import { Story } from './logika.js?v=202611270107';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -112,7 +112,7 @@ function drawMenuBg() {
 /* ---------- raktár, szektorok ---------- */
 function secState(s) { if (S.cap[s.id]) return 'cap'; const n = NODE['s:' + s.id]; if (s.p.alwaysUnlocked || (n && nOpen(n)) || (!n && s.mod && S.cap.groundZero)) return 'open'; return 'lock'; }
 // a raktár közös, de bolygónként az ott használt anyagokat mutatja (a Mindustryban a két bolygó anyagai külön vannak)
-const plItems = pl => ITEM_PL[pl] || ITEM_IDS.filter(k => !ITEM_PL.erekir.includes(k) || ITEM_PL.serpulo.includes(k));
+const plItems = pl => ITEM_PL[pl] || ITEM_IDS;   // a modok bolygóin minden anyag használható
 const curPl = () => W ? (SEC.planet || 'serpulo') : pcur;
 function bankHtml(extra, cols = 3, pl = curPl()) { const tot = { ...S.bank }; if (extra) for (const k in extra) tot[k] = (tot[k] || 0) + (extra[k] || 0); const PI = plItems(pl), l = ITEM_IDS.filter(k => tot[k] > 0 && PI.includes(k)); return l.length ? `<div class="grid" style="display:grid;grid-template-columns:repeat(${cols},auto);gap:2px 12px">${l.map(k => `<span>${itI(k)}${num(tot[k])}</span>`).join('')}</div>` : '<span class="lg">üres</span>'; }
 

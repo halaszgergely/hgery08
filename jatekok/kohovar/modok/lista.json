@@ -1,7 +1,8 @@
 [
-  { "file": "exoprosopa.zip", "name": "Exoprosopa", "author": "TnmSpiroct", "version": "0.96", "license": "GPLv3", "url": "https://github.com/TnmSpiroct/Exoprosopa" },
-  { "file": "extended-unit-arsenal.zip", "name": "Extended unit arsenal", "author": "Garmy", "version": "1.0", "license": "GPLv3", "url": "https://github.com/Garmundo/Extended-unit-arsenal" },
-  { "file": "goldmod.zip", "name": "Gold Mod", "author": "The Slaylord", "version": "2.0 alpha b19", "license": "GPLv3", "url": "https://github.com/Slotterleet/GoldMod" },
-  { "file": "heavy-armaments-industries.zip", "name": "Heavy Armaments Industries", "author": "Eschatologue", "version": "2.6", "license": "MIT", "url": "https://github.com/Eschatologue/Heavy-Armaments-Industries" },
-  { "file": "mechanical-warfare.zip", "name": "Mechanical Warfare", "author": "GlennFolker, JerichoFletcher", "version": "1.6.2", "license": "GPLv3", "url": "https://github.com/JerichoFletcher/mechanical-warfare" }
+  {"file": "new-horizon.zip", "name": "New Horizon", "author": "Yuria & Lao", "version": "2.3.0", "license": "GPLv3", "url": "https://github.com/Yuria-Shikibe/NewHorizonMod"},
+  {"file": "exoprosopa.zip", "name": "Exoprosopa", "author": "TnmSpiroct", "version": "0.96", "license": "GPLv3", "url": "https://github.com/TnmSpiroct/Exoprosopa"},
+  {"file": "extended-unit-arsenal.zip", "name": "Extended unit arsenal", "author": "Garmy", "version": "1.0", "license": "GPLv3", "url": "https://github.com/Garmundo/Extended-unit-arsenal"},
+  {"file": "goldmod.zip", "name": "Gold Mod", "author": "The Slaylord", "version": "2.0 alpha b19", "license": "GPLv3", "url": "https://github.com/Slotterleet/GoldMod"},
+  {"file": "heavy-armaments-industries.zip", "name": "Heavy Armaments Industries", "author": "Eschatologue", "version": "2.6", "license": "MIT", "url": "https://github.com/Eschatologue/Heavy-Armaments-Industries"},
+  {"file": "mechanical-warfare.zip", "name": "Mechanical Warfare", "author": "GlennFolker, JerichoFletcher", "version": "1.6.2", "license": "GPLv3", "url": "https://github.com/JerichoFletcher/mechanical-warfare"}
 ]

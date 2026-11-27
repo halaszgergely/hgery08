@@ -1,6 +1,6 @@
 // Kohóvár – a Mindustry .msav pályafájlok olvasója (az eredeti io/SaveVersion, MapIO formátum alapján).
 // A Mindustry y tengelye felfelé nő, a Kohóváré lefelé: a sorokat itt fordítjuk meg.
-import { parseHjson } from './hjson.js?v=202611270059';
+import { parseHjson } from './hjson.js?v=202611270107';
 
 async function inflate(buf) {
   const ds = new DecompressionStream('deflate'), s = new Blob([buf]).stream().pipeThrough(ds);
@@ -64,12 +64,12 @@ export async function readMsav(buf) {
 }
 
 /* ----- pálya → Kohóvár-világ ----- */
-import { FLOORS, WALLS, TREES, MFLOOR, MWALL, MPROP, ITEM_IDS, BLOCKS, MOD_ORE, MOD_DECO } from './adat.js?v=202611270059';
-import { SN, ISN } from './kepadat.js?v=202611270059';
+import { FLOORS, WALLS, TREES, MFLOOR, MWALL, MPROP, ITEM_IDS, BLOCKS, MOD_ORE, MOD_DECO } from './adat.js?v=202611270107';
+import { SN, ISN } from './kepadat.js?v=202611270107';
 const DECO = new Set(['pebbles', 'tendrils', 'rune-overlay', 'char-overlay']);
-let INV = null;
+let INV = null, INVN = 0;
 export function blockOf(mname) {
-  if (!INV) { INV = Object.create(null); for (const k in SN) if (BLOCKS[k] && !INV[SN[k]]) INV[SN[k]] = k; }
+  const nb = Object.keys(SN).length; if (!INV || nb !== INVN) { INVN = nb; INV = Object.create(null); for (const k in SN) if (BLOCKS[k] && !INV[SN[k]]) INV[SN[k]] = k; }
   return INV[mname] || null;
 }
 export function itemOf(mname) { for (const k in ISN) if (ISN[k] === mname) return k; return null; }
@@ -103,7 +103,7 @@ export function toWorld(m) {
   for (const b of m.builds) {
     const nm = names[b.id];
     if (b.code) { scripts.push({ x: b.x, y: h - 1 - b.y, team: b.team, code: b.code, links: (b.links || []).map(([n, lx, ly]) => [n, lx, h - 1 - ly]) }); continue; }
-    const t = blockOf(nm) || (nm.startsWith('core-') ? (names.includes('core-bastion') || m.rules.planet === 'erekir' ? 'bastion' : 'core') : null); if (!t) continue;   /* ismeretlen magtípus: a bolygó alapmagja */ const B = BLOCKS[t], o = (B.s - 1) >> 1, x = b.x - o, y = h - b.y + o - B.s;
+    const t = blockOf(nm) || (/(^|-)core-/.test(nm) ? (names.includes('core-bastion') || m.rules.planet === 'erekir' ? 'bastion' : 'core') : null); if (!t) continue;   /* ismeretlen magtípus: a bolygó alapmagja */ const B = BLOCKS[t], o = (B.s - 1) >> 1, x = b.x - o, y = h - b.y + o - B.s;
     const items = {}; if (b.items) for (const id in b.items) { const it = itemOf(m.inames[id]); if (it) items[it] = b.items[id]; }
     const e = { t, x, y, rot: B.rot ? ROT[b.rot & 3] : 0, team: b.team === 1 ? 1 : b.team === 0 ? 0 : 2, hp: b.hp, items, mx: b.x, my: b.y };
     if (B.type === 'core' && e.team === 1 && (!core || B.s > BLOCKS[core.t].s)) core = e; else mapB.push(e);
