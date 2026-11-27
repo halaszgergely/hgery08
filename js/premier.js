@@ -2,9 +2,9 @@
 // Fél órával előtte nyílik a várószoba visszaszámlálással; a vetítést egy vezérlő (master) irányítja zárral védve;
 // a nézők csak visszafelé tekerhetnek, és egy gombbal visszaugorhatnak a vezérlőhöz. Vége után a csevegés még 30 percig él,
 // a film pedig 24 órával később (vagy a megadott időpontban) magától megjelenik a filmtárban.
-import { FB, db, $, esc, avatar, toast, errText } from './core.js?v=202611271520';
-import * as VP from './vplayer.js?v=202611271520';
-import { ambilight, applyTint } from './fx.js?v=202611271520';
+import { FB, db, $, esc, avatar, toast, errText } from './core.js?v=202611271522';
+import * as VP from './vplayer.js?v=202611271522';
+import { ambilight, applyTint } from './fx.js?v=202611271522';
 
 export const LOBBY = 30 * 60e3, AFTER = 30 * 60e3, DAY = 864e5, DEFDUR = 3 * 3600;
 let C = null, gen = 0, cleanup = [], offset = 0, last = new Map();

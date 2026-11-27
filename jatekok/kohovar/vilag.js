@@ -1,8 +1,8 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611271514';
-import { FW } from './keret.js?v=202611271514';
-import { toWorld } from './msav.js?v=202611271514';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271514';
+import { genMapSerpulo } from './terkep.js?v=202611271522';
+import { FW } from './keret.js?v=202611271522';
+import { toWorld } from './msav.js?v=202611271522';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271522';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -387,7 +387,7 @@ export class World {
   finishPlan(p) {
     p.done = 1;
     if (p.brk) { if (!p.b.dead) { if (p.b.team === PLAYER) for (const k in p.B.cost) this.addCore(k, Math.floor(p.B.cost[k] * this.rm('buildCostMultiplier') * this.rm('deconstructRefundMultiplier', REFUND)), 1); this.remB(p.b); } return; }
-    if (p.B.type === 'core' && this.zoneOk(p.B, p.x, p.y) && !(p.x <= this.core.x && p.y <= this.core.y && p.x + p.B.s >= this.core.x + this.core.B.s && p.y + p.B.s >= this.core.y + this.core.B.s)) { this.clearFor(p); this.addB(p.t, p.x, p.y, 0); this.capV = -1; return; }   // új mellékmag a magzónán
+    if (p.B.type === 'core' && this.zoneOk(p.B, p.x, p.y) && !(p.x <= this.core.x && p.y <= this.core.y && p.x + p.B.s >= this.core.x + this.core.B.s && p.y + p.B.s >= this.core.y + this.core.B.s)) { this.clearFor(p); const nc = this.addB(p.t, p.x, p.y, 0); this.capV = -1; this.stats.built++; this.stats.placed[nc.t] = (this.stats.placed[nc.t] || 0) + 1; this.captureNet(nc); return; }   // új mellékmag a magzónán (a küldetés BuildCount-célja is számolja)
     if (p.B.type === 'core') {
       const old = this.core, items = old.items; this.remB(old); const nb = this.addB(p.t, p.x, p.y, 0); nb.items = items; this.core = nb; if (this.netLog) this.netLog.push(['core', nb.t, nb.x, nb.y]);
       const pl = this.player; if (pl && !pl.dead) { pl.t = nb.B.unit; pl.U = UNITS[pl.t]; pl.hp = pl.U.hp; pl.wc = pl.U.w.map(() => 0); } return;
@@ -1235,6 +1235,18 @@ export class World {
     if (Math.hypot(t.x - u.x, t.y - u.y) - (t.U ? t.U.r : 0) > R) return;
     u.aim = Math.atan2(t.y - u.y, t.x - u.x); this.attack(u, t);
   }
+  // az új mag átveszi a hozzá kötött ellenséges / elhagyott épületeket: szomszédság, híd és áramvezeték mentén, láncban
+  // (a saját épületeknél és a többi magnál a lánc megáll)
+  captureNet(c) {
+    const seen = new Set([c]), q = [c], out = [];
+    while (q.length && out.length < 5000) {
+      const b = q.shift(), nb = [...this.nbs(b), ...(b.links || []), ...(b.inl || [])]; if (b.link != null && b.link >= 0 && this.bt[b.link]) nb.push(this.bt[b.link]);
+      for (const o of nb) { if (!o || o.dead || seen.has(o)) continue; seen.add(o); if (o.team === PLAYER || o.B.type === 'core') continue; out.push(o); q.push(o); }
+    }
+    for (const o of out) { o.team = PLAYER; o.tgt = null; }
+    if (out.length) { this.ver++; this.pdirty = 1; this.fdirty = 1; this.msg(`${out.length} épület átvéve`); }
+    return out.length;
+  }
   // parancsmód (Mindustry RTS): a kijelölt egységek odavonulnak / megtámadják a célt
   command(L, x, y, t) {
     this.rallied = 1; let n = 0; const tg = t ? (t.U ? t : this.bref(t)) : null;
@@ -1413,5 +1425,8 @@ export class World {
     for (const [b, lk] of links) for (const i of lk) { const o = this.bt[i]; if (o && o.i === i) this.link(b, o); }
     for (const [t, x, y, rot, brk, cfg] of s.p || []) { if (!BLOCKS[t]) continue; if (brk) { const b = this.tb(x, y); if (b) this.unplan(b); } else this.plan(t, x, y, rot, cfg); }
     for (const [t, x, y, hp] of s.u || []) { if (!UNITS[t]) continue; const u = this.spawnU(t, PLAYER, x, y); u.hp = hp; }
+    // korábbi mentés: a magzónára épített mellékmagot a statisztika nem számolta (a küldetés elakadt), és nem vette át a hálózatát – pótoljuk
+    const pc = this.blds.filter(b => b.B.type === 'core' && b.team === PLAYER && b !== this.core), cnt = {}; for (const b of pc) cnt[b.t] = (cnt[b.t] || 0) + 1;
+    for (const t in cnt) if ((this.stats.placed[t] || 0) < cnt[t]) { this.stats.placed[t] = cnt[t]; for (const b of pc) if (b.t === t) this.captureNet(b); }
   }
 }
