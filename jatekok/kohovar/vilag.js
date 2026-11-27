@@ -1,10 +1,10 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611271902';
-import { FW } from './keret.js?v=202611271902';
-import { toWorld } from './msav.js?v=202611271902';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271902';
-import { SN } from './kepadat.js?v=202611271902';
-import { BCM, FOGB, FOGU } from './epitesido.js?v=202611271902';
+import { genMapSerpulo } from './terkep.js?v=202611271906';
+import { FW } from './keret.js?v=202611271906';
+import { toWorld } from './msav.js?v=202611271906';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271906';
+import { SN } from './kepadat.js?v=202611271906';
+import { BCM, FOGB, FOGU } from './epitesido.js?v=202611271906';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -340,7 +340,7 @@ export class World {
     }
     if (B.type === 'beamdrill') {          // Mindustry BeamDrill: minden sávban az első tömör csempe; ha fal és van benne érc, az számít
       const dx = DX[b.rot], dy = DY[b.rot], s = B.s, ox = dx > 0 ? b.x + s : dx < 0 ? b.x - 1 : b.x, oy = dy > 0 ? b.y + s : dy < 0 ? b.y - 1 : b.y; b.lasers = []; b.tiles = [];
-      for (let p = 0; p < s; p++) { let x = ox + (dx ? 0 : p), y = oy + (dy ? 0 : p); for (let r = 0; r < B.range; r++, x += dx, y += dy) { if (!this.inb(x, y)) break; const i = y * this.w + x; if (this.wall[i]) { const it = this.mineItem(i, B.tier, 'w'); if (it) { cnt[it] = (cnt[it] || 0) + 1; b.tiles.push(i); b.lasers.push([(ox + (dx ? 0 : p) + .5 - dx * .5) * TS, (oy + (dy ? 0 : p) + .5 - dy * .5) * TS, (x + .5) * TS, (y + .5) * TS]); } break; } if (this.bt[i] && isSolid(this.bt[i])) break; } }
+      for (let p = 0; p < s; p++) { let x = ox + (dx ? 0 : p), y = oy + (dy ? 0 : p); for (let r = 0; r < B.range; r++, x += dx, y += dy) { if (!this.inb(x, y)) break; const i = y * this.w + x; if (this.wall[i]) { const it = this.mineItem(i, B.tier, 'w'); if (it) { cnt[it] = (cnt[it] || 0) + 1; b.tiles.push(i); b.lasers.push([(ox + (dx ? 0 : p) + .5 - dx * .5) * TS, (oy + (dy ? 0 : p) + .5 - dy * .5) * TS, (x + .5 - dx * .5) * TS, (y + .5 - dy * .5) * TS]); } break; } if (this.bt[i] && isSolid(this.bt[i])) break; } }
     }
     if (B.type === 'wcrafter') {           // Mindustry WallCrafter: az előtte álló falak homok-attribútuma
       const dx = DX[b.rot], dy = DY[b.rot], s = B.s, ox = dx > 0 ? b.x + s : dx < 0 ? b.x - 1 : b.x, oy = dy > 0 ? b.y + s : dy < 0 ? b.y - 1 : b.y; attr = 0;
@@ -770,9 +770,9 @@ export class World {
         if (!b.dItem) break; const cap = B.icap || 10; let tot = 0; for (const k in I) tot += I[k];
         if (B.power) b.pneed = B.power; const needOk = !B.needL || (b.lt === B.needL[0] && b.lq >= B.needL[1] * ts), eff = (B.power ? b.ps : 1) * (needOk ? 1 : 0), run = eff > 0 && tot < cap;
         b.warm = (b.warm || 0) + ((run ? 1 : 0) - (b.warm || 0)) * .02 * ts;
-        if (run) { let mul = 1; if (B.needL) b.lq -= B.needL[1] * ts; else if (B.boostL && b.lt === B.boostLiq && b.lq >= B.boostL * ts) { b.lq -= B.boostL * ts; mul = B.boost; }
+        let mul = 1; if (run) { if (B.needL) b.lq -= B.needL[1] * ts; else if (B.boostL && b.lt === B.boostLiq && b.lq >= B.boostL * ts) { b.lq -= B.boostL * ts; mul = B.boost; }
           b.prog += ts * mul * eff * b.warm; if (b.prog >= B.time) { b.prog %= B.time; for (const i of b.tiles) { const it = this.mineItem(i, B.tier, 'w'); if (it && tot < cap) { I[it] = (I[it] || 0) + 1; tot++; } } } }
-        b.work = b.warm; this.dump(b); break;
+        b.bw = (b.bw || 0) + ((mul > 1 ? 1 : 0) - (b.bw || 0)) * .1 * ts; b.work = b.warm; this.dump(b); break;
       }
       case 'wcrafter': {           // sziklazúzó: a falak homok-attribútumával arányosan homokot termel
         const cap = B.icap || 10; if (B.power) b.pneed = B.power; const eff = (B.power ? b.ps : 1) * b.attr;
@@ -894,8 +894,9 @@ export class World {
   }
   canUnit() { return true; }
   losB(u, b) { const c = this.center(b), s = b.B.s * 4 - 1; return this.losT(u.x, u.y, Math.max(c.x - s, Math.min(c.x + s, u.x)), Math.max(c.y - s, Math.min(c.y + s, u.y))); }
-  // szabad-e a lövésvonal a térkép falain át (a sziklafal megállít minden lövedéket, kivéve az íves tüzérséget)
-  losT(x0, y0, x1, y1) {
+  // a lövésvonal: a Mindustryhez hasonlóan a térkép falai fölött át lehet lőni, így mindig szabad (a régi falvizsgálat _losT néven megmaradt)
+  losT() { return true; }
+  _losT(x0, y0, x1, y1) {
     const w = this.w; let tx = Math.floor(x0 / TS), ty = Math.floor(y0 / TS); const ex = Math.floor(x1 / TS), ey = Math.floor(y1 / TS), dx = x1 - x0, dy = y1 - y0;
     const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1, ddx = dx ? Math.abs(TS / dx) : 1e9, ddy = dy ? Math.abs(TS / dy) : 1e9;
     let mx = dx ? ((sx > 0 ? (tx + 1) * TS - x0 : x0 - tx * TS) / Math.abs(dx)) : 1e9, my = dy ? ((sy > 0 ? (ty + 1) * TS - y0 : y0 - ty * TS) / Math.abs(dy)) : 1e9;
@@ -909,7 +910,7 @@ export class World {
   // robbanás → épület: a sziklafal és a közelebbi tömör épület (pl. fal) eltakarja a mögötte állót
   shielded(x, y, b) {
     const c = this.center(b), d = Math.hypot(c.x - x, c.y - y), n = Math.floor(d / 3);
-    for (let k = 1; k < n; k++) { const px = x + (c.x - x) * k / n, py = y + (c.y - y) * k / n, tx = Math.floor(px / TS), ty = Math.floor(py / TS); if (!this.inb(tx, ty)) return true; const i = ty * this.w + tx; if (this.wall[i]) return true; const o = this.bt[i]; if (o && o !== b && !o.dead && !UNDER(o) && Math.hypot(px - x, py - y) > o.B.s * 4) return true; }
+    for (let k = 1; k < n; k++) { const px = x + (c.x - x) * k / n, py = y + (c.y - y) * k / n, tx = Math.floor(px / TS), ty = Math.floor(py / TS); if (!this.inb(tx, ty)) return true; const i = ty * this.w + tx; const o = this.bt[i]; if (o && o !== b && !o.dead && !UNDER(o) && Math.hypot(px - x, py - y) > o.B.s * 4) return true; }
     return false;
   }
   wet(x, y) { const tx = Math.floor(x / TS), ty = Math.floor(y / TS), i = ty * this.w + tx; return this.inb(tx, ty) && !this.wall[i] && this.fl(i).liq === 'water'; }
@@ -1001,7 +1002,7 @@ export class World {
   // egyenes mentén sebez (lézer, repesz, sínágyú, szívósugár); visszaadja a végpontot
   lineDmg(x, y, a, len, d, team, o) {
     const foe = team === PLAYER ? ENEMY : PLAYER, ca = Math.cos(a), sa = Math.sin(a), hits = []; let end = len;
-    for (let t = 2; t < len; t += 2) { const tx = Math.floor((x + ca * t) / TS), ty = Math.floor((y + sa * t) / TS); if (!this.inb(tx, ty) || this.wall[ty * this.w + tx]) { end = t; break; } }   // a sziklafalon nem megy át
+    for (let t = 2; t < len; t += 2) { const tx = Math.floor((x + ca * t) / TS), ty = Math.floor((y + sa * t) / TS); if (!this.inb(tx, ty)) { end = t; break; } }   // a térkép falai fölött átmegy, csak a pálya széle állítja meg
     {                 // a sugár csak az első idegen tömör épületet éri; ami mögötte van, azt az még takarja
       for (let t = 4; t < end; t += 4) { const bl = this.tb(Math.floor((x + ca * t) / TS), Math.floor((y + sa * t) / TS)); if (bl && bl.team !== team && !UNDER(bl)) { this.dmgB(bl, d * (o.bdm || 1)); end = t; break; } }
     }
@@ -1484,11 +1485,11 @@ export class World {
       if (b.jsb != null && FW.js) { nj++; FW.js.bUpd(this, b); }
       if (b.hom && !b.hom.dead && b.k !== 'art') { const a = Math.atan2(b.hom.y - b.y, b.hom.x - b.x), sp = Math.hypot(b.vx, b.vy), ca = Math.atan2(b.vy, b.vx), da = ((a - ca + Math.PI * 3) % (Math.PI * 2)) - Math.PI, na = ca + Math.max(-b.hp, Math.min(b.hp, da)); b.vx = Math.cos(na) * sp; b.vy = Math.sin(na) * sp; }
       const foe = foeOf(b.team);
-      if (b.k !== 'drv' && b.k !== 'art') {          // a sziklafal megállítja a lövedéket; gyors lövedéknél résztávolságonként vizsgálva
+      if (b.k !== 'drv' && b.k !== 'art') {          // a térkép falai fölött átrepül (Mindustry); az épületnél és a pálya szélénél áll meg, gyors lövedéknél résztávolságonként vizsgálva
         const n = Math.max(1, Math.ceil(Math.hypot(b.vx, b.vy) / 4)); let nx = b.x + b.vx, ny = b.y + b.vy, wallHit = false;
         for (let k = 1; k <= n; k++) {
           const px = b.x + b.vx * k / n, py = b.y + b.vy * k / n, tx = Math.floor(px / TS), ty = Math.floor(py / TS);
-          if (!this.inb(tx, ty) || this.wall[ty * w + tx]) { nx = b.x + b.vx * (k - 1) / n; ny = b.y + b.vy * (k - 1) / n; wallHit = true; break; }
+          if (!this.inb(tx, ty)) { nx = b.x + b.vx * (k - 1) / n; ny = b.y + b.vy * (k - 1) / n; wallHit = true; break; }
           { const bl = this.bt[ty * w + tx]; if (bl && bl.team !== b.team && !UNDER(bl) && !bl.open && !(b.seen && b.seen.includes(bl))) { nx = px; ny = py; break; } }   // az első épületnél megáll
         }
         b.x = nx; b.y = ny;

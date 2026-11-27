@@ -1,9 +1,9 @@
 // Kohóvár – kirajzolás. A blokkok, egységek, anyagok és a talaj képei a Mindustry (Anuke és közreműködők, GPLv3) sprite-jai,
 // a kepek/atlasz.png atlaszból; a lövedékek, hatások, köd és kisérkép kódból rajzoltak.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271902';
-import { FW } from './keret.js?v=202611271902';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271902';
-import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271902';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271906';
+import { FW } from './keret.js?v=202611271906';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271906';
+import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271906';
 
 const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555', 0: '#4d4e58' };
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -49,6 +49,14 @@ export function spr(g, n, x, y, rot, sx, sy, w, h, src) {
     g.setTransform(z * c * kx, z * s * kx, -z * s * ky, z * c * ky, TM.ox + z * x, TM.oy + z * y); g.drawImage(im, ox, oy, r[2], r[3], -W_ / 2, -H_ / 2, W_, H_); g.setTransform(z, 0, 0, z, TM.ox, TM.oy); return;
   }
   g.save(); g.translate(x, y); if (rot) g.rotate(rot); if (sx != null) g.scale(kx, ky); g.drawImage(im, ox, oy, r[2], r[3], -W_ / 2, -H_ / 2, W_, H_); g.restore();
+}
+// Mindustry Drawf.laser: két végsprite (a vonal irányába forgatva) és a köztük kifeszített vonaltextúra; scale = sugárszélesség
+function laserTex(g, line, end, x, y, x2, y2, scale, col) {
+  const re = AT[end], rl = AT[line]; if (!re || !rl) return; const rot = Math.atan2(y2 - y, x2 - x), sc = 8 * scale / 4, vx = Math.cos(rot) * sc, vy = Math.sin(rot) * sc;
+  const sE = col ? tint(end, col, true) : undefined, sL = col ? tint(line, col, true) : undefined, ew = re[2] * scale / 4, eh = re[3] * scale / 4;
+  spr(g, end, x, y, rot + Math.PI, 1, 1, ew, eh, sE); spr(g, end, x2, y2, rot, 1, 1, ew, eh, sE);
+  const ax = x + vx, ay = y + vy, bx = x2 - vx, by = y2 - vy, L = Math.hypot(bx - ax, by - ay) * Math.sign((bx - ax) * Math.cos(rot) + (by - ay) * Math.sin(rot) || 1);
+  if (L > 0) spr(g, line, (ax + bx) / 2, (ay + by) / 2, rot, 1, 1, L, 12 * scale, sL);
 }
 // átszínezett sprite (mul: szorzás – a fehér részek veszik fel a színt; különben egyszínű kitöltés), gyorsítótárazva
 function tint(n, col, mul) {
@@ -177,7 +185,14 @@ function drawB(g, W, b, t) {
       if (p) { g.strokeStyle = 'rgba(255,211,127,.6)'; g.lineWidth = 1; g.beginPath(); g.moveTo(cx, cy); g.lineTo((p.x + p.B.s / 2) * TS, (p.y + p.B.s / 2) * TS); g.stroke(); } break; }
     case 'shock': spr(g, n, cx, cy); glow(g, n + '-heat', cx, cy, 1 - (b.prog || 0) / B.reload); break;
     case 'beamdrill': {
-      spr(g, n, cx, cy); if (b.lasers && wk > .02) { g.strokeStyle = `rgba(255,140,110,${.35 + .4 * wk})`; g.lineWidth = 1.2; for (const [ax, ay, bx2, by2] of b.lasers) { g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx2, by2); g.stroke(); } }
+      spr(g, n, cx, cy); if (b.lasers && wk > .02) {    // BeamDrill.draw: drill-laser textúra, lüktető szélesség · melegedés; hidrogénnel a kék „boost” sugár úszik be
+        const bw = b.bw || 0; let k = 0;
+        for (const [ax, ay, bx2, by2] of b.lasers) { const w = (.65 + Math.abs(Math.sin((t + k * 5 + (b.i % 9) * 9) / 3)) * .07) * wk; k++;
+          for (const [pre, al] of [['drill-laser', 1 - bw], ['drill-laser-boost', bw]]) { if (al < .01) continue; g.globalAlpha = al;
+            if (Math.abs(ax - bx2) + Math.abs(ay - by2) < 1) { const r = AT[pre + '-center']; if (r) spr(g, pre + '-center', bx2, by2, 0, 1, 1, r[2] * w / 4, r[3] * w / 4); }
+            else laserTex(g, pre, pre + '-end', ax, ay, bx2, by2, w); }
+          g.globalAlpha = 1; }
+      }
       glow(g, n + '-glow', cx, cy, wk); spr(g, n + '-top', cx, cy, R); break;
     }
     case 'wcrafter': spr(g, n, cx, cy, R); spr(g, n + '-rotator-bottom', cx, cy, t * .05 * wk); spr(g, n + '-rotator', cx, cy, t * .05 * wk); spr(g, n + '-top', cx, cy, R); break;
@@ -325,17 +340,14 @@ export function render(g, W, R) {
   // szín: fehér → #ffd9c2 az ellátottság hiányával, enyhe lüktetés; szomszédos célnál nincs sugár; két csomópont között csak egyszer
   for (const b of W.blds) if (b.bmd && b.bmd.length && b.team !== 0 && !(W.fog && b.team !== PLAYER && !b.wv)) {
     const s = b.B.s, ct = (s - 1) >> 1, cx = (b.x + ct + .5) * TS, cy = (b.y + ct + .5) * TS, sat = b.g ? b.g.sat : 0, k = Math.min(1, (1 - sat) * .86 + Math.abs(Math.sin(t / 3)) * .1);
-    const col = `rgb(255,${Math.round(255 - 38 * k)},${Math.round(255 - 61 * k)})`, w = (.4 + Math.abs(Math.sin(t / 7)) * .05) / .4;
+    const kq = Math.round(k * 8) / 8, col = kq > 0 ? `rgb(255,${Math.round(255 - 38 * kq)},${Math.round(255 - 61 * kq)})` : null, w = .4 + Math.abs(Math.sin(t / 7)) * .05;
     for (const e of b.bmd) {
       const o = e.o; if (o.dead) continue; const os = o.B.s;
       if (o.bmd && o.B.beam && !(o.x !== b.x && o.y !== b.y) && !((o.i > b.i && b.B.range >= o.B.range) || b.B.range > o.B.range)) continue;
       if (Math.max(Math.abs(e.x - (b.x + ct)), Math.abs(e.y - (b.y + ct))) <= 1 + (s >> 1)) continue;
       const x1 = cx + DX[e.d] * TS / 2 * s, y1 = cy + DY[e.d] * TS / 2 * s, x2 = (e.x + .5) * TS - DX[e.d] * TS / 2, y2 = (e.y + .5) * TS - DY[e.d] * TS / 2;
       if (Math.max(x1, x2) < vx0 || Math.min(x1, x2) > vx1 || Math.max(y1, y2) < vy0 || Math.min(y1, y2) > vy1) continue;
-      g.lineCap = 'round'; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2);
-      g.strokeStyle = 'rgba(70,62,52,.85)'; g.lineWidth = 3.2 * w; g.stroke();
-      g.strokeStyle = col; g.lineWidth = 2 * w; g.stroke();
-      g.lineCap = 'butt';
+      laserTex(g, 'power-beam', 'power-beam-end', x1, y1, x2, y2, w, col);
     }
   }
   for (const b of W.blds) if (b.links) for (const o of b.links) { const a = W.center(b), c = W.center(o); if (Math.max(a.x, c.x) < vx0 || Math.min(a.x, c.x) > vx1 || Math.max(a.y, c.y) < vy0 || Math.min(a.y, c.y) > vy1) continue; const on = b.g && b.g.sat > 0 && b.g.prod + b.g.stored > 0; g.strokeStyle = on ? 'rgba(251,211,103,.55)' : 'rgba(110,104,96,.5)'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(c.x, c.y); g.stroke(); g.strokeStyle = on ? 'rgba(255,255,255,.55)' : 'rgba(160,160,160,.3)'; g.lineWidth = .5; g.stroke(); }
