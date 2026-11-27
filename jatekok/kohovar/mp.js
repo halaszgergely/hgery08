@@ -3,8 +3,8 @@
 // 2 jelzés), játék közben semmit nem ír és nem olvas – így nem fogy a napi keret.
 // A gazda → vendég forgalom érdeklődés szerint szűrt: csak a vendég nézete körüli egységek, lövedékek és épületállapotok mennek,
 // az épületállapotból is csak az, ami megváltozott. A vendég a bemenetét (mozgás, célzás, lövés) és a műveleteit (építés, bontás…) küldi.
-import { TS, BLOCKS, UNITS, ITEMS } from './adat.js?v=202611271514';
-import { joinRoom, localSignal, fireSignal } from '../../js/net.js?v=202611271514';
+import { TS, BLOCKS, UNITS, ITEMS } from './adat.js?v=202611271522';
+import { joinRoom, localSignal, fireSignal } from '../../js/net.js?v=202611271522';
 
 const GAME = 'kohovar', CH = 48000, SNAP = 100, DSTATE = 200;
 export const MP = { on: false, host: false, guest: false, room: null, roomId: null, me: null, name: '', peers: new Map(), research: null, myUnit: -1, status: '', mods: [] };
@@ -22,7 +22,7 @@ const r1 = v => Math.round(v * 10) / 10, r2 = v => Math.round(v * 100) / 100;
 export async function initMp(f) {
   F = f;
   if (LOCAL) { MP.me = Q.get('uid') || 'u' + Math.random().toString(36).slice(2, 7); MP.name = Q.get('name') || 'Teszt'; sig = localSignal('kohovar_net'); return true; }
-  try { core = await import('../../js/core.js?v=202611271514'); } catch (_) { core = null; }
+  try { core = await import('../../js/core.js?v=202611271522'); } catch (_) { core = null; }
   if (!core || core.notConfigured || !core.auth) return false;
   return new Promise(ok => core.FB.onAuthStateChanged(core.auth, async u => {
     if (u && !u.isAnonymous) { MP.me = u.uid; MP.name = u.displayName || 'Tag'; try { const s = await core.FB.getDoc(core.FB.doc(core.db, 'users', u.uid)); if (s.exists()) MP.name = s.data().name || MP.name; } catch (_) {} sig = fireSignal(core.FB, core.db); }
@@ -155,7 +155,7 @@ export function hostSend(W) {
   for (const [x, y] of log.filter(e => e[0] === 'rem').map(e => [e[1], e[2]])) for (const p of MP.peers.values()) for (const b of p.sent.keys()) if (b.dead) p.sent.delete(b);
 }
 // egy épület változó, rajzhoz kellő állapota
-const BK = ['hp', 'rot', 'ang', 'heat', 'work', 'prog', 'lq', 'lt', 'ps', 'off', 'open', 'cfg', 'link', 'pay', 'burn', 'warm', 'chg', 'beamT', 'bx', 'by', 'dItem', 'oq', 'pw', 'hOut', 'tp', 'rotA'];
+const BK = ['team', 'hp', 'rot', 'ang', 'heat', 'work', 'prog', 'lq', 'lt', 'ps', 'off', 'open', 'cfg', 'link', 'pay', 'burn', 'warm', 'chg', 'beamT', 'bx', 'by', 'dItem', 'oq', 'pw', 'hOut', 'tp', 'rotA'];
 function bstate(b) {
   const o = {}; for (const k of BK) { const v = b[k]; if (v == null || v === 0 || v === false) continue; o[k] = typeof v === 'number' ? (k === 'hp' ? Math.round(v) : r2(v)) : v; }
   if (b.cv && b.cv.length) o.cv = b.cv.map(e => [e.it, r2(e.p)]); if (b.st) o.st = [b.st.it, b.st.n]; if (b.links && b.links.length) o.ln = b.links.map(q => q.i);
