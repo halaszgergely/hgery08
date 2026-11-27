@@ -1,8 +1,8 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611271126';
-import { FW } from './keret.js?v=202611271126';
-import { toWorld } from './msav.js?v=202611271126';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271126';
+import { genMapSerpulo } from './terkep.js?v=202611271151';
+import { FW } from './keret.js?v=202611271151';
+import { toWorld } from './msav.js?v=202611271151';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271151';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -905,7 +905,7 @@ export class World {
     if (B.each || (idx === 0 && b.burst === 0)) { if (--am.n <= 0) b.ammo.pop(); }
     b.heat = 1; let off = 0; if (B.alt) { b.side = -b.side; off = B.s * 1.6 * b.side; } else if (B.shots > 1) off = ((b.burst + idx) % 4 - 1.5) * B.s * .9;
     const mz = B.s * 4 + 3, x = c.x + Math.cos(b.ang) * mz - Math.sin(b.ang) * off, y = c.y + Math.sin(b.ang) * mz + Math.cos(b.ang) * off, u = b.tgt;
-    const bdmR = this.rm('blockDamageMultiplier'), base = { team: b.team, c: st.c || col, c2: st.c2, sz: st.sz, tr: st.tr, st: st.st, stT: st.stT, spl: st.spl && st.spl * bdmR, splR: st.splR, frag: st.frag, zap: st.zap, zapD: st.zapD, d: st.d * bdmR, bdm: st.bdm };
+    const bdmR = this.rm('blockDamageMultiplier'), base = { jsb: st.jsb, team: b.team, c: st.c || col, c2: st.c2, sz: st.sz, tr: st.tr, st: st.st, stT: st.stT, spl: st.spl && st.spl * bdmR, splR: st.splR, frag: st.frag, zap: st.zap, zapD: st.zapD, d: st.d * bdmR, bdm: st.bdm };
     switch (st.k) {
       case 'shrap': { const n = B.spread || 1; for (let k = 0; k < n; k++) this.lineDmg(c.x, c.y, b.ang + (k - (n - 1) / 2) * .35, st.len, st.d, b.team, { air: 1, ground: 1, fx: col, wide: 5 }); return; }
       case 'rail': { this.lineDmg(c.x, c.y, b.ang, range, st.d, b.team, { air: 1, ground: 1, rail: 1, fx: '#f3e979', wide: 5 }); return; }
@@ -1001,7 +1001,7 @@ export class World {
   // egy fegyver elsütése; t: célegység vagy épület, tc: a cél pontja
   fireW(u, w, tc, t) {
     const team = u.team, foe = foeOf(team), a = Math.atan2(tc.y - u.y, tc.x - u.x), dm = (u.st.od ? 1.3 : 1) * this.rm('unitDamageMultiplier'), col = team === ENEMY ? '#ff7a6a' : w.heal ? '#84f491' : '#ffe39a';
-    const air = w.air !== 0 ? 1 : 0, base = { team, c: w.c || col, c2: w.c2, sz: w.sz, tr: w.tr, d: (w.d || 0) * dm, spl: w.spl && w.spl * dm, splR: w.splR, st: w.st, stT: w.stT, frag: w.frag, zap: w.zap, zapD: w.zapD, heal: w.heal, ab: t && !t.U ? t : null };
+    const air = w.air !== 0 ? 1 : 0, base = { jsb: w.jsb, team, c: w.c || col, c2: w.c2, sz: w.sz, tr: w.tr, d: (w.d || 0) * dm, spl: w.spl && w.spl * dm, splR: w.splR, st: w.st, stT: w.stT, frag: w.frag, zap: w.zap, zapD: w.zapD, heal: w.heal, ab: t && !t.U ? t : null };
     switch (w.k) {
       case 'laser': case 'shrap': { const e = this.lineDmg(u.x, u.y, a, w.len, w.d * dm, team, { air: 1, ground: 1, pierce: w.k === 'laser' ? 6 : 0, fx: col, wide: w.wide ? 9 : 4 }); if (w.heal && team === PLAYER) this.healB((u.x + e.x) / 2, (u.y + e.y) / 2, w.len / 2, w.heal); return; }
       case 'sap': { const d = Math.hypot(tc.x - u.x, tc.y - u.y); if (t && t.U) { this.dmgU(t, w.d * dm); t.st.sap = 180; } else if (t) this.dmgB(t, w.d * dm, u); u.hp = Math.min(u.U.hp, u.hp + w.d * w.sap); this.fx.push({ k: 'laser', x: u.x, y: u.y, x2: u.x + Math.cos(a) * Math.min(d, w.len + 8), y2: u.y + Math.sin(a) * Math.min(d, w.len + 8), life: 10, max: 10, c: '#bf92f9', w: 2 }); return; }
@@ -1300,8 +1300,9 @@ export class World {
     const f = b.frag; if (f) for (let k = 0; k < f.n; k++) { const a = Math.random() * 7, sp = f.sp * (.6 + Math.random() * .6); this.bullets.push(f.k === 'art' ? { k: 'art', x: b.x, y: b.y, sx: b.x, sy: b.y, tx: b.x + Math.cos(a) * sp * f.life, ty: b.y + Math.sin(a) * sp * f.life, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: f.life, d: f.d, spl: f.spl, splR: f.splR, team: b.team, ground: 1, c: b.c } : { x: b.x, y: b.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: f.life, d: f.d, spl: f.spl, splR: f.splR, team: b.team, air: f.air !== 0, ground: f.ground !== 0, c: b.c }); }
   }
   updBullets() {
-    const out = [], w = this.w;
+    const out = [], w = this.w; let nj = 0;
     for (const b of this.bullets) {
+      if (b.jsb != null && FW.js) { nj++; FW.js.bUpd(this, b); }
       if (b.hom && !b.hom.dead && b.k !== 'art') { const a = Math.atan2(b.hom.y - b.y, b.hom.x - b.x), sp = Math.hypot(b.vx, b.vy), ca = Math.atan2(b.vy, b.vx), da = ((a - ca + Math.PI * 3) % (Math.PI * 2)) - Math.PI, na = ca + Math.max(-b.hp, Math.min(b.hp, da)); b.vx = Math.cos(na) * sp; b.vy = Math.sin(na) * sp; }
       const foe = foeOf(b.team);
       if (b.k !== 'drv' && b.k !== 'art') {          // a sziklafal megállítja a lövedéket; gyors lövedéknél résztávolságonként vizsgálva
@@ -1326,18 +1327,19 @@ export class World {
         const R = u.U.r + 2 + (b.k === 'flak' ? b.splR * .5 : 0);
         if (Math.abs(u.x - b.x) < R && Math.abs(u.y - b.y) < R) {
           if (b.seen && b.seen.includes(u)) continue;
-          this.dmgU(u, b.d); if (b.st) u.st[b.st] = b.stT || 240; if (b.liq === 'water') { u.vx += b.vx * .25; u.vy += b.vy * .25; }
+          if (b.jsb != null && FW.js) FW.js.bHit(this, b, u, null); this.dmgU(u, b.d); if (b.st) u.st[b.st] = b.stT || 240; if (b.liq === 'water') { u.vx += b.vx * .25; u.vy += b.vy * .25; }
           hit = true; if (b.pierce > 0) (b.seen = b.seen || []).push(u); break;
         }
       }
       if (!hit) { const bl = this.tb(Math.floor(b.x / TS), Math.floor(b.y / TS)); if (bl && bl.team !== b.team && (!UNDER(bl) || bl === b.ab) && !(bl.open) && !(b.seen && b.seen.includes(bl))) {
         if (bl.B.deflect && !b.k && Math.random() < bl.B.deflect / Math.max(1, b.d)) { b.vx = -b.vx; b.vy = -b.vy; b.team = bl.team; b.c = '#f4ba6e'; b.life += 20; out.push(b); continue; }
-        this.dmgB(bl, b.d * (b.bdm || 1), b); hit = true; if (b.pierce > 0 && b.pb) (b.seen = b.seen || []).push(bl); else b.pierce = 0;
+        if (b.jsb != null && FW.js) FW.js.bHit(this, b, null, bl); this.dmgB(bl, b.d * (b.bdm || 1), b); hit = true; if (b.pierce > 0 && b.pb) (b.seen = b.seen || []).push(bl); else b.pierce = 0;
       } }
       if (hit) { if (b.k !== 'flame') this.hitFx(b); if (b.pierce > 0) { b.pierce--; out.push(b); continue; } this.burst(b, foe); continue; }
       if (b.life <= 0) { if (b.k === 'flak' || b.k === 'missile') this.burst(b, foe); continue; }
       out.push(b);
     }
+    if (nj && FW.js) { const keep = new Set(out); for (const b of this.bullets) if (b.jsb != null && !keep.has(b)) FW.js.bEnd(this, b); }
     this.bullets = out;
   }
 
