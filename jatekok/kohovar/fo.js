@@ -2,16 +2,16 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271046';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271046';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271046';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611271046';
-import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271046';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271046';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271046';
-import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271046';
-import { toWorld } from './msav.js?v=202611271046';
-import { Story } from './logika.js?v=202611271046';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271103';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271103';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271103';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611271103';
+import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271103';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271103';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271103';
+import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271103';
+import { toWorld } from './msav.js?v=202611271103';
+import { Story } from './logika.js?v=202611271103';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -207,7 +207,10 @@ $('#pTree').onclick = () => showTech();
 
 /* ---------- technológiafa (ResearchDialog): a gyökér középen, az ágak fölfelé és lefelé ---------- */
 let tsel = null, tzoom = 1, TPOS = null, tpl = 'serpulo';
-const TT_ = () => TECH.filter(t => (t.pl || 'serpulo') === tpl);
+const THIDE = new Set();   // a technológiafában ideiglenesen elrejtett modok
+const TT_ = () => { const L = TECH.filter(t => (t.pl || 'serpulo') === tpl); if (!THIDE.size) return L; const by = Object.fromEntries(L.map(t => [t.id, t])), vis = {};
+  const ok = t => { if (t.id in vis) return vis[t.id]; vis[t.id] = false; return (vis[t.id] = !(t.mod && THIDE.has(t.mod)) && (!t.req || (by[t.req] ? ok(by[t.req]) : true))); };
+  return L.filter(ok); };
 const campRun = () => W && !W.sec.free;
 function techAvail() { const a = { ...S.bank }; if (campRun()) for (const k in W.core.items) a[k] = (a[k] || 0) + W.core.items[k]; return a; }
 function techSpend(cost) { for (const k in cost) { let n = cost[k]; if (campRun()) { const c = Math.min(n, W.core.items[k] || 0); W.core.items[k] = (W.core.items[k] || 0) - c; n -= c; } S.bank[k] = (S.bank[k] || 0) - n; } }
@@ -218,20 +221,22 @@ const nOpen = t => (!t.req || nDone(NODE[t.req])) && (!t.need || (Array.isArray(
 const nName = t => t.k === 'b' ? BLOCKS[t.key].n : t.k === 'u' ? UNITS[t.key].n : t.k === 'i' ? ITEMS[t.key].n : t.k === 'l' ? LIQUIDS[t.key].n : SECTORS.find(s => s.id === t.key).n;
 const nCan = (t, av) => !nDone(t) && nOpen(t) && (t.k === 'b' || t.k === 'u') && Object.entries(t.cost).every(([k, n]) => (av[k] || 0) >= n);
 function layoutTech() {
-  TPOS = TPOS || {}; if (TPOS[tpl]) return TPOS[tpl]; const kids = {}, root = TECH_ROOT[tpl]; for (const t of TT_()) if (t.req) (kids[t.req] = kids[t.req] || []).push(t);
+  TPOS = TPOS || {}; const tk = tpl + '|' + [...THIDE].join(','); if (TPOS[tk]) return TPOS[tk]; const kids = {}, root = TECH_ROOT[tpl]; for (const t of TT_()) if (t.req) (kids[t.req] = kids[t.req] || []).push(t);
   const pos = {}, rc = kids[root] || [], half = Math.ceil(rc.length / 2);
   const lay = (t, d, st) => { const ch = kids[t.id] || []; if (!ch.length) pos[t.id] = { x: st.leaf++, y: d, st }; else { ch.forEach(c => lay(c, d + st.dir, st)); const xs = ch.map(c => pos[c.id].x); pos[t.id] = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: d, st }; } };
   const up = { leaf: 0, dir: -1 }, dn = { leaf: 0, dir: 1 }; rc.slice(0, half).forEach(c => lay(c, -1, up)); rc.slice(half).forEach(c => lay(c, 1, dn));
   for (const id in pos) pos[id].x -= (pos[id].st.leaf - 1) / 2; pos[root] = { x: 0, y: 0 };
   const P = Object.values(pos), GX = 66, GY = 84, minX = Math.min(...P.map(p => p.x)), minY = Math.min(...P.map(p => p.y));
   for (const p of P) { p.px = 80 + (p.x - minX) * GX; p.py = 80 + (p.y - minY) * GY; }
-  return (TPOS[tpl] = { root, pos, w: 216 + (Math.max(...P.map(p => p.x)) - minX) * GX, h: 216 + (Math.max(...P.map(p => p.y)) - minY) * GY });
+  return (TPOS[tk] = { root, pos, w: 216 + (Math.max(...P.map(p => p.x)) - minX) * GX, h: 216 + (Math.max(...P.map(p => p.y)) - minY) * GY });
 }
-$('#dTech').addEventListener('click', e => { const b = e.target.closest('[data-tp]'); if (!b) return; tpl = b.dataset.tp; tsel = null; tzoom = Math.max(.55, Math.min(1, $('#tree').clientWidth / layoutTech().w)); drawTech(true); });
+$('#dTech').addEventListener('click', e => { const m = e.target.closest('[data-tm]'); if (m) { const id = m.dataset.tm; if (THIDE.has(id)) THIDE.delete(id); else THIDE.add(id); if (tsel && !TT_().some(t => t.id === tsel)) tsel = null; drawTech(); return; } const b = e.target.closest('[data-tp]'); if (!b) return; tpl = b.dataset.tp; tsel = null; tzoom = Math.max(.55, Math.min(1, $('#tree').clientWidth / layoutTech().w)); drawTech(true); });
 function showTech() { tpl = curPl() === 'erekir' ? 'erekir' : 'serpulo'; showDlg('#dTech', () => { if (W && STACK.length === 0) paused = false; if (W) buildPalette(); }); tsel = null; tzoom = Math.max(.55, Math.min(1, $('#tree').clientWidth / layoutTech().w)); drawTech(true); }
 function drawTech(center) {
   const av = techAvail(), { pos, w, h, root } = layoutTech(), TL = TT_();
   $('#ttabs').innerHTML = ['serpulo', 'erekir'].map(p => `<button class="b np-button sm${p === tpl ? ' on' : ''}" data-tp="${p}">${esc((PLANETS.find(q => q.id === p) || { n: p }).n)}</button>`).join('');
+  const tm = [...new Set(TECH.filter(t => t.mod && (t.pl || 'serpulo') === tpl).map(t => t.mod))]; $('#tmods').hidden = !tm.length;
+  $('#tmods').innerHTML = tm.map(id => `<button class="b np-button sm${THIDE.has(id) ? '' : ' on'}" data-tm="${esc(id)}">${ic(THIDE.has(id) ? 'cancel' : 'eye', 'xs')}${esc((MODS.find(m => m.id === id) || { name: id }).name)}</button>`).join('');
   $('#tbank').innerHTML = `<div class="acc" style="margin-bottom:4px">Nyersanyagok <span class="lg">· ${TL.filter(nDone).length}/${TL.length}</span></div>${bankHtml(campRun() ? W.core.items : null, 3, tpl)}`;
   let svg = `<svg width="${w}" height="${h}">`, html = '';
   for (const t of TL) {
