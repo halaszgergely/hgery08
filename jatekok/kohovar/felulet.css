@@ -150,3 +150,5 @@ h4::after{content:'';display:block;height:3px;background:var(--acc);margin-top:4
 .endst{font-size:18px;line-height:1.8;text-align:center}
 .pgrid{display:grid;grid-template-columns:repeat(2,270px);gap:4px;margin-top:10px}.pgrid .b{height:60px;font-size:17px;white-space:nowrap}
 body.inarc #pal{right:60px}
+
+.ic.pw{position:absolute;right:0;top:0;color:#ffd37f;font-size:15px;text-shadow:0 0 2px #000,0 0 2px #000}.tn .ic.pw{right:-6px;top:-6px;font-size:22px}

@@ -274,6 +274,13 @@ def conv_block(var, o):
     lay = drawer_layers(o, n)
     if lay: d['_layers'] = lay
     if t in STREAM: d['_special'] = t
+    PART = {'MultiBlockCrafter': 'négyzetes helyet foglal (az eredeti nem négyzetes)', 'MultiBlockConsumeGenerator': 'négyzetes helyet foglal (az eredeti nem négyzetes)',
+            'AirRaider': 'egyszerűsítve: tüzérségi toronyként, választható csapásmód nélkül', 'BombLauncher': 'egyszerűsítve: tüzérségi toronyként',
+            'StreamExtractor': 'a nyaláb folyadékhídként működik', 'StreamRepeater': 'a nyaláb folyadékhídként működik', 'StreamRedirector': 'a nyaláb folyadékhídként működik',
+            'StreamReceiver': 'a nyaláb folyadékelosztóként működik', 'StreamSplitter': 'a nyaláb folyadékelosztóként működik', 'JumpGate': 'egyszerűsítve: egységgyárként, ugrás nélkül',
+            'AdaptDrill': 'fúrómodulok nélkül', 'OreCollector': 'egyszerűsítve: fúróként', 'QuantumVortexProjector': 'egyszerűsítve: erőtérként', 'AssignedBeacon': 'egyszerűsítve: gyorsítóként',
+            'CaptureableTurret': 'elfoglalás nélkül', 'Webber': 'egyszerűsítve: vonósugárként', 'MultTractorBeamTurret': 'egyszerűsítve: vonósugárként', 'RemoteCoreStorage': 'egyszerűsítve: raktárként', 'AccumulatingStorage': 'egyszerűsítve: raktárként'}
+    if t in PART: d['_partial'] = PART[t]
     if T == 'LiquidBridge' and t.startswith('Stream'): d['range'] = 5
     if t == 'OreCollector': d.setdefault('tier', 4); d.setdefault('drillTime', 400)
     if t == 'AirRaider':       # távoli csapásmérő állás → nagy hatótávú tüzérségi torony
