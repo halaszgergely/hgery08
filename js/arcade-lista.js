@@ -1,6 +1,6 @@
 /* HGWS Arcade – listaoldal: kiemeltek, szűrők, kategóriasorok, részletező panel.
    Az adatok a js/arcade-manifest.js-ből jönnek; a ranglistát és a játékszámokat csak olvassa (a ctx függvényein át). */
-import { JATEKOK, KATEGORIAK, UJ_NAPOK } from './arcade-manifest.js?v=202611271016';
+import { JATEKOK, KATEGORIAK, UJ_NAPOK } from './arcade-manifest.js?v=202611271019';
 
 const V = new URL(import.meta.url).search, RK = 'hgws_arc_recent';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -59,7 +59,7 @@ export function render(page, ctx) {
   // éppen játszók: a főoldal adja (percenként frissítjük, amíg a lista látszik)
   let act = {}; function showNow() { document.querySelectorAll('[data-now]').forEach(e => { const n = act[e.dataset.now] || 0, w = n && ctx.who ? ctx.who(e.dataset.now) : []; e.hidden = !n; e.textContent = n ? '● ' + n + ' játszik' : ''; if (w.length) e.title = w.join(', '); else e.removeAttribute('title'); });
     document.querySelectorAll('[data-who]').forEach(e => { const w = ctx.who ? ctx.who(e.dataset.who) : []; e.hidden = !w.length; e.textContent = w.length ? 'Most játszik: ' + w.join(', ') : ''; }); }
-  const loadNow = () => { if (!ctx.active) return; ctx.active().then(a => { act = a || {}; showNow(); }).catch(() => {}); }; const nowT = setInterval(() => { if (!document.contains(root)) return clearInterval(nowT); if (!document.hidden) loadNow(); }, 60e3);
+  const loadNow = () => { if (!ctx.active) return; ctx.active().then(a => { act = a || {}; showNow(); }).catch(() => {}); }; const nowT = setInterval(() => { if (!document.contains(root)) return clearInterval(nowT); if (!document.hidden) loadNow(); }, 120e3);
   draw(); loadNow();
   ctx.plays().then(p => { if (!document.contains(page.querySelector('.arcl'))) return; plays = p || plays; if (S.rend === 'nepszeru') draw(); }).catch(() => {});
 
