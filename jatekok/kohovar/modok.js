@@ -2,13 +2,13 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, ORE_P, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611271237';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271237';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271237';
-import { FL, FLI, WL } from './vilag.js?v=202611271237';
-import { runScripts, defJson, defKind, defClass, attachDef, scriptReport, initJsApi } from './jsapi.js?v=202611271237';
-import { parseHjson } from './hjson.js?v=202611271237';
-import { addSprite, spritesReady, has as AT_HAS, sprSize } from './rajz.js?v=202611271237';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, ORE_P, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611271253';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271253';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271253';
+import { FL, FLI, WL } from './vilag.js?v=202611271253';
+import { runScripts, defJson, defKind, defClass, attachDef, scriptReport, initJsApi } from './jsapi.js?v=202611271253';
+import { parseHjson } from './hjson.js?v=202611271253';
+import { addSprite, spritesReady, has as AT_HAS, sprSize } from './rajz.js?v=202611271253';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [], MOD_MAPS = [];   // MOD_MAPS: a mod szektor nélküli pályái (egyéni játék)   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
@@ -236,7 +236,7 @@ export function installMod(files, srcLabel) {
       const fuel = c.inp && Object.keys(c.inp)[0]; return { ...base, type: 'generator', gen: g, mode: fuel ? 'item' : c.inL ? 'liq1' : 'burn', fuel, dur: +(j.itemDuration || 120), inL: c.inL, lcap: c.inL ? +(j.liquidCapacity || 30) : undefined };
     }
     if (turret) {
-      const sh = j.shoot || {}, shots = +(sh.shots || j.shots || 1), tu = { ...base, kat: 'turret', type: 'turret', range: +(j.range || 110), reload: +(j.reload ?? j.reloadTime ?? 20), air: j.targetAir === false ? 0 : 1, ground: j.targetGround === false ? 0 : 1, power: c.power, shots, sd: +(sh.shotDelay || 0), spr: +(sh.spread || 0), maxAmmo: +(j.maxAmmo || 30) };
+      const sh = j.shoot || {}, shots = +(sh.shots || j.shots || 1), tu = { ...base, kat: 'turret', type: 'turret', rspd: (+j.rotateSpeed || 5) * Math.PI / 180, range: +(j.range || 110), reload: +(j.reload ?? j.reloadTime ?? 20), air: j.targetAir === false ? 0 : 1, ground: j.targetGround === false ? 0 : 1, power: c.power, shots, sd: +(sh.shotDelay || 0), spr: +(sh.spread || 0), maxAmmo: +(j.maxAmmo || 30) };
       if (c.cool) { tu.cool = c.cool[1]; tu.coolM = +(j.coolantMultiplier || 5); }
       if (T === 'PointDefenseTurret') { tu.pd = +(j.bulletDamage || 10); return tu; }
       if (T === 'TractorBeamTurret') { tu.tractor = { force: +(j.force || .3), d: +(j.damage || .3) }; tu.ground = 0; return tu; }
