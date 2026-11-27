@@ -2,14 +2,15 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271013';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271013';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271013';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611271013';
-import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271013';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271013';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271013';
-import { Story } from './logika.js?v=202611271013';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271022';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271022';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271022';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611271022';
+import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271022';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271022';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271022';
+import { toWorld } from './msav.js?v=202611271022';
+import { Story } from './logika.js?v=202611271022';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -26,7 +27,7 @@ const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); retu
 if (!S.research.includes('bastion')) S.research.push('bastion');
 if (S.runs) { delete S.runs.vegtelen; for (const k in S.runs) if (k !== 'free' && !SECTORS.some(s => s.id === k)) delete S.runs[k]; }   // a régi hadjárat szektorai megszűntek
 S.free = { ...FREE_DEF, ...(S.free || {}) }; S.seed = S.seed || (Math.random() * 1e9 | 0);
-for (const k in FREE_OPTS) if (!FREE_OPTS[k].some(x => x[0] === S.free[k])) S.free[k] = FREE_DEF[k];
+for (const k in FREE_OPTS) if (!FREE_OPTS[k].some(x => x[0] === S.free[k]) && !(k === 'map' && /^(def|mod):/.test(S.free.map || ''))) S.free[k] = FREE_DEF[k];
 const plOk = id => { const B = BLOCKS[id]; if (!B || !W) return true; const PI = plItems(SEC.planet || 'serpulo'); return Object.keys(B.cost).every(k => PI.includes(k)); };
 const done = id => ((W && W.sec.unlockAll) || S.research.includes(id)) && plOk(id);
 
@@ -320,24 +321,93 @@ function runPrev() {
   }
   draw(PREV.get(key)); if (prevQ.length) prevT = setTimeout(runPrev, 10);
 }
+// a Mindustry beépített egyéni pályái (Maps.defaultMapNames) és a modok szektor nélküli pályái
+const DEFMAPS = [['maze', 'Maze'], ['fortress', 'Fortress'], ['labyrinth', 'Labyrinth'], ['islands', 'Islands'], ['tendrils', 'Tendrils'], ['caldera', 'Ancient Caldera'], ['wasteland', 'Wasteland'], ['shattered', 'Shattered'], ['fork', 'Fork'], ['triad', 'Triad'], ['mudFlats', 'Mud Flats'], ['moltenLake', 'Molten Lake'], ['archipelago', 'Archipelago'], ['debrisField', 'Debris Field'], ['domain', 'Domain'], ['veins', 'Veins'], ['glacier', 'Glacier'], ['passage', 'Passage']];
+const mapList = () => [...MAPS.map(m => ({ id: m.id, n: m.n, kind: 'gen' })), ...DEFMAPS.map(([f, n]) => ({ id: 'def:' + f, n, kind: 'msav', file: 'default/' + f + '.msav' })), ...MOD_MAPS.map(m => ({ id: 'mod:' + m.id, n: m.n, kind: 'msav', mod: m }))];
+const curMap = () => mapList().find(m => m.id === S.free.map) || mapList()[0];
+// a pálya adatai (a Mindustry Gamemode.valid szerint: túlélés kezdőponttal, támadás ellenséges maggal)
+const MINFO = new Map();
+async function mapInfo(M) {
+  if (MINFO.has(M.id)) return MINFO.get(M.id);
+  const m = await loadMap(M.id, M.mod ? { modMap: M.mod.id } : { mapFile: M.file }, M.mod ? M.mod.bytes : null), w = toWorld(m);
+  const ec = m.builds.some(b => b.team !== 1 && b.team !== 0 && /(^|-)core/.test(m.names[m.block[b.y * m.w + b.x]] || ''));
+  const ter = makeTerrain({ ...w, w: m.w, h: m.h }), c = document.createElement('canvas'), k = Math.max(1, Math.round(420 / Math.max(m.w, m.h))); c.width = m.w * k; c.height = m.h * k;
+  const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(ter.mini, 0, 0, c.width, c.height); g.fillStyle = '#ffd37f'; g.fillRect(w.coreAt.x * k - 2, w.coreAt.y * k - 2, 3 * k + 4, 3 * k + 4); g.fillStyle = '#ff4a3d'; for (const sp of w.spawns) g.fillRect(sp.x * k - 3, sp.y * k - 3, 6, 6);
+  const r = { m, img: c, survival: w.spawns.length > 0, attack: ec, w: m.w, h: m.h }; MINFO.set(M.id, r); return r;
+}
+const drawImg = (canvas, img) => { canvas.width = img.width; canvas.height = img.height; const c = canvas.getContext('2d'); c.imageSmoothingEnabled = false; c.drawImage(img, 0, 0); };
 function showCustom() {
-  showDlg('#dCustom'); prevQ = [];
-  $('#maps').innerHTML = MAPS.map(m => `<div class="mapb np-button ${S.free.map === m.id ? 'on' : ''}" data-map="${m.id}"><canvas></canvas><div class="nm">${esc(m.n)}</div></div>`).join('');
-  for (const el of $$('#maps .mapb')) preview(el.querySelector('canvas'), { ...S.free, map: el.dataset.map, size: 's' }, 'mini:' + el.dataset.map + S.seed);
+  showDlg('#dCustom'); prevQ = []; const L = mapList();
+  const card = m => `<div class="mapb np-button ${S.free.map === m.id ? 'on' : ''}" data-map="${m.id}"><canvas></canvas><div class="nm">${esc(m.n)}</div>${m.mod ? `<div class="lg" style="font-size:13px;text-align:center">${esc(m.mod.modName)}</div>` : ''}</div>`;
+  const sec = (t, l) => l.length ? `<h4 class="mapsh">${t}</h4><div class="maps">${l.map(card).join('')}</div>` : '';
+  $('#maps').innerHTML = sec('Generált pályák', L.filter(m => m.kind === 'gen')) + sec('Mindustry pályák', L.filter(m => m.id.startsWith('def:'))) + sec('Mod pályák', L.filter(m => m.id.startsWith('mod:')));
+  for (const el of $$('#maps .mapb')) { const M = L.find(m => m.id === el.dataset.map); if (M.kind === 'gen') preview(el.querySelector('canvas'), { ...S.free, map: M.id, size: 's' }, 'mini:' + M.id + S.seed); else mapInfo(M).then(r => drawImg(el.querySelector('canvas'), r.img)).catch(() => {}); }
 }
 $('#maps').onclick = e => { const b = e.target.closest('[data-map]'); if (!b) return; S.free.map = b.dataset.map; persist(); showPlay(); };
-function showPlay() {
-  showDlg('#dPlay'); const o = S.free, run = S.runs.free, M_ = MAPS.find(m => m.id === o.map);
+// egyéni szabályok (Mindustry CustomRulesDialog – amit a Kohóvár motorja megvalósít)
+const RULES = [
+  ['Hullámok', [['waves', 'Hullámok', 'b', true], ['waveTimer', 'Hullámidőzítő', 'b', true], ['waitForWaveToEnd', 'Várakozás a hullám végéig', 'b', false], ['waveSpacing', 'Hullámidő (mp)', 'n', 0, 10, 0, 600], ['winWave', 'Győzelmi hullám', 'n', 0, 5, 0, 500]]],
+  ['Építés', [['infiniteResources', 'Végtelen erőforrás', 'b', false], ['buildCostMultiplier', 'Építési költség', 'n', 1, .25, 0, 10], ['buildSpeedMultiplier', 'Építési sebesség', 'n', 1, .25, .25, 20], ['deconstructRefundMultiplier', 'Bontási visszatérítés', 'n', .5, .1, 0, 1], ['blockHealthMultiplier', 'Épületek életereje', 'n', 1, .25, .25, 20], ['blockDamageMultiplier', 'Épületek sebzése', 'n', 1, .25, .25, 20], ['solarMultiplier', 'Napenergia', 'n', 1, .25, 0, 10]]],
+  ['Egységek', [['unitCap', 'Egységkorlát módosító', 'n', 0, 4, -24, 200], ['unitDamageMultiplier', 'Egységek sebzése', 'n', 1, .25, .25, 20], ['unitHealthMultiplier', 'Egységek életereje', 'n', 1, .25, .25, 20], ['unitBuildSpeedMultiplier', 'Egységgyártás sebessége', 'n', 1, .25, .25, 20], ['unitCostMultiplier', 'Egységek költsége', 'n', 1, .25, 0, 10], ['unitMineSpeedMultiplier', 'Bányászat sebessége', 'n', 1, .25, .25, 10]]],
+  ['Ellenség', [['enemyCoreBuildRadius', 'Építési tilalom az ellenséges mag körül (mező)', 'n', 0, 5, 0, 100]]],
+];
+const RDEF = Object.fromEntries(RULES.flatMap(([, l]) => l.map(r => [r[0], r])));
+const GEN_SKIP = new Set(['waveSpacing', 'winWave']);   // a generált pályáknál a Hullámidő / Hullámok opció adja
+const rulesCustom = () => Object.keys(S.free.rules || {}).some(k => RDEF[k] && S.free.rules[k] !== RDEF[k][3] && !(GEN_SKIP.has(k) && curMap().kind === 'gen'));
+const rv = (k, base) => (S.free.rules || {})[k] ?? base ?? RDEF[k][3];
+const fmt = v => typeof v === 'number' ? (Number.isInteger(v) ? String(v) : v.toFixed(2).replace(/0$/, '')) : v;
+function rulesHtml(gen, mapR) {
+  const base = k => k === 'waveSpacing' ? Math.round((mapR.waveSpacing || 7200) / 60) : k === 'winWave' ? (mapR.winWave || 0) : k in mapR && typeof mapR[k] !== 'object' ? mapR[k] : undefined;
+  return `<details class="rules" ${S.rulesOpen ? 'open' : ''}><summary>Szabályok${rulesCustom() ? ' <span class="acc">· módosítva</span>' : ''}</summary>` + RULES.map(([t, l]) => `<div class="lg" style="margin-top:8px">${t}</div>` + l.filter(r => !(gen && GEN_SKIP.has(r[0]))).map(([k, n, ty, d, st, mi, ma]) => { const v = rv(k, base(k));
+    return `<div class="rrow"><span>${n}</span>${ty === 'b' ? `<button class="b np-button sm ${v ? 'on' : ''}" data-rb="${k}" data-v="${v ? 1 : 0}">${v ? 'Be' : 'Ki'}</button>` : `<span class="optrow"><button class="b np-button sm" data-rn="${k}" data-d="-1" data-v="${v}">−</button><b class="rv">${k === 'winWave' && !v ? '∞' : fmt(v)}</b><button class="b np-button sm" data-rn="${k}" data-d="1" data-v="${v}">+</button></span>`}</div>`; }).join('')).join('') + `<div class="optrow" style="margin-top:8px"><button class="b np-button sm" data-rr="1">${ic('refresh', 'xs')}Alapértékek</button></div></details>`;
+}
+const MODES = [['survival', 'Túlélés'], ['attack', 'Támadás'], ['sandbox', 'Homokozó']];
+async function showPlay() {
+  showDlg('#dPlay'); const o = S.free, run = S.runs.free, M_ = curMap(); o.rules = o.rules || {};
   $('#fTitle').textContent = M_ ? M_.n : 'Egyéni játék';
-  $('#fOpts').innerHTML = Object.entries(FREE_OPTS).filter(([k]) => k !== 'map').map(([k, l]) => `<div class="lg" style="margin-top:6px">${FLAB[k]}</div><div class="optrow">${l.map(x => `<button class="b np-button ${o[k] === x[0] ? 'on' : ''}" data-k="${k}" data-v="${x[0]}">${esc(x[1])}${k === 'size' ? ` <span class="lg" style="font-size:14px">${x[2][0]}×${x[2][1]}</span>` : ''}</button>`).join('')}</div>`).join('')
-    + `<div class="lg" style="margin-top:6px">Térképkód</div><div class="optrow" style="align-items:center"><span style="min-width:140px">${S.seed}</span><button class="b np-button" id="fSeed">${ic('refresh', 's')}Új térkép</button></div>`;
-  $('#fRank').innerHTML = freeRanked(o) && !MODS.length ? `<span class="acc">Ranglistás</span> <span class="lg">· rekord: ${S.best || 0}. hullám</span>` : '<span class="lg">Nem ranglistás</span>';
   $('#fCont').hidden = !run; if (run && S.freeSec) $('#fCont').querySelector('span').textContent = `Folytatás (${run.wave}. hullám)`;
   const b = $('#fGo'); b.dataset.sure = ''; b.querySelector('span').textContent = 'Játék';
-  preview($('#fPrev'), o);
+  if (M_.kind === 'gen') {
+    $('#fOpts').innerHTML = Object.entries(FREE_OPTS).filter(([k]) => k !== 'map').map(([k, l]) => `<div class="lg" style="margin-top:6px">${FLAB[k]}</div><div class="optrow">${l.map(x => `<button class="b np-button ${o[k] === x[0] ? 'on' : ''}" data-k="${k}" data-v="${x[0]}">${esc(x[1])}${k === 'size' ? ` <span class="lg" style="font-size:14px">${x[2][0]}×${x[2][1]}</span>` : ''}</button>`).join('')}</div>`).join('')
+      + `<div class="lg" style="margin-top:6px">Térképkód</div><div class="optrow" style="align-items:center"><span style="min-width:140px">${S.seed}</span><button class="b np-button" id="fSeed">${ic('refresh', 's')}Új térkép</button></div>` + rulesHtml(true, {});
+    $('#fRank').innerHTML = freeRanked(o) && !MODS.length && !rulesCustom() ? `<span class="acc">Ranglistás</span> <span class="lg">· rekord: ${S.best || 0}. hullám</span>` : '<span class="lg">Nem ranglistás</span>';
+    preview($('#fPrev'), o); return;
+  }
+  $('#fOpts').innerHTML = '<div class="lg">Betöltés…</div>'; $('#fRank').innerHTML = '<span class="lg">Nem ranglistás</span>';
+  let I; try { I = await mapInfo(M_); } catch (e) { $('#fOpts').innerHTML = '<div class="bad">A pálya nem tölthető be</div>'; return; }
+  if (curMap() !== M_ && curMap().id !== M_.id) return;
+  const ok = m => m === 'sandbox' || (m === 'survival' ? I.survival : I.attack); if (!ok(o.mode)) o.mode = ok('survival') ? 'survival' : ok('attack') ? 'attack' : 'sandbox';
+  drawImg($('#fPrev'), I.img);
+  $('#fOpts').innerHTML = `<div class="lg">Méret: ${I.w}×${I.h}</div><div class="lg" style="margin-top:6px">Játékmód</div><div class="optrow">${MODES.map(([k, n]) => `<button class="b np-button ${o.mode === k ? 'on' : ''}" data-mode="${k}" ${ok(k) ? '' : 'disabled'}>${n}</button>`).join('')}</div>`
+    + ['res', 'fog'].map(k => `<div class="lg" style="margin-top:6px">${FLAB[k]}</div><div class="optrow">${FREE_OPTS[k].map(x => `<button class="b np-button ${o[k] === x[0] ? 'on' : ''}" data-k="${k}" data-v="${x[0]}">${esc(x[1])}</button>`).join('')}</div>`).join('') + rulesHtml(false, I.m.rules || {});
 }
-$('#fOpts').onclick = e => { const b = e.target.closest('button'); if (!b) return; if (b.id === 'fSeed') S.seed = Math.random() * 1e9 | 0; else { const k = b.dataset.k, v = b.dataset.v; S.free[k] = typeof FREE_DEF[k] === 'number' ? +v : v; } persist(); showPlay(); };
-$('#fGo').onclick = e => { const b = e.currentTarget; if (S.runs.free && b.dataset.sure !== '1') { b.dataset.sure = '1'; b.querySelector('span').textContent = 'Biztos? A mentett játék elvész'; return; } delete S.runs.free; const sec = freeSector(S.free, S.seed); S.freeSec = sec; persist(); start(sec, null); };
+$('#fOpts').addEventListener('toggle', e => { if (e.target.matches('details.rules')) { S.rulesOpen = e.target.open; persist(); } }, true);
+$('#fOpts').onclick = e => {
+  const b = e.target.closest('button'); if (!b || b.disabled) return; const R = S.free.rules || (S.free.rules = {});
+  if (b.id === 'fSeed') S.seed = Math.random() * 1e9 | 0;
+  else if (b.dataset.mode) S.free.mode = b.dataset.mode;
+  else if (b.dataset.rb) R[b.dataset.rb] = b.dataset.v !== '1';
+  else if (b.dataset.rn) { const [, , , , st, mi, ma] = RDEF[b.dataset.rn]; R[b.dataset.rn] = Math.round(Math.max(mi, Math.min(ma, +b.dataset.v + st * +b.dataset.d)) * 100) / 100; }
+  else if (b.dataset.rr) S.free.rules = {};
+  else if (b.dataset.k) { const k = b.dataset.k, v = b.dataset.v; S.free[k] = typeof FREE_DEF[k] === 'number' ? +v : v; }
+  else return;
+  persist(); showPlay();
+};
+// a kiválasztott egyéni szabályok a Kohóvár szektorleírásához
+function applyRules(sec, base) {
+  const R = { ...(S.free.rules || {}) }, r = sec.rules = { ...(sec.rules || {}) };
+  for (const k in R) { if (!RDEF[k]) continue; if (k === 'waveSpacing') { if (R[k] > 0) { r.waveSpacing = R[k] * 60; sec.wt = R[k]; } } else if (k === 'winWave') sec.win = R[k]; else if (k === 'enemyCoreBuildRadius') r[k] = R[k] * TS; else r[k] = R[k]; }
+  if (base) { const mode = S.free.mode || 'survival'; r.attackMode = mode === 'attack'; sec.attack = r.attackMode; if (mode === 'sandbox') { r.infiniteResources = true; r.waveTimer = R.waveTimer ?? false; } if (mode === 'survival') r.waves = R.waves ?? true; }
+  if (rulesCustom()) sec.ranked = 0;
+  return sec;
+}
+$('#fGo').onclick = e => {
+  const b = e.currentTarget; if (S.runs.free && b.dataset.sure !== '1') { b.dataset.sure = '1'; b.querySelector('span').textContent = 'Biztos? A mentett játék elvész'; return; }
+  delete S.runs.free; const M_ = curMap(); let sec;
+  if (M_.kind === 'gen') sec = applyRules(freeSector(S.free, S.seed));
+  else sec = { id: 'free_map', n: M_.n, d: '', free: 1, camp: 'serpulo', planet: 'serpulo', p: { alwaysUnlocked: true }, ...(M_.mod ? { modMap: M_.mod.id } : { mapFile: M_.file }), fr: { mode: S.free.mode, rules: { ...(S.free.rules || {}) }, res: S.free.res, fog: S.free.fog } };
+  S.freeSec = sec; persist(); start(sec, null);
+};
 $('#fCont').onclick = () => start(S.freeSec, S.runs.free);
 
 /* ---------- játék betöltése (LoadDialog) ---------- */
@@ -377,8 +447,10 @@ const toCoreT = m => { for (const b of m.builds) { const n = m.names[b.id]; if (
 let STORY = null;
 async function start(sec, save) {
   if (sec.camp === 'serpulo' && !sec.map) {
-    let m; try { m = await loadMap(sec.id); } catch (e) { $('#pinfo').insertAdjacentHTML('beforeend', `<div class="bad">A pálya nem tölthető be</div>`); return; }
+    const mm = sec.modMap ? MOD_MAPS.find(q => q.id === sec.modMap) : null; if (sec.modMap && !mm) { $('#pinfo').insertAdjacentHTML('beforeend', `<div class="bad">A pálya modja nincs bekapcsolva</div>`); return; }
+    let m; try { m = await loadMap(sec.id, sec.free ? sec : null, mm ? mm.bytes : null); } catch (e) { $('#pinfo').insertAdjacentHTML('beforeend', `<div class="bad">A pálya nem tölthető be</div>`); return; }
     const base = sec; sec = sectorFor(base, m);
+    if (base.free) { const F = base.fr || {}, keep = S.free; S.free = { ...S.free, mode: F.mode, rules: F.rules || {} }; sec = applyRules({ ...sec, free: 1, base, unlockAll: F.res === 'all', ranked: 0, fog: F.fog ?? sec.fog }, base); if (mm) sec.txt = mm.txt; S.free = keep; }
     if (!save && !base.p.alwaysUnlocked) { const cap = BLOCKS[toCoreT(m)] ? BLOCKS[toCoreT(m)].cap : 4000; for (const k of plItems(base.planet || 'serpulo')) { if (!(S.bank[k] > 0)) continue; const n = Math.min(S.bank[k], Math.max(0, cap - (sec.start[k] || 0))); if (n > 0) { sec.start[k] = (sec.start[k] || 0) + n; S.bank[k] -= n; } } persist(); }   // kilövés: a raktárból a mag befogadóképességéig
   }
   if (save && save.gv === 2) sec = { ...sec, gen: 2 };   // a korábbi barlangos térkép
@@ -395,7 +467,7 @@ async function start(sec, save) {
   closeAll(); $('#menu').hidden = true; $('#hud').hidden = false; $('#pbar').hidden = true; sizeMini(); buildPalette(); saveT = performance.now(); setPauseIcon();
 }
 const runKey = s => s.free ? 'free' : s.id;
-function saveRun() { if (!W || W.lost || W.won) return; S.runs[runKey(SEC)] = W.save(); if (SEC.free) S.freeSec = SEC; if (!persist()) W.msg('A mentés nem fért el a böngésző tárhelyén', 'bad'); }
+function saveRun() { if (!W || W.lost || W.won) return; S.runs[runKey(SEC)] = W.save(); if (SEC.free) S.freeSec = SEC.base || SEC; if (!persist()) W.msg('A mentés nem fért el a böngésző tárhelyén', 'bad'); }
 function quit() { saveRun(); const f = SEC.free; W = null; closeAll(); $('#hud').hidden = true; if (f) { showMenu(); showCustom(); showPlay(); } else { showMenu(); showPlanet(); } }
 let endFree = false;
 function endGame(won) {
