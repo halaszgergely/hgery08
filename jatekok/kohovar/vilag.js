@@ -1,8 +1,8 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611271432';
-import { FW } from './keret.js?v=202611271432';
-import { toWorld } from './msav.js?v=202611271432';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271432';
+import { genMapSerpulo } from './terkep.js?v=202611271440';
+import { FW } from './keret.js?v=202611271440';
+import { toWorld } from './msav.js?v=202611271440';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271440';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -1002,12 +1002,12 @@ export class World {
     let tt; if (Math.abs(a) < 1e-6) tt = -cc / bb; else { const disc = bb * bb - 4 * a * cc; if (disc < 0) return t; const r = Math.sqrt(disc), t1 = (-bb - r) / (2 * a), t2 = (-bb + r) / (2 * a); tt = Math.min(t1, t2) > 0 ? Math.min(t1, t2) : Math.max(t1, t2); }
     if (!(tt > 0) || tt > 600) return t; return { x: t.x + vx * tt, y: t.y + vy * tt };
   }
-  free(x, y, team) { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (!this.inb(tx, ty) || !this.inA(tx, ty)) return false; const i = ty * this.w + tx; if (this.sol[i]) return false; const b = this.bt[i]; return !b || !isSolid(b) || (b.open && team === PLAYER); }
+  free(x, y, team) { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (!this.inb(tx, ty) || (team === PLAYER && !this.inA(tx, ty))) return false; const i = ty * this.w + tx; if (this.sol[i]) return false; const b = this.bt[i]; return !b || !isSolid(b) || (b.open && team === PLAYER); }
   moveU(u, dx, dy) {
-    const nx = u.x + dx, ny = u.y + dy, A = this.area, x0 = A ? A.x * TS : 0, y0 = A ? A.y * TS : 0, x1 = A ? (A.x + A.w) * TS : this.w * TS, y1 = A ? (A.y + A.h) * TS : this.h * TS;
+    const nx = u.x + dx, ny = u.y + dy, A = u.team === PLAYER ? this.area : null, x0 = A ? A.x * TS : 0, y0 = A ? A.y * TS : 0, x1 = A ? (A.x + A.w) * TS : this.w * TS, y1 = A ? (A.y + A.h) * TS : this.h * TS;
     if (u.carrier) return;
     if (u.U.air || u.U.legs) { u.x = Math.max(x0 + 4, Math.min(x1 - 4, nx)); u.y = Math.max(y0 + 4, Math.min(y1 - 4, ny)); return; }
-    if (u.U.hov) { const fh = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (!this.inb(tx, ty) || !this.inA(tx, ty)) return false; const i = ty * this.w + tx; if (this.wall[i]) return false; const b = this.bt[i]; return !b || !isSolid(b); }; if (fh(nx, u.y)) u.x = nx; if (fh(u.x, ny)) u.y = ny; return; }   // lebegő egység: vízen is átkel
+    if (u.U.hov) { const fh = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (!this.inb(tx, ty) || (u.team === PLAYER && !this.inA(tx, ty))) return false; const i = ty * this.w + tx; if (this.wall[i]) return false; const b = this.bt[i]; return !b || !isSolid(b); }; if (fh(nx, u.y)) u.x = nx; if (fh(u.x, ny)) u.y = ny; return; }   // lebegő egység: vízen is átkel
     if (u.U.naval && this.wet(u.x, u.y)) { if (this.wet(nx, u.y)) u.x = nx; if (this.wet(u.x, ny)) u.y = ny; return; }   // a hajó vízen marad; ha partra került, a szárazon csúszik, amíg vizet nem ér
     if (this.free(nx, u.y, u.team)) u.x = nx; if (this.free(u.x, ny, u.team)) u.y = ny;
   }
@@ -1246,7 +1246,7 @@ export class World {
     while (hp.n && n++ < budget) {
       const i = hp.pop(), d = hp.top; if (d > dist[i]) continue; const x = i % w, y = (i - x) / w;
       for (let k = 0; k < 8; k++) {
-        const X = x + NX[k], Y = y + NY[k]; if (X < 0 || Y < 0 || X >= w || Y >= h) continue; const q = Y * w + X; if (sol[q] || (A && (X < A.x || Y < A.y || X >= A.x + A.w || Y >= A.y + A.h))) continue;
+        const X = x + NX[k], Y = y + NY[k]; if (X < 0 || Y < 0 || X >= w || Y >= h) continue; const q = Y * w + X; if (sol[q]) continue;   // az ellenség útja a lezárt zónán kívül is vezethet (Mindustry: az AI-csapatot a zóna nem korlátozza)
         if (k > 3 && (sol[y * w + X] || sol[Y * w + x])) continue;
         const b = bt[q]; if (b && b.team === ENEMY && isSolid(b)) continue; const nd = d + (k > 3 ? 1.414 : 1) + (b && b !== co && isSolid(b) ? (b.B.type === 'wall' ? 70 : 40) : 0) + nw[q] * 2;
         if (nd < dist[q]) { dist[q] = nd; hp.push(nd, q); }
