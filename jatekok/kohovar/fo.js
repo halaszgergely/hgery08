@@ -2,19 +2,19 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271510';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271510';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271510';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss, drawLanding } from './rajz.js?v=202611271510';
-import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271510';
-import { JS } from './jsapi.js?v=202611271510';
-import { initCloud, changed as cloudChanged, push as cloudPush, flush as cloudFlush } from './felho.js?v=202611271510';
-import { MP, initMp, canMp, listRooms, createRoom, joinRoomId, leave as mpLeave, inviteLink, roster, hostStart, hostEnd, hostTick, hostSend, guestFrame } from './mp.js?v=202611271510';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271510';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271510';
-import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271510';
-import { toWorld } from './msav.js?v=202611271510';
-import { Story } from './logika.js?v=202611271510';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271514';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271514';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271514';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss, drawLanding } from './rajz.js?v=202611271514';
+import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271514';
+import { JS } from './jsapi.js?v=202611271514';
+import { initCloud, changed as cloudChanged, push as cloudPush, flush as cloudFlush } from './felho.js?v=202611271514';
+import { MP, initMp, canMp, listRooms, createRoom, joinRoomId, leave as mpLeave, inviteLink, roster, hostStart, hostEnd, hostTick, hostSend, guestFrame } from './mp.js?v=202611271514';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271514';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271514';
+import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271514';
+import { toWorld } from './msav.js?v=202611271514';
+import { Story } from './logika.js?v=202611271514';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -663,10 +663,10 @@ function cmdIssue() {
 
 /* ---------- bevitel ---------- */
 const tileAt = (wx, wy) => [Math.floor(wx / TS), Math.floor(wy / TS)];
-function originOf(t, tx, ty) { if (BLOCKS[t].type === 'core') return W.coreSpot(t); const o = Math.floor((BLOCKS[t].s - 1) / 2); return [tx - o, ty - o]; }
+function originOf(t, tx, ty) { const o = Math.floor((BLOCKS[t].s - 1) / 2); if (BLOCKS[t].type === 'core') { for (const [dx, dy] of [[0, 0], [-1, 0], [0, -1], [-1, -1], [1, 0], [0, 1], [1, 1], [-1, 1], [1, -1]]) if (W.zoneOk(BLOCKS[t], tx - o + dx, ty - o + dy)) return [tx - o + dx, ty - o + dy]; return W.coreSpot(t); } return [tx - o, ty - o]; }   // mag: a core-zone talajra újként, máshol a saját mag fejlesztéseként
 function linePlans(t, a, b) {
   const B = BLOCKS[t], s = B.s, out = []; let [x, y] = a; const [x2, y2] = b, pts = [[x, y]];
-  if (B.type === 'core') return [{ t, x: W.coreSpot(t)[0], y: W.coreSpot(t)[1], rot: 0 }];
+  if (B.type === 'core') { const [cx, cy] = originOf(t, b[0], b[1]); return [{ t, x: cx, y: cy, rot: 0 }]; }
   const stepTo = axis => { if (axis === 0) while (Math.abs(x2 - x) >= s) { x += Math.sign(x2 - x) * s; pts.push([x, y]); } else while (Math.abs(y2 - y) >= s) { y += Math.sign(y2 - y) * s; pts.push([x, y]); } };
   if (Math.abs(x2 - x) >= Math.abs(y2 - y)) { stepTo(0); stepTo(1); } else { stepTo(1); stepTo(0); }
   for (let k = 0; k < pts.length; k++) {
