@@ -154,3 +154,4 @@ body.inarc #pal{right:60px}
 .ic.pw{position:absolute;right:0;top:0;color:#ffd37f;font-size:15px;text-shadow:0 0 2px #000,0 0 2px #000}.tn .ic.pw{right:-6px;top:-6px;font-size:22px}
 #txtA{width:min(900px,86vw);height:min(560px,62vh);background:#000;color:#e8e8e8;border:3px solid var(--gray,#454545);font:15px/1.35 ui-monospace,Consolas,monospace;padding:8px;resize:none}#txtA.code{white-space:pre;overflow:auto}
 .fwrow .nm{color:#ffd37f}.fwon{color:#84f491;font-size:15px;padding:0 14px}
+.pxpal{display:grid;grid-template-columns:repeat(2,40px);gap:6px}.pxpal button{width:40px;height:40px;border:3px solid #454545;cursor:pointer}.pxpal button.on{border-color:#ffd37f}

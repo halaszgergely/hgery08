@@ -2,14 +2,14 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611270936';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611270936';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611270936';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611270936';
-import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611270936';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611270936';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611270936';
-import { Story } from './logika.js?v=202611270936';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611270939';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611270939';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611270939';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611270939';
+import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611270939';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611270939';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611270939';
+import { Story } from './logika.js?v=202611270939';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -64,7 +64,21 @@ function closeDlg(id) {
 }
 // a modkeret szövegszerkesztője (processzorkód, üzenet)
 let txtCb = null;
-const FWAPI = { editText(title, text, cb, code) { $('#txtT').textContent = title; const a = $('#txtA'); a.value = text; a.className = code ? 'code' : ''; txtCb = cb; paused = true; showDlg('#dText', () => { paused = false; txtCb = null; }); setTimeout(() => a.focus(), 0); } };
+const FWAPI = {
+  editPixels(title, w, h, data, pal, cb) { $('#pxT').textContent = title; pxState = { w, h, data: data.slice(), pal, col: 1, cb }; drawPx(); paused = true; showDlg('#dPix', () => { paused = false; pxState = null; }); },
+  editText(title, text, cb, code) { $('#txtT').textContent = title; const a = $('#txtA'); a.value = text; a.className = code ? 'code' : ''; txtCb = cb; paused = true; showDlg('#dText', () => { paused = false; txtCb = null; }); setTimeout(() => a.focus(), 0); } };
+let pxState = null;
+function drawPx() {
+  const P = pxState; if (!P) return;
+  $('#pxPal').innerHTML = P.pal.map((c, i) => `<button class="${i === P.col ? 'on' : ''}" data-c="${i}" style="background:${c}"></button>`).join('');
+  const cv = $('#pxC'), z = Math.floor(Math.min(480 / P.w, 480 / P.h)); cv.width = P.w * z; cv.height = P.h * z; const g = cv.getContext('2d');
+  for (let y = 0; y < P.h; y++) for (let x = 0; x < P.w; x++) { g.fillStyle = P.pal[P.data[y * P.w + x]] || '#000'; g.fillRect(x * z, y * z, z, z); }
+  P.z = z;
+}
+$('#pxPal').onclick = e => { const b = e.target.closest('[data-c]'); if (b && pxState) { pxState.col = +b.dataset.c; drawPx(); } };
+{ const paint = e => { const P = pxState; if (!P || !(e.buttons & 1)) return; const r = $('#pxC').getBoundingClientRect(), x = Math.floor((e.clientX - r.left) / r.width * P.w), y = Math.floor((e.clientY - r.top) / r.height * P.h); if (x >= 0 && y >= 0 && x < P.w && y < P.h && P.data[y * P.w + x] !== P.col) { P.data[y * P.w + x] = P.col; drawPx(); } };
+  $('#pxC').onpointerdown = e => { $('#pxC').setPointerCapture(e.pointerId); paint(e); }; $('#pxC').onpointermove = paint; }
+$('#pxOk').onclick = () => { if (pxState) pxState.cb(pxState.data); closeDlg('#dPix'); if (selB) selHtml(); };
 $('#txtOk').onclick = () => { if (txtCb) txtCb($('#txtA').value); txtCb = null; closeDlg('#dText'); if (selB) selHtml(); };
 const closeAll = () => { while (STACK.length) { const d = STACK.pop(); $(d.id).hidden = true; } };
 document.addEventListener('click', e => { const b = e.target.closest('[data-back]'); if (!b) return; const d = b.closest('.dlg,#planet'); if (d) closeDlg('#' + d.id); });
@@ -522,6 +536,7 @@ cv.addEventListener('pointerdown', e => {
   { const FT = b && FW.types[b.B.type]; if (FT && FT.tap && FT.tap(W, b)) { if (selB === b) selHtml(); return; } }
   if (b && b.B.door) { b.open = !b.open; W.fdirty = 1; return; }
   if (b) { selB = b; selHtml(); return; }
+  { const FT = selB && !selB.dead && FW.types[selB.B.type]; if (FT && FT.pointTap && FT.pointTap(W, selB, tx, ty)) { selHtml(); return; } }
   const i = ty * W.w + tx, p = W.player;
   if (W.inb(tx, ty) && W.seen[i] && p && W.mineItem(i, p.U.mineT, p.U.mineW ? 'w' : 1)) { p.mine = p.mine === i ? -1 : i; return; }
   selB = null; $('#sel').hidden = true; M.l = true;
