@@ -167,7 +167,7 @@ def ammo_types(call):
     return out
 
 # ---- blokkok ----
-BLOCK_ROOTS = {'Floor', 'StaticWall', 'OreBlock', 'Prop', 'TallBlock', 'SteamVent', 'GenericCrafter', 'ItemTurret', 'PowerTurret', 'LaserTurret', 'ContinuousTurret', 'LiquidTurret', 'TractorBeamTurret', 'PointDefenseTurret', 'Wall', 'Drill', 'CoreBlock', 'StackConveyor', 'PowerNode', 'LiquidRouter', 'ConsumeGenerator', 'ThermalGenerator', 'Battery', 'StorageBlock', 'ForceProjector', 'Pump', 'ItemBridge', 'OverflowDuct', 'OverflowGate', 'Sorter', 'DirectionalUnloader', 'Unloader', 'Conveyor', 'ArmoredConveyor', 'Router', 'Junction', 'DuctRouter', 'Conduit', 'LiquidJunction', 'SolarGenerator', 'NuclearReactor', 'PowerGenerator', 'OverdriveProjector', 'MendProjector', 'RegenProjector', 'SolidPump', 'LiquidSource', 'ItemSource', 'BaseTurret', 'Block', 'ShallowLiquid', 'OverlayFloor', 'StaticTree', 'TreeBlock', 'Turret', 'UnitFactory', 'Reconstructor', 'ImpactReactor'}
+BLOCK_ROOTS = {'Floor', 'StaticWall', 'OreBlock', 'Prop', 'TallBlock', 'SteamVent', 'GenericCrafter', 'ItemTurret', 'PowerTurret', 'LaserTurret', 'ContinuousTurret', 'LiquidTurret', 'TractorBeamTurret', 'PointDefenseTurret', 'Wall', 'Drill', 'CoreBlock', 'StackConveyor', 'PowerNode', 'LiquidRouter', 'ConsumeGenerator', 'ThermalGenerator', 'Battery', 'StorageBlock', 'ForceProjector', 'Pump', 'ItemBridge', 'OverflowDuct', 'OverflowGate', 'Sorter', 'DirectionalUnloader', 'Unloader', 'Conveyor', 'ArmoredConveyor', 'Router', 'Junction', 'DuctRouter', 'Conduit', 'LiquidJunction', 'SolarGenerator', 'NuclearReactor', 'PowerGenerator', 'OverdriveProjector', 'MendProjector', 'RegenProjector', 'SolidPump', 'LiquidSource', 'ItemSource', 'BaseTurret', 'Block', 'ShallowLiquid', 'OverlayFloor', 'StaticTree', 'TreeBlock', 'Turret', 'UnitFactory', 'Reconstructor', 'ImpactReactor', 'LiquidBridge', 'ShockwaveTower', 'BufferedItemBridge', 'DirectionalUnloader', 'RegenProjector', 'ContinuousTurret'}
 BLK_KEYS = 'size health armor itemCapacity liquidCapacity craftTime range reload maxAmmo ammoPerShot inaccuracy shootCone targetAir targetGround drillTime tier hardnessDrillMultiplier liquidBoostIntensity powerProduction itemDuration laserRange maxNodes speed displayedSpeed radius shieldHealth cooldownNormal cooldownBrokenBase reload healPercent speedBoost pumpAmount insulated absorbLasers chanceDeflect lightningChance variants attributes itemDrop playerUnmineable isLiquid isDeep drownTime liquidMultiplier mapColor shootDuration bulletDamage force damage scaledHealth buildCostMultiplier heatOutput heatRequirement unitCapModifier coolantMultiplier maxHeat'.split()
 
 def drawer_layers(o, name):
@@ -209,13 +209,16 @@ TYPEMAP = {'MultiBlockCrafter': 'GenericCrafter', 'RecipeGenericCrafter': 'Gener
            'QuantumVortexProjector': 'ForceProjector', 'ShieldGenerator': 'ForceProjector', 'HyperReactor': 'ImpactReactor', 'MultiBlockConsumeGenerator': 'ConsumeGenerator',
            'AccumulatingStorage': 'StorageBlock', 'RemoteCoreStorage': 'StorageBlock', 'JumpGate': 'UnitFactory', 'TiledFloor': 'Floor', 'PlateFloor': 'Floor',
            'ShootMatchTurret': 'ItemTurret', 'CaptureableTurret': 'ItemTurret', 'AdaptItemTurret': 'ItemTurret', 'SpeedupTurret': 'PowerTurret', 'ContinuousOverheatTurret': 'ContinuousTurret', 'DrawTurret': 'PowerTurret',
-           'Webber': 'TractorBeamTurret', 'MultTractorBeamTurret': 'TractorBeamTurret', 'LiquidRadiator': 'Block', 'OreCollector': 'Block'}
-STREAM = {'StreamSource', 'StreamExtractor', 'StreamReceiver', 'StreamRepeater', 'StreamRedirector', 'StreamSplitter', 'GravityWell', 'ShockwaveGenerator', 'FireExtinguisher', 'AirRaider', 'UnitSpawner', 'BombLauncher', 'HyperSpaceWarper', 'IconDisplay', 'CharacterDisplay', 'PlaceholderBlock'}
+           'Webber': 'TractorBeamTurret', 'MultTractorBeamTurret': 'TractorBeamTurret', 'LiquidRadiator': 'Block', 'OreCollector': 'Drill',
+           'StreamExtractor': 'LiquidBridge', 'StreamRepeater': 'LiquidBridge', 'StreamRedirector': 'LiquidBridge', 'StreamReceiver': 'LiquidRouter', 'StreamSplitter': 'LiquidRouter', 'ShockwaveGenerator': 'ShockwaveTower'}
+SANDBOX = {'StreamSource', 'LiquidSource', 'ItemSource', 'PlaceholderBlock', 'UnitSpawner'}
+STREAM = {'GravityWell', 'ShockwaveGenerator', 'FireExtinguisher', 'AirRaider', 'UnitSpawner', 'BombLauncher', 'HyperSpaceWarper', 'IconDisplay', 'CharacterDisplay', 'PlaceholderBlock'}
 
 def conv_block(var, o):
     n = name_of.get(id(o))
     if not n: return None
     t = o.type
+    if t in SANDBOX or 'sandbox' in str(getattr(o.f.get('buildVisibility'), 'path', '')).lower(): return None    # csak homokozóban építhető
     T = TYPEMAP.get(t) or (t if t in BLOCK_ROOTS else root(t, BLOCK_ROOTS))
     d = {'type': T if T in BLOCK_ROOTS or T in TYPEMAP.values() else 'Block', '_class': t}
     d.update(plain(o, BLK_KEYS))
@@ -271,6 +274,9 @@ def conv_block(var, o):
     lay = drawer_layers(o, n)
     if lay: d['_layers'] = lay
     if t in STREAM: d['_special'] = t
+    if T == 'LiquidBridge' and t.startswith('Stream'): d['range'] = 5
+    if t == 'OreCollector': d.setdefault('tier', 4); d.setdefault('drillTime', 400)
+    if T == 'ShockwaveTower': d.setdefault('range', 170); d.setdefault('reload', 80)
     return n, d
 
 # ---- egységek ----
@@ -348,7 +354,9 @@ for m in re.finditer(r'recipe\((\w+)\.(\w+),\s*recipe -> \{(.*?)\}\);', reg_r, r
     for k, v in re.findall(r'recipe\.(\w+)\s*=\s*([^;]+);', body):
         e = J.P(v).expr()
         if k in ('inputItem', 'outputItem'): r[k] = stacks(e)
-        elif k in ('inputLiquid', 'outputLiquid'): r[k] = [{'liquid': ref_name(x.args[0]), 'amount': num(x.args[1])} for x in (e.args if isinstance(e, J.Call) else []) if isinstance(x, J.Obj) and len(x.args) > 1] if isinstance(e, J.Call) else []
+        elif k in ('inputLiquid', 'outputLiquid'):
+            a = e.args if isinstance(e, J.Call) else []
+            r[k] = [{'liquid': ref_name(a[i]), 'amount': num(a[i + 1])} for i in range(0, len(a) - 1, 2) if ref_name(a[i]) and num(a[i + 1]) is not None]
         elif k == 'craftTime' and num(e) is not None: r['craftTime'] = num(e)
         elif k == 'inputPower' and num(e) is not None: r['power'] = num(e)
     recipes.setdefault(blk, []).append(r)

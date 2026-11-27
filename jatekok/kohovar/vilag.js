@@ -1,7 +1,7 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611270112';
-import { toWorld } from './msav.js?v=202611270112';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611270112';
+import { genMapSerpulo } from './terkep.js?v=202611270115';
+import { toWorld } from './msav.js?v=202611270115';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611270115';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -487,7 +487,7 @@ export class World {
       case 'heater': if (B.fuel !== it || (I[it] || 0) >= (B.icap || 10)) return false; I[it] = (I[it] || 0) + 1; return true;
       case 'launchpad': if (sum(I) >= B.cap) return false; I[it] = (I[it] || 0) + 1; return true;
       case 'incinerator': return t.ps > .5 || !!B.free;
-      case 'crafter': if (!B.inp || !B.inp[it] || (I[it] || 0) >= Math.max(cap, B.inp[it] * 2)) return false; I[it] = (I[it] || 0) + 1; return true;
+      case 'crafter': { const ip = B.inpAll || B.inp; if (!ip || !ip[it] || (I[it] || 0) >= Math.max(cap, ip[it] * 2)) return false; I[it] = (I[it] || 0) + 1; return true; }
       case 'generator': {
         const ok = B.mode === 'burn' ? ITEMS[it].f >= .2 && !(ITEMS[it].ex > .5) : B.mode === 'rtg' ? ITEMS[it].rad > 0 : B.fuel === it;
         if (!ok || (I[it] || 0) >= cap) return false; I[it] = (I[it] || 0) + 1; return true;
@@ -629,9 +629,16 @@ export class World {
       case 'conduit': if (b.lq > .001) { const f = this.lqPush(this.tb(b.x + DX[b.rot], b.y + DY[b.rot]), b.lt, b.lq, B.lcap, b); b.lq -= f; } break;
       case 'lrouter': this.lqDump(b); break;
       case 'crafter': {
-        const cap = B.icap || 10, lcap = B.lcap || 10, outK = B.out ? Object.keys(B.out)[0] : null; let ok = lqOk(b, B.inL);
-        if (B.inp) for (const k in B.inp) if ((I[k] || 0) < B.inp[k]) ok = false;
-        if (outK && (I[outK] || 0) + B.out[outK] > cap) ok = false;
+        const cap = B.icap || 10, lcap = B.lcap || 10;
+        let R = B;
+        if (B.recipes) {        // több receptes gyár (New Horizon RecipeGenericCrafter): az első teljesíthető recept
+          const has = r => { for (const k in r.inp) if ((I[k] || 0) < r.inp[k]) return false; return true; };
+          if (!(b.rc >= 0) || !has(B.recipes[b.rc]) && b.prog < .01) { const i = B.recipes.findIndex(has); if (i >= 0) b.rc = i; else b.rc = b.rc >= 0 ? b.rc : 0; }
+          R = { ...B, ...B.recipes[b.rc] };
+        }
+        const outs = R.out ? Object.keys(R.out) : [], outK = outs[0] || null; let ok = lqOk(b, R.inL);
+        if (R.inp) for (const k in R.inp) if ((I[k] || 0) < R.inp[k]) ok = false;
+        for (const k of outs) if ((I[k] || 0) + R.out[k] > cap) ok = false;
         if (B.sep) { let o = 0; for (const k in B.sep) o += I[k] || 0; if (o >= cap) ok = false; }
         if (B.outL && b.oq >= lcap - .01 && (!B.outL2 || (b.oq2 || 0) >= lcap - .01)) ok = false;
         let am = B.attr ? (B.aBase ?? 1) + Math.min(B.aMax ?? 9, (B.aScale ?? 1) * b.attr / (B.aAvg ? B.s * B.s : 1)) : 1;
@@ -639,19 +646,19 @@ export class World {
         if (B.heatReq) am *= Math.min(B.heatMax ?? 4, (b.hIn || 0) / B.heatReq);   // hővel működő gyár (HeatCrafter)
         if (ok && am > 0) {
           if (B.power) b.pneed = B.power; const e = (B.power ? b.ps : 1) * ts;
-          if (B.inL) b.lq -= B.inL[1] * e;
+          if (R.inL) b.lq -= R.inL[1] * e;
           if (B.outL) { b.oq = Math.min(lcap, b.oq + B.outL[1] * e * am); if (e > 0) this.madeL[B.outL[0]] = 1; }
           if (B.outL2) { b.oq2 = Math.min(lcap, (b.oq2 || 0) + B.outL2[1] * e * am); if (e > 0) this.madeL[B.outL2[0]] = 1; }
           if (B.heatOut) b.hOut = (b.hOut || 0) + (B.heatOut * Math.min(1, e) - (b.hOut || 0)) * .02;
           b.work = Math.min(1, b.work + .03 * e);
-          if (B.time && (b.prog += e * (B.outL ? 1 : am) / B.time) >= 1) {
-            b.prog = 0; for (const k in B.inp) I[k] -= B.inp[k];
-            if (outK) I[outK] = (I[outK] || 0) + B.out[outK];
+          if (R.time && (b.prog += e * (B.outL ? 1 : am) / R.time) >= 1) {
+            b.prog = 0; for (const k in R.inp) I[k] -= R.inp[k];
+            for (const k of outs) I[k] = (I[k] || 0) + R.out[k];
             if (B.sep) { let r = Math.random() * sum(B.sep); for (const k in B.sep) if ((r -= B.sep[k]) < 0) { I[k] = (I[k] || 0) + 1; break; } }
             if (outK && Math.random() < .5) { const c = this.center(b); this.fx.push({ k: 'puff', x: c.x, y: c.y, life: 30, max: 30, c: ITEMS[outK].c }); }
           }
         } else { b.work *= .95; if (B.heatOut) b.hOut = (b.hOut || 0) * .98; }
-        if (outK && I[outK] > 0) this.dump(b, [outK]);
+        const dk = B.outAll || outs; if (dk.length) this.dump(b, dk);
         if (B.outL2) this.lqDump(b, 'oq2', B.outL2[0]);
         if (B.sep) this.dump(b, Object.keys(B.sep));
         if (B.outL) this.lqDump(b, 'oq', B.outL[0]);
