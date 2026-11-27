@@ -42,7 +42,7 @@ let PLAYS = (() => { try { return JSON.parse(localStorage.getItem('hgws_plays') 
 const byPop = l => l.map((g, i) => [g, i]).sort((a, b) => (PLAYS[b[0].id] || 0) - (PLAYS[a[0].id] || 0) || a[1] - b[1]).map(x => x[0]);
 function popOrder() { const wrap = $('#games'); if (!wrap.children.length) return; const els = [...wrap.children]; byPop(GAMES).forEach((g, i) => { const el = els.find(x => x.dataset.id === g.id); if (el) { wrap.appendChild(el); el.querySelector('.tag').textContent = String(i + 1).padStart(2, '0'); } }); }
 const launch = gm => { if (window.top !== window) parent.postMessage({ hgws: 'play', game: gm.id }, location.origin); openGame(gm); };
-const EXT = $('#ext'), EXF = $('#extf');
+const EXT = $('#ext'); let EXF = $('#extf');
 // a külön oldalon futó játékok (pl. Az Átemelőtelep) eredménye ide érkezik, innen megy tovább a ranglistára
 addEventListener('message', e => { if (e.origin !== location.origin || e.source !== EXF.contentWindow || !e.data || e.data.hgws !== 'score') return; const g = GAMES.find(x => x.id === e.data.game && x.lbx); if (!g || !(e.data.score > 0)) return;
   if (e.data.score > store.get('best_' + g.id)) store.set('best_' + g.id, e.data.score); if (window.top !== window) parent.postMessage({ hgws: 'score', game: g.id, score: e.data.score }, location.origin); });
@@ -51,7 +51,7 @@ let zqWait = false;
 addEventListener('message', e => { if (e.origin !== location.origin || !e.data) return; const h = e.data.hgws;
   if (e.source === EXF.contentWindow && (h === 'csreq' || h === 'cssave' || h === 'csdel')) { if (window.top !== window) parent.postMessage(e.data, location.origin); else if (h === 'csreq') EXF.contentWindow.postMessage({ hgws: 'cs', game: e.data.game, none: 1 }, location.origin); return; }
   if (window.top !== window && e.source === parent && h === 'cs' && !EXT.hidden && EXF.contentWindow && !GAMES.some(x => !x.ext && x.id === e.data.game)) EXF.contentWindow.postMessage(e.data, location.origin); });
-function openExt(gm) { if (gm.go) { if (window.top !== window) parent.postMessage({ hgws: 'nav', to: gm.go }, location.origin); else location.href = './' + gm.go; return; } if (gm.lock && !window.HGZQ_OK) { zqWait = !window.HGZQ_SEEN; return; } EXF.src = gm.ext + '?v=' + Date.now().toString(36).slice(0, 5) + (gm.room ? '&room=' + encodeURIComponent(gm.room) : ''); gm.room = ''; EXT.hidden = false; document.body.classList.add('locked'); setTimeout(() => { try { EXF.focus(); } catch (_) {} }, 300); }
+function openExt(gm) { if (gm.go) { if (window.top !== window) parent.postMessage({ hgws: 'nav', to: gm.go }, location.origin); else location.href = './' + gm.go; return; } if (gm.lock && !window.HGZQ_OK) { zqWait = !window.HGZQ_SEEN; return; } { const f = EXF.cloneNode(); f.src = gm.ext + '?v=' + Date.now().toString(36).slice(0, 5) + (gm.room ? '&room=' + encodeURIComponent(gm.room) : ''); EXF.replaceWith(f); EXF = f; window.HGWS_GATE?.(f); } /* új iframe: így a főoldal a hangját is kezelni tudja (fül némítása) */ gm.room = ''; EXT.hidden = false; document.body.classList.add('locked'); setTimeout(() => { try { EXF.focus(); } catch (_) {} }, 300); }
 /* a régi lista megszűnt: beágyazva kilépéskor (vagy játék nélkül) a főoldal új Arcade-listájára megyünk */
 function toList() { if (/[?&]bo=/.test(location.search)) return; if (window.top !== window) { try { parent.postMessage({ hgws: 'nav', to: '#/arcade' }, location.origin); } catch (_) {} } else if (!/[?&]solo/.test(location.search)) location.replace('./#/arcade'); }
 window.HGWS_TO_LIST = toList;

@@ -792,3 +792,32 @@ body.guest [data-nav=chat],body.guest [data-nav=dm],body.guest #navAdmin,body.gu
 .hmeta .soonb.live{color:#ff6b6b}
 .pfset{border:1px solid var(--line2);border-radius:12px;padding:.7rem .8rem}
 .pfset #livef{margin-top:.6rem}
+
+/* fülek (oldalon belüli, böngészőszerű) – 2+ fülnél látszik, a --nav ennyivel nő, így minden oldal lejjebb kerül */
+body.hastabs{--nav:100px}
+body.hastabs .topnav{height:64px;background:rgba(5,7,12,.94);backdrop-filter:blur(12px)}
+.wtabs{position:absolute;left:0;right:0;top:64px;height:36px;display:flex;align-items:flex-end;gap:.3rem;padding:0 var(--pad) 0 calc(var(--pad) - .4rem);background:rgba(5,7,12,.96);border-bottom:1px solid rgba(255,255,255,.07)}
+.wtabs[hidden]{display:none}
+.ftl{display:flex;gap:.25rem;min-width:0;overflow-x:auto;scrollbar-width:none;align-items:flex-end;height:100%}
+.ftl::-webkit-scrollbar{display:none}
+.ftab{position:relative;flex:0 1 210px;min-width:118px;height:30px;display:flex;align-items:center;gap:.4rem;padding:0 .3rem 0 .7rem;border-radius:9px 9px 0 0;background:rgba(255,255,255,.04);color:#aeb6c4;font-size:.82rem;cursor:pointer;user-select:none;border:1px solid transparent;border-bottom:0;transition:background .15s,color .15s}
+.ftab:hover{background:rgba(255,255,255,.08);color:#e8ecf2}
+.ftab.on{background:#0d1320;color:#fff;border-color:rgba(255,255,255,.1)}
+.ftab.on::after{content:"";position:absolute;left:10px;right:10px;bottom:0;height:2px;border-radius:2px;background:var(--gold,#e8b656)}
+.ftab.game.on::after{background:var(--water,#4fb7ff)}
+.ftab>.ic{flex:none;width:15px;height:15px;opacity:.85}
+.fte{flex:none;font-size:.95rem;line-height:1}
+.ftn{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ftab button{flex:none;display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;border-radius:6px;background:none;color:inherit;opacity:.6;cursor:pointer}
+.ftab button:hover{opacity:1;background:rgba(255,255,255,.12)}
+.ftab button .ic{width:13px;height:13px}
+.ftab .ftm.on{opacity:1;color:#ff8a8a}
+.ftadd{flex:none;align-self:center;display:grid;place-items:center;width:28px;height:28px;margin-bottom:-2px;border:0;border-radius:8px;background:none;color:#aeb6c4;cursor:pointer}
+.ftadd:hover{background:rgba(255,255,255,.08);color:#fff}
+.ftadd[hidden]{display:none}
+.ftadd .ic{width:15px;height:15px}
+/* a háttérben futó játékok iframe-je: méretét megtartja (ne rendeződjön át), de nem látszik és nem kattintható */
+#tabpanes .arcframe.bg{position:fixed;left:0;top:var(--nav);width:100vw;visibility:hidden;pointer-events:none;z-index:-1}
+body.tabgame #page{display:none}
+@media (max-width:760px){.ftab{min-width:104px;flex-basis:150px}.wtabs{padding:0 .5rem}}
+#tabpanes{margin-left:var(--side);transition:margin-left .25s ease}

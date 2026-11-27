@@ -14,6 +14,7 @@ import * as Cmdk from './cmdk.js?v=202611271522';
 import * as Stk from './stickers.js?v=202611271522';
 import * as Friends from './friends.js?v=202611271522';
 import * as Bo from './bo-ui.js?v=202611271522';
+import * as Tabs from './tabs.js?v=202611271522';
 import { bootOut, pageIn, I } from './fx.js?v=202611271522';
 
 const S = {
@@ -175,6 +176,7 @@ function start() {
   zeroEgg();
   let taps = 0, tapT; $('.tlogo').addEventListener('click', e => { taps++; clearTimeout(tapT); tapT = setTimeout(() => taps = 0, 1200); if (taps >= 5) { taps = 0; e.preventDefault(); showZero(); } });
   Player.init(() => S.music.filter(t => t.visible !== false));
+  Tabs.init({ guest: () => !!S.guest, route });
   addEventListener('hashchange', route);
   document.addEventListener('click', globalClick);
   route();
@@ -217,6 +219,7 @@ function startGuest() {
   zeroEgg();
   let taps = 0, tapT; $('.tlogo').addEventListener('click', e => { taps++; clearTimeout(tapT); tapT = setTimeout(() => taps = 0, 1200); if (taps >= 5) { taps = 0; e.preventDefault(); showZero(); } });
   Player.init(() => S.music.filter(t => t.visible !== false));
+  Tabs.init({ guest: () => !!S.guest, route });
   addEventListener('hashchange', route);
   document.addEventListener('click', globalClick);
   route();
@@ -252,6 +255,9 @@ function setMode(m) {
   if (m === 'browse') { S.chat?.destroy(); S.chat = null; } else Browse.cleanup();
 }
 function route(force) {
+  const tn = Tabs.nav(); if (tn === false) return;
+  if (tn === 'force') { force = true; S.route = { mode: 'browse', view: 'home', id: '' }; }
+  Tabs.panes();
   const h = location.hash.replace(/^#\/?/, '').split('/');
   document.body.classList.remove('nav', 'mem', 'anavopen');
   closePop();
