@@ -3,10 +3,10 @@
 // objektumaira képezzük le. Ami nincs meg, az nem állítja meg a szkriptet: üres helyettesítőt kap, és a mod adatlapján
 // „hiányzó hívásként” jelenik meg. Mindig aktív; a beépített modok szkriptjei futnak, a játékos saját modjaié csak,
 // ha a modlistában engedélyezi (a szkript a lappal azonos jogokkal fut).
-import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, STATUS } from './adat.js?v=202611271206';
-import { SN, ISN, LSN } from './kepadat.js?v=202611271206';
-import { spr, has, addSprite, sprT } from './rajz.js?v=202611271206';
-import { FW } from './keret.js?v=202611271206';
+import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, STATUS } from './adat.js?v=202611271237';
+import { SN, ISN, LSN } from './kepadat.js?v=202611271237';
+import { spr, has, addSprite, sprT } from './rajz.js?v=202611271237';
+import { FW } from './keret.js?v=202611271237';
 
 export const JS = {
   name: 'Kohóvár JS API', version: '1.0',

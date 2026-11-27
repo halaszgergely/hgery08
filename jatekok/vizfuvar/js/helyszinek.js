@@ -1,8 +1,8 @@
 /* Helyszínek: a miskolci HGWS telephely (iroda, garázs, kút és víztöltő, víztorony, ballonraklapok, benzinkút, cégtábla),
    benzinkutak a főutak mellett, a fuvarcél jelölője és a HGWS iroda. Minden a talajhoz igazítva, a domborzati csempék betöltésekor újraigazítva. */
 import * as THREE from 'three';
-import { M, FEST, KROM, UVEG, LAMPA, add, tube, rbox, lathe, logo, tabla, ballon, hull } from './modellkit.js?v=202611271206';
-import { SZIN } from './config.js?v=202611271206';
+import { M, FEST, KROM, UVEG, LAMPA, add, tube, rbox, lathe, logo, tabla, ballon, hull } from './modellkit.js?v=202611271237';
+import { SZIN } from './config.js?v=202611271237';
 
 export function createPlaces(scene, ground, D) { const root = new THREE.Group(); scene.add(root); const fix = [];
   const place = (o, x, z, off = 0) => { o.position.set(x, ground(x, z) + off, z); o.userData.fy = [x, z, off]; fix.push(o); root.add(o); return o; };
