@@ -1,6 +1,6 @@
 // A New Horizon kiegészítője a Kohóvár modkeretéhez: a Java-kódban megírt egyedi blokkok működése.
 // (A tartalmat az eszkoz/nhconv.py alakítja át; ez a fájl csak a viselkedést adja.)
-import { TS, ITEMS, LIQUIDS } from '../../adat.js?v=202611271006';
+import { TS, ITEMS, LIQUIDS } from '../../adat.js?v=202611271009';
 
 const GF = [];        // gravitációs csapdák mezői: { b, r } – az ellenség ide nem ugorhat
 const inHostileField = (team, x, y) => GF.some(f => !f.b.dead && f.b.team !== team && Math.abs(x - f.cx) <= f.r && Math.abs(y - f.cy) <= f.r);

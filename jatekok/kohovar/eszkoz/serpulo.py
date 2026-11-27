@@ -129,6 +129,8 @@ for f in glob.glob(f'{root}/core/assets/maps/{PL}/*.msav'):
     import zlib
     raw = zlib.decompress(open(f, 'rb').read()).decode('latin1')
     need |= set(re.findall(r'@([a-z][\w.]+)', raw)) | set(re.findall(r'localeprint "([\w.]+)"', raw))
-TXT = {k: hu.get(k, en.get(k)) for k in sorted(need) if hu.get(k, en.get(k))}
+# a tartalom nevei (szektor, bolygó) angolul, a tutorial/küldetésszöveg magyarul
+ENG = lambda k: re.match(r'^(sector\.[^.]+\.(name|description|details)|planet\.[^.]+\.name)$', k) and not k.startswith(('sector.curcapture', 'sector.capture', 'sector.lost'))
+TXT = {k: (en.get(k) if ENG(k) and en.get(k) else hu.get(k, en.get(k))) for k in sorted(need) if hu.get(k, en.get(k))}
 json.dump({'grid': GRID, 'presets': list(PRE.values()), 'tree': TREE, 'txt': TXT}, open(out, 'w'), ensure_ascii=False, separators=(',', ':'))
 print('rács', len(GRID), 'szektor', len(PRE), 'szöveg', len(TXT))

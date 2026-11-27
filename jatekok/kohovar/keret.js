@@ -1,9 +1,9 @@
 // Kohóvár böngészős modkeret: bővítési pontok a motorhoz (új blokkfajták), a Mindustry-modok által
 // elvárt, de a Kohóvárból hiányzó rendszerek (logikai processzorok, memória, kijelző, kapcsoló, üzenet),
 // és a beépített modok saját kiegészítőinek betöltése. Mindig aktív.
-import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, CATS, rcost } from './adat.js?v=202611271006';
-import { SN, ISN } from './kepadat.js?v=202611271006';
-import { addSprite, drawUnit, spr } from './rajz.js?v=202611271006';
+import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, CATS, rcost } from './adat.js?v=202611271009';
+import { SN, ISN } from './kepadat.js?v=202611271009';
+import { addSprite, drawUnit, spr } from './rajz.js?v=202611271009';
 let Proc = null;   // a logika.js-ből, betöltéskor (körkörös importálás elkerülése)
 
 export const FW = {
@@ -417,21 +417,21 @@ FW.parts.push('Bolygóközi gyorsító');
 
 /* ================= alapjáték-tartalom: a Serpulo logikai blokkjai ================= */
 const LOGIC = [
-  ['micro-processor', 'Mikroprocesszor', 1, { copper: 90, lead: 50, silicon: 50 }, 'lproc', { ipt: 2, range: 8 * 10 }, 'gpress'],
-  ['logic-processor', 'Logikai processzor', 2, { lead: 320, silicon: 80, graphite: 60, thorium: 50 }, 'lproc', { ipt: 8, range: 8 * 22 }, 'micro-processor'],
-  ['hyper-processor', 'Hiperprocesszor', 3, { lead: 450, silicon: 150, thorium: 75, surge: 50 }, 'lproc', { ipt: 25, range: 8 * 42, inL: ['cryo', .08], lcap: 10 }, 'logic-processor'],
-  ['switch', 'Kapcsoló', 1, { graphite: 5, copper: 5 }, 'lswitch', {}, 'micro-processor'],
-  ['message', 'Üzenet', 1, { graphite: 5, copper: 5 }, 'lmsg', {}, 'switch'],
-  ['logic-display', 'Logikai kijelző', 3, { lead: 100, silicon: 50, metaglass: 50 }, 'ldisp', { res: 80 }, 'message'],
-  ['large-logic-display', 'Nagy logikai kijelző', 6, { lead: 200, silicon: 150, metaglass: 100, phase: 75 }, 'ldisp', { res: 176 }, 'logic-display'],
-  ['memory-cell', 'Memóriacella', 1, { graphite: 30, silicon: 30, copper: 30 }, 'lmem', { cap: 64 }, 'message'],
-  ['memory-bank', 'Memóriabank', 2, { graphite: 80, silicon: 80, phase: 30, copper: 30 }, 'lmem', { cap: 512 }, 'memory-cell'],
+  ['micro-processor', 'Micro Processor', 1, { copper: 90, lead: 50, silicon: 50 }, 'lproc', { ipt: 2, range: 8 * 10 }, 'gpress'],
+  ['logic-processor', 'Logic Processor', 2, { lead: 320, silicon: 80, graphite: 60, thorium: 50 }, 'lproc', { ipt: 8, range: 8 * 22 }, 'micro-processor'],
+  ['hyper-processor', 'Hyper Processor', 3, { lead: 450, silicon: 150, thorium: 75, surge: 50 }, 'lproc', { ipt: 25, range: 8 * 42, inL: ['cryo', .08], lcap: 10 }, 'logic-processor'],
+  ['switch', 'Switch', 1, { graphite: 5, copper: 5 }, 'lswitch', {}, 'micro-processor'],
+  ['message', 'Message', 1, { graphite: 5, copper: 5 }, 'lmsg', {}, 'switch'],
+  ['logic-display', 'Logic Display', 3, { lead: 100, silicon: 50, metaglass: 50 }, 'ldisp', { res: 80 }, 'message'],
+  ['large-logic-display', 'Large Logic Display', 6, { lead: 200, silicon: 150, metaglass: 100, phase: 75 }, 'ldisp', { res: 176 }, 'logic-display'],
+  ['memory-cell', 'Memory Cell', 1, { graphite: 30, silicon: 30, copper: 30 }, 'lmem', { cap: 64 }, 'message'],
+  ['memory-bank', 'Memory Bank', 2, { graphite: 80, silicon: 80, phase: 30, copper: 30 }, 'lmem', { cap: 512 }, 'memory-cell'],
 ];
 let installed = false;
 export async function installFramework() {
   if (installed) return; installed = true;
   for (const [u, s] of [['mega', 2], ['quad', 3], ['oct', 5]]) if (UNITS[u]) UNITS[u].payS = s;   // rakományképesség (blokkméret)
-  ({ Proc } = await import('./logika.js?v=202611271006'));
+  ({ Proc } = await import('./logika.js?v=202611271009'));
   if (!CATS.some(c => c[0] === 'logic')) CATS.push(['logic', 'Logika', '▤']);
   BUILD_ORDER.logic = BUILD_ORDER.logic || [];
   const fix = c => Object.fromEntries(Object.entries(c).filter(([k]) => ITEMS[k]));
