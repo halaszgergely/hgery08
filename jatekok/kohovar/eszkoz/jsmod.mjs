@@ -57,7 +57,12 @@ function extend(cls, a, b) {
   return inst(type, [], a || {});
 }
 const classes = new Proxy({}, { has: () => false });
+const PAL = JSON.parse(fs.readFileSync(new URL('./pal.json', import.meta.url), 'utf8'));
+const colorObj = h => ({ __col: String(h).replace(/^#/, '').slice(0, 6).toLowerCase(), cpy() { return this; }, mul() { return this; }, lerp() { return this; }, a() { return this; } });
+const palNs = new Proxy({}, { get: (t, p) => typeof p === 'symbol' ? undefined : PAL[p] ? colorObj(PAL[p]) : undefined });
+const ColorNs = new Proxy(function () {}, { get: (t, p) => p === 'valueOf' ? h => colorObj(h) : typeof p === 'symbol' ? undefined : PAL[p] ? colorObj(PAL[p]) : undefined, construct: (t, a) => colorObj([a[0], a[1], a[2]].map(v => Math.round(Math.max(0, Math.min(1, +v || 0)) * 255).toString(16).padStart(2, '0')).join('')) });
 const G = {
+  Color: ColorNs, Pal: palNs,
   extend, extendContent: extend,
   Items: ns('item'), Liquids: ns('liquid'), StatusEffects: ns('status'), Blocks: ns('block'), UnitTypes: ns('unit'), Bullets: ns('bullet'),
   print() {}, Log: magic('Log'), Core: magic('Core'), Vars: magic('Vars'), Time: magic('Time'), Math, JSON, Object, Array, String, Number, Boolean, Symbol, parseInt, parseFloat, isNaN, Infinity, NaN, undefined,
@@ -109,6 +114,9 @@ function bulletJson(b, d = 0) {
   if (b.status && b.status.kind === 'status') o.status = b.status[REF];
   if (b.liquid && b.liquid.kind === 'liquid') o.liquid = b.liquid[REF];
   if ('fragBullet' in b) { const f = bulletJson(b.fragBullet, d + 1); if (f && typeof f === 'object') o.fragBullet = f; }
+  for (const [k, v] of [['backColor', b.backColor], ['frontColor', b.frontColor], ['trailColor', b.trailColor], ['hitColor', b.hitColor]]) if (v && v.__col) o[k] = v.__col;
+  for (const [k, k2] of [['width', 'bulletWidth'], ['height', 'bulletHeight']]) { const v = num(b[k]) ? b[k] : num(b[k2]) ? b[k2] : null; if (v != null) o[k] = v; }
+  if (num(b.trailLength)) o.trailLength = b.trailLength;
   if (!num(o.damage) && !num(o.splashDamage)) o.damage = 10;
   if (num(o.speed) && o.speed < .05) {          // „álló” lövedék = sugár (pl. laserBullet(range))
     o.type = 'LaserBulletType'; delete o.speed;

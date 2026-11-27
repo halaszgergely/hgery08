@@ -1,9 +1,9 @@
 // Kohóvár böngészős modkeret: bővítési pontok a motorhoz (új blokkfajták), a Mindustry-modok által
 // elvárt, de a Kohóvárból hiányzó rendszerek (logikai processzorok, memória, kijelző, kapcsoló, üzenet),
 // és a beépített modok saját kiegészítőinek betöltése. Mindig aktív.
-import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, CATS, rcost } from './adat.js?v=202611270951';
-import { SN, ISN } from './kepadat.js?v=202611270951';
-import { addSprite, drawUnit, spr } from './rajz.js?v=202611270951';
+import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, CATS, rcost } from './adat.js?v=202611271006';
+import { SN, ISN } from './kepadat.js?v=202611271006';
+import { addSprite, drawUnit, spr } from './rajz.js?v=202611271006';
 let Proc = null;   // a logika.js-ből, betöltéskor (körkörös importálás elkerülése)
 
 export const FW = {
@@ -99,6 +99,17 @@ const makeLProc = () => class LProc extends Proc {
         let best = null, bv = Infinity; const ord = this.num(f) ? 1 : -1;
         for (const u of W.units) { if (u.dead || Math.hypot(u.x - sx, u.y - sy) > rng || !ok(u, a) || !ok(u, b) || !ok(u, c)) continue; const v = d === 'health' ? u.hp : d === 'maxHealth' ? u.U.hp : d === 'armor' ? u.U.armor : Math.hypot(u.x - sx, u.y - sy); const s2 = d === 'distance' ? v * ord : -v * ord; if (s2 < bv) { bv = s2; best = u; } }
         this.set(out, best); return;
+      }
+      case 'ucontrol': {
+        const u = this.unit; if (!u || u.dead || !(u.U.payS > 0) || (a !== 'payTake' && a !== 'payDrop')) break;
+        const tx = Math.floor(u.x / TS), ty = Math.floor(u.y / TS), o = W.inb(tx, ty) ? W.tb(tx, ty) : null;
+        if (a === 'payTake' && !u.carryB && !u.carry) { u.lc = W.tick;
+          if (o && o.pl && o.pl.b && o.team === u.team) { u.carryB = o.pl; o.pl = null; return; }
+          if (o && o.team === u.team && o !== W.core && o.B.type !== 'core' && o.B.s <= u.U.payS && this.num(b)) { u.carryB = { b: o.t, rot: o.rot }; W.remB(o); W.ver++; return; }
+        }
+        if (a === 'payDrop' && u.carryB) { u.lc = W.tick; const FT = o && FW.types[o.B.type]; if (FT && FT.payAccept && FT.payAccept(W, o, u.carryB, null)) { u.carryB = null; return; }
+          const s = BLOCKS[u.carryB.b].s, of = (s - 1) >> 1; if (W.canPlace(u.carryB.b, tx - of, ty - of, u.carryB.rot || 0)) { W.addB(u.carryB.b, tx - of, ty - of, u.carryB.rot || 0, null, u.team); W.ver++; u.carryB = null; } return; }
+        break;
       }
       case 'ubind': {
         const v = this.val(a);
@@ -371,6 +382,39 @@ FW.reg('landpad', {
 });
 FW.parts.push('Leszállóállás');
 
+/* ----- blokkrakomány lerakása szállítóegységgel (mega, quad, oct, modok payloadCapacity-vel) ----- */
+const carriers = (W, team, s) => W.units.filter(u => !u.dead && u.team === team && u !== W.player && (u.U.payS || 0) >= s && !u.carryB && !u.fwJob);
+FW.dropFrom = null;
+FW.tick = W => {
+  const J = W.fwJobs || (W.fwJobs = []);
+  for (let i = J.length - 1; i >= 0; i--) {
+    const j = J[i], u = j.u; if (u.dead) { J.splice(i, 1); continue; }
+    u.lc = W.tick; u.fwJob = j;
+    if (j.st === 'go') { const c = FW.center(j.src); u.lmove = { x: c.x, y: c.y, r: 4 }; if (Math.hypot(u.x - c.x, u.y - c.y) < 10) { if (j.src.dead || !j.src.pl || !j.src.pl.b) { J.splice(i, 1); u.fwJob = null; u.lc = null; continue; } u.carryB = j.src.pl; j.src.pl = null; j.st = 'carry'; } }
+    else { const s = BLOCKS[u.carryB.b].s, o = (s - 1) >> 1, x = (j.tx - o + s / 2) * TS, y = (j.ty - o + s / 2) * TS; u.lmove = { x, y, r: 3 };
+      if (Math.hypot(u.x - x, u.y - y) < 8) { if (W.canPlace(u.carryB.b, j.tx - o, j.ty - o, u.carryB.rot || 0)) { W.addB(u.carryB.b, j.tx - o, j.ty - o, u.carryB.rot || 0, null, u.team); W.ver++; u.carryB = null; } else W.msg('A célhely foglalt'); J.splice(i, 1); u.fwJob = null; u.lc = null; } }
+  }
+};
+FW.drawCarry = (g, u) => { if (u.carryB) drawPay(g, u.carryB, u.x, u.y + 2, 0, u.team); };
+const dropSel = (W, b) => b.pl && b.pl.b ? `<button class="np-button" data-fw="drop" style="width:100%;margin-top:4px">${FW.dropFrom === b ? 'Célpont kijelölése…' : 'Lerakás'}</button>` : '';
+const dropClick = (W, b, el) => { if (el.dataset.fw !== 'drop' || !b.pl || !b.pl.b) return false; if (!carriers(W, b.team, BLOCKS[b.pl.b].s).length) { W.msg('Nincs szabad szállítóegység'); return true; } FW.dropFrom = FW.dropFrom === b ? null : b; return true; };
+const dropTap = (W, b, tx, ty) => { if (FW.dropFrom !== b || !b.pl || !b.pl.b) return false; const L = carriers(W, b.team, BLOCKS[b.pl.b].s), c = FW.center(b); if (!L.length) { W.msg('Nincs szabad szállítóegység'); return true; } L.sort((p, q) => Math.hypot(p.x - c.x, p.y - c.y) - Math.hypot(q.x - c.x, q.y - c.y)); (W.fwJobs || (W.fwJobs = [])).push({ u: L[0], src: b, tx, ty, st: 'go' }); FW.dropFrom = null; return true; };
+for (const n of ['pconv', 'prouter', 'pdriver', 'pcons']) { const T = FW.types[n], s0 = T.sel, c0 = T.selClick; T.sel = (W, b) => (s0 ? s0(W, b) : '') + dropSel(W, b); T.selClick = (W, b, el, api) => { if (!dropClick(W, b, el) && c0) c0(W, b, el, api); }; T.pointTap = dropTap; }
+
+// bolygóközi gyorsító (Accelerator): feltöltve és árammal a magot egy másik bolygóra lövi
+FW.reg('accel', {
+  mindustry: /^(Accelerator)$/,
+  convert: (j, h) => ({ launch: j.launchBlock || null, power: h.power || 10, icap: 1e9 }),
+  init(W, b) { b.prog = 0; },
+  need(b) { const lb = b.B.launch && (BLOCKS[b.B.mod + '-' + b.B.launch] || BLOCKS[b.B.launch]); const c = lb ? lb.cost : b.B.cost; const o = {}; for (const k in c) o[k] = Math.ceil(c[k] * (lb ? 1 : .5)); return o; },
+  accept(W, b, it) { const n = FW.types.accel.need(b); if (!n[it] || (b.items[it] || 0) >= n[it]) return false; b.items[it] = (b.items[it] || 0) + 1; return true; },
+  update(W, b, ts) { const n = FW.types.accel.need(b); let have = 0, tot = 0; for (const k in n) { have += Math.min(n[k], b.items[k] || 0); tot += n[k]; } b.fill = tot ? have / tot : 1; b.pneed = b.B.power; b.prog = b.fill >= 1 ? Math.min(1, b.prog + ts * (b.B.power ? b.ps || 0 : 1) / 600) : 0; b.work = b.prog; },
+  sel: (W, b) => `<div class="mbar"><i style="width:${(b.fill || 0) * 100}%;background:#ffd37f"></i><span>Anyag ${Math.round((b.fill || 0) * 100)}%</span></div><div class="mbar"><i style="width:${(b.prog || 0) * 100}%;background:#a08cff"></i><span>Töltés ${Math.round((b.prog || 0) * 100)}%</span></div>${b.prog >= 1 ? '<button class="np-button" data-fw="launch" style="width:100%;margin-top:4px">Kilövés</button>' : ''}`,
+  selClick(W, b, el) { if (el.dataset.fw !== 'launch' || b.prog < 1 || !W.onAccel) return; b.items = {}; b.prog = 0; W.onAccel(b); },
+  info: () => ['A magot egy másik bolygóra lövi; ott új szektor választható'],
+});
+FW.parts.push('Bolygóközi gyorsító');
+
 /* ================= alapjáték-tartalom: a Serpulo logikai blokkjai ================= */
 const LOGIC = [
   ['micro-processor', 'Mikroprocesszor', 1, { copper: 90, lead: 50, silicon: 50 }, 'lproc', { ipt: 2, range: 8 * 10 }, 'gpress'],
@@ -386,7 +430,8 @@ const LOGIC = [
 let installed = false;
 export async function installFramework() {
   if (installed) return; installed = true;
-  ({ Proc } = await import('./logika.js?v=202611270951'));
+  for (const [u, s] of [['mega', 2], ['quad', 3], ['oct', 5]]) if (UNITS[u]) UNITS[u].payS = s;   // rakományképesség (blokkméret)
+  ({ Proc } = await import('./logika.js?v=202611271006'));
   if (!CATS.some(c => c[0] === 'logic')) CATS.push(['logic', 'Logika', '▤']);
   BUILD_ORDER.logic = BUILD_ORDER.logic || [];
   const fix = c => Object.fromEntries(Object.entries(c).filter(([k]) => ITEMS[k]));

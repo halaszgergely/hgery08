@@ -1,8 +1,8 @@
 [
-  {"file": "new-horizon.zip", "name": "New Horizon", "author": "Yuria & Lao", "version": "2.3.0", "license": "GPLv3", "url": "https://github.com/Yuria-Shikibe/NewHorizonMod", "v": "8", "addon": "new-horizon.js"},
-  {"file": "exoprosopa.zip", "name": "Exoprosopa", "author": "TnmSpiroct", "version": "0.96", "license": "GPLv3", "url": "https://github.com/TnmSpiroct/Exoprosopa", "v": "3"},
+  {"file": "new-horizon.zip", "name": "New Horizon", "author": "Yuria & Lao", "version": "2.3.0", "license": "GPLv3", "url": "https://github.com/Yuria-Shikibe/NewHorizonMod", "v": "9", "addon": "new-horizon.js"},
+  {"file": "exoprosopa.zip", "name": "Exoprosopa", "author": "TnmSpiroct", "version": "0.96", "license": "GPLv3", "url": "https://github.com/TnmSpiroct/Exoprosopa", "v": "4"},
   {"file": "extended-unit-arsenal.zip", "name": "Extended unit arsenal", "author": "Garmy", "version": "1.0", "license": "GPLv3", "url": "https://github.com/Garmundo/Extended-unit-arsenal", "v": "2"},
-  {"file": "goldmod.zip", "name": "Gold Mod", "author": "The Slaylord", "version": "2.0 alpha b19", "license": "GPLv3", "url": "https://github.com/Slotterleet/GoldMod", "v": "3"},
-  {"file": "heavy-armaments-industries.zip", "name": "Heavy Armaments Industries", "author": "Eschatologue", "version": "2.6", "license": "MIT", "url": "https://github.com/Eschatologue/Heavy-Armaments-Industries", "v": "3"},
-  {"file": "mechanical-warfare.zip", "name": "Mechanical Warfare", "author": "GlennFolker, JerichoFletcher", "version": "1.6.2", "license": "GPLv3", "url": "https://github.com/JerichoFletcher/mechanical-warfare", "v": "4"}
+  {"file": "goldmod.zip", "name": "Gold Mod", "author": "The Slaylord", "version": "2.0 alpha b19", "license": "GPLv3", "url": "https://github.com/Slotterleet/GoldMod", "v": "4"},
+  {"file": "heavy-armaments-industries.zip", "name": "Heavy Armaments Industries", "author": "Eschatologue", "version": "2.6", "license": "MIT", "url": "https://github.com/Eschatologue/Heavy-Armaments-Industries", "v": "4"},
+  {"file": "mechanical-warfare.zip", "name": "Mechanical Warfare", "author": "GlennFolker, JerichoFletcher", "version": "1.6.2", "license": "GPLv3", "url": "https://github.com/JerichoFletcher/mechanical-warfare", "v": "5"}
 ]

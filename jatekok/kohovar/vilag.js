@@ -1,8 +1,8 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611270951';
-import { FW } from './keret.js?v=202611270951';
-import { toWorld } from './msav.js?v=202611270951';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611270951';
+import { genMapSerpulo } from './terkep.js?v=202611271006';
+import { FW } from './keret.js?v=202611271006';
+import { toWorld } from './msav.js?v=202611271006';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271006';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -891,7 +891,7 @@ export class World {
     if (B.each || (idx === 0 && b.burst === 0)) { if (--am.n <= 0) b.ammo.pop(); }
     b.heat = 1; let off = 0; if (B.alt) { b.side = -b.side; off = B.s * 1.6 * b.side; } else if (B.shots > 1) off = ((b.burst + idx) % 4 - 1.5) * B.s * .9;
     const mz = B.s * 4 + 3, x = c.x + Math.cos(b.ang) * mz - Math.sin(b.ang) * off, y = c.y + Math.sin(b.ang) * mz + Math.cos(b.ang) * off, u = b.tgt;
-    const base = { team: b.team, c: col, st: st.st, stT: st.stT, spl: st.spl, splR: st.splR, frag: st.frag, zap: st.zap, zapD: st.zapD, d: st.d, bdm: st.bdm };
+    const base = { team: b.team, c: st.c || col, c2: st.c2, sz: st.sz, tr: st.tr, st: st.st, stT: st.stT, spl: st.spl, splR: st.splR, frag: st.frag, zap: st.zap, zapD: st.zapD, d: st.d, bdm: st.bdm };
     switch (st.k) {
       case 'shrap': { const n = B.spread || 1; for (let k = 0; k < n; k++) this.lineDmg(c.x, c.y, b.ang + (k - (n - 1) / 2) * .35, st.len, st.d, b.team, { air: 1, ground: 1, fx: col, wide: 5 }); return; }
       case 'rail': { this.lineDmg(c.x, c.y, b.ang, range, st.d, b.team, { air: 1, ground: 1, rail: 1, fx: '#f3e979', wide: 5 }); return; }
@@ -987,7 +987,7 @@ export class World {
   // egy fegyver elsütése; t: célegység vagy épület, tc: a cél pontja
   fireW(u, w, tc, t) {
     const team = u.team, foe = foeOf(team), a = Math.atan2(tc.y - u.y, tc.x - u.x), dm = u.st.od ? 1.3 : 1, col = team === ENEMY ? '#ff7a6a' : w.heal ? '#84f491' : '#ffe39a';
-    const air = w.air !== 0 ? 1 : 0, base = { team, c: col, d: (w.d || 0) * dm, spl: w.spl && w.spl * dm, splR: w.splR, st: w.st, stT: w.stT, frag: w.frag, zap: w.zap, zapD: w.zapD, heal: w.heal, ab: t && !t.U ? t : null };
+    const air = w.air !== 0 ? 1 : 0, base = { team, c: w.c || col, c2: w.c2, sz: w.sz, tr: w.tr, d: (w.d || 0) * dm, spl: w.spl && w.spl * dm, splR: w.splR, st: w.st, stT: w.stT, frag: w.frag, zap: w.zap, zapD: w.zapD, heal: w.heal, ab: t && !t.U ? t : null };
     switch (w.k) {
       case 'laser': case 'shrap': { const e = this.lineDmg(u.x, u.y, a, w.len, w.d * dm, team, { air: 1, ground: 1, pierce: w.k === 'laser' ? 6 : 0, fx: col, wide: w.wide ? 9 : 4 }); if (w.heal && team === PLAYER) this.healB((u.x + e.x) / 2, (u.y + e.y) / 2, w.len / 2, w.heal); return; }
       case 'sap': { const d = Math.hypot(tc.x - u.x, tc.y - u.y); if (t && t.U) { this.dmgU(t, w.d * dm); t.st.sap = 180; } else if (t) this.dmgB(t, w.d * dm, u); u.hp = Math.min(u.U.hp, u.hp + w.d * w.sap); this.fx.push({ k: 'laser', x: u.x, y: u.y, x2: u.x + Math.cos(a) * Math.min(d, w.len + 8), y2: u.y + Math.sin(a) * Math.min(d, w.len + 8), life: 10, max: 10, c: '#bf92f9', w: 2 }); return; }
@@ -1256,6 +1256,7 @@ export class World {
     for (const b of this.act) { if (b.off || b.dead) continue; if (b.team === PLAYER) this.updB(b); else if (b.team === ENEMY) this.updFoeTurret(b); }
     for (const u of this.units) if (u.carrier) { if (u.carrier.dead) u.carrier = null; else { u.x = u.carrier.x; u.y = u.carrier.y; } }
     if (this.onTick) this.onTick();
+    if (FW.tick) FW.tick(this);
     if (!this.player || this.player.dead) { if (this.respawn-- <= 0) this.spawnPlayer(); }
     for (const u of this.units) if (!u.dead) this.updUnit(u);
     if (this.tick % 2 === 0) { const L = this.units; for (let a = 0; a < L.length; a++) { const u = L[a]; if (u.dead || u === this.player) continue; for (let b = a + 1; b < L.length; b++) { const v = L[b]; if (v.dead || v === this.player || !!u.U.air !== !!v.U.air) continue; const dx = v.x - u.x, dy = v.y - u.y, r = u.U.r + v.U.r, d2 = dx * dx + dy * dy; if (d2 < r * r && d2 > .01) { const d = Math.sqrt(d2), f = (r - d) / d * .25; this.moveU(u, -dx * f, -dy * f); this.moveU(v, dx * f, dy * f); } } } }

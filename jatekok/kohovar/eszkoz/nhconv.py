@@ -98,10 +98,47 @@ def lstack(v):
 fmt = lambda x: int(x) if isinstance(x, float) and x.is_integer() else round(x, 4) if isinstance(x, float) else x
 num = lambda x: fmt(x) if isinstance(x, (int, float)) and not isinstance(x, bool) else None
 
+PAL = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pal.json')))
+NHC = {}
+ITEMCOL = {'surgeAlloy': 'f3e979', 'phaseFabric': 'f4ba6e', 'thorium': 'f9a3c7', 'titanium': '8da1e3', 'plastanium': 'cbd97f', 'copper': 'd99d73', 'lead': '8c7fa9', 'silicon': '53565c', 'graphite': 'b2c6d2', 'sporePod': '7457ce', 'blastCompound': 'ff795e', 'pyratite': 'ffaa5f', 'metaglass': 'ebeef5', 'scrap': '777777', 'coal': '272727', 'sand': 'f7cba4'}
+def hx(c): return [int(c[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+def tohex(v): return ''.join('%02x' % max(0, min(255, round(x * 255))) for x in v)
+def evcol(n):
+    """Java színkifejezés (Color.valueOf, cpy, lerp, mul, Pal.*, NHColor.*) kiértékelése hexa színre."""
+    if isinstance(n, str): return n.lstrip('#')[:6].lower() if re.match(r'^#?[0-9a-fA-F]{6}', n) else None
+    if isinstance(n, J.Obj) and n.type == 'Color' and len(n.args) >= 3 and all(num(a) is not None for a in n.args[:3]): return tohex(n.args[:3])
+    if isinstance(n, J.Ref):
+        p = n.path.split('.')
+        if len(p) >= 3 and p[0] == 'Items' and p[-1] == 'color': return ITEMCOL.get(p[1])
+        return NHC.get(p[-1]) if p[0] in ('NHColor',) or len(p) == 1 else PAL.get(p[-1]) if p[0] in ('Pal', 'Color') else NHC.get(p[-1]) or PAL.get(p[-1])
+    if isinstance(n, J.Call):
+        if n.name == 'valueOf' and n.args: return evcol(n.args[0])
+        base = evcol(n.target) if n.target is not None else None
+        if base is None: return None
+        if n.name in ('cpy', 'a', 'shiftHue', 'shiftSaturation', 'shiftValue'): return base
+        if n.name == 'lerp' and len(n.args) >= 2:
+            o, t = evcol(n.args[0]), num(n.args[1])
+            if o is None or t is None: return base
+            a, b = hx(base), hx(o); return tohex([x + (y - x) * t for x, y in zip(a, b)])
+        if n.name == 'mul' and n.args and num(n.args[0]) is not None: return tohex([min(1, x * n.args[0]) for x in hx(base)])
+        return base
+    return None
+for f in glob.glob(JS + '/**/NHColor.java', recursive=True):
+    t = open(f, encoding='utf-8').read()
+    for m in re.finditer(r'(\w+)\s*=\s*((?:[^,;()]|\((?:[^()]|\([^()]*\))*\))+)\s*[,;]', t):
+        try: c = evcol(J.P(m.group(2)).expr())
+        except Exception: c = None
+        if c: NHC[m.group(1)] = c
 def color(v):
+    c = evcol(v)
+    if c: return c
     if isinstance(v, J.Call) and v.name == 'valueOf' and v.args and isinstance(v.args[0], str): return v.args[0].lstrip('#')[:6]
     if isinstance(v, str): return v.lstrip('#')[:6]
-    if isinstance(v, J.Ref): return {'Color.white': 'ffffff', 'Pal.accent': 'ffd37f', 'Pal.lancerLaser': 'a9d8ff'}.get(v.path)
+    if isinstance(v, J.Ref):
+        p = v.path.split('.')
+        if p[0] == 'NHColor': return NHC.get(p[-1])
+        if p[0] in ('Pal', 'Color'): return PAL.get(p[-1])
+        return NHC.get(p[-1]) or PAL.get(p[-1])
     return None
 
 # ---- egyszerű értékek másolása ----
@@ -114,7 +151,7 @@ def plain(o, keys):
     return d
 
 # ---- lövedékek ----
-BUL_KEYS = 'damage speed lifetime splashDamage splashDamageRadius homingPower homingRange pierce pierceCap pierceBuilding statusDuration lightning lightningDamage lightningLength length width height knockback buildingDamageMultiplier ammoMultiplier reloadMultiplier rangeChange collidesAir collidesGround collides sapStrength fragBullets maxRange drag instantDisappear shieldDamageMultiplier healPercent'.split()
+BUL_KEYS = 'width height trailLength damage speed lifetime splashDamage splashDamageRadius homingPower homingRange pierce pierceCap pierceBuilding statusDuration lightning lightningDamage lightningLength length width height knockback buildingDamageMultiplier ammoMultiplier reloadMultiplier rangeChange collidesAir collidesGround collides sapStrength fragBullets maxRange drag instantDisappear shieldDamageMultiplier healPercent'.split()
 VAN_BUL = {'BasicBulletType', 'ArtilleryBulletType', 'MissileBulletType', 'LaserBulletType', 'ContinuousLaserBulletType', 'ContinuousFlameBulletType', 'LightningBulletType', 'ShrapnelBulletType', 'LiquidBulletType', 'FlakBulletType', 'SapBulletType', 'RailBulletType', 'EmpBulletType', 'BombBulletType', 'ExplosionBulletType', 'PointBulletType', 'PointLaserBulletType', 'LaserBoltBulletType', 'BulletType', 'ContinuousBulletType', 'FireBulletType', 'MassDriverBolt', 'InterceptorBulletType', 'SpaceLiquidBulletType'}
 NAME_HINT = [('laser', 'LaserBulletType'), ('lightning', 'LightningBulletType'), ('missile', 'MissileBulletType'), ('artillery', 'ArtilleryBulletType'), ('shrapnel', 'ShrapnelBulletType'), ('flak', 'FlakBulletType'), ('continuous', 'ContinuousLaserBulletType'), ('bomb', 'BombBulletType'), ('rail', 'RailBulletType'), ('emp', 'EmpBulletType'), ('trail', 'BasicBulletType'), ('chain', 'LightningBulletType'), ('lightningline', 'LightningBulletType'), ('poslightning', 'LightningBulletType'), ('effectbullet', 'BasicBulletType'), ('strafe', 'LaserBulletType'), ('arc', 'LightningBulletType')]
 CTOR_DEF = {'BasicBulletType': ['speed', 'damage', 'sprite'], 'ArtilleryBulletType': ['speed', 'damage', 'sprite'], 'MissileBulletType': ['speed', 'damage', 'sprite'], 'FlakBulletType': ['speed', 'damage'], 'LaserBulletType': ['damage'], 'ContinuousLaserBulletType': ['damage'], 'LiquidBulletType': ['liquid'], 'BombBulletType': ['damage', 'radius', 'sprite'], 'ExplosionBulletType': ['splashDamage', 'splashDamageRadius'], 'RailBulletType': [], 'LaserBoltBulletType': ['speed', 'damage'], 'BulletType': ['speed', 'damage'], 'EmpBulletType': [], 'SapBulletType': [], 'ContinuousFlameBulletType': ['damage']}
@@ -143,6 +180,9 @@ def bullet(v, depth=0):
         elif pn == 'radius' and num(a) is not None: d['splashDamageRadius'] = num(a); d.setdefault('splashDamage', d.get('damage', 0))
         elif pn == 'liquid': d['liquid'] = ref_name(a)
     d.update(plain(v, BUL_KEYS))
+    for k in ('backColor', 'frontColor', 'trailColor', 'hitColor', 'lightningColor', 'lightColor'):
+        c = color(v.f.get(k))
+        if c: d[k] = c
     for c in v.calls:
         if c.name == 'setDamage':
             a = [num(x) for x in c.args[1:]]
