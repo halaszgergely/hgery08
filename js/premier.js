@@ -2,9 +2,9 @@
 // Fél órával előtte nyílik a várószoba visszaszámlálással; a vetítést egy vezérlő (master) irányítja zárral védve;
 // a nézők csak visszafelé tekerhetnek, és egy gombbal visszaugorhatnak a vezérlőhöz. Vége után a csevegés még 30 percig él,
 // a film pedig 24 órával később (vagy a megadott időpontban) magától megjelenik a filmtárban.
-import { FB, db, $, esc, avatar, toast, errText } from './core.js?v=202611270130';
-import * as VP from './vplayer.js?v=202611270130';
-import { ambilight, applyTint } from './fx.js?v=202611270130';
+import { FB, db, $, esc, avatar, toast, errText } from './core.js?v=202611271016';
+import * as VP from './vplayer.js?v=202611271016';
+import { ambilight, applyTint } from './fx.js?v=202611271016';
 
 export const LOBBY = 30 * 60e3, AFTER = 30 * 60e3, DAY = 864e5, DEFDUR = 3 * 3600;
 let C = null, gen = 0, cleanup = [], offset = 0, last = new Map();
@@ -170,18 +170,28 @@ export async function render(vid) {
     cleanup.push(un); chat.un = un;
   }
 
-  /* nézők: jelenlét 20 mp-enként */
+  /* nézők – takarékosan: mindenki 75 mp-enként ír egy jelenlét-dokumentumot (premieres/{film}/viewers/{uid});
+     a névsort egyetlen kliens (a vezérlő, vagy ha ő nincs, bárki, aki észreveszi, hogy régi) percenként összesíti a fő dokumentumba */
+  const VIEW = FB.collection(db, 'premieres', vid, 'viewers'), WIN = 180e3;
   function members() {
-    const t = now(), l = Object.entries(P.members || {}).filter(([, x]) => ms(x) && t - ms(x) < 45000).map(([u]) => u);
-    const box = $('#pMem'); if (!box) return; $('#pCnt').textContent = l.length;
-    box.innerHTML = l.slice(0, 60).map(u => { const x = C.U(u); return `<span class="pmu" title="${esc(x.name)}">${avatar(x, 30)}${u === P.master ? '<i class="ic ic-crown"></i>' : ''}</span>`; }).join('') + (l.length > 60 ? `<span class="pmore">+${l.length - 60}</span>` : '');
+    const v = P.view || {}, l = Array.isArray(v.u) ? v.u : [], n = v.n || l.length;
+    const box = $('#pMem'); if (!box) return; $('#pCnt').textContent = n;
+    box.innerHTML = l.map(u => { const x = C.U(u); return `<span class="pmu" title="${esc(x.name)}">${avatar(x, 30)}${u === P.master ? '<i class="ic ic-crown"></i>' : ''}</span>`; }).join('') + (n > l.length ? `<span class="pmore">+${n - l.length}</span>` : '');
   }
-  const ping = () => { const p = ph(); if (p === 'lobby' || p === 'live' || p === 'after') FB.updateDoc(ref, new FB.FieldPath('members', C.uid()), FB.serverTimestamp()).catch(() => {}); };
+  const open = () => { const p = ph(); return p === 'lobby' || p === 'live' || p === 'after'; };
+  const ping = () => { if (open() && !document.hidden) FB.setDoc(FB.doc(VIEW, C.uid()), { at: FB.serverTimestamp() }).catch(() => {}); };
+  async function tally(force) {   // összesítés: legfeljebb percenként egyszer, egy kliensről
+    if (!open()) return; const age = now() - (ms(P.view?.at) || 0);
+    if (!force && !(isMaster() ? age > 55e3 : age > 150e3 + (C.uid().charCodeAt(0) % 20) * 1e3)) return;
+    try { const s = await FB.getDocs(FB.query(VIEW, FB.where('at', '>', FB.Timestamp.fromMillis(now() - WIN)), FB.limit(200)));
+      const ids = s.docs.map(d => d.id).sort((a, b) => (b === P.master) - (a === P.master));
+      await FB.updateDoc(ref, { view: { n: ids.length, u: ids.slice(0, 30), at: FB.serverTimestamp() } }); } catch (_) {}
+  }
 
   /* ütemezés */
   function step() {
     if (my !== gen) return; const p = ph();
-    if (p !== lastPh) { lastPh = p; chat(p === 'lobby' || p === 'live' || p === 'after'); if (p === 'lobby' || p === 'live') build(); if (p === 'lobby' || p === 'live') ping(); }
+    if (p !== lastPh) { lastPh = p; chat(p === 'lobby' || p === 'live' || p === 'after'); if (p === 'lobby' || p === 'live') build(); if (open()) { ping(); setTimeout(() => tally(!P.view), 1500); } }
     sync(); overlay(); ctl();
   }
   cleanup.push(FB.onSnapshot(ref, s => {
@@ -189,7 +199,8 @@ export async function render(vid) {
     P = s.data() || {}; C.S.premieres = { ...(C.S.premieres || {}), [vid]: P };
     vp?.lock(isMaster() && P.locked !== false); members(); step();
   }, () => {}));
-  const iv = setInterval(step, 500), pi = setInterval(() => { ping(); members(); }, 20000);
+  const iv = setInterval(step, 500), pi = setInterval(ping, 75e3), ti = setInterval(() => tally(), 20e3), vis = () => { if (!document.hidden) ping(); };
+  document.addEventListener('visibilitychange', vis); cleanup.push(() => clearInterval(ti), () => document.removeEventListener('visibilitychange', vis), () => { FB.deleteDoc(FB.doc(VIEW, C.uid())).catch(() => {}); });
   cleanup.push(() => clearInterval(iv), () => clearInterval(pi));
   step();
 }

@@ -432,6 +432,12 @@ service cloud.firestore {
         || (signedIn() && changed().hasOnly(['members'])
           && request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid]));
       allow delete: if (signedIn() && resource.data.host == request.auth.uid) || perm('deleteMessages');
+      // jelenlét: mindenki a saját dokumentumát írja (75 mp-enként)
+      match /viewers/{uid} {
+        allow read: if signedIn();
+        allow create, update: if signedIn() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['at']) && request.resource.data.at == request.time;
+        allow delete: if signedIn() && request.auth.uid == uid;
+      }
       match /msgs/{mid} {
         allow read: if signedIn();
         allow create: if canPost() && request.resource.data.keys().hasOnly(['uid', 'text', 'createdAt'])
@@ -1034,12 +1040,18 @@ service cloud.firestore {
           && request.resource.data.state in ['auto', 'play', 'pause'] && request.resource.data.t is number
           && request.resource.data.locked is bool && request.resource.data.at == request.time)
         || (signedIn() && resource.data.master == request.auth.uid && changed().hasOnly(['locked']) && request.resource.data.locked is bool)
-        || (signedIn() && changed().hasOnly(['members'])
-          && request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid])
-          && request.resource.data.members[request.auth.uid] == request.time)
+        || (signedIn() && changed().hasOnly(['view']) && request.resource.data.view.keys().hasOnly(['n', 'u', 'at'])
+          && request.resource.data.view.n is int && request.resource.data.view.u is list && request.resource.data.view.u.size() <= 30
+          && request.resource.data.view.at == request.time)
         || (signedIn() && changed().hasOnly(['endedAt']) && !('endedAt' in resource.data) && request.resource.data.endedAt == request.time)
         || (signedIn() && changed().hasOnly(['dur']) && !('dur' in resource.data) && request.resource.data.dur is number
           && request.resource.data.dur > 0 && request.resource.data.dur < 36000);
+      // jelenlét: mindenki a saját dokumentumát írja (75 mp-enként)
+      match /viewers/{uid} {
+        allow read: if signedIn();
+        allow create, update: if signedIn() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['at']) && request.resource.data.at == request.time;
+        allow delete: if signedIn() && request.auth.uid == uid;
+      }
       match /msgs/{mid} {
         allow read: if signedIn();
         allow create: if canPost() && request.resource.data.keys().hasOnly(['uid', 'text', 'createdAt'])
