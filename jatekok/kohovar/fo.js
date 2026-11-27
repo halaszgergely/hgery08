@@ -2,19 +2,19 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271704';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271704';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271704';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss, drawLanding } from './rajz.js?v=202611271704';
-import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271704';
-import { JS } from './jsapi.js?v=202611271704';
-import { initCloud, changed as cloudChanged, push as cloudPush, flush as cloudFlush } from './felho.js?v=202611271704';
-import { MP, initMp, canMp, listRooms, createRoom, joinRoomId, leave as mpLeave, inviteLink, roster, hostStart, hostEnd, hostTick, hostSend, guestFrame } from './mp.js?v=202611271704';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271704';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271704';
-import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271704';
-import { toWorld } from './msav.js?v=202611271704';
-import { Story } from './logika.js?v=202611271704';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271717';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271717';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271717';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss, drawLanding } from './rajz.js?v=202611271717';
+import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271717';
+import { JS } from './jsapi.js?v=202611271717';
+import { initCloud, changed as cloudChanged, push as cloudPush, flush as cloudFlush } from './felho.js?v=202611271717';
+import { MP, initMp, canMp, listRooms, createRoom, joinRoomId, leave as mpLeave, inviteLink, roster, hostStart, hostEnd, hostTick, hostSend, guestFrame } from './mp.js?v=202611271717';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271717';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271717';
+import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271717';
+import { toWorld } from './msav.js?v=202611271717';
+import { Story } from './logika.js?v=202611271717';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -908,4 +908,4 @@ loadAtlas().then(() => loadMods()).then(errs => {
       try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (_) {} TPOS = null; buildMenu(); return true; } });
 }, () => { $('#mcol').innerHTML = '<div class="fb bad" style="height:auto;padding:14px">A grafika betöltése nem sikerült – frissítsd az oldalt.</div>'; });
 FW.blockIcon = blockIcon; FW.done = done;
-window.__KV = { get W() { return W; }, get selBlock() { return selBlock; }, get rot() { return rot; }, FWT: FW.types, get selB() { return selB; }, set selB(v) { selB = v; }, S, start, SECTORS, freeSector, BL: BLOCKS, UN: UNITS, cam, retex() { TER = makeTerrain(W); }, showPlanet, showCustom, showPlay, showTech, showDb, showSet, showMods, showLoad, openPM, closeDlg, STACK };
+window.__KV = { get W() { return W; }, secState, get NODE() { return NODE; }, get selBlock() { return selBlock; }, get rot() { return rot; }, FWT: FW.types, get selB() { return selB; }, set selB(v) { selB = v; }, S, start, SECTORS, freeSector, BL: BLOCKS, UN: UNITS, cam, retex() { TER = makeTerrain(W); }, showPlanet, showCustom, showPlay, showTech, showDb, showSet, showMods, showLoad, openPM, closeDlg, STACK };

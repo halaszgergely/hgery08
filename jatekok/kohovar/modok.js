@@ -2,13 +2,13 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, ORE_P, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611271704';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271704';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271704';
-import { FL, FLI, WL } from './vilag.js?v=202611271704';
-import { runScripts, defJson, defKind, defClass, attachDef, scriptReport, initJsApi } from './jsapi.js?v=202611271704';
-import { parseHjson } from './hjson.js?v=202611271704';
-import { addSprite, spritesReady, has as AT_HAS, sprSize } from './rajz.js?v=202611271704';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, ORE_P, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611271717';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271717';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271717';
+import { FL, FLI, WL } from './vilag.js?v=202611271717';
+import { runScripts, defJson, defKind, defClass, attachDef, scriptReport, initJsApi } from './jsapi.js?v=202611271717';
+import { parseHjson } from './hjson.js?v=202611271717';
+import { addSprite, spritesReady, has as AT_HAS, sprSize } from './rajz.js?v=202611271717';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [], MOD_MAPS = [];   // MOD_MAPS: a mod szektor nélküli pályái (egyéni játék)   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
@@ -183,7 +183,7 @@ export function installMod(files, srcLabel) {
   const addWall = (k, c) => { WALLS[k] = c; if (!WL.includes(k)) WL.push(k); };
   const convert = (n, j, T, k) => {
     const s = +(j.size || 1), c = cons(j), cost = req(j), hp = +(j.health || (j.scaledHealth ? j.scaledHealth * s * s : 40 * s * s)), cat = CAT[String(j.category || '').toLowerCase()] || null;
-    const base = { n: label('block', n, j), kat: cat, s, hp, cost, mod: id }; if (j.armor) base.armor = +j.armor;
+    const base = { n: label('block', n, j), kat: cat, s, hp, cost, mod: id }; if (j.armor) base.armor = +j.armor; if (j.buildCostMultiplier != null) base.bcm = +j.buildCostMultiplier; else if (/Wall$|Door$/.test(T)) base.bcm = 6; if (j.buildTime != null) base.btime = +j.buildTime;
     const g = +(j.powerProduction || 1), turret = /Turret$/.test(T) && !/^(RepairTurret|BuildTurret)$/.test(T);
     if (/Wall$/.test(T) && !/^(StaticWall|ShieldWall)$/.test(T) || T === 'ShieldWall') return { ...base, kat: cat || 'def', type: 'wall', hp: +(j.health || 80 * 4 * s * s), insul: j.insulated || j.absorbLasers ? 1 : 0, deflect: j.chanceDeflect ? 10 : 0, zap: j.lightningChance ? .05 : 0, power: c.power };
     if (/^(Door|AutoDoor)$/.test(T)) return { ...base, kat: cat || 'def', type: 'wall', door: 1 };
