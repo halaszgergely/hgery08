@@ -2,13 +2,13 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, ORE_P, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611271824';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271824';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271824';
-import { FL, FLI, WL } from './vilag.js?v=202611271824';
-import { runScripts, defJson, defKind, defClass, attachDef, scriptReport, initJsApi } from './jsapi.js?v=202611271824';
-import { parseHjson } from './hjson.js?v=202611271824';
-import { addSprite, spritesReady, has as AT_HAS, sprSize } from './rajz.js?v=202611271824';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, ORE_P, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611271847';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271847';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271847';
+import { FL, FLI, WL } from './vilag.js?v=202611271847';
+import { runScripts, defJson, defKind, defClass, attachDef, scriptReport, initJsApi } from './jsapi.js?v=202611271847';
+import { parseHjson } from './hjson.js?v=202611271847';
+import { addSprite, spritesReady, has as AT_HAS, sprSize } from './rajz.js?v=202611271847';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [], MOD_MAPS = [];   // MOD_MAPS: a mod szektor nélküli pályái (egyéni játék)   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
@@ -149,7 +149,7 @@ export function installMod(files, srcLabel) {
     U.air = fam === 'air' ? 1 : 0; U.legs = fam === 'legs' ? 1 : 0; U.naval = fam === 'naval' ? 1 : 0; if (T === 'tank') U.tank = 1; if (/hover/.test(T) || j.hovering) U.hov = 1;
     if (j.mineTier != null && j.mineTier >= 0) { U.mine = +(j.mineSpeed || 1); U.mineT = +j.mineTier; if (j.mineWalls) U.mineW = 1; }
     if (j.payloadCapacity) U.payS = Math.floor(Math.sqrt(+j.payloadCapacity) / 8 + .01);
-    if (j.buildSpeed) U.build = +j.buildSpeed; if (j.itemCapacity) U.icap = +j.itemCapacity;
+    if (j.buildSpeed) U.build = +j.buildSpeed; if (j.fogRadius != null) U.fogR = +j.fogRadius; if (j.itemCapacity) U.icap = +j.itemCapacity;
     const ab = {}; for (const a of j.abilities || []) { const at = String(a.type || '').replace(/^.*\./, ''); if (/ForceField/.test(at)) ab.ff = [+(a.radius || 60), +(a.regen || .1), +(a.max || 200), +(a.cooldown || 300)]; else if (/RepairField/.test(at)) ab.rep = [+(a.amount || 30), +(a.reload || 120), +(a.range || 60)]; else if (/ShieldRegen/.test(at)) ab.regen = [+(a.amount || 10), +(a.max || 100), +(a.reload || 60), +(a.range || 60)]; }
     if (Object.keys(ab).length) U.ab = ab;
     if (j.weapons) {
@@ -183,7 +183,7 @@ export function installMod(files, srcLabel) {
   const addWall = (k, c) => { WALLS[k] = c; if (!WL.includes(k)) WL.push(k); };
   const convert = (n, j, T, k) => {
     const s = +(j.size || 1), c = cons(j), cost = req(j), hp = +(j.health || (j.scaledHealth ? j.scaledHealth * s * s : 40 * s * s)), cat = CAT[String(j.category || '').toLowerCase()] || null;
-    const base = { n: label('block', n, j), kat: cat, s, hp, cost, mod: id }; if (j.armor) base.armor = +j.armor; if (j.buildCostMultiplier != null) base.bcm = +j.buildCostMultiplier; else if (/Wall$|Door$/.test(T)) base.bcm = 6; if (j.buildTime != null) base.btime = +j.buildTime;
+    const base = { n: label('block', n, j), kat: cat, s, hp, cost, mod: id }; if (j.armor) base.armor = +j.armor; if (j.buildCostMultiplier != null) base.bcm = +j.buildCostMultiplier; else if (/Wall$|Door$/.test(T)) base.bcm = 6; if (j.buildTime != null) base.btime = +j.buildTime; if (j.fogRadius != null) base.fogR = +j.fogRadius; if (j.fogRadiusMultiplier != null) base.fogM = +j.fogRadiusMultiplier;
     const g = +(j.powerProduction || 1), turret = /Turret$/.test(T) && !/^(RepairTurret|BuildTurret)$/.test(T);
     if (/Wall$/.test(T) && !/^(StaticWall|ShieldWall)$/.test(T) || T === 'ShieldWall') return { ...base, kat: cat || 'def', type: 'wall', hp: +(j.health || 80 * 4 * s * s), insul: j.insulated || j.absorbLasers ? 1 : 0, deflect: j.chanceDeflect ? 10 : 0, zap: j.lightningChance ? .05 : 0, power: c.power };
     if (/^(Door|AutoDoor)$/.test(T)) return { ...base, kat: cat || 'def', type: 'wall', door: 1 };
