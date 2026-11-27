@@ -1,9 +1,9 @@
 // Kohóvár – kirajzolás. A blokkok, egységek, anyagok és a talaj képei a Mindustry (Anuke és közreműködők, GPLv3) sprite-jai,
 // a kepek/atlasz.png atlaszból; a lövedékek, hatások, köd és kisérkép kódból rajzoltak.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271906';
-import { FW } from './keret.js?v=202611271906';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271906';
-import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271906';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271915';
+import { FW } from './keret.js?v=202611271915';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271915';
+import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271915';
 
 const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555', 0: '#4d4e58' };
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -13,7 +13,7 @@ const circ = (g, x, y, r) => { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); };
 
 /* ---------- atlasz ---------- */
 let AT = null, IMG = null; const TC = new Map();
-const AV = '?a=4';   // az atlasz verziója: újracsomagolás után növelni kell, hogy a kép és a térképe együtt frissüljön
+const AV = '?a=5';   // az atlasz verziója: újracsomagolás után növelni kell, hogy a kép és a térképe együtt frissüljön
 export function loadAtlas(base = 'kepek/') {
   return fetch(base + 'atlasz.json' + AV).then(r => r.json()).then(j => new Promise((ok, no) => { const im = new Image(); im.onload = () => { AT = j; IMG = im; ok(); }; im.onerror = no; im.src = base + 'atlasz.png' + AV; }));
 }
@@ -52,7 +52,7 @@ export function spr(g, n, x, y, rot, sx, sy, w, h, src) {
 }
 // Mindustry Drawf.laser: két végsprite (a vonal irányába forgatva) és a köztük kifeszített vonaltextúra; scale = sugárszélesség
 function laserTex(g, line, end, x, y, x2, y2, scale, col) {
-  const re = AT[end], rl = AT[line]; if (!re || !rl) return; const rot = Math.atan2(y2 - y, x2 - x), sc = 8 * scale / 4, vx = Math.cos(rot) * sc, vy = Math.sin(rot) * sc;
+  const re = AT[end], rl = AT[line]; if (!re || !rl) { g.strokeStyle = col || (line.startsWith('drill') ? (line.includes('boost') ? '#9ad7ff' : '#fd9e81') : '#cbfd81'); g.lineWidth = 4 * scale; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, y); g.lineTo(x2, y2); g.stroke(); g.lineCap = 'butt'; return; }   // régi atlasz: egyszerű vonal const rot = Math.atan2(y2 - y, x2 - x), sc = 8 * scale / 4, vx = Math.cos(rot) * sc, vy = Math.sin(rot) * sc;
   const sE = col ? tint(end, col, true) : undefined, sL = col ? tint(line, col, true) : undefined, ew = re[2] * scale / 4, eh = re[3] * scale / 4;
   spr(g, end, x, y, rot + Math.PI, 1, 1, ew, eh, sE); spr(g, end, x2, y2, rot, 1, 1, ew, eh, sE);
   const ax = x + vx, ay = y + vy, bx = x2 - vx, by = y2 - vy, L = Math.hypot(bx - ax, by - ay) * Math.sign((bx - ax) * Math.cos(rot) + (by - ay) * Math.sin(rot) || 1);
