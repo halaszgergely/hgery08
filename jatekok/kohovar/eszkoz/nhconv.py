@@ -120,6 +120,7 @@ NAME_HINT = [('laser', 'LaserBulletType'), ('lightning', 'LightningBulletType'),
 CTOR_DEF = {'BasicBulletType': ['speed', 'damage', 'sprite'], 'ArtilleryBulletType': ['speed', 'damage', 'sprite'], 'MissileBulletType': ['speed', 'damage', 'sprite'], 'FlakBulletType': ['speed', 'damage'], 'LaserBulletType': ['damage'], 'ContinuousLaserBulletType': ['damage'], 'LiquidBulletType': ['liquid'], 'BombBulletType': ['damage', 'radius', 'sprite'], 'ExplosionBulletType': ['splashDamage', 'splashDamageRadius'], 'RailBulletType': [], 'LaserBoltBulletType': ['speed', 'damage'], 'BulletType': ['speed', 'damage'], 'EmpBulletType': [], 'SapBulletType': [], 'ContinuousFlameBulletType': ['damage']}
 seenB = {}
 def bullet(v, depth=0):
+    if isinstance(v, J.Call) and v.name == 'copy': v = v.target
     if isinstance(v, J.Ref):
         o = DEFS.get(v.path) or DEFS.get(v.path.split('.')[-1])
         if o is None:
@@ -281,13 +282,24 @@ for m in re.finditer(r'nameMap\.put\(NewHorizon\.name\("([^"]+)"\),\s*(?:EntityM
     ENT[m.group(1)] = IDMAP.get(int(m.group(2))) if m.group(2) else ('flying' if m.group(3) in ('PesterEntity', 'NucleoidEntity', 'ProbeEntity', 'EnergyUnit', 'AdaptedTimedKillUnit') else None)
 
 def weapon(w):
+    mv = None
+    if isinstance(w, J.Call) and w.name in ('copyAndMove', 'copyAndMoveAnd', 'copyAnd', 'copy') :   # NHUnitTypes.copyAndMove(fegyver, x, y)
+        base = w.args[0] if w.name != 'copy' else w.target
+        if w.name.startswith('copyAndMove') and len(w.args) >= 3: mv = (num(w.args[1]), num(w.args[2]))
+        if isinstance(base, J.Ref): base = DEFS.get(base.path) or DEFS.get(base.path.split('.')[-1])
+        w = base
     if not isinstance(w, J.Obj): return None
     d = {}
     if w.args and isinstance(w.args[0], str): d['name'] = w.args[0].replace('new-horizon-', '')
     elif w.args and isinstance(w.args[0], J.Call) and w.args[0].args and isinstance(w.args[0].args[0], str): d['name'] = w.args[0].args[0]
     d.update(plain(w, WEAP_KEYS))
+    if mv and None not in mv: d['x'], d['y'] = mv
     b = bullet(w.f.get('bullet'))
-    if b: d['bullet'] = b
+    if b:
+        b = dict(b)
+        for k, v in w.f.items():         # bullet.damage = ... felülírások
+            if k.startswith('bullet.') and num(v) is not None: b[k[7:]] = num(v)
+        d['bullet'] = b
     sh = w.f.get('shoot')
     if isinstance(sh, J.Obj): d['shoot'] = plain(sh, ['shots', 'shotDelay', 'spread'])
     return d if 'bullet' in d else None
@@ -297,6 +309,8 @@ def conv_unit(var, o):
     if not n: return None
     d = plain(o, UNIT_KEYS)
     fam = ENT.get(n)
+    ct = o.f.get('constructor')
+    if isinstance(ct, J.Call) and ct.name == 'map' and ct.args and num(ct.args[0]) is not None: fam = IDMAP.get(int(ct.args[0]), fam)
     if o.f.get('flying') is True: fam = 'flying'
     elif o.f.get('legCount') or 'Legs' in str(o.f.get('constructor')): fam = fam or 'legs'
     d['type'] = {'flying': 'flying', 'legs': 'legs', 'naval': 'naval', 'mech': 'mech'}.get(fam or 'mech')

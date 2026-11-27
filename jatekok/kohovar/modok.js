@@ -2,11 +2,11 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270107';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270107';
-import { FL, FLI, WL } from './vilag.js?v=202611270107';
-import { parseHjson } from './hjson.js?v=202611270107';
-import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270107';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270112';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270112';
+import { FL, FLI, WL } from './vilag.js?v=202611270112';
+import { parseHjson } from './hjson.js?v=202611270112';
+import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270112';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [];   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
@@ -345,7 +345,7 @@ export const builtinList = () => fetch('modok/lista.json?v=' + Date.now()).then(
 export async function loadMods() {
   const pref = modPrefs(), errs = [];
   let list = []; try { list = await builtinList(); } catch (_) {}
-  for (const m of list) { if (pref[m.file] === false || (pref[m.file] !== true && !m.on)) continue; try { const buf = await fetch('modok/' + m.file).then(r => r.arrayBuffer()); installMod(await readZip(buf), m.file); } catch (e) { errs.push(m.file + ': ' + e.message); } }
+  for (const m of list) { if (pref[m.file] === false || (pref[m.file] !== true && !m.on)) continue; try { const buf = await fetch('modok/' + m.file + (m.v ? '?v=' + m.v : '')).then(r => r.arrayBuffer()); installMod(await readZip(buf), m.file); } catch (e) { errs.push(m.file + ': ' + e.message); } }
   let loc = []; try { loc = await localMods(); } catch (_) {}
   for (const name of loc) { if (pref['local:' + name] === false) continue; try { installMod(await readZip(await getLocal(name)), 'local:' + name); } catch (e) { errs.push(name + ': ' + e.message); } }
   await spritesReady(); return errs;
