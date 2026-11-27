@@ -1,8 +1,8 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611271522';
-import { FW } from './keret.js?v=202611271522';
-import { toWorld } from './msav.js?v=202611271522';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271522';
+import { genMapSerpulo } from './terkep.js?v=202611271704';
+import { FW } from './keret.js?v=202611271704';
+import { toWorld } from './msav.js?v=202611271704';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271704';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -911,7 +911,7 @@ export class World {
     if (B.each || (idx === 0 && b.burst === 0)) { if (--am.n <= 0) b.ammo.pop(); }
     b.heat = 1; let off = 0; if (B.alt) { b.side = -b.side; off = B.s * 1.6 * b.side; } else if (B.shots > 1) off = ((b.burst + idx) % 4 - 1.5) * B.s * .9;
     const mz = B.s * 4 + 3, x = c.x + Math.cos(b.ang) * mz - Math.sin(b.ang) * off, y = c.y + Math.sin(b.ang) * mz + Math.cos(b.ang) * off, u = b.tgt;
-    const bdmR = this.rm('blockDamageMultiplier'), base = { jsb: st.jsb, team: b.team, c: st.c || col, c2: st.c2, sz: st.sz, tr: st.tr, st: st.st, stT: st.stT, spl: st.spl && st.spl * bdmR, splR: st.splR, frag: st.frag, zap: st.zap, zapD: st.zapD, d: st.d * bdmR, bdm: st.bdm };
+    const bdmR = this.rm('blockDamageMultiplier'), base = { ab: this.aimB(b.tgt, null), jsb: st.jsb, team: b.team, c: st.c || col, c2: st.c2, sz: st.sz, tr: st.tr, st: st.st, stT: st.stT, spl: st.spl && st.spl * bdmR, splR: st.splR, frag: st.frag, zap: st.zap, zapD: st.zapD, d: st.d * bdmR, bdm: st.bdm };
     switch (st.k) {
       case 'shrap': { const n = B.spread || 1; for (let k = 0; k < n; k++) this.lineDmg(c.x, c.y, b.ang + (k - (n - 1) / 2) * .35, st.len, st.d, b.team, { air: 1, ground: 1, fx: col, wide: 5 }); return; }
       case 'rail': { this.lineDmg(c.x, c.y, b.ang, range, st.d, b.team, { air: 1, ground: 1, rail: 1, fx: '#f3e979', wide: 5 }); return; }
@@ -983,6 +983,8 @@ export class World {
   healB(x, y, r, pct, team = PLAYER) { for (const b of this.blds) if (b.team === team && b.hp < b.B.hp) { const c = this.center(b); if (Math.hypot(c.x - x, c.y - y) <= r + b.B.s * 4) { b.hp = Math.min(b.B.hp, b.hp + b.B.hp * pct / 100); b.heal = 12; } } }
   boom(x, y, r, c) { this.fx.push({ k: 'boom', x, y, r, life: 22, max: 22, c }); }
   teamB(t) { if (this.tbV !== this.ver) { this.tbV = this.ver; this.tbL = {}; for (const b of this.blds) (this.tbL[b.team] = this.tbL[b.team] || []).push(b); } return this.tbL[t] || []; }   // épületek csapatonként (gyorsítótár)
+  // a célzott épület (Mindustry BulletComp.checkUnderBuild aimTile): az alacsony épületet (szalag, cső…) csak a rá célzott lövedék találja el
+  aimB(t, tc) { if (t) return t.bl || (!t.U ? t : null); if (tc && tc.x != null) { const b = this.tb(Math.floor(tc.x / TS), Math.floor(tc.y / TS)); return b || null; } return null; }
   bref(b) { return b.ref || (b.ref = { bl: b, get x() { return (b.x + b.B.s / 2) * TS; }, get y() { return (b.y + b.B.s / 2) * TS; }, vx: 0, vy: 0, U: { r: b.B.s * 4 }, get dead() { return !!b.dead; } }); }
   // a legközelebbi épület; alapból csak a játékosé (ezt támadja az ellenség, ezt javítják a javítók)
   nearestB(x, y, r, fn, any) {
@@ -1014,7 +1016,7 @@ export class World {
   // egy fegyver elsütése; t: célegység vagy épület, tc: a cél pontja
   fireW(u, w, tc, t) {
     const team = u.team, foe = foeOf(team), a = Math.atan2(tc.y - u.y, tc.x - u.x), dm = (u.st.od ? 1.3 : 1) * this.rm('unitDamageMultiplier'), col = team === ENEMY ? '#ff7a6a' : w.heal ? '#84f491' : '#ffe39a';
-    const air = w.air !== 0 ? 1 : 0, base = { jsb: w.jsb, team, c: w.c || col, c2: w.c2, sz: w.sz, tr: w.tr, d: (w.d || 0) * dm, spl: w.spl && w.spl * dm, splR: w.splR, st: w.st, stT: w.stT, frag: w.frag, zap: w.zap, zapD: w.zapD, heal: w.heal, ab: t && !t.U ? t : null };
+    const air = w.air !== 0 ? 1 : 0, base = { jsb: w.jsb, team, c: w.c || col, c2: w.c2, sz: w.sz, tr: w.tr, d: (w.d || 0) * dm, spl: w.spl && w.spl * dm, splR: w.splR, st: w.st, stT: w.stT, frag: w.frag, zap: w.zap, zapD: w.zapD, heal: w.heal, ab: this.aimB(t, tc) };
     switch (w.k) {
       case 'laser': case 'shrap': { const e = this.lineDmg(u.x, u.y, a, w.len, w.d * dm, team, { air: 1, ground: 1, pierce: w.k === 'laser' ? 6 : 0, fx: col, wide: w.wide ? 9 : 4 }); if (w.heal && team === PLAYER) this.healB((u.x + e.x) / 2, (u.y + e.y) / 2, w.len / 2, w.heal); return; }
       case 'sap': { const d = Math.hypot(tc.x - u.x, tc.y - u.y); if (t && t.U) { this.dmgU(t, w.d * dm); t.st.sap = 180; } else if (t) this.dmgB(t, w.d * dm, u); u.hp = Math.min(u.U.hp, u.hp + w.d * w.sap); this.fx.push({ k: 'laser', x: u.x, y: u.y, x2: u.x + Math.cos(a) * Math.min(d, w.len + 8), y2: u.y + Math.sin(a) * Math.min(d, w.len + 8), life: 10, max: 10, c: '#bf92f9', w: 2 }); return; }
@@ -1059,7 +1061,53 @@ export class World {
     if (U.rebuild && this.aiBuilder(u)) return;
     return this.aiDefend(u);
   }
+  /* ---------- útkeresés a saját egységeknek (Mindustry Pathfinder / ControlPathfinder mintájára) ----------
+     Célpontonként távolságmező (Dijkstra, 8 irány, saroklevágás nélkül, fal mellett drágább), az egységek a mező lejtőjén mennek.
+     Osztályok: földi (g), lebegő (h: vízen is), hajó (n: csak vízen); a nagy egységeknek szélesebb szabad hely kell.
+     A repülők és a lábas egységek egyenesen mennek, mint a Mindustryban. */
+  pathCls(u) { const U = u.U; if (U.air || U.legs || u.carrier) return null; const k = U.naval ? 'n' : U.hov ? 'h' : 'g'; return k + Math.min(2, Math.max(0, Math.ceil(U.r / TS - 1))); }
+  pathBase(k) {   // járható mezők + távolság a legközelebbi akadálytól (a méretes egységekhez)
+    const P = this.pathB || (this.pathB = {}); let o = P[k[0]]; if (o && o.v === this.ver) return o;
+    const w = this.w, h = this.h, N = w * h, ok = new Uint8Array(N), A = this.area;
+    for (let i = 0; i < N; i++) {
+      const x = i % w, y = (i / w) | 0; if (A && (x < A.x || y < A.y || x >= A.x + A.w || y >= A.y + A.h)) continue;
+      const b = this.bt[i]; if (b && isSolid(b) && !(b.open && b.team === PLAYER)) continue;
+      if (k[0] === 'n') { if (!this.wall[i] && this.fl(i).liq === 'water') ok[i] = 1; }
+      else if (k[0] === 'h') { if (!this.wall[i]) ok[i] = 1; }
+      else if (!this.sol[i]) ok[i] = 1;
+    }
+    const dt = new Uint8Array(N).fill(255), q = new Int32Array(N); let qh = 0, qt = 0;   // Csebisev-távolság az akadálytól (legfeljebb 3)
+    for (let i = 0; i < N; i++) if (!ok[i]) { dt[i] = 0; q[qt++] = i; }
+    while (qh < qt) { const i = q[qh++], x = i % w, y = (i / w) | 0, nd = dt[i] + 1; if (nd > 3) continue; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= w || Y >= h) continue; const j = Y * w + X; if (dt[j] > nd) { dt[j] = nd; q[qt++] = j; } } }
+    for (let x = 0; x < w; x++) { dt[x] = Math.min(dt[x], 1); dt[N - w + x] = Math.min(dt[N - w + x], 1); } for (let y = 0; y < h; y++) { dt[y * w] = Math.min(dt[y * w], 1); dt[y * w + w - 1] = Math.min(dt[y * w + w - 1], 1); }
+    o = P[k[0]] = { v: this.ver, ok, dt }; return o;
+  }
+  pathField(k, tx, ty) {
+    const C = this.pathC || (this.pathC = new Map()), key = k + ':' + tx + ',' + ty; let f = C.get(key);
+    if (f && (f.v === this.ver || this.tick - f.t < 45)) { f.used = this.tick; return f; }   // a pálya változása után legfeljebb 45 lépésig a régi mező is jó
+    if ((this.pathN = this.pathT === this.tick ? (this.pathN || 0) + 1 : 1) > 2) { this.pathT = this.tick; return f || null; } this.pathT = this.tick;   // lépésenként legfeljebb 2 új mező
+    const B = this.pathBase(k), w = this.w, h = this.h, N = w * h, need = +k[1] + 1, ok = i => B.ok[i] && B.dt[i] >= need;
+    const d = new Float32Array(N).fill(Infinity); if (!this.inb(tx, ty)) return null;
+    // Dijkstra kosaras sorral (egész költségek: egyenes 10, átló 14, fal mellett +6)
+    const cost = i => B.dt[i] <= need ? 16 : 10, bk = []; let cur = 0; const push = (i, c) => { (bk[c] || (bk[c] = [])).push(i); };
+    const s = ty * w + tx; d[s] = 0; push(s, 0); let left = 1;
+    while (left > 0) { const L = bk[cur]; if (!L || !L.length) { cur++; continue; } const i = L.pop(); left--; if (d[i] < cur) continue; const x = i % w, y = (i / w) | 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= w || Y >= h) continue; const j = Y * w + X; if (!ok(j)) continue;
+        if (dx && dy && (!ok(y * w + X) || !ok(Y * w + x))) continue; const c = cur + (dx && dy ? Math.round(cost(j) * 1.4) : cost(j)); if (c < d[j]) { d[j] = c; push(j, c); left++; } } }
+    f = { v: this.ver, t: this.tick, used: this.tick, d }; C.set(key, f);
+    if (C.size > 24) { let old = null; for (const [k2, v] of C) if (!old || v.used < old[1].used) old = [k2, v]; C.delete(old[0]); }
+    return f;
+  }
+  // a következő köztes pont a mezőn (néhány lépés előre, a simább mozgásért); null: nincs út, egyenesen megy
+  pathNext(u, tx, ty) {
+    const k = this.pathCls(u); if (!k) return null; const w = this.w, gx = Math.floor(tx / TS), gy = Math.floor(ty / TS), q = u.cmd && u.cmd.k === 'atk' && u.cmd.t && u.cmd.t.U ? 3 : 1;
+    const f = this.pathField(k, Math.floor(gx / q) * q + (q >> 1), Math.floor(gy / q) * q + (q >> 1)); if (!f) return null;
+    let x = Math.floor(u.x / TS), y = Math.floor(u.y / TS); if (!this.inb(x, y) || f.d[y * w + x] === Infinity) return null;
+    for (let s = 0; s < 3; s++) { let best = f.d[y * w + x], bx = x, by = y; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const X = x + dx, Y = y + dy; if (!this.inb(X, Y)) continue; const v = f.d[Y * w + X]; if (v < best && (!dx || !dy || (f.d[y * w + X] < Infinity && f.d[Y * w + x] < Infinity))) { best = v; bx = X; by = Y; } } if (bx === x && by === y) break; x = bx; y = by; }
+    return { x: (x + .5) * TS, y: (y + .5) * TS };
+  }
   steer(u, tx, ty, stop = 0) {
+    if (u.team === PLAYER && Math.hypot(tx - u.x, ty - u.y) > stop + TS) { const n = this.pathNext(u, tx, ty); if (n && Math.hypot(n.x - u.x, n.y - u.y) > 1) { tx = n.x; ty = n.y; stop = 0; } }   // a saját földi egységek kerülnek
     const d = Math.hypot(tx - u.x, ty - u.y), sp = u.U.sp * (u.spm || 1);
     if (d > stop) { const v = Math.min(sp, d - stop); u.vx += ((tx - u.x) / d * v - u.vx) * .2; u.vy += ((ty - u.y) / d * v - u.vy) * .2; }
     else { u.vx *= .8; u.vy *= .8; }
