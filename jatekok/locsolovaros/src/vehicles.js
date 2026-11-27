@@ -1,6 +1,6 @@
 // Járművek: adatok és procedurális modellek (orr: −Z, fel: +Y). Karosszéria héjból (keresztmetszet-kulcsok), külön fényezés/üveg/lámpa/kerék hálóval.
 import * as THREE from 'three';
-import { mergeGeometries } from '../lib/addons/utils/BufferGeometryUtils.js?v=202611271857';
+import { mergeGeometries } from '../lib/addons/utils/BufferGeometryUtils.js?v=202611271902';
 
 /* ---------- anyagok ---------- */
 const MC = new Map(); const nmat = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: .45, metalness: .1, ...o });

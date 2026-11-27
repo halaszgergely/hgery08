@@ -1,9 +1,9 @@
 // Kohóvár – kirajzolás. A blokkok, egységek, anyagok és a talaj képei a Mindustry (Anuke és közreműködők, GPLv3) sprite-jai,
 // a kepek/atlasz.png atlaszból; a lövedékek, hatások, köd és kisérkép kódból rajzoltak.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271857';
-import { FW } from './keret.js?v=202611271857';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271857';
-import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271857';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271902';
+import { FW } from './keret.js?v=202611271902';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271902';
+import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271902';
 
 const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555', 0: '#4d4e58' };
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -321,7 +321,23 @@ export function render(g, W, R) {
     if (b.beamT > 0 && b.bx != null) { const c = W.center(b); g.strokeStyle = '#ff9a5a'; g.lineWidth = 5 + Math.sin(t * .6); g.beginPath(); g.moveTo(c.x, c.y); g.lineTo(b.bx, b.by); g.stroke(); g.strokeStyle = '#fff3d0'; g.lineWidth = 2; g.stroke(); }
     if (b.B.type === 'repair' && b.tgt && !b.tgt.dead && b.ps > .1) { const c = W.center(b); g.strokeStyle = 'rgba(132,244,145,.8)'; g.lineWidth = 1; g.beginPath(); g.moveTo(c.x, c.y); g.lineTo(b.tgt.x, b.tgt.y); g.stroke(); }
   }
-  for (const b of W.blds) if (b.bml) for (const o of b.bml) { const a = W.center(b), c = W.center(o); if (Math.max(a.x, c.x) < vx0 || Math.min(a.x, c.x) > vx1 || Math.max(a.y, c.y) < vy0 || Math.min(a.y, c.y) > vy1) continue; g.strokeStyle = b.g && b.g.sat > .01 ? 'rgba(255,211,127,.7)' : 'rgba(150,150,150,.5)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(c.x, c.y); g.stroke(); }   // sugárcsomópontok (BeamNode)
+  // sugárcsomópontok (Mindustry BeamNode.draw): a sugár a csomópont szélétől a célépület elért csempéjének széléig tart, nem a közepéig;
+  // szín: fehér → #ffd9c2 az ellátottság hiányával, enyhe lüktetés; szomszédos célnál nincs sugár; két csomópont között csak egyszer
+  for (const b of W.blds) if (b.bmd && b.bmd.length && b.team !== 0 && !(W.fog && b.team !== PLAYER && !b.wv)) {
+    const s = b.B.s, ct = (s - 1) >> 1, cx = (b.x + ct + .5) * TS, cy = (b.y + ct + .5) * TS, sat = b.g ? b.g.sat : 0, k = Math.min(1, (1 - sat) * .86 + Math.abs(Math.sin(t / 3)) * .1);
+    const col = `rgb(255,${Math.round(255 - 38 * k)},${Math.round(255 - 61 * k)})`, w = (.4 + Math.abs(Math.sin(t / 7)) * .05) / .4;
+    for (const e of b.bmd) {
+      const o = e.o; if (o.dead) continue; const os = o.B.s;
+      if (o.bmd && o.B.beam && !(o.x !== b.x && o.y !== b.y) && !((o.i > b.i && b.B.range >= o.B.range) || b.B.range > o.B.range)) continue;
+      if (Math.max(Math.abs(e.x - (b.x + ct)), Math.abs(e.y - (b.y + ct))) <= 1 + (s >> 1)) continue;
+      const x1 = cx + DX[e.d] * TS / 2 * s, y1 = cy + DY[e.d] * TS / 2 * s, x2 = (e.x + .5) * TS - DX[e.d] * TS / 2, y2 = (e.y + .5) * TS - DY[e.d] * TS / 2;
+      if (Math.max(x1, x2) < vx0 || Math.min(x1, x2) > vx1 || Math.max(y1, y2) < vy0 || Math.min(y1, y2) > vy1) continue;
+      g.lineCap = 'round'; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2);
+      g.strokeStyle = 'rgba(70,62,52,.85)'; g.lineWidth = 3.2 * w; g.stroke();
+      g.strokeStyle = col; g.lineWidth = 2 * w; g.stroke();
+      g.lineCap = 'butt';
+    }
+  }
   for (const b of W.blds) if (b.links) for (const o of b.links) { const a = W.center(b), c = W.center(o); if (Math.max(a.x, c.x) < vx0 || Math.min(a.x, c.x) > vx1 || Math.max(a.y, c.y) < vy0 || Math.min(a.y, c.y) > vy1) continue; const on = b.g && b.g.sat > 0 && b.g.prod + b.g.stored > 0; g.strokeStyle = on ? 'rgba(251,211,103,.55)' : 'rgba(110,104,96,.5)'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(c.x, c.y); g.stroke(); g.strokeStyle = on ? 'rgba(255,255,255,.55)' : 'rgba(160,160,160,.3)'; g.lineWidth = .5; g.stroke(); }
   for (const b of vb) if (b.hp < b.B.hp) { const s = b.B.s * TS; g.fillStyle = '#2a0f0f'; g.fillRect(b.x * TS + 1, (b.y + b.B.s) * TS - 1.6, s - 2, 1.2); g.fillStyle = '#ff6b5a'; g.fillRect(b.x * TS + 1, (b.y + b.B.s) * TS - 1.6, (s - 2) * Math.max(0, b.hp / b.B.hp), 1.2); }
   for (const p of W.plans) {

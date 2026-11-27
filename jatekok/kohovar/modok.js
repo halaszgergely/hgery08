@@ -2,13 +2,13 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, ORE_P, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611271857';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271857';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271857';
-import { FL, FLI, WL } from './vilag.js?v=202611271857';
-import { runScripts, defJson, defKind, defClass, attachDef, scriptReport, initJsApi } from './jsapi.js?v=202611271857';
-import { parseHjson } from './hjson.js?v=202611271857';
-import { addSprite, spritesReady, has as AT_HAS, sprSize } from './rajz.js?v=202611271857';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, ORE_P, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611271902';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271902';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271902';
+import { FL, FLI, WL } from './vilag.js?v=202611271902';
+import { runScripts, defJson, defKind, defClass, attachDef, scriptReport, initJsApi } from './jsapi.js?v=202611271902';
+import { parseHjson } from './hjson.js?v=202611271902';
+import { addSprite, spritesReady, has as AT_HAS, sprSize } from './rajz.js?v=202611271902';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [], MOD_MAPS = [];   // MOD_MAPS: a mod szektor nélküli pályái (egyéni játék)   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }

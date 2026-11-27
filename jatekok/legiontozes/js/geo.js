@@ -4,7 +4,7 @@
    - Részletes domborzat: AWS Terrain Tiles (Terrarium PNG, kulcs nélkül), a gép körül dinamikusan, memóriás LRU-cache-sel.
    - Ha egy csempe nem tölthető be, az alap domborzat + determinisztikus zaj a tartalék.
    - A repülőterek környéke kisimítva (fix magasság), hogy a pálya sík legyen. */
-import { KX, KY, LON0, LAT0, REPTEREK, W_MAX, H_MAX } from './config.js?v=202611271857';
+import { KX, KY, LON0, LAT0, REPTEREK, W_MAX, H_MAX } from './config.js?v=202611271902';
 
 // saját domborzati csempék (tools/legi_dem.py, Viewfinder Panoramas 3") Magyarországra; azon kívül az AWS Terrain Tiles
 const TZ = 10, LOCAL = [557, 577, 352, 365], TILE_URL = (z, x, y) => x >= LOCAL[0] && x <= LOCAL[1] && y >= LOCAL[2] && y <= LOCAL[3] ? new URL(`../dem/${z}/${x}/${y}.png`, import.meta.url).href : `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
