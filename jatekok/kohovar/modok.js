@@ -2,11 +2,12 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270923';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270923';
-import { FL, FLI, WL } from './vilag.js?v=202611270923';
-import { parseHjson } from './hjson.js?v=202611270923';
-import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270923';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270936';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611270936';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270936';
+import { FL, FLI, WL } from './vilag.js?v=202611270936';
+import { parseHjson } from './hjson.js?v=202611270936';
+import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270936';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [];   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
@@ -264,6 +265,7 @@ export function installMod(files, srcLabel) {
     if (T === 'ShockMine') return { ...base, type: 'mine', d: +(j.damage || 25), cnt: +(j.tendrils || 4) };
     if (T === 'LightBlock') return { ...base, type: 'lamp', power: c.power };
     if (/Incinerator$/.test(T)) return { ...base, type: 'incinerator', power: c.power, free: c.power ? 0 : 1 };
+    { const ft = FW.match(T); if (ft) return { ...base, kat: cat || ft.kat || 'logic', power: c.power, ...(ft.convert ? ft.convert(j, { inL: c.inL, stacks, itemId, liqId, unitId }) : {}), type: ft.name }; }   // a modkeret fajtái
     return null;
   };
   const pendR = [];   // a kutatási csomópontok a blokkok után (a szülő később is jöhet)
@@ -359,8 +361,9 @@ export const builtinList = () => fetch('modok/lista.json?v=' + Date.now()).then(
 // a bekapcsolt modok betöltése a játék indulása előtt; hibás mod nem állítja meg a játékot
 export async function loadMods() {
   const pref = modPrefs(), errs = [];
+  await installFramework();
   let list = []; try { list = await builtinList(); } catch (_) {}
-  for (const m of list) { if (pref[m.file] === false || (pref[m.file] !== true && !m.on)) continue; try { const buf = await fetch('modok/' + m.file + (m.v ? '?v=' + m.v : '')).then(r => r.arrayBuffer()); installMod(await readZip(buf), m.file); } catch (e) { errs.push(m.file + ': ' + e.message); } }
+  for (const m of list) { if (pref[m.file] === false || (pref[m.file] !== true && !m.on)) continue; try { const A = m.addon ? await loadAddon(m.addon, m.v) : null; const buf = await fetch('modok/' + m.file + (m.v ? '?v=' + m.v : '')).then(r => r.arrayBuffer()); const md = installMod(await readZip(buf), m.file); if (A && A.patch && md) A.patch(FW, md); } catch (e) { errs.push(m.file + ': ' + e.message); } }
   let loc = []; try { loc = await localMods(); } catch (_) {}
   for (const name of loc) { if (pref['local:' + name] === false) continue; try { installMod(await readZip(await getLocal(name)), 'local:' + name); } catch (e) { errs.push(name + ': ' + e.message); } }
   await spritesReady(); return errs;
