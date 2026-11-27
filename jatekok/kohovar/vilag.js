@@ -1,8 +1,8 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611270939';
-import { FW } from './keret.js?v=202611270939';
-import { toWorld } from './msav.js?v=202611270939';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611270939';
+import { genMapSerpulo } from './terkep.js?v=202611270941';
+import { FW } from './keret.js?v=202611270941';
+import { toWorld } from './msav.js?v=202611270941';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611270941';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -281,6 +281,7 @@ export class World {
     }
     { const FT = FW.types[B.type]; if (FT && FT.init) { if (b.cfg && typeof b.cfg === 'object') b.cfg = structuredClone(b.cfg); FT.init(this, b); } }
     for (let yy = 0; yy < B.s; yy++) for (let xx = 0; xx < B.s; xx++) { const i = (y + yy) * this.w + x + xx; this.bt[i] = b; if (this.prop && this.prop[i]) { this.prop[i] = 0; this.propV = (this.propV || 0) + 1; } }
+    if (B.links) { b.xt = []; for (const [X, Y] of FW.extra(B, x, y, rot)) if (this.inb(X, Y) && !this.bt[Y * this.w + X]) { const i = Y * this.w + X; this.bt[i] = b; b.xt.push(i); } }   // a nem négyzetes blokk további mezői
     this.scan(b);
     this.blds.push(b); this.ver++; this.pdirty = 1; this.fdirty = 1;
     if (B.type === 'shield') this.shields.push(b);
@@ -310,6 +311,7 @@ export class World {
   remB(b, boom) {
     const B = b.B;
     for (let yy = 0; yy < B.s; yy++) for (let xx = 0; xx < B.s; xx++) { const i = (b.y + yy) * this.w + b.x + xx; if (this.bt[i] === b) this.bt[i] = null; }
+    for (const i of b.xt || []) if (this.bt[i] === b) this.bt[i] = null;
     const k = this.blds.indexOf(b); if (k >= 0) this.blds.splice(k, 1);
     for (const o of b.links || []) o.inl = o.inl.filter(z => z !== b);
     for (const o of b.inl) if (o.links) o.links = o.links.filter(z => z !== b);
@@ -342,8 +344,9 @@ export class World {
   }
   // Erekir: új mag csak magzónára tehető (Mindustry CoreBlock.requiresCoreZone)
   zoneOk(B, x, y) { if (!B.zone) return false; const z = FL.indexOf('core-zone'); for (let yy = 0; yy < B.s; yy++) for (let xx = 0; xx < B.s; xx++) { if (!this.inb(x + xx, y + yy)) return false; const i = (y + yy) * this.w + x + xx; if (this.floor[i] !== z || (this.bt[i] && this.bt[i].team === PLAYER)) return false; } return true; }
-  canPlace(t, x, y) {
+  canPlace(t, x, y, rot = 0) {
     const B = BLOCKS[t], s = B.s; if (!this.okTiles(B, x, y, true)) return false;
+    if (B.links) for (const [X, Y] of FW.extra(B, x, y, rot)) { if (!this.inb(X, Y)) return false; const i = Y * this.w + X; if (this.wall[i] || this.bt[i] || !this.seen[i] || (this.fl(i).deep && !B.float) || this.plans.some(p => !p.brk && X >= p.x && Y >= p.y && X < p.x + p.B.s && Y < p.y + p.B.s)) return false; }
     const any = fn => { for (let yy = 0; yy < s; yy++) for (let xx = 0; xx < s; xx++) if (fn((y + yy) * this.w + x + xx)) return true; return false; };
     if (B.type === 'drill') return any(i => this.mineItem(i, B.tier));
     if (B.attr && B.aMin) { let s2 = 0; for (let yy = 0; yy < s; yy++) for (let xx = 0; xx < s; xx++) s2 += this.fl((y + yy) * this.w + x + xx)[B.attr] || 0; return s2 >= B.aMin - .001; }
@@ -356,7 +359,7 @@ export class World {
     const B = BLOCKS[t]; if (B.type === 'core' && !this.zoneOk(B, x, y)) [x, y] = this.coreSpot(t);
     const o = this.tb(x, y);
     if (o && o.t === t && B.rot && B.type !== 'turret' && o.x === x && o.y === y) { if (o.rot !== rot) { o.rot = rot; this.ver++; this.pdirty = 1; if (B.type === 'beamdrill' || B.type === 'wcrafter') this.scan(o); } return true; }   // azonos blokk: csak elforgatja
-    if (!this.canPlace(t, x, y)) return false;
+    if (!this.canPlace(t, x, y, rot)) return false;
     this.plans.push({ t, B, x, y, rot, cfg: cfg ?? null, prog: 0, paid: {}, brk: false });
     return true;
   }
