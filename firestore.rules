@@ -515,7 +515,7 @@ service cloud.firestore {
     function roomOk(d) {
       return d.keys().hasOnly(['host', 'hostName', 'game', 'mode', 'map', 'max', 'open', 'state', 'members', 'vis', 'createdAt', 'updatedAt'])
         && d.host is string && d.hostName is string && d.hostName.size() <= 40
-        && d.game in ['vizagyuio', 'drift', 'locsolohaboru'] && d.mode is string && d.mode.size() <= 16 && d.map is string && d.map.size() <= 16
+        && d.game in ['vizagyuio', 'drift', 'locsolohaboru', 'kohovar'] && d.mode is string && d.mode.size() <= 16 && d.map is string && d.map.size() <= 16
         && d.max is int && d.max >= 2 && d.max <= 8 && d.open is bool && d.state in ['lobby', 'play']
         && d.members is list && d.members.size() >= 1 && d.members.size() <= d.max
         && d.vis is list && d.vis.size() <= 100 && d.updatedAt == request.time;

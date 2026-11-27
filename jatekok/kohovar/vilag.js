@@ -1,8 +1,8 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611271357';
-import { FW } from './keret.js?v=202611271357';
-import { toWorld } from './msav.js?v=202611271357';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271357';
+import { genMapSerpulo } from './terkep.js?v=202611271408';
+import { FW } from './keret.js?v=202611271408';
+import { toWorld } from './msav.js?v=202611271408';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271408';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -107,7 +107,7 @@ export function genMapOld(sec) {
 
 /* ---------- térképgenerátor: barlangtermek folyosókkal, több biom, ritka ércfoltok ---------- */
 // térképváltozatok: 1 = legelső, 2 = barlangos (2026-11-26), 3 = a Mindustry Serpulo-generátora szerint (a mentés gv mezője dönt)
-export const genFor = sec => sec.map ? toWorld(sec.map) : sec.gen === 1 ? genMapOld(sec) : sec.gen === 2 ? genMap(sec) : genMapSerpulo(sec, hstr, rng);
+export const genFor = sec => sec.__gen ? sec.__gen : sec.map ? toWorld(sec.map) : sec.gen === 1 ? genMapOld(sec) : sec.gen === 2 ? genMap(sec) : genMapSerpulo(sec, hstr, rng);
 export function genMap(sec) {
   const w = sec.w, h = sec.h, N = w * h, s = hstr(sec.id) % 100000, R = rng(hstr(sec.id) ^ 0x51ed270b), wq = sec.water || 1;
   const floor = new Uint8Array(N), ore = new Uint8Array(N), wall = new Uint8Array(N), open = new Uint8Array(N), keep = new Uint8Array(N);
@@ -252,10 +252,10 @@ export class World {
     for (let k = 0; k < s; k++) for (const [x, y] of [[b.x + s, b.y + k], [b.x + k, b.y + s], [b.x - 1, b.y + k], [b.x + k, b.y - 1]]) { const o = this.tb(x, y); if (o && o !== b) set.add(o); }
     b.nb = [...set]; b.nbv = this.ver; return b.nb;
   }
-  msg(t, c) { this.msgs.push({ t, c: c || '', life: 240 }); }
+  msg(t, c) { this.msgs.push({ t, c: c || '', life: 240 }); if (this.netMsgs) this.netMsgs.push([t, c || '']); }
   reveal(px, py, r) {
     if (!this.fog) return; const tx = Math.floor(px / TS), ty = Math.floor(py / TS), w = this.w, S = this.seen, r2 = r * r + r;
-    for (let y = Math.max(0, ty - r); y <= Math.min(this.h - 1, ty + r); y++) for (let x = Math.max(0, tx - r); x <= Math.min(w - 1, tx + r); x++) { const i = y * w + x; if (!S[i] && (x - tx) ** 2 + (y - ty) ** 2 <= r2) { S[i] = 1; this.seenNew.push(i); } }
+    for (let y = Math.max(0, ty - r); y <= Math.min(this.h - 1, ty + r); y++) for (let x = Math.max(0, tx - r); x <= Math.min(w - 1, tx + r); x++) { const i = y * w + x; if (!S[i] && (x - tx) ** 2 + (y - ty) ** 2 <= r2) { S[i] = 1; this.seenNew.push(i); if (this.netSeen) this.netSeen.push(i); } }
   }
   coreCap() { if (this.capV !== this.ver) { this.capV = this.ver; let c = this.core.B.cap; for (const o of this.blds) if (o.B.type === 'core' && o !== this.core && o.team === PLAYER) c += o.B.cap; for (const o of this.nbs(this.core)) if (o.B.type === 'storage' && !o.B.noMerge) { c += o.B.cap; for (const k in o.items) this.core.items[k] = (this.core.items[k] || 0) + o.items[k]; o.items = {}; } this.capN = c; } return this.capN; }
   linked(b) { return b.B.type === 'storage' && !b.B.noMerge && this.nbs(b).includes(this.core); }
@@ -289,6 +289,7 @@ export class World {
     if (team === PLAYER) { const c = this.center(b); this.reveal(c.x, c.y, Math.ceil(B.s / 2 + (B.type === 'turret' ? B.range / TS + 2 : B.type === 'core' ? 20 : 6))); }
     if (team === ENEMY) { this.eteam = 1; if (B.type === 'core') this.ecores = (this.ecores || 0) + 1; }
     if (B.js && FW.js) FW.js.placed(this, b);
+    if (this.netLog) this.netLog.push(['add', t, x, y, rot, team, cfg ?? null, Math.round(b.hp)]);   // többjátékos: a vendégeknek
     return b;
   }
   scan(b) {           // a blokk alatti talaj: érc, folyadék, hő / spóra / olaj
@@ -318,7 +319,7 @@ export class World {
     for (const o of b.links || []) o.inl = o.inl.filter(z => z !== b);
     for (const o of b.inl) if (o.links) o.links = o.links.filter(z => z !== b);
     if (B.type === 'shield') this.shields = this.shields.filter(z => z !== b);
-    b.dead = 1; this.ver++; this.pdirty = 1; this.fdirty = 1;
+    b.dead = 1; this.ver++; this.pdirty = 1; this.fdirty = 1; if (this.netLog) this.netLog.push(['rem', b.x, b.y, boom ? 1 : 0]);
     if (FW.js && boom) { if (B.js) FW.js.destroyed(this, b); FW.js.ev('BlockDestroyEvent', () => ({ tile: FW.js.tile(b.x, b.y) })); }
     if (b.team === ENEMY && B.type === 'core') this.ecores--;
     if (boom) { const c = this.center(b); this.boom(c.x, c.y, B.s * 7, '#ffb347'); this.fx.push({ k: 'rubble', x: b.x, y: b.y, s: B.s, life: 1800, max: 1800 }); if (b.team === PLAYER && B.type !== 'core' && !this.plan(b.t, b.x, b.y, b.rot, b.cfg) && this.rebuild.length < 400) this.rebuild.push([b.t, b.x, b.y, b.rot, b.cfg]); }   // a lerombolt épület tervként marad (Mindustry: „szellem” blokk)
@@ -388,7 +389,7 @@ export class World {
     if (p.brk) { if (!p.b.dead) { if (p.b.team === PLAYER) for (const k in p.B.cost) this.addCore(k, Math.floor(p.B.cost[k] * this.rm('buildCostMultiplier') * this.rm('deconstructRefundMultiplier', REFUND)), 1); this.remB(p.b); } return; }
     if (p.B.type === 'core' && this.zoneOk(p.B, p.x, p.y) && !(p.x <= this.core.x && p.y <= this.core.y && p.x + p.B.s >= this.core.x + this.core.B.s && p.y + p.B.s >= this.core.y + this.core.B.s)) { this.clearFor(p); this.addB(p.t, p.x, p.y, 0); this.capV = -1; return; }   // új mellékmag a magzónán
     if (p.B.type === 'core') {
-      const old = this.core, items = old.items; this.remB(old); const nb = this.addB(p.t, p.x, p.y, 0); nb.items = items; this.core = nb;
+      const old = this.core, items = old.items; this.remB(old); const nb = this.addB(p.t, p.x, p.y, 0); nb.items = items; this.core = nb; if (this.netLog) this.netLog.push(['core', nb.t, nb.x, nb.y]);
       const pl = this.player; if (pl && !pl.dead) { pl.t = nb.B.unit; pl.U = UNITS[pl.t]; pl.hp = pl.U.hp; pl.wc = pl.U.w.map(() => 0); } return;
     }
     this.clearFor(p); const b = this.addB(p.t, p.x, p.y, p.rot, p.cfg), pv = p.prev || [];
@@ -951,7 +952,7 @@ export class World {
 
   /* ----- egységek ----- */
   spawnU(t, team, x, y) {
-    const U = UNITS[t], u = { t, U, team, x, y, vx: 0, vy: 0, hp: U.hp, sh: 0, rot: 0, wc: U.w.map(() => 0), tgt: null, id: this.tick * 1000 + this.units.length, walk: 0, stack: null, mt: 0, st: {}, ffh: U.ab && U.ab.ff ? U.ab.ff[2] : 0, ffb: 0 };
+    const U = UNITS[t], u = { t, U, team, x, y, vx: 0, vy: 0, hp: U.hp, sh: 0, rot: 0, wc: U.w.map(() => 0), tgt: null, id: this.nid = (this.nid || 0) + 1, walk: 0, stack: null, mt: 0, st: {}, ffh: U.ab && U.ab.ff ? U.ab.ff[2] : 0, ffb: 0 };
     this.units.push(u); if (FW.js) FW.js.ev('UnitCreateEvent', () => ({ unit: FW.js.unit(u), spawner: null })); return u;
   }
   spawnPlayer() { const c = this.center(this.core); this.player = this.spawnU(this.core.B.unit, PLAYER, c.x, c.y); this.player.ctl = 1; }
@@ -1049,7 +1050,7 @@ export class World {
     }
     if (u.beam) { const bm = u.beam; if (u.aim != null) { const da = ((u.aim - bm.a + Math.PI * 3) % (Math.PI * 2)) - Math.PI; bm.a += Math.max(-.025, Math.min(.025, da)); } if (this.tick % 5 === 0) { const e = this.lineDmg(u.x, u.y, bm.a, bm.w.len, bm.w.d, u.team, { air: 1, ground: 1, pierce: 9, wide: 5 }); bm.x = e.x; bm.y = e.y; } if (--bm.t <= 0) u.beam = null; }
     if (this.fog && u.team === PLAYER && this.tick % 30 === u.id % 30) this.reveal(u.x, u.y, 9);
-    if (u === this.player) return this.updPlayer(u);
+    if (u === this.player || typeof u.ctl === 'object') return this.updPlayer(u);
     if (u.carrier) return;
     if (u.lc != null && u.lmove && this.tick - u.lc < 600) { this.steer(u, u.lmove.x, u.lmove.y, u.lmove.r || 2); return; }   // világprocesszor irányítja (Mindustry LogicAI, 10 mp után visszaáll)
     if (u.team === ENEMY) return U.air ? this.aiAir(u) : this.aiGround(u);
@@ -1171,7 +1172,7 @@ export class World {
   }
 
   updPlayer(p) {
-    const U = p.U, c = this.ctl, W0 = U.w[0];
+    const U = p.U, c = typeof p.ctl === 'object' ? p.ctl : this.ctl, W0 = U.w[0];   // a vendégek egységeit (többjátékos) a saját bemenetük irányítja
     const len = Math.hypot(c.ax, c.ay) || 1, ts = U.sp * Math.min(1, Math.hypot(c.ax, c.ay));
     p.vx += (c.ax / len * ts - p.vx) * .18; p.vy += (c.ay / len * ts - p.vy) * .18;
     this.moveU(p, p.vx, p.vy);

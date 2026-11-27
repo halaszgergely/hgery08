@@ -1,8 +1,8 @@
 // Kohóvár – a Serpulo-hadjárat: az eredeti szektorok (SectorPresets), a bolygórács (PlanetGrid) és a technológiafa (SerpuloTechTree).
 // Az adatok: palyak/serpulo.json (eszkoz/serpulo.py generálja) és palyak/serpulo/*.msav (az eredeti pályák).
-import { BLOCKS, UNITS, ITEMS, LIQUIDS, TECH, rcost, ucost } from './adat.js?v=202611271357';
-import { LSN, SECSPR } from './kepadat.js?v=202611271357';
-import { readMsav, blockOf, itemOf } from './msav.js?v=202611271357';
+import { BLOCKS, UNITS, ITEMS, LIQUIDS, TECH, rcost, ucost } from './adat.js?v=202611271408';
+import { LSN, SECSPR } from './kepadat.js?v=202611271408';
+import { readMsav, blockOf, itemOf } from './msav.js?v=202611271408';
 
 async function bytes(p) {
   const u = new URL(p, import.meta.url);

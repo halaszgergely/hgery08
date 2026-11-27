@@ -1,9 +1,9 @@
 // Kohóvár – kirajzolás. A blokkok, egységek, anyagok és a talaj képei a Mindustry (Anuke és közreműködők, GPLv3) sprite-jai,
 // a kepek/atlasz.png atlaszból; a lövedékek, hatások, köd és kisérkép kódból rajzoltak.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271357';
-import { FW } from './keret.js?v=202611271357';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271357';
-import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271357';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271408';
+import { FW } from './keret.js?v=202611271408';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271408';
+import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271408';
 
 const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555', 0: '#4d4e58' };
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -342,6 +342,7 @@ export function render(g, W, R) {
     if (u.beam && u.beam.x != null) { g.strokeStyle = u.team === ENEMY ? '#ff7a6a' : '#84f491'; g.lineWidth = 4; g.beginPath(); g.moveTo(u.x, u.y); g.lineTo(u.beam.x, u.beam.y); g.stroke(); g.strokeStyle = '#fff'; g.lineWidth = 1.4; g.stroke(); }
     if (u.mining && u.mine >= 0) { const mx = (u.mine % W.w + .5) * TS, my = (Math.floor(u.mine / W.w) + .5) * TS, it = W.mineItem(u.mine); g.strokeStyle = it ? ITEMS[it].c : '#fff'; g.globalAlpha = .6 + .3 * Math.sin(t * .3); g.lineWidth = .8; g.beginPath(); g.moveTo(u.x, u.y); g.lineTo(mx, my); g.stroke(); g.globalAlpha = 1; g.fillStyle = g.strokeStyle; g.fillRect(mx - 1, my - 1, 2, 2); }
     if (u.carryB && FW.drawCarry) FW.drawCarry(g, u);
+    if (u.pname) { g.font = '600 5px sans-serif'; g.textAlign = 'center'; g.fillStyle = 'rgba(0,0,0,.55)'; g.fillText(u.pname, u.x + .4, u.y - r - 3.6); g.fillStyle = '#ffd37f'; g.fillText(u.pname, u.x, u.y - r - 4); }   // többjátékos: a játékos neve
     if (u.stack) itemSq(g, u.stack.it, u.x - Math.cos(u.rot) * r * 1.3, u.y - Math.sin(u.rot) * r * 1.3, 4);
     if (u.building && !u.building.done) { const q = u.building, qx = (q.x + q.B.s / 2) * TS, qy = (q.y + q.B.s / 2) * TS, h = q.B.s * 4; g.fillStyle = q.brk ? 'rgba(255,90,77,.25)' : 'rgba(255,211,127,.25)'; g.beginPath(); g.moveTo(u.x, u.y); g.lineTo(qx - h, qy - h); g.lineTo(qx + h, qy + h); g.fill(); g.beginPath(); g.moveTo(u.x, u.y); g.lineTo(qx + h, qy - h); g.lineTo(qx - h, qy + h); g.fill(); }
   }
