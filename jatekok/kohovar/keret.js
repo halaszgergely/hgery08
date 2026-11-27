@@ -1,9 +1,9 @@
 // Kohóvár böngészős modkeret: bővítési pontok a motorhoz (új blokkfajták), a Mindustry-modok által
 // elvárt, de a Kohóvárból hiányzó rendszerek (logikai processzorok, memória, kijelző, kapcsoló, üzenet),
 // és a beépített modok saját kiegészítőinek betöltése. Mindig aktív.
-import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, CATS, rcost } from './adat.js?v=202611271030';
-import { SN, ISN } from './kepadat.js?v=202611271030';
-import { addSprite, drawUnit, spr } from './rajz.js?v=202611271030';
+import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, CATS, rcost } from './adat.js?v=202611271044';
+import { SN, ISN } from './kepadat.js?v=202611271044';
+import { addSprite, drawUnit, spr } from './rajz.js?v=202611271044';
 let Proc = null;   // a logika.js-ből, betöltéskor (körkörös importálás elkerülése)
 
 export const FW = {
@@ -213,7 +213,8 @@ FW.reg('lcanvas', {
   convert: j => ({ res: +(j.canvasSize || 12) * (+(j.size || 1)) }),
   init(W, b) { const n = b.B.res * b.B.res; if (!Array.isArray(b.cfg) || b.cfg.length !== n) b.cfg = new Array(n).fill(0); b.cv = null; },
   draw(g, b, d) {
-    const R = b.B.res; if (!b.cv || b.cvV !== b.cfg) { const c = document.createElement('canvas'); c.width = c.height = R; const x = c.getContext('2d'); for (let i = 0; i < R * R; i++) { x.fillStyle = CPAL[b.cfg[i]] || CPAL[0]; x.fillRect(i % R, i / R | 0, 1, 1); } b.cv = c; b.cvV = b.cfg; }
+    const R = b.B.res; if (!Array.isArray(b.cfg)) { if (d.has(d.n)) d.spr(g, d.n, d.cx, d.cy); else { g.fillStyle = CPAL[0]; g.fillRect(d.x, d.y, d.s, d.s); } return; }
+    if (!b.cv || b.cvV !== b.cfg) { const c = document.createElement('canvas'); c.width = c.height = R; const x = c.getContext('2d'); for (let i = 0; i < R * R; i++) { x.fillStyle = CPAL[b.cfg[i]] || CPAL[0]; x.fillRect(i % R, i / R | 0, 1, 1); } b.cv = c; b.cvV = b.cfg; }
     g.imageSmoothingEnabled = false; g.drawImage(b.cv, d.x, d.y, d.s, d.s);
   },
   sel: () => `<button class="np-button" data-fw="paint" style="width:100%">Festés</button>`,
@@ -431,7 +432,7 @@ let installed = false;
 export async function installFramework() {
   if (installed) return; installed = true;
   for (const [u, s] of [['mega', 2], ['quad', 3], ['oct', 5]]) if (UNITS[u]) UNITS[u].payS = s;   // rakományképesség (blokkméret)
-  ({ Proc } = await import('./logika.js?v=202611271030'));
+  ({ Proc } = await import('./logika.js?v=202611271044'));
   if (!CATS.some(c => c[0] === 'logic')) CATS.push(['logic', 'Logika', '▤']);
   BUILD_ORDER.logic = BUILD_ORDER.logic || [];
   const fix = c => Object.fromEntries(Object.entries(c).filter(([k]) => ITEMS[k]));
