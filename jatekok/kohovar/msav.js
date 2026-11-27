@@ -1,6 +1,6 @@
 // Kohóvár – a Mindustry .msav pályafájlok olvasója (az eredeti io/SaveVersion, MapIO formátum alapján).
 // A Mindustry y tengelye felfelé nő, a Kohóváré lefelé: a sorokat itt fordítjuk meg.
-import { parseHjson } from './hjson.js?v=202611271028';
+import { parseHjson } from './hjson.js?v=202611271030';
 
 async function inflate(buf) {
   const ds = new DecompressionStream('deflate'), s = new Blob([buf]).stream().pipeThrough(ds);
@@ -64,8 +64,8 @@ export async function readMsav(buf) {
 }
 
 /* ----- pálya → Kohóvár-világ ----- */
-import { FLOORS, WALLS, TREES, MFLOOR, MWALL, MPROP, ITEM_IDS, BLOCKS, MOD_ORE, MOD_DECO } from './adat.js?v=202611271028';
-import { SN, ISN } from './kepadat.js?v=202611271028';
+import { FLOORS, WALLS, TREES, MFLOOR, MWALL, MPROP, ITEM_IDS, BLOCKS, MOD_ORE, MOD_DECO } from './adat.js?v=202611271030';
+import { SN, ISN } from './kepadat.js?v=202611271030';
 const DECO = new Set(['pebbles', 'tendrils', 'rune-overlay', 'char-overlay']);
 let INV = null, INVN = 0;
 export function blockOf(mname) {
@@ -79,7 +79,7 @@ export const mtile = (m, x, y) => ({ x, y: m.h - 1 - y });
 export function toWorld(m) {
   const { w, h, names } = m, N = w * h, floor = new Uint16Array(N), ore = new Uint8Array(N), wall = new Uint16Array(N), prop = new Uint8Array(N), FLK = Object.keys(FLOORS), WLK = Object.keys(WALLS);
   const fi = n => { const k = FLOORS[n] ? n : MFLOOR[n]; const i = FLK.indexOf(k || 'stone'); return i < 0 ? 0 : i; };
-  const wi = n => { const k = WALLS[n] ? n : MWALL[n]; return k ? WLK.indexOf(k) + 1 : n.endsWith('-wall') || n.endsWith('-vent') ? WLK.indexOf('rock') + 1 : 0; };
+  const wi = n => { const k = WALLS[n] ? n : MWALL[n]; return k ? WLK.indexOf(k) + 1 : n.endsWith('-wall') || n.endsWith('-vent') || (/(shrubs?|tree|pine|cliffs?|rocks?|stone|spikes)$/.test(n) && !blockOf(n)) ? WLK.indexOf('rock') + 1 : 0; };   // az ismeretlen statikus fal is fal marad
   const fcache = {}, ocache = {}, wcache = {}, spawns = [], props = [], PN = [null];
   for (let my = 0; my < h; my++) for (let x = 0; x < w; x++) {
     const s = my * w + x, i = (h - 1 - my) * w + x;

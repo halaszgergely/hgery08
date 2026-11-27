@@ -1,9 +1,9 @@
 // Kohóvár böngészős modkeret: bővítési pontok a motorhoz (új blokkfajták), a Mindustry-modok által
 // elvárt, de a Kohóvárból hiányzó rendszerek (logikai processzorok, memória, kijelző, kapcsoló, üzenet),
 // és a beépített modok saját kiegészítőinek betöltése. Mindig aktív.
-import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, CATS, rcost } from './adat.js?v=202611271028';
-import { SN, ISN } from './kepadat.js?v=202611271028';
-import { addSprite, drawUnit, spr } from './rajz.js?v=202611271028';
+import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, BUILD_ORDER, TECH, CATS, rcost } from './adat.js?v=202611271030';
+import { SN, ISN } from './kepadat.js?v=202611271030';
+import { addSprite, drawUnit, spr } from './rajz.js?v=202611271030';
 let Proc = null;   // a logika.js-ből, betöltéskor (körkörös importálás elkerülése)
 
 export const FW = {
@@ -431,7 +431,7 @@ let installed = false;
 export async function installFramework() {
   if (installed) return; installed = true;
   for (const [u, s] of [['mega', 2], ['quad', 3], ['oct', 5]]) if (UNITS[u]) UNITS[u].payS = s;   // rakományképesség (blokkméret)
-  ({ Proc } = await import('./logika.js?v=202611271028'));
+  ({ Proc } = await import('./logika.js?v=202611271030'));
   if (!CATS.some(c => c[0] === 'logic')) CATS.push(['logic', 'Logika', '▤']);
   BUILD_ORDER.logic = BUILD_ORDER.logic || [];
   const fix = c => Object.fromEntries(Object.entries(c).filter(([k]) => ITEMS[k]));
