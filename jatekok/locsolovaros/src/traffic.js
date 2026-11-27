@@ -1,8 +1,8 @@
 // Forgalom: AI-sofőrök sávkövetéssel, lámpákkal, követési távolsággal; villamos a Fő utcán; általános „vezess oda” AI (üldözés, verseny).
 import * as THREE from 'three';
-import * as W from './world.js?v=202611271440';
-import { makeVehicle, stepVehicle } from './physics.js?v=202611271440';
-import { TRAFFIC_TYPES, VEH, mat } from './vehicles.js?v=202611271440';
+import * as W from './world.js?v=202611271510';
+import { makeVehicle, stepVehicle } from './physics.js?v=202611271510';
+import { TRAFFIC_TYPES, VEH, mat } from './vehicles.js?v=202611271510';
 
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 export function laneOff(hw) { return hw ? 5.5 : 3.5; }

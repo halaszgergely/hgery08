@@ -1,8 +1,8 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611271440';
-import { FW } from './keret.js?v=202611271440';
-import { toWorld } from './msav.js?v=202611271440';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271440';
+import { genMapSerpulo } from './terkep.js?v=202611271510';
+import { FW } from './keret.js?v=202611271510';
+import { toWorld } from './msav.js?v=202611271510';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271510';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -1224,6 +1224,17 @@ export class World {
     }
     if (pl.prog >= 1) { const k = this.plans.indexOf(pl); if (k >= 0) this.plans.splice(k, 1); this.finishPlan(pl); }
   }
+  // a saját egységek parancs nélkül is tüzelnek a hatótávon belüli legközelebbi ellenségre (egység, aztán épület);
+  // támadási parancsnál a parancsolt célpont az elsődleges, amíg az hatótávon kívül van, útközben a többire lőnek
+  autoFire(u) {
+    const U = u.U; if (!U.w.length || u.carrier) return; const R = U.wr || (U.wr = Math.max(...U.w.map(wr)));
+    const ct = u.cmd && u.cmd.k === 'atk' && !u.cmd.t.dead ? u.cmd.t : null;
+    if (ct) { const d = Math.hypot(ct.x - u.x, ct.y - u.y) - (ct.U ? ct.U.r : 0); if (d <= R) { u.aim = Math.atan2(ct.y - u.y, ct.x - u.x); this.attack(u, ct); return; } }
+    if (this.tick % 10 === u.id % 10 || (u.atg && u.atg.dead)) { const c = this.nearestU(u.x, u.y, R, ENEMY, 1, 1, true); u.atg = c || (b => b && this.bref(b))(this.nearestB(u.x, u.y, R, q => q.team === ENEMY && q.B.type !== 'mine', true)); }
+    const t = u.atg; if (!t || t.dead) return;
+    if (Math.hypot(t.x - u.x, t.y - u.y) - (t.U ? t.U.r : 0) > R) return;
+    u.aim = Math.atan2(t.y - u.y, t.x - u.x); this.attack(u, t);
+  }
   // parancsmód (Mindustry RTS): a kijelölt egységek odavonulnak / megtámadják a célt
   command(L, x, y, t) {
     this.rallied = 1; let n = 0; const tg = t ? (t.U ? t : this.bref(t)) : null;
@@ -1305,7 +1316,7 @@ export class World {
     if (FW.tick) FW.tick(this);
     if (FW.js) FW.js.tick(this);
     if (!this.player || this.player.dead) { if (this.respawn-- <= 0) this.spawnPlayer(); }
-    for (const u of this.units) if (!u.dead) { const ox = u.x, oy = u.y; this.updUnit(u); u.mvx = (u.mvx || 0) * .5 + (u.x - ox) * .5; u.mvy = (u.mvy || 0) * .5 + (u.y - oy) * .5;   // a tényleges sebesség (az előretartáshoz)
+    for (const u of this.units) if (!u.dead) { const ox = u.x, oy = u.y; this.updUnit(u); if (u.team === PLAYER && u !== this.player && typeof u.ctl !== 'object' && !u.dead) this.autoFire(u); u.mvx = (u.mvx || 0) * .5 + (u.x - ox) * .5; u.mvy = (u.mvy || 0) * .5 + (u.y - oy) * .5;   // a tényleges sebesség (az előretartáshoz)
  if (u.U.js && FW.js && !u.dead) FW.js.updUnit(this, u); }
     if (this.tick % 2 === 0) { const L = this.units; for (let a = 0; a < L.length; a++) { const u = L[a]; if (u.dead || u === this.player) continue; for (let b = a + 1; b < L.length; b++) { const v = L[b]; if (v.dead || v === this.player || !!u.U.air !== !!v.U.air) continue; const dx = v.x - u.x, dy = v.y - u.y, r = u.U.r + v.U.r, d2 = dx * dx + dy * dy; if (d2 < r * r && d2 > .01) { const d = Math.sqrt(d2), f = (r - d) / d * .25; this.moveU(u, -dx * f, -dy * f); this.moveU(v, dx * f, dy * f); } } } }
     this.units = this.units.filter(u => !u.dead || u === this.player);
