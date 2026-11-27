@@ -1,8 +1,8 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611271431';
-import { FW } from './keret.js?v=202611271431';
-import { toWorld } from './msav.js?v=202611271431';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271431';
+import { genMapSerpulo } from './terkep.js?v=202611271432';
+import { FW } from './keret.js?v=202611271432';
+import { toWorld } from './msav.js?v=202611271432';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271432';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -1226,7 +1226,7 @@ export class World {
   }
   // parancsmód (Mindustry RTS): a kijelölt egységek odavonulnak / megtámadják a célt
   command(L, x, y, t) {
-    let n = 0; const tg = t ? (t.U ? t : this.bref(t)) : null;
+    this.rallied = 1; let n = 0; const tg = t ? (t.U ? t : this.bref(t)) : null;
     for (const u of L) { if (!u || u.dead || u.team !== PLAYER || u === this.player || typeof u.ctl === 'object') continue;
       if (tg) { u.cmd = { k: 'atk', t: tg }; u.tgt = tg; u.home = { x: tg.x, y: tg.y }; }
       else { u.cmd = { k: 'move' }; u.tgt = null; u.home = { x: x + Math.cos(n * 2.4) * Math.sqrt(n) * (8 + u.U.r), y: y + Math.sin(n * 2.4) * Math.sqrt(n) * (8 + u.U.r) }; }
