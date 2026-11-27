@@ -1,20 +1,20 @@
 // HGWS Közösség – csatornák, privát üzenetek, csoportok, filmtár
 import { FB, auth, db, notConfigured, $, $$, esc, ROLES, roleOf, applyRoles, OWNER_UID, notify, audit, COLORS, avatar, toDate, timeLabel, shortTime, huDate, isOnline,
-  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason, signOutKeep } from './core.js?v=202611271013';
-import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611271013';
-import * as Admin from './admin.js?v=202611271013';
-import * as Browse from './browse.js?v=202611271013';
-import * as Notif from './notif.js?v=202611271013';
-import * as Profile from './profile.js?v=202611271013';
-import * as Party from './party.js?v=202611271013';
-import * as Premier from './premier.js?v=202611271013';
-import * as Ideas from './ideas.js?v=202611271013';
-import * as Player from './player.js?v=202611271013';
-import * as Cmdk from './cmdk.js?v=202611271013';
-import * as Stk from './stickers.js?v=202611271013';
-import * as Friends from './friends.js?v=202611271013';
-import * as Bo from './bo-ui.js?v=202611271013';
-import { bootOut, pageIn, I } from './fx.js?v=202611271013';
+  ytId, toast, errText, ensureProfile, blip, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, badReason, signOutKeep } from './core.js?v=202611271016';
+import { modal, confirmBox, popover, closePop, QUICK, stageHtml } from './ui.js?v=202611271016';
+import * as Admin from './admin.js?v=202611271016';
+import * as Browse from './browse.js?v=202611271016';
+import * as Notif from './notif.js?v=202611271016';
+import * as Profile from './profile.js?v=202611271016';
+import * as Party from './party.js?v=202611271016';
+import * as Premier from './premier.js?v=202611271016';
+import * as Ideas from './ideas.js?v=202611271016';
+import * as Player from './player.js?v=202611271016';
+import * as Cmdk from './cmdk.js?v=202611271016';
+import * as Stk from './stickers.js?v=202611271016';
+import * as Friends from './friends.js?v=202611271016';
+import * as Bo from './bo-ui.js?v=202611271016';
+import { bootOut, pageIn, I } from './fx.js?v=202611271016';
 
 const S = {
   premieres: {},
@@ -35,7 +35,10 @@ const isMod = () => can('moderate');
 const seeChan = c => !Array.isArray(c.roles) || !c.roles.length || isOwner() || ['owner', 'admin'].includes(roleKey(S.me)) || c.roles.includes(roleKey(S.me));
 const VID_VIEWS = new Set(['home', 'tar', 'lista', 'kereses', 'zene']);
 /* élő premierek állapota (vezérlő, szünet, vége) – a filmlista „hamarosan” jelzése ebből számolódik */
-function premieresSub() { FB.onSnapshot(FB.collection(db, 'premieres'), s => { const o = {}; s.docs.forEach(d => { o[d.id] = d.data(); }); S.premieres = o; if (S.videos.length && Premier.apply(S.videos)) videosChanged(); }, () => {}); }
+/* a premierek állapotát nem figyeljük élőben (a nézőszám-frissítések minden látogatónak olvasást jelentenének): betöltéskor és 3 percenként egyszer lekérjük; a premier oldala a saját dokumentumát figyeli */
+let premT = 0;
+function premieresSub() { if (premT) return; const load = () => FB.getDocs(FB.collection(db, 'premieres')).then(s => { const o = {}; s.docs.forEach(d => { o[d.id] = d.data(); }); S.premieres = { ...o, ...(S.route.view === 'premier' && S.premieres?.[S.route.id] ? { [S.route.id]: S.premieres[S.route.id] } : {}) }; if (S.videos.length && Premier.apply(S.videos)) videosChanged(); }).catch(() => {});
+  load(); premT = setInterval(() => { if (!document.hidden && S.videos.some(v => v.liveAt)) load(); }, 180e3); }
 function videosChanged() { soon('vid', () => { if (S.mode === 'browse' && (S.route.view === 'nez' ? !$('.watch') : VID_VIEWS.has(S.route.view))) route(true); if (!S.guest) { S.chat?.rerender(); Admin.refresh(); checkPremieres(); } }); }
 /* premier-értesítő: ha egy figyelt film megjelent, értesítést kap a tag (magának írja) */
 function checkPremieres() {
