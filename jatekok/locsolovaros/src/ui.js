@@ -1,9 +1,9 @@
 // Kezelőfelület: HUD (forgó minitérkép útvonallal, élet/páncél, pénz, csillagok), nagy térkép (zoom, útpont), telefon (küldetések, névjegyek, HGWS Banki App),
 // fegyverkerék, menük (főmenü HGWS STUDIOS intróval, szünet, beállítások, irányítás), átvezetők feliratai, értesítések.
-import * as W from './world.js?v=202611271237';
-import { WEAPONS } from './weapons.js?v=202611271237';
-import { MAIN } from './missions.js?v=202611271237';
-import { VEH } from './vehicles.js?v=202611271237';
+import * as W from './world.js?v=202611271253';
+import { WEAPONS } from './weapons.js?v=202611271253';
+import { MAIN } from './missions.js?v=202611271253';
+import { VEH } from './vehicles.js?v=202611271253';
 
 const $ = (h, p) => { const d = document.createElement('div'); d.innerHTML = h.trim(); const e = d.firstChild; p && p.appendChild(e); return e; };
 const fmt = n => Math.round(n).toLocaleString('hu') + ' Ft';

@@ -1,8 +1,8 @@
 // Kohóvár – a világ szimulációja: térképgenerálás, épületek, szállítás, folyadékok, áram, tornyok, egységek, hullámok, építés, felfedezés.
-import { genMapSerpulo } from './terkep.js?v=202611271237';
-import { FW } from './keret.js?v=202611271237';
-import { toWorld } from './msav.js?v=202611271237';
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271237';
+import { genMapSerpulo } from './terkep.js?v=202611271253';
+import { FW } from './keret.js?v=202611271253';
+import { toWorld } from './msav.js?v=202611271253';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, WALL_SAND, WALL_DROP, BIO, BLOCKS, UNITS, waveUnits } from './adat.js?v=202611271253';
 
 export const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -19,6 +19,7 @@ export const isPow = b => POW_T.has(b.B.type) || !!b.B.power;
 const pureCons = b => b.B.power && b.B.type !== 'generator' && b.B.type !== 'battery';
 const wireless = b => b.B.type === 'node' || b.B.type === 'diode';
 export function buildTime(B) { let c = 20; for (const k in B.cost) c += B.cost[k] * ITEMS[k].cost; return c; }
+const NOLEAD = new Set(['laser', 'shrap', 'sap', 'arc', 'beam', 'field', 'bomb', 'boom', 'rail']);
 const wr = w => w.len || (w.k === 'bomb' ? 8 : w.sp * w.life);
 // származtatott értékek (a modok betöltése után újra lefut)
 export function prepContent() {
@@ -877,8 +878,8 @@ export class World {
       b.heat = 1; if (b.beamT <= 0) b.rl = B.reload; return;
     }
     if (!u) { b.chg = 0; b.beam = null; return; }
-    const lead = st && st.sp && st.k !== 'art' ? Math.hypot(u.x - c.x, u.y - c.y) / st.sp : 0, tx = u.x + u.vx * lead * .8, ty = u.y + u.vy * lead * .8;
-    const ta = Math.atan2(ty - c.y, tx - c.x), da = ((ta - b.ang + Math.PI * 3) % (Math.PI * 2)) - Math.PI, rs = .14 * ts / Math.sqrt(B.s);
+    const P = st && st.sp && st.k !== 'shrap' && st.k !== 'rail' ? this.intercept(c.x, c.y, u, st.sp, st.k === 'art' ? 0 : B.s * 4 + 3) : u; b.aimX = P.x; b.aimY = P.y;   // előretartás (Mindustry Predict.intercept)
+    const ta = Math.atan2(P.y - c.y, P.x - c.x), da = ((ta - b.ang + Math.PI * 3) % (Math.PI * 2)) - Math.PI, rs = (B.rspd || .14 / Math.sqrt(B.s)) * ts;
     b.ang += Math.max(-rs, Math.min(rs, da));
     if (Math.abs(da) > .3) return;
     if (B.tractor && u.bl) return;
@@ -914,7 +915,7 @@ export class World {
       case 'shrap': { const n = B.spread || 1; for (let k = 0; k < n; k++) this.lineDmg(c.x, c.y, b.ang + (k - (n - 1) / 2) * .35, st.len, st.d, b.team, { air: 1, ground: 1, fx: col, wide: 5 }); return; }
       case 'rail': { this.lineDmg(c.x, c.y, b.ang, range, st.d, b.team, { air: 1, ground: 1, rail: 1, fx: '#f3e979', wide: 5 }); return; }
       case 'art': {
-        const sc = B.scat || 0, tx = (u ? u.x + u.vx * 24 : x) + (Math.random() - .5) * sc * 2, ty = (u ? u.y + u.vy * 24 : y) + (Math.random() - .5) * sc * 2, d = Math.hypot(tx - x, ty - y) || 1;
+        const sc = B.scat || 0, tx = (u ? b.aimX ?? u.x : x) + (Math.random() - .5) * sc * 2, ty = (u ? b.aimY ?? u.y : y) + (Math.random() - .5) * sc * 2, d = Math.hypot(tx - x, ty - y) || 1;
         this.bullets.push({ ...base, k: 'art', x, y, sx: x, sy: y, tx, ty, vx: (tx - x) / d * st.sp, vy: (ty - y) / d * st.sp, life: d / st.sp, ground: 1, hom: st.hom ? u : null, hp: st.hom }); return;
       }
       case 'flame': { for (let k = 0; k < 2; k++) { const a = b.ang + (Math.random() - .5) * .25; this.bullets.push({ ...base, k: 'flame', x, y, vx: Math.cos(a) * st.sp, vy: Math.sin(a) * st.sp, life: range / st.sp, d: st.d / 2, air: 0, ground: 1, pierce: 99 }); } return; }
@@ -993,6 +994,13 @@ export class World {
     for (const u of this.units) { if (u.team !== team || u.dead) continue; if (u.U.air ? !air : !ground) continue; const d = Math.hypot(u.x - x, u.y - y) - u.U.r; if (d < bd && (!los || this.losT(x, y, u.x, u.y))) { bd = d; best = u; } }
     return best;
   }
+  // hová lőjön, hogy a mozgó célt eltalálja: a lövedék (sebesség sp, a csőtorkolattól off távolságra indul) és a cél pályájának metszéspontja
+  intercept(sx, sy, t, sp, off = 0) {
+    const vx = t.mvx || 0, vy = t.mvy || 0; if (!t.U || !sp || (Math.abs(vx) < .01 && Math.abs(vy) < .01)) return t;
+    const dx = t.x - sx, dy = t.y - sy, a = vx * vx + vy * vy - sp * sp, bb = 2 * (dx * vx + dy * vy - off * sp), cc = dx * dx + dy * dy - off * off;
+    let tt; if (Math.abs(a) < 1e-6) tt = -cc / bb; else { const disc = bb * bb - 4 * a * cc; if (disc < 0) return t; const r = Math.sqrt(disc), t1 = (-bb - r) / (2 * a), t2 = (-bb + r) / (2 * a); tt = Math.min(t1, t2) > 0 ? Math.min(t1, t2) : Math.max(t1, t2); }
+    if (!(tt > 0) || tt > 600) return t; return { x: t.x + vx * tt, y: t.y + vy * tt };
+  }
   free(x, y, team) { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (!this.inb(tx, ty) || !this.inA(tx, ty)) return false; const i = ty * this.w + tx; if (this.sol[i]) return false; const b = this.bt[i]; return !b || !isSolid(b) || (b.open && team === PLAYER); }
   moveU(u, dx, dy) {
     const nx = u.x + dx, ny = u.y + dy, A = this.area, x0 = A ? A.x * TS : 0, y0 = A ? A.y * TS : 0, x1 = A ? (A.x + A.w) * TS : this.w * TS, y1 = A ? (A.y + A.h) * TS : this.h * TS;
@@ -1026,7 +1034,7 @@ export class World {
   // a hatótávon belüli célra minden kész fegyverrel tüzel
   attack(u, t) {
     const tc = t.U ? t : this.center(t), d = Math.hypot(tc.x - u.x, tc.y - u.y) - (t.U ? t.U.r : t.B.s * 4), W = u.U.w; let shot = false;
-    for (let i = 0; i < W.length; i++) { const w = W[i]; if (u.wc[i] > 0 || (t.U && t.U.air && w.air === 0) || d > wr(w)) continue; this.fireW(u, w, tc, t); u.wc[i] = w.rl; shot = true; if (u.dead) break; }
+    for (let i = 0; i < W.length; i++) { const w = W[i]; if (u.wc[i] > 0 || (t.U && t.U.air && w.air === 0) || d > wr(w)) continue; this.fireW(u, w, t.U && w.sp && !NOLEAD.has(w.k) ? this.intercept(u.x, u.y, t, w.sp, u.U.r) : tc, t); u.wc[i] = w.rl; shot = true; if (u.dead) break; }
     return shot;
   }
   updUnit(u) {
@@ -1285,7 +1293,8 @@ export class World {
     if (FW.tick) FW.tick(this);
     if (FW.js) FW.js.tick(this);
     if (!this.player || this.player.dead) { if (this.respawn-- <= 0) this.spawnPlayer(); }
-    for (const u of this.units) if (!u.dead) { this.updUnit(u); if (u.U.js && FW.js && !u.dead) FW.js.updUnit(this, u); }
+    for (const u of this.units) if (!u.dead) { const ox = u.x, oy = u.y; this.updUnit(u); u.mvx = (u.mvx || 0) * .5 + (u.x - ox) * .5; u.mvy = (u.mvy || 0) * .5 + (u.y - oy) * .5;   // a tényleges sebesség (az előretartáshoz)
+ if (u.U.js && FW.js && !u.dead) FW.js.updUnit(this, u); }
     if (this.tick % 2 === 0) { const L = this.units; for (let a = 0; a < L.length; a++) { const u = L[a]; if (u.dead || u === this.player) continue; for (let b = a + 1; b < L.length; b++) { const v = L[b]; if (v.dead || v === this.player || !!u.U.air !== !!v.U.air) continue; const dx = v.x - u.x, dy = v.y - u.y, r = u.U.r + v.U.r, d2 = dx * dx + dy * dy; if (d2 < r * r && d2 > .01) { const d = Math.sqrt(d2), f = (r - d) / d * .25; this.moveU(u, -dx * f, -dy * f); this.moveU(v, dx * f, dy * f); } } } }
     this.units = this.units.filter(u => !u.dead || u === this.player);
     this.updBullets();
