@@ -2,13 +2,13 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611270914';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611270914';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611270914';
-import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611270914';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611270914';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611270914';
-import { Story } from './logika.js?v=202611270914';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611270923';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611270923';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611270923';
+import { MODS, MOD_SECTORS, MOD_PLANETS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611270923';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611270923';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611270923';
+import { Story } from './logika.js?v=202611270923';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -216,7 +216,7 @@ function drawTech(center) {
   for (const t of TL) {
     const p = pos[t.id], d = nDone(t), o = nOpen(t); if (!p) continue;
     if (t.req) { const q = pos[t.req], my = (q.py + p.py) / 2 + 28; svg += `<path d="M${q.px + 28} ${q.py + 28}V${my}H${p.px + 28}V${p.py + 28}" fill="none" stroke="${d ? '#ffd37f' : o ? '#6e7080' : '#454545'}" stroke-width="4"/>`; }
-    html += `<div class="tn np-button ${d ? 'done' : o ? 'av' : 'lock'}${nCan(t, av) ? ' can' : ''}${tsel === t.id ? ' sel' : ''}" data-t="${t.id}" style="left:${p.px}px;top:${p.py}px"><img src="${nodeIcon(t)}"></div>`;
+    html += `<div class="tn np-button ${d ? 'done' : o ? 'av' : 'lock'}${nCan(t, av) ? ' can' : ''}${tsel === t.id ? ' sel' : ''}" data-t="${t.id}" style="left:${p.px}px;top:${p.py}px"><img src="${nodeIcon(t)}">${(t.k === 'b' ? BLOCKS[t.key] : t.k === 'u' ? UNITS[t.key] : null)?.part ? ic('warning', 'xs pw') : ''}</div>`;
   }
   const tr = $('#tree'), ti = $('#treeIn'), sl = tr.scrollLeft, st = tr.scrollTop; ti.style.zoom = tzoom; ti.style.width = w + 'px'; ti.style.height = h + 'px'; ti.innerHTML = svg + '</svg>' + html;
   if (center) { tr.scrollLeft = (pos[root].px + 28) * tzoom - tr.clientWidth / 2; tr.scrollTop = (pos[root].py + 28) * tzoom - tr.clientHeight / 2; } else { tr.scrollLeft = sl; tr.scrollTop = st; }
@@ -262,7 +262,7 @@ function showContent(k, key) {
   $('#cinfo').innerHTML = `<div class="hd"><img src="${icon}"><div class="nm">${esc(name)}</div></div>${h}`; showDlg('#dInfo');
 }
 function ustats(U) {
-  const o = [`Életerő: <b>${U.hp}</b>`, `Páncél: <b>${U.armor}</b>`, `Sebesség: <b>${(U.sp * 60 / TS).toFixed(1)} mező/mp</b>`, `Fajta: <b>${U.air ? 'légi' : U.naval ? 'vízi' : U.legs ? 'lábas' : 'földi'}</b>`];
+  const o = [...(U.part ? [`<span class="bad">${ic('warning', 'xs')} Nem működik teljesen: ${esc(U.part)}</span>`] : []), `Életerő: <b>${U.hp}</b>`, `Páncél: <b>${U.armor}</b>`, `Sebesség: <b>${(U.sp * 60 / TS).toFixed(1)} mező/mp</b>`, `Fajta: <b>${U.air ? 'légi' : U.naval ? 'vízi' : U.legs ? 'lábas' : 'földi'}</b>`];
   if (U.rng) o.push(`Hatótáv: <b>${(U.rng / TS).toFixed(1)} mező</b>`); if (U.build) o.push(`Építési sebesség: <b>${Math.round(U.build * 100)}%</b>`); if (U.mine) o.push(`Bányászat: <b>${U.mineT}. szint</b>`); if (U.ab) o.push('Képesség: <b>' + Object.keys(U.ab).map(k => ({ regen: 'pajzsot oszt', ff: 'erőtér', rep: 'javítómező' }[k])).join(', ') + '</b>');
   return o.map(s => `<div class="st">${s}</div>`).join('');
 }
@@ -393,7 +393,7 @@ const CATICON = { turret: 'turret', prod: 'production', dist: 'distribution', li
 function buildPalette() {
   if (!BUILD_ORDER[cat].some(done)) { const c0 = CATS.find(c => BUILD_ORDER[c[0]].some(done)); if (c0) cat = c0[0]; }
   $('#cats').innerHTML = CATS.map(([id, n]) => BUILD_ORDER[id].some(done) ? `<button data-c="${id}" class="${id === cat ? 'on' : ''}" title="${esc(n)}">${ic(CATICON[id] || 'box')}</button>` : '').join('');
-  $('#blks').innerHTML = BUILD_ORDER[cat].filter(done).map(t => `<div class="bk ${t === selBlock ? 'on' : ''} ${W && !W.has(BLOCKS[t].cost) ? 'no' : ''}" data-b="${t}" title="${esc(BLOCKS[t].n)}"><img src="${blockIcon(t)}"></div>`).join('');
+  $('#blks').innerHTML = BUILD_ORDER[cat].filter(done).map(t => `<div class="bk ${t === selBlock ? 'on' : ''} ${W && !W.has(BLOCKS[t].cost) ? 'no' : ''}" data-b="${t}" title="${esc(BLOCKS[t].n)}"><img src="${blockIcon(t)}">${BLOCKS[t].part ? ic('warning', 'xs pw') : ''}</div>`).join('');
 }
 $('#cats').onclick = e => { const b = e.target.closest('button'); if (!b) return; cat = b.dataset.c; buildPalette(); };
 $('#blks').onclick = e => { const b = e.target.closest('.bk'); if (!b) return; selBlock = selBlock === b.dataset.b ? null : b.dataset.b; selB = null; $('#sel').hidden = true; buildPalette(); showInfo(selBlock); };
@@ -403,6 +403,7 @@ $('#binfo').onclick = e => { if (e.target.closest('.q')) { const t = hoverBlock 
 const ps = v => (v * 60).toFixed(v * 60 < 10 ? 1 : 0) + '/mp';
 function stats(B, full) {
   const o = [], til = v => (v / TS).toFixed(1) + ' mező';
+  if (B.part) o.push(`<span class="bad">${ic('warning', 'xs')} Nem működik teljesen: ${esc(B.part)}</span>`);
   switch (B.type) {
     case 'turret': {
       o.push(`Hatótáv: <b>${til(B.range)}</b>`, `Célpontok: <b>${B.ground ? 'földi' : ''}${B.ground && B.air ? ', ' : ''}${B.air ? 'légi' : ''}</b>`);

@@ -2,11 +2,11 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270914';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270914';
-import { FL, FLI, WL } from './vilag.js?v=202611270914';
-import { parseHjson } from './hjson.js?v=202611270914';
-import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270914';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270923';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270923';
+import { FL, FLI, WL } from './vilag.js?v=202611270923';
+import { parseHjson } from './hjson.js?v=202611270923';
+import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270923';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [];   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
@@ -309,6 +309,10 @@ export function installMod(files, srcLabel) {
     if (B.type === 'factory') { if (!B.plans.includes(k)) B.plans.push(k); B.pcost = B.pcost || {}; B.pcost[k] = { cost: stacks(r.requirements), time: +(r.time || 1800) / 60 }; }
     else if (B.type === 'recon' && r.previous) { const pv = unitId(r.previous); if (pv) B.up[pv] = k; } }
   for (const a of pendR) researchNode(...a);
+  // a nem teljesen működő tartalom megjelölése (a figyelmeztetésekből és az átalakító _partial mezőjéből)
+  const mark = (nm, why) => { const k = BLOCKS[pre(nm)] ? pre(nm) : bo[nm] && BLOCKS[bo[nm]] && BLOCKS[bo[nm]].mod === id ? bo[nm] : null; const o = k ? BLOCKS[k] : UNITS[pre(nm)]; if (o) o.part = o.part ? o.part + '; ' + why : why; };
+  for (const w of warn) { const m = w.match(/^([^:\s]+): (.+)$/); if (m) mark(m[1], m[2]); }
+  for (const [n, j] of [...(content.blocks || []), ...(content.units || [])]) if (j._partial) mark(n, j._partial);
   // a felülírt eredeti sprite-ok (sprites-override)
   for (const [p, d] of files) { const m = p.match(/^sprites-override\/(?:.*\/)?([^/]+)\.png$/); if (m) { addSprite(m[1], d); if (AT_HAS(m[1] + '@o')) addSprite(m[1] + '@o', d); mod.added.overrides++; } }
   const nScripts = [...files.keys()].filter(p => /^scripts\/.*\.js$/.test(p)).length; if (nScripts) warn.push(`${nScripts} JavaScript-fájl: a szkriptek nem futnak`);
