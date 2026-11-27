@@ -3,10 +3,10 @@
 // objektumaira képezzük le. Ami nincs meg, az nem állítja meg a szkriptet: üres helyettesítőt kap, és a mod adatlapján
 // „hiányzó hívásként” jelenik meg. Mindig aktív; a beépített modok szkriptjei futnak, a játékos saját modjaié csak,
 // ha a modlistában engedélyezi (a szkript a lappal azonos jogokkal fut).
-import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, STATUS } from './adat.js?v=202611271126';
-import { SN, ISN, LSN } from './kepadat.js?v=202611271126';
-import { spr, has, addSprite, sprT } from './rajz.js?v=202611271126';
-import { FW } from './keret.js?v=202611271126';
+import { TS, ITEMS, LIQUIDS, BLOCKS, UNITS, STATUS } from './adat.js?v=202611271151';
+import { SN, ISN, LSN } from './kepadat.js?v=202611271151';
+import { spr, has, addSprite, sprT } from './rajz.js?v=202611271151';
+import { FW } from './keret.js?v=202611271151';
 
 export const JS = {
   name: 'Kohóvár JS API', version: '1.0',
@@ -14,6 +14,9 @@ export const JS = {
   mods: [],              // { id, miss: Set, err: [] }
 };
 const PI = Math.PI, D2R = PI / 180, R2D = 180 / PI;
+// a szkriptek a valódi JavaScript-beépítetteket kapják (a többi nagybetűs név Mindustry-osztály)
+const JSB = new Set(['Math', 'Object', 'JSON', 'String', 'Array', 'Number', 'Boolean', 'Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError', 'Date', 'Map', 'Set', 'WeakMap', 'WeakSet', 'Promise', 'RegExp', 'Symbol', 'Reflect', 'Proxy', 'Intl', 'BigInt', 'Infinity', 'NaN', 'ArrayBuffer', 'Uint8Array', 'Int8Array', 'Uint16Array', 'Int16Array', 'Uint32Array', 'Int32Array', 'Float32Array', 'Float64Array', 'DataView', 'Function', 'undefined', 'parseInt', 'parseFloat', 'isNaN', 'isFinite', 'encodeURIComponent', 'decodeURIComponent', 'globalThis', 'console']);
+const GLOBAL = {};   // a Mindustry szkriptjeinek közös „global” objektuma
 let CUR = null;          // az éppen futó mod
 let CW = null;           // az aktuális világ
 let G2 = null;           // az aktuális rajzfelület
@@ -62,6 +65,9 @@ class Seq {
 }
 const call = (f, ...a) => typeof f === 'function' ? f(...a) : f && typeof f.get === 'function' ? f.get(...a) : f && typeof f.run === 'function' ? f.run(...a) : undefined;
 
+// Java-gyűjtemények (arc.struct): Map / Set alapú megfelelők
+class JMap { constructor() { this.m = new Map(); } static of(...a) { const o = new JMap(); for (let i = 0; i + 1 < a.length; i += 2) o.put(a[i], a[i + 1]); return o; } put(k, v) { this.m.set(k, v); return this; } get(k, d) { return this.m.has(k) ? this.m.get(k) : (typeof d === 'function' ? (this.m.set(k, d()), this.m.get(k)) : d ?? null); } containsKey(k) { return this.m.has(k); } remove(k) { const v = this.m.get(k); this.m.delete(k); return v; } get size() { return this.m.size; } keys() { return new Seq([...this.m.keys()]); } values() { return new Seq([...this.m.values()]); } each(f) { for (const [k, v] of this.m) call(f, k, v); } clear() { this.m.clear(); } isEmpty() { return !this.m.size; } entries() { return [...this.m].map(([key, value]) => ({ key, value })); } [Symbol.iterator]() { return this.entries()[Symbol.iterator](); } }
+class JSet { constructor(a) { this.s = new Set(a || []); } static with(...a) { return new JSet(a); } addAll(...a) { for (const x of a) for (const v of (x instanceof Seq || x instanceof JSet || Array.isArray(x) ? x : [x])) this.s.add(v); return this; } add(v) { const h = this.s.has(v); this.s.add(v); return !h; } contains(v) { return this.s.has(v); } remove(v) { return this.s.delete(v); } get size() { return this.s.size; } each(f) { for (const v of this.s) call(f, v); } clear() { this.s.clear(); } isEmpty() { return !this.s.size; } toSeq() { return new Seq([...this.s]); } [Symbol.iterator]() { return this.s[Symbol.iterator](); } }
 /* ---------- színek ---------- */
 let PAL = {};
 class Col {
@@ -84,7 +90,7 @@ class Col {
   rgba() { return parseInt(this.toString(), 16); } rgba8888() { return this.rgba(); }
 }
 const NAMED = { white: 'ffffff', black: '000000', clear: '00000000', red: 'ff0000', green: '00ff00', blue: '0000ff', yellow: 'ffff00', orange: 'ffa500', gray: '7f7f7f', grey: '7f7f7f', lightGray: 'bfbfbf', darkGray: '3f3f3f', scarlet: 'ff341c', crimson: 'dc143c', purple: 'a020f0', violet: 'ee82ee', magenta: 'ff00ff', pink: 'ff69b4', cyan: '00ffff', sky: '87ceeb', royal: '4169e1', navy: '000080', slate: '708090', teal: '007f7f', lime: '32cd32', forest: '228b22', olive: '6b8e23', gold: 'ffd700', goldenrod: 'daa520', coral: 'ff7f50', salmon: 'fa8072', tan: 'd2b48c', brown: '8b4513', brick: 'b22222', maroon: 'b03060', acid: '7fff00', chartreuse: '7fff00' };
-const ColorNs = new Proxy(Col, { get(t, p) { if (p in t) return t[p]; if (typeof p === 'string' && NAMED[p]) return Col.hex(NAMED[p]); return undefined; } });
+const ColorNs = new Proxy(Col, { apply: (t, s, a) => new Col(...a), get(t, p) { if (p in t) return t[p]; if (typeof p === 'string' && NAMED[p]) return Col.hex(NAMED[p]); return undefined; } });
 const PalNs = new Proxy({}, { get: (t, p) => typeof p === 'string' && PAL[p] ? Col.hex(PAL[p]) : typeof p === 'string' ? Col.hex('ffd37f') : undefined });
 const toCol = c => c instanceof Col ? c : typeof c === 'string' ? Col.hex(c) : typeof c === 'number' ? Col.hex((c >>> 0).toString(16).padStart(8, '0')) : null;
 
@@ -96,6 +102,8 @@ function buildIndex() {
   for (const k in BLOCKS) { RB[SN[k] || k] = k; RB[k] = RB[k] || k; }
   for (const k in UNITS) RU[k] = k;
 }
+// meglévő (alap) tartalom módosítása a szkriptből: nem támogatott, hiányként jelezzük
+const MODM = nm => Object.fromEntries(['consumeLiquid', 'consumeLiquids', 'consumePower', 'consumeItem', 'consumeItems', 'consume', 'ammo', 'removeConsumer', 'removeConsumers', 'addUpgrade', 'requirements', 'init', 'load', 'setStats', 'setBars', 'addBar', 'removeBar'].map(m => [m, () => (...a) => { if (!/^(init|load|setStats|setBars)$/.test(m)) miss(`${nm()}.${m}()`); return { boost() { return this; }, optional() { return this; }, update() { return this; } }; }]));
 const FAC = new Map(), PRIO = new Set(['name', 'consumes', 'size', 'health', 'liquidCapacity', 'itemCapacity', 'localizedName', 'id', 'hitSize', 'speed']);
 const itemF = k => { if (!k || !ITEMS[k]) return null; const key = 'i:' + k; if (!FAC.has(key)) { const I = ITEMS[k]; FAC.set(key, { __kind: 'item', key: k, name: ISN[k] || k, localizedName: I.n, color: Col.hex(String(I.c || '#fff').slice(1)), id: Object.keys(ITEMS).indexOf(k), hardness: I.hard || 0, researchRequirements: () => [], cost: I.cost || 1, flammability: I.flam || 0, explosiveness: I.expl || 0, radioactivity: I.rad || 0, charge: I.charge || 0, uiIcon: region('item-' + (ISN[k] || k)), fullIcon: region('item-' + (ISN[k] || k)), toString() { return this.name; } }); } return FAC.get(key); };
 const liqF = k => { if (!k || !LIQUIDS[k]) return null; const key = 'l:' + k; if (!FAC.has(key)) { const L = LIQUIDS[k]; FAC.set(key, { __kind: 'liquid', key: k, name: LSN[k] || k, localizedName: L.n, color: Col.hex(String(L.c || '#fff').slice(1)), id: Object.keys(LIQUIDS).indexOf(k), gas: !!L.gas, temperature: L.temp ?? .5, flammability: L.flam || 0, uiIcon: region('liquid-' + (LSN[k] || k)), toString() { return this.name; } }); } return FAC.get(key); };
@@ -110,16 +118,16 @@ const blockF = k => {
     hasItems: () => true, hasLiquids: () => !!B.lcap, hasPower: () => !!(B.power || B.gen), rotate: () => !!B.rot, solid: () => true, category: () => B.kat, id: () => Object.keys(BLOCKS).indexOf(k),
     region: () => region(SN[k] || k), fullIcon: () => region(SN[k] || k), uiIcon: () => region(SN[k] || k), offset: () => (B.s % 2 ? 0 : TS / 2), range: () => B.range || 0, reload: () => B.reload || 0,
     consumes: () => ({ get(t) { const n = String(t && t[STUB] || t || ''); if (/liquid/.test(n) && B.inL) return { liquid: liqF(B.inL[0]), amount: B.inL[1] }; if (/item/.test(n) && B.inp) return { items: Object.entries(B.inp).map(([i, a]) => ({ item: itemF(i), amount: a })) }; if (/power/.test(n)) return { usage: B.power || 0, capacity: B.capP || 0 }; return null; }, has: () => false }),
-    researchRequirements: () => () => Object.entries(B.cost || {}).map(([i, a]) => ({ item: itemF(i), amount: a })), localizedName_: () => B.n, __key: () => k, __kind: () => 'block', isHidden: () => false, toString: () => () => SN[k] || k,
+    ...MODM(() => SN[k] || k), getClass: () => () => ({ getSimpleName: () => B.type, getName: () => B.type, toString: () => B.type }), researchRequirements: () => () => Object.entries(B.cost || {}).map(([i, a]) => ({ item: itemF(i), amount: a })), localizedName_: () => B.n, __key: () => k, __kind: () => 'block', isHidden: () => false, toString: () => () => SN[k] || k,
   };
-  const p = new Proxy(T, { get(t, q) { if (typeof q === 'symbol') return undefined; if (PRIO.has(q)) return comp[q](); if (q in t) return t[q]; if (comp[q]) return comp[q](); if (/^super\$/.test(q)) return () => {}; return undefined; }, set(t, q, v) { t[q] = v; return true; } });
+  const p = new Proxy(T, { get(t, q) { if (typeof q === 'symbol') return undefined; if (PRIO.has(q)) return comp[q](); if (q === 'constructor' && !Object.prototype.hasOwnProperty.call(t, 'constructor')) return fn(() => null); if (q in t) return t[q]; if (comp[q]) return comp[q](); if (/^super\$/.test(q)) return () => {}; return undefined; }, set(t, q, v) { t[q] = v; return true; } });
   B.__jf = p; return p;
 };
 const unitDefF = k => {
   if (!k || !UNITS[k]) return null; const U = UNITS[k]; if (U.__jf) return U.__jf;
   const T = U.js || { __fields: {} };
-  const comp = { researchRequirements: () => () => Object.entries(U.cost || {}).map(([i, a]) => ({ item: itemF(i), amount: a })), name: () => k, localizedName: () => U.n, health: () => U.hp, speed: () => U.sp, hitSize: () => U.r * 2, flying: () => !!U.air, armor: () => U.armor || 0, region: () => region(k), fullIcon: () => region(k), uiIcon: () => region(k), __key: () => k, __kind: () => 'unit', id: () => Object.keys(UNITS).indexOf(k), weapons: () => new Seq([]), toString: () => () => k };
-  const p = new Proxy(T, { get(t, q) { if (typeof q === 'symbol') return undefined; if (PRIO.has(q)) return comp[q](); if (q in t) return t[q]; if (comp[q]) return comp[q](); if (/^super\$/.test(q)) return () => {}; return undefined; }, set(t, q, v) { t[q] = v; return true; } });
+  const comp = { ...MODM(() => k), getClass: () => () => ({ getSimpleName: () => 'UnitType', getName: () => 'UnitType' }), researchRequirements: () => () => Object.entries(U.cost || {}).map(([i, a]) => ({ item: itemF(i), amount: a })), name: () => k, localizedName: () => U.n, health: () => U.hp, speed: () => U.sp, hitSize: () => U.r * 2, flying: () => !!U.air, armor: () => U.armor || 0, region: () => region(k), fullIcon: () => region(k), uiIcon: () => region(k), __key: () => k, __kind: () => 'unit', id: () => Object.keys(UNITS).indexOf(k), weapons: () => new Seq([]), toString: () => () => k };
+  const p = new Proxy(T, { get(t, q) { if (typeof q === 'symbol') return undefined; if (PRIO.has(q)) return comp[q](); if (q === 'constructor' && !Object.prototype.hasOwnProperty.call(t, 'constructor')) return fn(() => null); if (q in t) return t[q]; if (comp[q]) return comp[q](); if (/^super\$/.test(q)) return () => {}; return undefined; }, set(t, q, v) { t[q] = v; return true; } });
   U.__jf = p; return p;
 };
 const blockKey = v => v == null ? null : typeof v === 'string' ? RB[v] || RB[kebab(v)] || null : v.__key || (v.__kind === 'ref' ? blockKey(v.name) : null);
@@ -272,7 +280,9 @@ const teamId = t => t == null ? 0 : typeof t === 'number' ? t : t.__team ? t.id 
 const TeamNs = { get: team, get derelict() { return team(0); }, get sharded() { return team(1); }, get crux() { return team(2); }, get malis() { return team(3); }, get green() { return team(4); }, get blue() { return team(5); }, get all() { return [0, 1, 2, 3, 4, 5].map(team); }, get baseTeams() { return [0, 1, 2, 3, 4, 5].map(team); } };
 
 /* ---------- homlokzatok: épület, egység, mező ---------- */
-const NAT = new WeakMap();   // épület/egység → { super$név: eredeti }
+const NAT = new WeakMap();
+// szám, ami függvényként is hívható (a régi v5-ös API-ban metódus volt: maxHealth(), healthf())
+const numfn = v => Object.assign(() => v, { valueOf: () => v, toString: () => String(v) });   // épület/egység → { super$név: eredeti }
 function itemsF(b) {
   const I = () => b.items || (b.items = {});
   return { get(it) { const k = itemKey(it); return k ? I()[k] || 0 : 0; }, has(it, n = 1) { if (Array.isArray(it) || it instanceof Seq) return [...it].every(s => this.has(s.item, s.amount)); const k = itemKey(it); return k ? (I()[k] || 0) >= n : false; },
@@ -285,7 +295,7 @@ function buildF(b) {
   const B = b.B, W = () => CW, st = {};
   const comp = {
     x: () => (b.x + B.s / 2) * TS, y: () => fy((b.y + B.s / 2) * TS), tileX: () => b.x + ((B.s - 1) >> 1), tileY: () => (CW ? CW.h - 1 : 0) - (b.y + (B.s >> 1)), rotation: () => (4 - (b.rot || 0)) % 4,
-    block: () => blockF(b.t), tile: () => tileF(b.x + ((B.s - 1) >> 1), b.y + (B.s >> 1)), team: () => team(b.team), health: () => b.hp, maxHealth: () => B.hp, dead: () => !!b.dead,
+    block: () => blockF(b.t), tile: () => tileF(b.x + ((B.s - 1) >> 1), b.y + (B.s >> 1)), team: () => team(b.team), health: () => numfn(b.hp), maxHealth: () => numfn(B.hp), healthf: () => numfn(b.hp / B.hp), dead: () => !!b.dead,
     items: () => itemsF(b), liquids: () => ({ get: l => liqKey(l) === b.lt ? b.lq || 0 : 0, currentAmount: () => b.lq || 0, current: () => liqF(b.lt), add(l, n) { const k = liqKey(l); if (k) { b.lt = k; b.lq = Math.min(B.lcap || 10, (b.lq || 0) + n); } }, remove(l, n) { if (liqKey(l) === b.lt) b.lq = Math.max(0, (b.lq || 0) - n); }, sum: () => b.lq || 0 }),
     power: () => ({ status: b.ps ?? 1, graph: { getSatisfaction: () => b.ps ?? 1, getPowerBalance: () => 0, getLastPowerProduced: () => 0 } }), efficiency: () => b.ps ?? 1, potentialEfficiency: () => 1,
     warmup: () => b.work || 0, progress: () => b.prog || 0, totalProgress: () => b.tp || 0, enabled: () => !b.off, timer: () => b.__iv || (b.__iv = new Interval(8)), timerDump: () => 0, proximity: () => new Seq(CW ? FW.adj(CW, b).map(buildF) : []),
@@ -420,7 +430,7 @@ function inst(cls, args, over) {
       const F = t.__key ? (t.__kind === 'units' ? unitDefF(t.__key) : blockF(t.__key)) : null;
       if (q === 'consumes') return F ? F.consumes : consumesF(t);
       const M = INST_M[q]; if (M) return (...a) => M(t, ...a);
-      if (/^(weapons|abilities|parts|ammoTypes|requirements|research)$/.test(q)) return (t.__fields[q] = q === 'ammoTypes' ? {} : new Seq());
+      const D = DEFAULT_F[q]; if (D) return (t.__fields[q] = D(t));
       if (q === 'toString') return () => String(t.__fields.name || t.__cls);
       if (F) return F[q];
       return undefined;
@@ -430,6 +440,10 @@ function inst(cls, args, over) {
   });
   o.__p = p; return p;
 }
+// a Mindustry-osztályok alapértelmezett gyűjtemény- és objektummezői (a szkriptek ezeket bővítik: weapons.add, immunities.add…)
+const attrsF = () => { const m = new JMap(); return Object.assign(m, { set: (a, v) => m.put(String(a), v), get: a => m.get(String(a), 0), add: (a, v) => m.put(String(a), (m.get(String(a), 0) || 0) + v) }); };
+const DEFAULT_F = { weapons: () => new Seq(), abilities: () => new Seq(), parts: () => new Seq(), requirements: () => new Seq(), research: () => new Seq(), targetFlags: () => new Seq(), consumers: () => new Seq(), upgrades: () => new Seq(), plans: () => new Seq(),
+  ammoTypes: () => new JMap(), immunities: () => new JSet(), flags: () => new JSet(), attributes: attrsF, shoot: () => inst('ShootPattern', []), drawer: () => inst('DrawDefault', []), stats: () => stub('Stats', false), bars: () => stub('Bars', false), envRequired: () => 0, envEnabled: () => 1, envDisabled: () => 0 };
 const consumesF = t => ({ remove() {}, power(v) { t.__fields.consumePower = v; }, powerCond(v) { t.__fields.consumePower = v; }, item(i, n = 1) { t.__fields.consumeItems = [{ item: i, amount: n }]; }, items(...s) { t.__fields.consumeItems = s.flat(); }, liquid(l, a) { t.__fields.consumeLiquid = { liquid: l, amount: a }; return { boost() { t.__fields.consumeLiquid.booster = true; }, optional() { return this; }, update() { return this; } }; }, powerBuffered(v) { t.__fields.consumePowerBuffered = v; }, add() { return { update() { return this; }, boost() { return this; }, optional() { return this; } }; }, get() { return null; }, has() { return false; }, coolant() {} });
 const INST_M = {
   requirements(t, cat, a, b) { t.__fields.category = cat; t.__fields.requirements = b !== undefined ? b : a; if (b !== undefined) t.__fields.buildVisibility = a; },
@@ -438,22 +452,24 @@ const INST_M = {
   consumeLiquid(t, l, a) { t.__fields.consumeLiquid = { liquid: l, amount: a }; return { boost() { t.__fields.consumeLiquid.booster = true; return this; }, optional() { return this; }, update() { return this; } }; }, consumeLiquids(t, ...s) { t.__fields.consumeLiquids = s.flat(); }, consumeCoolant(t) {}, consume(t) { return { boost() { return this; }, optional() { return this; } }; },
   outputsItems() { return false; }, setStats() {}, setBars() {}, init() {}, load() {}, add(t, x) { if (t.__cls && /Seq/.test(t.__cls)) { (t.__fields.items = t.__fields.items || []).push(x); } }, copy(t) { return inst(t.__cls, [], t.__over); },
   create(t, owner, team_, x, y, ang) { return spawnBullet(t, owner, team_, x, y, ang); }, createNet(t, team_, x, y, ang) { return spawnBullet(t, null, team_, x, y, ang); },
-  researchRequirements(t) { const r = t.__fields.requirements; return r instanceof Seq ? r.items : Array.isArray(r) ? r : []; }, at(t, x, y) {}, range(t) { const f = t.__fields; return f.maxRange || (+(f.speed ?? 1) * +(f.lifetime ?? 40)); }, estimateDPS(t) { return +(t.__fields.damage || 0); }, isHidden() { return false; }, unlock() {}, unlocked() { return true; }, localizedName(t) { return t.__fields.localizedName || t.__fields.name; },
+  asFloor(t) { return t.__p; }, asBlock(t) { return t.__p; }, isAir() { return false; }, affinity() {}, opposite() {}, config() {}, configClear() {}, removeConsumer() {}, removeConsumers() {}, getClass(t) { return { getSimpleName: () => t.__cls, getName: () => t.__cls, toString: () => t.__cls }; }, researchRequirements(t) { const r = t.__fields.requirements; return r instanceof Seq ? r.items : Array.isArray(r) ? r : []; }, at(t, x, y) {}, range(t) { const f = t.__fields; return f.maxRange || (+(f.speed ?? 1) * +(f.lifetime ?? 40)); }, estimateDPS(t) { return +(t.__fields.damage || 0); }, isHidden() { return false; }, unlock() {}, unlocked() { return true; }, localizedName(t) { return t.__fields.localizedName || t.__fields.name; },
 };
 function extend(cls, a, b) {
   const cn = cls && (cls[CLS] || cls[STUB]) ? String(cls[CLS] || cls[STUB]).split('.').pop() : (cls && cls.name) || 'Block';
   if (a && a[INST] && typeof a !== 'string') { a = null; }   // extend(Build, block, {...}): a második a blokk
-  if (typeof a === 'string') { const o = inst(cn, [a], b || {}); const t = o[INST]; t.__name = a; t.__mod = CUR; DEF.set(a, o); if (CUR) CUR.defs.set(a, o); return o; }
-  if (a && !b && typeof a === 'object' && !a[INST]) return inst(cn, [], a);
-  return inst(cn, [], b || {});
+  const mk = (args, ov) => { const o = inst(cn, args, ov), t = o[INST]; for (const k of Object.keys(ov || {})) if (typeof ov[k] !== 'function') t.__fields[k] = ov[k]; return o; };
+  if (typeof a === 'string') { const o = mk([a], b || {}); const t = o[INST]; t.__name = a; t.__mod = CUR; DEF.set(a, o); if (CUR) CUR.defs.set(a, o); return o; }
+  if (a && !b && typeof a === 'object' && !a[INST]) return mk([], a);
+  return mk([], b || {});
 }
-const cls = n => { const c = function (...a) { return inst(n, a); }; c[CLS] = n; return new Proxy(c, { get(t, p) { if (p === CLS || p === STUB) return n; if (typeof p !== 'string') return t[p]; if (p in t) return t[p]; if (/^[A-Z]/.test(p)) return (t[p] = cls(p)); if (p === 'class') return t; return undefined; }, construct(t, a) { if (n === 'Seq') return new Seq(a[0] instanceof Array ? a[0] : []); return inst(n, a); } }); };
+const cls = n => { const c = function (...a) { return inst(n, a); }; c[CLS] = n; return new Proxy(c, { get(t, p) { if (p === CLS || p === STUB) return n; if (typeof p !== 'string') return t[p]; if (p in t) return t[p]; if (/^[A-Z]/.test(p)) return (t[p] = cls(p)); if (p === 'class') return t; if (p === 'prototype' || p === 'name' || p === 'length') return t[p]; return (t[p] = stub(n + '.' + p)); }, construct(t, a) { if (n === 'Seq') return new Seq(a[0] instanceof Array ? a[0] : []); return inst(n, a); } }); };
 
 /* ---------- lövedékek a szkriptből ---------- */
 function spawnBullet(t, owner, tm, x, y, ang) {
   if (!CW) return null; const f = t.__fields, sp = +(f.speed ?? 3), d = +(f.damage ?? 9), life = +(f.lifetime ?? 40), a = -(+ang || 0) * D2R;
   const b = { x, y: fy(y), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, d, life, team: teamId(tm) || (owner && owner.team && teamId(owner.team)) || 1, c: '#' + ((toCol(f.backColor) || Col.hex('ffd37f')).hex6()), air: f.collidesAir !== false, ground: f.collidesGround !== false, pierce: !!f.pierce, spl: +(f.splashDamage || 0), splR: +(f.splashDamageRadius || 0) };
-  CW.bullets.push(b); return { x, y, remove() { b.life = 0; }, time: 0, lifetime: life, damage: d };
+  if (Object.keys(t.__over).some(k => BUL_OVER.has(k))) { if (t.__bi == null) { t.__bi = BREG.length; BREG.push(t.__p); } b.jsb = t.__bi; }
+  CW.bullets.push(b); return b.jsb != null ? bulletF(b) : { x, y, remove() { b.life = 0; }, time: 0, lifetime: life, damage: d };
 }
 
 /* ---------- a környezet (globális nevek) ---------- */
@@ -480,7 +496,7 @@ const Lightning = { create(tm, c, d, x, y, a, len) { if (CW) CW.lightning(x, fy(
 const msg = t => { if (CW && t != null) CW.msg(String(t).replace(/\[[^\]]*\]/g, '')); };
 const BUNDLE = {};
 const Core = {
-  atlas: Atlas,
+  atlas: Atlas, assets: stub('Core.assets', false), audio: stub('Core.audio', false), scene: stub('Core.scene', false), input: stub('Core.input', false), camera: { position: new Vec2(), width: 0, height: 0, unproject: v => v, project: v => v }, files: stub('Core.files', false), keybinds: stub('Core.keybinds', false),
   bundle: { get(k, d) { return BUNDLE[k] ?? d ?? '???' + k + '???'; }, format(k, ...a) { return String(BUNDLE[k] ?? k).replace(/\{(\d+)\}/g, (_, i) => a[i] ?? ''); }, has(k) { return k in BUNDLE; }, getOrNull(k) { return BUNDLE[k] ?? null; }, getLocale() { return { toString: () => 'en', getLanguage: () => 'en' }; } },
   settings: (() => { let S = {}; try { S = JSON.parse(localStorage.getItem('kohovar_jsset') || '{}'); } catch (_) {} const sv = () => { try { localStorage.setItem('kohovar_jsset', JSON.stringify(S)); } catch (_) {} };
     return { getBool: (k, d = false) => k in S ? !!S[k] : d, getInt: (k, d = 0) => k in S ? S[k] | 0 : d, getFloat: (k, d = 0) => k in S ? +S[k] : d, getString: (k, d = '') => k in S ? String(S[k]) : d, get: (k, d) => k in S ? S[k] : d, has: k => k in S, put(k, v) { S[k] = v; sv(); }, remove(k) { delete S[k]; sv(); }, defaults(...a) { for (let i = 0; i + 1 < a.length; i += 2) if (!(a[i] in S)) S[a[i]] = a[i + 1]; }, getDataDirectory: () => stub('Fi', false), forceSave() {} }; })(),
@@ -497,6 +513,7 @@ const Vars = {
   },
   mods: { locateMod(n) { const m = JS.mods.find(x => x.id === n); return m ? m.api : null; }, getMod(n) { return this.locateMod(n); }, list() { return new Seq(JS.mods.map(m => m.api)); }, getScripts() { return { runConsole: () => '' }; }, eachEnabled(f) { JS.mods.forEach(m => call(f, m.api)); }, hasContentErrors: () => false, orderedMods: () => new Seq(JS.mods.map(m => m.api)) },
   ui: new Proxy({ showInfo: t => msg(t), showInfoToast: t => msg(t), showInfoFade: t => msg(t), showInfoText: (a, b) => msg(b || a), showErrorMessage: t => msg(t), showException: (t) => msg(t), announce: t => msg(t), showLabel: t => msg(t), showText: (a, b) => msg(b || a), showOkText: (a, b) => msg(b || a), hudfrag: { showToast: (a, b) => msg(typeof a === 'string' ? a : b), showUnlock() {}, showLand() {} } }, { get: (t, p) => p in t ? t[p] : typeof p === 'string' ? (t[p] = stub('Vars.ui.' + p)) : undefined }),
+  tree: { loadSound: () => stub('Sound', false), loadMusic: () => stub('Music', false), get: () => stub('Fi', false), loadTexture: () => null }, netClient: stub('Vars.netClient', false), netServer: stub('Vars.netServer', false), renderer: stub('Vars.renderer', false), control: stub('Vars.control', false), schematics: stub('Vars.schematics', false), platform: stub('Vars.platform', false), maps: stub('Vars.maps', false), dataDirectory: stub('Fi', false), modDirectory: stub('Fi', false),
   net: { client: () => false, server: () => false, active: () => false, send() {}, handleClient() {}, handleServer() {} }, logic: { skipWave() { if (CW) CW.nextWave(); }, runWave() { if (CW) CW.nextWave(); }, gameOver() {}, play() {}, reset() {}, isWaitingWave: () => false },
   indexer: { eachBlock(tm, x, y, r, p, f) { if (!CW) return false; const id = teamId(tm); let any = false; for (const b of CW.blds) { if (tm != null && b.team !== id) continue; const c = CW.center(b); if (Math.hypot(c.x - x, fy(c.y) - y) < r) { const v = buildF(b); if (!p || call(p, v)) { any = true; call(f, v); } } } return any; }, findEnemyTile(tm, x, y, r, p) { return Units.closestTarget(tm, x, y, r); }, findTile(tm, x, y, r, p) { return null; }, getFlagged: () => new Seq([]), getEnemy: () => new Seq([]), isBlockPresent: () => false },
   spawner: { getSpawns: () => new Seq(CW ? CW.spawns.map(s => tileF(s.x, s.y)) : []), getFirstSpawn: () => CW && CW.spawns[0] ? tileF(CW.spawns[0].x, CW.spawns[0].y) : null, countSpawns: () => CW ? CW.spawns.length : 0, spawnEnemies() {}, isSpawning: () => false },
@@ -518,8 +535,8 @@ const BASE = {
   Tmp: { v1: new Vec2(), v2: new Vec2(), v3: new Vec2(), v4: new Vec2(), v5: new Vec2(), v6: new Vec2(), v31: new Vec2(), c1: new Col(), c2: new Col(), c3: new Col(), c4: new Col(), r1: {}, r2: {}, r3: {} },
   Rand: class { constructor(s) { this.s = s | 0; } random(a, b) { const r = seeded(this.s++); return b == null ? r * (a ?? 1) : a + r * (b - a); } range(a) { return (seeded(this.s++) * 2 - 1) * a; } chance(p) { return seeded(this.s++) < p; } nextFloat() { return seeded(this.s++); } nextInt(n) { return Math.floor(seeded(this.s++) * n); } setSeed(s) { this.s = s | 0; } },
   Strings: { fixed: (v, d) => (+v).toFixed(d), autoFixed: (v, d) => String(+(+v).toFixed(d)), format: (s, ...a) => String(s).replace(/@/g, () => a.shift() ?? ''), capitalize: s => String(s).charAt(0).toUpperCase() + String(s).slice(1), stripColors: s => String(s).replace(/\[[^\]]*\]/g, ''), kebabToCamel: s => String(s).replace(/-(\w)/g, (_, c) => c.toUpperCase()), camelToKebab: kebab },
-  Structs: {}, Sounds: stub('Sounds', false), Call: stub('Call'), Styles: stub('Styles', false), Icon: stub('Icon', false), Tex: stub('Tex', false), Fonts: stub('Fonts', false), Layer: new Proxy({}, { get: () => 0 }), Blending: { additive: { [STUB]: 'Blending.additive' }, normal: { [STUB]: 'Blending.normal' }, disabled: {} }, Align: stub('Align', false),
-  Weapon: null, Stat: stub('Stat', false), StatUnit: stub('StatUnit', false), Attribute: new Proxy({}, { get: (t, p) => typeof p === 'string' ? (t[p] || (t[p] = { name: p, add: () => {}, get: () => 0, toString: () => p })) : undefined }), Env: new Proxy({}, { get: () => 1 }),
+  Structs: {}, EntityMapping: { nameMap: new JMap(), idMap: [], register: () => 0, map: () => 0, customIdMap: new JMap() }, Sounds: stub('Sounds', false), Call: stub('Call'), Styles: stub('Styles', false), Icon: stub('Icon', false), Tex: stub('Tex', false), Fonts: stub('Fonts', false), Layer: new Proxy({}, { get: () => 0 }), Blending: { additive: { [STUB]: 'Blending.additive' }, normal: { [STUB]: 'Blending.normal' }, disabled: {} }, Align: stub('Align', false),
+  Weapon: null, Stat: stub('Stat', false), StatUnit: stub('StatUnit', false), Attribute: new Proxy({ add: n => ({ name: n, toString: () => n }), get: n => ({ name: n, toString: () => n }) }, { get: (t, p) => typeof p === 'string' ? (t[p] || (t[p] = { name: p, toString: () => p })) : undefined }), Env: new Proxy({}, { get: () => 1 }),
   Planets: new Proxy({}, { get: (t, p) => typeof p === 'string' ? { name: p, toString: () => p } : undefined }), SectorPresets: new Proxy({}, { get: (t, p) => typeof p === 'string' ? { name: p } : undefined }),
   TechTree: stub('TechTree', false), EnumSet: { of: (...a) => new Set(a), noneOf: () => new Set(), allOf: () => new Set(), copyOf: a => new Set(a) },
   ObjectMap: null, OrderedMap: null, ObjectSet: null, OrderedSet: null, IntMap: null, ObjectFloatMap: null, ObjectIntMap: null, IntSeq: null, FloatSeq: null, SaveFileReader: { fallback: { put() {}, putAll() {} } },
@@ -531,9 +548,6 @@ const BASE = {
 BASE.Packages = (() => { const P = path => new Proxy(function () {}, { get(t, p) { if (typeof p !== 'string') return undefined; if (/^[A-Z]/.test(p)) return BASE[p] !== undefined && BASE[p] !== null ? BASE[p] : cls(p); return P(path + '.' + p); } }); return P('Packages'); })();
 BASE.java = BASE.Packages.java; BASE.arc = BASE.Packages.arc; BASE.mindustry = BASE.Packages.mindustry;
 delete BASE.Weapon;
-// Java-gyűjtemények (arc.struct): Map / Set alapú megfelelők
-class JMap { constructor() { this.m = new Map(); } static of(...a) { const o = new JMap(); for (let i = 0; i + 1 < a.length; i += 2) o.put(a[i], a[i + 1]); return o; } put(k, v) { this.m.set(k, v); return this; } get(k, d) { return this.m.has(k) ? this.m.get(k) : (typeof d === 'function' ? (this.m.set(k, d()), this.m.get(k)) : d ?? null); } containsKey(k) { return this.m.has(k); } remove(k) { const v = this.m.get(k); this.m.delete(k); return v; } get size() { return this.m.size; } keys() { return new Seq([...this.m.keys()]); } values() { return new Seq([...this.m.values()]); } each(f) { for (const [k, v] of this.m) call(f, k, v); } clear() { this.m.clear(); } isEmpty() { return !this.m.size; } entries() { return [...this.m].map(([key, value]) => ({ key, value })); } [Symbol.iterator]() { return this.entries()[Symbol.iterator](); } }
-class JSet { constructor(a) { this.s = new Set(a || []); } static with(...a) { return new JSet(a); } add(v) { const h = this.s.has(v); this.s.add(v); return !h; } contains(v) { return this.s.has(v); } remove(v) { return this.s.delete(v); } get size() { return this.s.size; } each(f) { for (const v of this.s) call(f, v); } clear() { this.s.clear(); } isEmpty() { return !this.s.size; } toSeq() { return new Seq([...this.s]); } [Symbol.iterator]() { return this.s[Symbol.iterator](); } }
 for (const k of ['ObjectMap', 'OrderedMap', 'IntMap', 'ObjectFloatMap', 'ObjectIntMap']) BASE[k] = JMap; for (const k of ['ObjectSet', 'OrderedSet', 'IntSet']) BASE[k] = JSet; BASE.IntSeq = BASE.FloatSeq = Seq;
 
 
@@ -561,9 +575,9 @@ export function runScripts(files, h) {
   const dec = new TextDecoder(), M = { id: h.id, name: h.name, miss: new Set(), err: [], defs: new Map(), files: scripts, api: null };
   M.api = { name: h.id, meta: Object.assign({ name: h.id, displayName: h.name, author: '', description: '', version: '' }, h.meta || {}), root: stub('Fi', false), file: stub('Fi', false), enabled: () => true, isJava: () => false, getRepo: () => null, loader: null, main: null, iconTexture: null };
   JS.mods.push(M); SPRITE_SRC.push([h.id, h.sprites]); Object.assign(BUNDLE, h.bundle || {});
-  const loc = new Set();
-  const own = new Proxy(Object.create(null), {
-    has(t, p) { if (typeof p !== 'string' || loc.has(p)) return false; return p in t || p in BASE || /^[A-Z]/.test(p) || p === 'Packages' || p === 'java'; },
+  const loc = new Set(), OWN = Object.create(null); OWN.modName = h.id; OWN.scriptName = 'main'; OWN.global = GLOBAL; OWN.__mod = M.api;
+  const own = new Proxy(OWN, {
+    has(t, p) { if (typeof p !== 'string' || loc.has(p)) return false; if (JSB.has(p)) return false; return p in t || p in BASE || /^[A-Z]/.test(p); },
     get(t, p) { if (p === Symbol.unscopables) return undefined; if (p in t) return t[p]; if (p in BASE) return BASE[p]; if (typeof p === 'string' && /^[A-Z]/.test(p)) { if (EventType[p]) return EventType[p]; return (t[p] = cls(p)); } return undefined; },
     set(t, p, v) { t[p] = v; return true; },
   });
@@ -574,7 +588,8 @@ export function runScripts(files, h) {
     if (!src) { const [mid, ...rest] = String(id).split('/'); const o = JS.mods.find(x => x.id === mid); if (o && o.files.get(rest.join('/').replace(/\.js$/, ''))) { from = o; src = o.files.get(rest.join('/').replace(/\.js$/, '')); rel = mid + ':' + rest.join('/'); } }
     if (cache[rel]) return cache[rel].exports; const mo = cache[rel] = { exports: {} }; if (!src) { miss('require: ' + id); return mo.exports; }
     let code = dec.decode(src); code = rhino(code);
-    for (const m of code.matchAll(/\b(?:function\s+([A-Za-z_$][\w$]*)|(?:var|let|const)\s+([A-Za-z_$][\w$]*)|class\s+([A-Za-z_$][\w$]*))/g)) loc.add(m[1] || m[2] || m[3]);
+    const bare = code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:\\])\/\/.*$/gm, '$1');
+    for (const m of bare.matchAll(/(?:^|[;{}\s])(?:function\s*\*?\s+([A-Za-z_$][\w$]*)|var\s+([A-Za-z_$][\w$]*))/g)) loc.add(m[1] || m[2]);
     const p = CUR; CUR = from;
     try { new Function('__G', 'module', 'exports', 'require', 'with (__G) {\n' + code + '\n}').call(undefined, own, mo, mo.exports, req); }
     catch (e) { err(from, 'scripts/' + rel + '.js', e); }
@@ -590,10 +605,10 @@ export function runScripts(files, h) {
 /* ---------- a szkriptbeli definíciókból JSON (a modbetöltő a saját átalakítójával dolgozza fel) ---------- */
 const jsonV = (v, d = 0) => {
   if (v == null || d > 6) return v; if (typeof v === 'number' || typeof v === 'boolean') return v; if (typeof v === 'string') return v;
-  if (v instanceof Col) return v.toString(); if (v instanceof Seq) return v.items.map(x => jsonV(x, d + 1)); if (Array.isArray(v)) return v.map(x => jsonV(x, d + 1));
+  if (v instanceof JSet) return [...v.s].map(x => jsonV(x, d + 1)); if (v instanceof Col) return v.toString(); if (v instanceof JMap) { const o = {}; for (const [k, x] of v.m) { const kk = jsonV(k, d + 1); if (typeof kk === 'string') o[kk] = jsonV(x, d + 1); } return o; } if (v instanceof Seq) return v.items.map(x => jsonV(x, d + 1)); if (Array.isArray(v)) return v.map(x => jsonV(x, d + 1));
   if (v.__kind === 'item' || v.__kind === 'liquid' || v.__kind === 'status') return v.name; if (v.__kind === 'block' || v.__kind === 'unit') return v.name;
   if (v[STUB]) return undefined; if (typeof v === 'function') return undefined;
-  if (v[INST]) { const t = v[INST]; if (t.__name) return t.__name; const o = { type: t.__cls }; for (const k in t.__fields) { const x = jsonV(t.__fields[k], d + 1); if (x !== undefined) o[k] = x; } return o; }
+  if (v[INST]) { const t = v[INST]; if (t.__name) return t.__name; const o = { type: t.__cls }; if (/Bullet/.test(t.__cls) && Object.keys(t.__over).some(k => BUL_OVER.has(k))) { if (t.__bi == null) { t.__bi = BREG.length; BREG.push(v); } o.__jsb = t.__bi; } for (const k in t.__fields) { const x = jsonV(t.__fields[k], d + 1); if (x !== undefined) o[k] = x; } return o; }
   if (v.item !== undefined && v.amount !== undefined) return { item: jsonV(v.item), amount: v.amount }; if (v.liquid !== undefined) return { liquid: jsonV(v.liquid), amount: v.amount };
   if (v instanceof Vec2) return undefined; const o = {}; for (const k in v) { const x = jsonV(v[k], d + 1); if (x !== undefined) o[k] = x; } return o;
 };
@@ -617,8 +632,8 @@ const UNSUP = new Set(['drawBody', 'drawWeapons', 'drawEngines', 'drawMech', 'dr
 export function attachDef(M, d, kind, k) {
   const t = d[INST]; if (!k) return; const T = kind === 'units' ? UNITS[k] : BLOCKS[k]; if (!T) return;
   T.js = d; delete T.__jf; t.__key = k; t.__kind = kind; t.__mod = M; t.__fields.name = kind === 'units' ? k : SN[k] || k;
-  if (kind === 'blocks') { t.__build = t.__fields.buildType || null; for (const q of Object.keys(t.__over)) { if (!BLOCK_OVER.has(q) && !B_OVER.has(q)) miss(`${t.__cls}.${q}`, M); else if (UNSUP.has(q)) miss(`${t.__cls}.${q}`, M); } if (t.__build) { const O = makeOver(t.__build, t); if (O) for (const q of Object.keys(O.over)) if (!B_OVER.has(q) || UNSUP.has(q)) miss(`${t.__cls}Build.${q}`, M); } }
-  if (kind === 'units') { for (const q of Object.keys(t.__over)) if (!U_OVER.has(q) || UNSUP.has(q)) miss(`${t.__cls}.${q}`, M); if (t.__ctor) { const O = makeOver(t.__fields.constructor, t); if (O) for (const q of Object.keys(O.over)) if (!/^(update|draw)$/.test(q)) miss(`${O.cls || 'Unit'}.${q}`, M); } }
+  if (kind === 'blocks') { t.__build = t.__fields.buildType || null; for (const q of Object.keys(t.__over)) { if (typeof t.__over[q] !== 'function') continue; if (!BLOCK_OVER.has(q) && !B_OVER.has(q)) miss(`${t.__cls}.${q}`, M); else if (UNSUP.has(q)) miss(`${t.__cls}.${q}`, M); } if (t.__build) { const O = makeOver(t.__build, t); if (O) for (const q of Object.keys(O.over)) if (!B_OVER.has(q) || UNSUP.has(q)) miss(`${t.__cls}Build.${q}`, M); } }
+  if (kind === 'units') { for (const q of Object.keys(t.__over)) if (typeof t.__over[q] === 'function' && (!U_OVER.has(q) || UNSUP.has(q))) miss(`${t.__cls}.${q}`, M); if (t.__ctor) { const O = makeOver(t.__fields.constructor, t); if (O) for (const q of Object.keys(O.over)) if (!/^(update|draw|classId|write|read|add|remove)$/.test(q)) miss(`${O.cls || 'Unit'}.${q}`, M); } }
   if (typeof t.__over.load === 'function') { const p = CUR; CUR = M; try { t.__over.load.call(kind === 'units' ? unitDefF(k) : blockF(k)); } catch (e) { err(M, k + '.load', e); } CUR = p; }
   if (T.part === undefined && (t.__build || Object.keys(t.__over).length)) T.scripted = 1;
 }
@@ -628,6 +643,30 @@ export function scriptReport(M) {
   if (M.err.length) out.push(`szkripthibák: ${M.err.slice(0, 4).join(' · ')}${M.err.length > 4 ? ` (+${M.err.length - 4})` : ''}`);
   const ms = [...M.miss].filter(x => x !== 'felület (UI)'); if (ms.length) out.push(`a JS API-ból hiányzik: ${ms.slice(0, 10).join(', ')}${ms.length > 10 ? ` (+${ms.length - 10})` : ''}`);
   return out;
+}
+
+/* ---------- lövedékek: a szkriptbeli lövedéktípus felülírt metódusai ---------- */
+const BREG = [];   // lövedéktípus-példányok (a lövedék jsb mezője ide mutat)
+const BUL_OVER = new Set(['draw', 'update', 'init', 'hit', 'hitEntity', 'hitTile', 'despawned', 'removed', 'drawTrail', 'updateHoming', 'updateTrail']);
+function bulletF(b) {
+  if (b.__jf) return b.__jf; const T = BREG[b.jsb], st = {};
+  const comp = { x: () => b.x, y: () => fy(b.y), rotation: () => ((-Math.atan2(b.vy, b.vx) * R2D) % 360 + 360) % 360, team: () => team(b.team), damage: () => b.d, type: () => T, owner: () => null, time: () => b.__t || 0, lifetime: () => b.__l || 1, vel: () => new Vec2(b.vx, -b.vy), id: () => b.__id || (b.__id = Math.random() * 1e9 | 0), hitSize: () => 4, fdata: () => b.fdata || 0, timer: () => b.__iv || (b.__iv = new Interval(4)), aimX: () => b.x, aimY: () => fy(b.y), originX: () => b.sx ?? b.x, originY: () => fy(b.sy ?? b.y) };
+  const meth = { fin() { return Math.min(1, (b.__t || 0) / (b.__l || 1)); }, fout() { return 1 - this.fin(); }, fslope() { return 1 - Math.abs(this.fin() - .5) * 2; }, remove() { b.life = 0; b.__rm = 1; }, absorb() { b.life = 0; b.__rm = 1; }, within(x, y, d) { if (typeof x === 'object') { d = y; ({ x, y } = x); } return Math.hypot(x - b.x, y - fy(b.y)) < d; }, dst(x, y) { if (typeof x === 'object') ({ x, y } = x); return Math.hypot(x - b.x, y - fy(b.y)); }, angleTo(x, y) { if (typeof x === 'object') ({ x, y } = x); return Mathf.angle(b.x, fy(b.y), x, y); }, set(x, y) { b.x = x; b.y = fy(y); }, isAdded() { return b.life > 0; }, hit() { return !!b.__hit; }, collides() { return true; }, toString() { return 'Bullet'; } };
+  const p = new Proxy(st, { get(t, q) { if (typeof q === 'symbol') return undefined; if (q in t) return t[q]; if (comp[q]) return comp[q](); if (meth[q]) return meth[q]; return undefined; },
+    set(t, q, v) { if (q === 'damage') { b.d = +v; return true; } if (q === 'rotation') { const s = Math.hypot(b.vx, b.vy), a = -v * D2R; b.vx = Math.cos(a) * s; b.vy = Math.sin(a) * s; return true; } if (q === 'time') { b.__t = +v; return true; } if (q === 'lifetime') { b.__l = +v; return true; } if (q === 'x') { b.x = +v; return true; } if (q === 'y') { b.y = fy(+v); return true; } if (q === 'fdata') { b.fdata = v; return true; } t[q] = v; return true; } });
+  b.__jf = p; return p;
+}
+const bOver = b => { const T = BREG[b.jsb]; return T && T[INST]; };
+// a lövedéktípus mint „this”: a super$draw az alap rajz (pont + csóva), a super$hit a találati effekt, a többi super$ üres
+function bSelf(t, b) {
+  const T = BREG[b.jsb];
+  return new Proxy(T, { get(o, q) {
+    if (q === 'super$draw') return () => { if (!G2) return; const a = Math.atan2(b.vy, b.vx), big = b.sz || 1; G2.save(); G2.translate(b.x, b.y); G2.rotate(a); G2.fillStyle = b.c || '#ffd37f'; G2.beginPath(); G2.ellipse(0, 0, 3 * big, 1.1 * big, 0, 0, 7); G2.fill(); G2.fillStyle = b.c2 || '#fff'; G2.beginPath(); G2.ellipse(.4, 0, 1.8 * big, .55 * big, 0, 0, 7); G2.fill(); G2.restore(); };
+    if (q === 'super$hit') return () => { if (CW) CW.fx.push({ k: 'hit', x: b.x, y: b.y, life: 12, max: 12, c: b.c || '#ffd37f' }); };
+    if (typeof q === 'string' && /^super\$/.test(q)) return () => undefined;
+    if (q === 'damage') return b.d; if (q === 'speed') return Math.hypot(b.vx, b.vy); if (q === 'lifetime') return b.__l || b.life;
+    return o[q];
+  } });
 }
 
 /* ---------- futásidő: a motor hívja ---------- */
@@ -691,6 +730,27 @@ FW.js = {
     Draw.reset(); if (EV['T:draw']) emit('T:draw'); if (EV['T:postDraw']) emit('T:postDraw'); Draw.reset(); g.globalAlpha = 1;
   },
   ready() { emit('ContentInitEvent', {}); emit('ClientLoadEvent', {}); },
+  // lövedékek
+  bUpd(W, b) {
+    const t = bOver(b); if (!t || bad(t)) return; CW = W; const fb = bulletF(b);
+    if (b.__t == null) { b.__t = 0; b.__l = b.life; if (typeof t.__over.init === 'function') runHook(t.__mod, 'BulletType.init', t.__over.init, BREG[b.jsb], [fb], t); }
+    b.__t++; if (typeof t.__over.update === 'function') runHook(t.__mod, 'BulletType.update', t.__over.update, bSelf(t, b), [fb], t);
+  },
+  bHit(W, b, u, bl) {
+    const t = bOver(b); if (!t || bad(t)) return; CW = W; const fb = bulletF(b), o = t.__over; b.__hit = 1;
+    if (u && typeof o.hitEntity === 'function') runHook(t.__mod, 'BulletType.hitEntity', o.hitEntity, bSelf(t, b), [fb, unitF(u), u.hp], t);
+    if (bl && typeof o.hitTile === 'function') runHook(t.__mod, 'BulletType.hitTile', o.hitTile, bSelf(t, b), [fb, buildF(bl), b.x, fy(b.y), bl.hp, true], t);
+    if (typeof o.hit === 'function') runHook(t.__mod, 'BulletType.hit', o.hit, bSelf(t, b), [fb, b.x, fy(b.y)], t);
+  },
+  bEnd(W, b) {
+    const t = bOver(b); if (!t || bad(t)) return; CW = W; const fb = bulletF(b), o = t.__over;
+    if (!b.__hit && !b.__rm && typeof o.despawned === 'function') runHook(t.__mod, 'BulletType.despawned', o.despawned, bSelf(t, b), [fb], t);
+    if (typeof o.removed === 'function') runHook(t.__mod, 'BulletType.removed', o.removed, bSelf(t, b), [fb], t);
+  },
+  bDraw(g, W, b) {
+    const t = bOver(b); if (!t || bad(t) || typeof t.__over.draw !== 'function') return false; CW = W; G2 = g;
+    Draw.reset(); const r = runHook(t.__mod, 'BulletType.draw', t.__over.draw, bSelf(t, b, g), [bulletF(b)], t); Draw.reset(); g.globalAlpha = 1; return r !== ERR;
+  },
 };
 // a Time.run / Timer időzítői az őket felvevő modhoz kötve
 Object.defineProperty(Time, 'run', { value(d, f) { TIMERS.push({ at: Time.time + (+d || 0), f, mod: CUR }); } });

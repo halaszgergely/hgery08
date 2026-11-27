@@ -1,9 +1,9 @@
 // Kohóvár – kirajzolás. A blokkok, egységek, anyagok és a talaj képei a Mindustry (Anuke és közreműködők, GPLv3) sprite-jai,
 // a kepek/atlasz.png atlaszból; a lövedékek, hatások, köd és kisérkép kódból rajzoltak.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271126';
-import { FW } from './keret.js?v=202611271126';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271126';
-import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271126';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271151';
+import { FW } from './keret.js?v=202611271151';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271151';
+import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271151';
 
 const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555', 0: '#4d4e58' };
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -302,6 +302,7 @@ export function render(g, W, R) {
   }
   for (const b of W.bullets) {
     if (b.x < vx0 - 20 || b.x > vx1 + 20 || b.y < vy0 - 30 || b.y > vy1 + 20) continue;
+    if (b.jsb != null && FW.js && FW.js.bDraw(g, W, b)) continue;
     if (b.k === 'art') { const f = Math.max(0, Math.min(1, 1 - b.life / (Math.hypot(b.tx - b.sx, b.ty - b.sy) / Math.hypot(b.vx, b.vy) || 1))), hgt = Math.sin(f * Math.PI) * 14, sz = 1.6 + Math.sin(f * Math.PI) * 1.4; g.fillStyle = 'rgba(0,0,0,.3)'; circ(g, b.x, b.y, 1.4); g.fillStyle = b.c; circ(g, b.x, b.y - hgt, sz); g.fillStyle = '#fff'; circ(g, b.x, b.y - hgt, sz * .5); continue; }
     if (b.k === 'flame') { g.fillStyle = `rgba(255,${120 + Math.random() * 100},60,${.4 + .6 * Math.min(1, b.life / 6)})`; circ(g, b.x, b.y, 1.5 + Math.max(0, 1 - b.life / 14) * 2); continue; }
     if (b.k === 'liq' || b.k === 'acid') { g.fillStyle = b.k === 'acid' ? '#ffa166' : b.c; g.globalAlpha = .8; circ(g, b.x, b.y, 1.6); g.globalAlpha = 1; continue; }

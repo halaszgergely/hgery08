@@ -2,13 +2,13 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, ORE_P, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611271126';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271126';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271126';
-import { FL, FLI, WL } from './vilag.js?v=202611271126';
-import { runScripts, defJson, defKind, defClass, attachDef, scriptReport, initJsApi } from './jsapi.js?v=202611271126';
-import { parseHjson } from './hjson.js?v=202611271126';
-import { addSprite, spritesReady, has as AT_HAS, sprSize } from './rajz.js?v=202611271126';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, ORE_P, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611271151';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271151';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271151';
+import { FL, FLI, WL } from './vilag.js?v=202611271151';
+import { runScripts, defJson, defKind, defClass, attachDef, scriptReport, initJsApi } from './jsapi.js?v=202611271151';
+import { parseHjson } from './hjson.js?v=202611271151';
+import { addSprite, spritesReady, has as AT_HAS, sprSize } from './rajz.js?v=202611271151';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [], MOD_MAPS = [];   // MOD_MAPS: a mod szektor nélküli pályái (egyéni játék)   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
@@ -127,6 +127,7 @@ export function installMod(files, srcLabel) {
       const w = +(b.width ?? b.bulletWidth ?? 0), h = +(b.height ?? b.bulletHeight ?? 0); if (w || h) o.sz = Math.max(.6, Math.min(3, ((w || 5) + (h || 7)) / 12));
       if (+b.trailLength > 0) o.tr = Math.min(30, +b.trailLength); }
     if (b.knockback) o.kb = +b.knockback;
+    if (b.__jsb != null) o.jsb = b.__jsb;   // szkriptbeli lövedéktípus (Kohóvár JS API): a felülírt draw / update / hit innen fut
     if (/artillery/.test(t)) o.k = 'art'; else if (/missile/.test(t)) o.k = 'missile'; else if (/flak/.test(t)) { o.k = 'flak'; o.gnd = b.collidesGround ? 1 : 0; if (!o.spl) { o.spl = o.d * 3; o.splR = 20; } }
     else if (/shrapnel/.test(t)) { o.k = 'shrap'; o.len = +(b.length || 100); } else if (/rail/.test(t)) { o.k = 'rail'; o.d = +(b.damage ?? 100); }
     else if (/continuousflame|continuouslaser|pointlaser/.test(t)) { o.k = 'beam'; o.len = +(b.length || b.maxRange || 160); o.dur = 180; if (/point/.test(t)) o.len = 0; }
