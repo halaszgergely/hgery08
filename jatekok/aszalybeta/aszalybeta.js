@@ -58,7 +58,7 @@ const AszalyBeta = (() => {
     fereg: { hp: 9500, sp: 140, dmg: 26, r: 40, xp: 0, pt: 4500, boss: 1, art: 'hf', sz: 150, n: 'Homokféreg' },
     boszi: { hp: 13500, sp: 64, dmg: 24, r: 34, xp: 0, pt: 6000, boss: 1, art: 'stw', sz: 120, n: 'Structured Text Boszorkány' },
     szilard: { hp: 21000, sp: 50, dmg: 28, r: 36, xp: 0, pt: 10000, boss: 1, final: 1, art: 'szl', sz: 130, n: 'Szikkadt Szilárd' },
-    isten: { hp: 500000, sp: 30, dmg: 40, r: 95, xp: 0, pt: 0, boss: 1, god: 1, art: 'god', sz: 420, n: 'Szikkadt Szilárd, az Aszály Istene' }
+    isten: { hp: 380000, sp: 30, dmg: 40, r: 95, xp: 0, pt: 0, boss: 1, god: 1, art: 'god', sz: 420, n: 'Szikkadt Szilárd, az Aszály Istene' }
   };
   const FAMS = ['kert', 'sivatag', 'varos', 'meder', 'halo'], FAM_T = [0, 6, 12, 18, 24];
   const FCOL = { kert: '150,160,80', sivatag: '207,174,116', varos: '160,120,100', meder: '110,150,140', halo: '150,90,170' };
@@ -152,7 +152,31 @@ const AszalyBeta = (() => {
   function buyMeta(i) { const u = META[i]; if (!u) return; const m = metaGet(), l = m[u.id] || 0, g = store.get('aszb_gold'), c = mCost(u, l);
     if (l >= u.mx || g < c) { S.shop.shake = .3; S.shop.i = i; Sfx.blip(150, .15, 'square', .05, .7); return; }
     m[u.id] = l + 1; metaSet(m); store.set('aszb_gold', g - c); S.meta = m; S.shop.i = i; stats(); Sfx.coin(); }
-  const chOpen = () => true; /* zárt béta: minden karakter elérhető */
+  const chOpen = () => true;
+  /* mentés: a kör állása időnként a böngészőbe kerül; kilépés vagy összeomlás után a karakterválasztóban folytatható */
+  const SAVE = 'hgws_aszb_save';
+  const saveGet = () => { try { const d = JSON.parse(localStorage.getItem(SAVE) || 'null'); return d && d.v === 1 ? d : null; } catch (_) { return null; } };
+  const clearSave = () => { try { localStorage.removeItem(SAVE); } catch (_) {} };
+  function saveRun(G) {
+    if (!S || S.sel || !S.started || S.over || S.ph === 'win' || S.ph === 'descent' || !(S.P.hp > 0)) return;
+    const b = S.bossE && !S.bossE.dead ? S.bossE : null, P = S.P, c = S.choose;
+    const d = { v: 1, at: Date.now(), score: G.score, ch: S.ch, t: S.t, P: { x: P.x, y: P.y, hp: P.hp, lvl: P.lvl, xp: P.xp, need: P.need },
+      up: S.up, evd: S.evd, evoN: S.evoN, rr: S.rr, rev: S.rev, gold: S.gold, kills: S.kills, bossN: S.bossN, bi: S.bi, bossCD: S.bossCD, minute: S.minute,
+      ph: S.ph, phT: S.phT, szN: S.szN, szKill: S.szKill, dmgBy: S.dmgBy, pending: S.pending + (c && !c.evo ? 1 : 0), evoQ: S.evoQ.concat(c && c.evo ? [c.evo] : []),
+      boss: b ? { k: b.type, f: b.hp / b.mhp, shN: b.shN || 0, sh: b.shield ? 1 : 0 } : null };
+    try { localStorage.setItem(SAVE, JSON.stringify(d)); } catch (_) {}
+  }
+  function loadRun(G) {
+    const d = saveGet(); if (!d) return;
+    Object.assign(S, { ch: d.ch, t: d.t, up: d.up, evd: d.evd || {}, evoN: d.evoN || 0, rr: d.rr, rev: d.rev || 0, gold: d.gold || 0, kills: d.kills || 0, bossN: d.bossN || 0, bi: d.bi || 0, bossCD: d.bossCD || 0,
+      minute: d.minute || 0, ph: d.ph || 'run', phT: d.phT || 0, szN: d.szN || 0, szKill: d.szKill || 0, dmgBy: d.dmgBy || {}, pending: d.pending || 0, evoQ: d.evoQ || [], sel: null, shop: null, started: 1, meta: metaGet() });
+    Object.assign(S.P, d.P); stats(); S.P.hp = Math.min(S.P.mhp, d.P.hp); G.score = d.score || 0; S.dirty = 1;
+    if (S.ph === 'wrath') S.wk = clamp(1 - S.phT / 240, 0, 1);
+    if (S.ph === 'god' || (d.boss && d.boss.k === 'isten')) { godSpawn(G); const e = S.bossE; e.dsc = 0; e.hp = e.mhp * d.boss.f; e.shN = d.boss.sh ? Math.max(0, d.boss.shN - 1) : d.boss.shN; S.banner = null; S.say = null; }
+    else if (d.boss) { if (d.boss.k === 'szilard') szSpawn(G); else spawnBoss(G, d.boss.k); const e = S.bossE; if (e) e.hp = e.mhp * d.boss.f; S.banner = null; S.say = null; }
+    S.paused = 1; S.saveT = 10; Sfx.coin(); hud();
+  }
+  const contBtn = G => { const k = kutBtn(G); return { x: k.x, y: k.y + k.h + 10 * G.d, w: k.w, h: k.h }; }; /* zárt béta: minden karakter elérhető */
   const TAUNT = ['Ez a kert az enyém lesz!', 'Még mindig locsolsz? Nevetséges.', 'A víz elfogy. Én maradok.', 'Minden virág elszárad egyszer!'];
 
   const lv = k => S.up[k] || 0;
@@ -177,6 +201,7 @@ const AszalyBeta = (() => {
     if (e.key === 'Escape' || ((e.key === 'p' || e.key === 'P') && !e.repeat)) { e.preventDefault(); e.stopImmediatePropagation(); togglePause(); } }, true);
   addEventListener('keydown', e => { if (!mine()) return; const k = KEYS[e.key];
     if (S.shop) { if (/^[0-9]$/.test(e.key)) buyMeta((+e.key + 9) % 10); return; }
+    if (S.sel && G.running && S.hasSave && (e.key === 'f' || e.key === 'F')) return loadRun(G);
     if (S.sel && G.running && (e.key === 'k' || e.key === 'K')) { S.shop = { t: 0, i: -1, shake: 0 }; S.meta = metaGet(); return; }
     if (S.sel && G.running) { const n = CH.length, cols = selCols(G);
       if (/^[1-6]$/.test(e.key)) return selPick(G, +e.key - 1);
@@ -187,6 +212,8 @@ const AszalyBeta = (() => {
     if (k) { K[k] = 1; if (G.running) e.preventDefault(); }
     else if (G.running && S.choose) { if (/^[1-4]$/.test(e.key)) pick(G, +e.key - 1); else if ((e.key === 'r' || e.key === 'R') && !e.repeat) reroll(); else if ((e.key === 'x' || e.key === 'X') && !e.repeat) skip(); } });
   addEventListener('keyup', e => { const k = KEYS[e.key]; if (k) K[k] = 0; });
+  addEventListener('pagehide', () => { if (mine() && G.running) saveRun(G); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && mine() && G.running) saveRun(G); });
   addEventListener('blur', () => { K.U = K.D = K.L = K.R = 0; joy = null; });
 
   /* ---------- rács a közelségi keresésekhez ---------- */
@@ -249,8 +276,8 @@ const AszalyBeta = (() => {
   }
   /* szakaszok: virágzás (1 perc) → Szilárd haragja (10 perc) → leereszkedés → az Aszály Istene */
   function phases(G, dt) {
-    if (S.ph === 'bloom') { S.phT -= dt; S.green = Math.max(S.green, 1.5); if (S.phT <= 0) { S.ph = 'wrath'; S.phT = 360; S.wk = 0; S.green = 0; banner('SZILÁRD HARAGJÁNAK ASZÁLYA ELINDULT!', 5, '#ff7a2a'); G.shake = 14 * G.d; Sfx.boom(); [220, 185, 147, 110].forEach((f, i) => setTimeout(() => Sfx.blip(f, .4, 'sawtooth', .07, .7), i * 240)); } }
-    else if (S.ph === 'wrath') { S.phT -= dt; S.wk = clamp(1 - S.phT / 360, 0, 1); S.dry = Math.max(S.dry, .4); if (S.phT <= 0) descent(G); }
+    if (S.ph === 'bloom') { S.phT -= dt; S.green = Math.max(S.green, 1.5); if (S.phT <= 0) { S.ph = 'wrath'; S.phT = 240; S.wk = 0; S.green = 0; banner('SZILÁRD HARAGJÁNAK ASZÁLYA ELINDULT!', 5, '#ff7a2a'); G.shake = 14 * G.d; Sfx.boom(); [220, 185, 147, 110].forEach((f, i) => setTimeout(() => Sfx.blip(f, .4, 'sawtooth', .07, .7), i * 240)); } }
+    else if (S.ph === 'wrath') { S.phT -= dt; S.wk = clamp(1 - S.phT / 240, 0, 1); S.dry = Math.max(S.dry, .4); if (S.phT <= 0) descent(G); }
     else if (S.ph === 'descent') { S.phT -= dt; S.dry = Math.max(S.dry, .4); if (S.phT <= 0) godSpawn(G); }
     for (const w of S.warns) { w.t += dt; if (w.t >= w.d) { w.dead = 1; blast(G, w); } }
     for (const f of S.blasts) f.l -= dt;
@@ -639,7 +666,7 @@ const AszalyBeta = (() => {
 
   /* ---------- karakterválasztó ---------- */
   const selCols = G => G.W / G.d > 640 ? 3 : 2;
-  function selCards(G) { const d = G.d, cols = selCols(G), rows = Math.ceil(CH.length / cols), gap = 10 * d, w = Math.min((G.W - 24 * d - (cols - 1) * gap) / cols, 220 * d), h = Math.min(160 * d, (G.H - 214 * d - (rows - 1) * gap) / rows);
+  function selCards(G) { const d = G.d, cols = selCols(G), rows = Math.ceil(CH.length / cols), gap = 10 * d, w = Math.min((G.W - 24 * d - (cols - 1) * gap) / cols, 220 * d), h = Math.min(160 * d, (G.H - 270 * d - (rows - 1) * gap) / rows);
     const x0 = (G.W - (cols * w + (cols - 1) * gap)) / 2, y0 = Math.max(96 * d, (G.H - (rows * h + (rows - 1) * gap)) / 2 - 10 * d);
     return CH.map((c, i) => ({ c, i, x: x0 + (i % cols) * (w + gap), y: y0 + Math.floor(i / cols) * (h + gap), w, h })); }
   function kutBtn(G) { const cs = selCards(G), l = cs[cs.length - 1], d = G.d, w = Math.min(300 * d, G.W - 40 * d); return { x: (G.W - w) / 2, y: l.y + l.h + 16 * d, w, h: 44 * d }; }
@@ -847,13 +874,13 @@ const AszalyBeta = (() => {
         ch: 'gh', gold: 0, gcT: -9, meta: metaGet(), shop: null, sel: { i: 0, t: 0, shake: 0 }, started: 0, over: 0, paused: 0, dmgBy: {}, evd: {}, evoQ: [], evoN: 0, rr: 3, kingK: 0,
         ep: [], cans: [], geys: [], hail: [], heli: [], trail: [], bolts: [], beams: [], heliA: 0, rbA: 0, rbDir: 1, rbBase: 0, rbJet: 0,
         heat: 0, zapor: 0, rainT: 0, green: 0, dry: 0, flash: 0, batT: 30, szE: null, szN: 0, szKill: 0, ph: 'run', phT: 0, wk: 0, bi: 0, bossCD: 0, bossE: null, warns: [], blasts: [], crystals: [], burst: [], cones: [], sig: {}, szRage: 0, taunt: null, say: null, melt: null, note: null, unT: 0 };
-      sndT = {}; S.rr = 3 + (S.meta.rr || 0); stats(); view(G); joy = null; this.overTitle = 'KISZÁRADTÁL'; hideStats();
+      S.hasSave = saveGet(); sndT = {}; S.rr = 3 + (S.meta.rr || 0); stats(); view(G); joy = null; this.overTitle = 'KISZÁRADTÁL'; hideStats();
       const last = Math.round(store.get('aszb_last', 0)); if (CH[last] && chOpen(CH[last])) S.sel.i = last;
     },
     down(G, x, y, e) {
       if (!e || e === true) return;
       if (S.shop) { const r = shopRows(G).find(r => inR(r, x, y)); if (r) buyMeta(r.i); else if (inR(shopClose(G), x, y)) { S.shop = null; Sfx.blip(500, .06, 'square', .04); } return; }
-      if (S.sel) { if (inR(kutBtn(G), x, y)) { S.shop = { t: 0, i: -1, shake: 0 }; S.meta = metaGet(); Sfx.blip(700, .07, 'square', .04); return; } const c = selCards(G).find(c => inR(c, x, y)); if (c) selPick(G, c.i); return; }
+      if (S.sel) { if (S.hasSave && inR(contBtn(G), x, y)) return loadRun(G); if (inR(kutBtn(G), x, y)) { S.shop = { t: 0, i: -1, shake: 0 }; S.meta = metaGet(); Sfx.blip(700, .07, 'square', .04); return; } const c = selCards(G).find(c => inR(c, x, y)); if (c) selPick(G, c.i); return; }
       if (S.paused) { const b = pauseBtns(G).find(b => inR(b, x, y)); if (b) { if (b.id === 'go') togglePause(); else { S.paused = 0; G.end(); } } return; }
       if (S.choose) { const c = cards(G).findIndex(c => inR(c, x, y)); if (c >= 0) return pick(G, c); const b = cardBtns(G).find(b => inR(b, x, y)); if (b) b.id === 'rr' ? reroll() : skip(); return; }
       const pb = pauseBtn(G); if (Math.hypot(x - pb.x, y - pb.y) < pb.r * 1.4) return togglePause();
@@ -863,7 +890,7 @@ const AszalyBeta = (() => {
     move(G, x, y, pressed, e) { if (joy && pressed && (!e || e.pointerId === joy.id)) { joy.x = x; joy.y = y; } },
     up(G, x, y, e) { if (joy && (!e || e === true || e.pointerId === joy.id)) joy = null; },
     _S: () => S, /* tesztekhez */
-    leave() { joy = null; K.U = K.D = K.L = K.R = 0; hideStats(); },
+    leave(G) { joy = null; K.U = K.D = K.L = K.R = 0; hideStats(); if (S && G && G.running) { saveRun(G); S.left = 1; } },
     update(G, dt) {
       view(G); const P = S.P;
       if (S.shop) { S.shop.t += dt; S.shop.shake = Math.max(0, S.shop.shake - dt); }
@@ -874,6 +901,7 @@ const AszalyBeta = (() => {
       if (S.pending > 0) { S.pending--; return openChoice(); }
       S.t += dt; const st = S.st;
       if (S.t < .02) store.set('aszb_last', CH.findIndex(c => c.id === S.ch));
+      if ((S.saveT = (S.saveT ?? 10) - dt) <= 0) { S.saveT = 10; saveRun(G); }
       let mx = (K.R ? 1 : 0) - (K.L ? 1 : 0), my = (K.D ? 1 : 0) - (K.U ? 1 : 0);
       if (mx && my) { mx *= .7071; my *= .7071; }
       else if (!mx && !my && joy) { const dx = joy.x - joy.ox, dy = joy.y - joy.oy, m = Math.hypot(dx, dy), dz = 8 * G.d, mr = 46 * G.d;
@@ -898,7 +926,7 @@ const AszalyBeta = (() => {
     },
     draw(g, G, t) {
       view(G); if (sprSc !== V.sc) build(); else if (artDirty && artMiss) { artDirty = 0; buildSpr(); } if (portD !== G.d) portraits(G.d);
-      if (!G.running && S.started && !S.over && G.score >= 0 && UI.pStart.hidden) { S.over = 1; showStats(); checkUnlocks(G); }
+      if (!G.running && S.started && !S.over && G.score >= 0 && UI.pStart.hidden) { S.over = 1; if (!S.left) clearSave(); showStats(); checkUnlocks(G); }
       const P = S.P, sc = V.sc, d = G.d, W = G.W, H = G.H, X = wx => (wx - P.x) * sc + W / 2, Y = wy => (wy - P.y) * sc + H / 2, vis = (x, y, m) => x > -m && y > -m && x < W + m && y < H + m, ar = S.st.area;
       // talaj
       const ts = TILE.width, mod = (a, n) => ((a % n) + n) % n, sx0 = -Math.round(mod(P.x * sc - W / 2, ts)), sy0 = -Math.round(mod(P.y * sc - H / 2, ts));
@@ -1101,6 +1129,7 @@ const AszalyBeta = (() => {
           else { g.fillStyle = '#8b95a3'; g.fillText('🔒 ' + (secret ? 'Titkos karakter' : c.c.req), x + c.w / 2, c.y + ps + 40 * d, c.w - 12 * d); }
           g.font = `800 ${10 * d}px Inter, sans-serif`; g.fillStyle = 'rgba(255,255,255,.3)'; g.fillText(c.i + 1, x + 12 * d, c.y + 13 * d); }
         const kb = kutBtn(G); btn(g, G, Object.assign({ t: 'TANÁCSI KÚT · ' + store.get('aszb_gold') + ' ARANY' }, kb), true);
+        if (S.hasSave) { const sv = S.hasSave, cc = CH.find(c => c.id === sv.ch); btn(g, G, Object.assign({ t: 'FOLYTATÁS · ' + (cc ? cc.n : '') + ' · ' + fmtT(sv.t) }, contBtn(G))); }
         g.globalAlpha = 1;
         if (S.shop) { const sh = S.shop, b = Math.min(1, sh.t * 6); g.fillStyle = `rgba(2,4,9,${.94 * b})`; g.fillRect(0, 0, W, H); g.globalAlpha = b; g.textAlign = 'center'; g.textBaseline = 'middle';
           g.font = `900 ${Math.min(28 * d, W / 14)}px Cinzel, serif`; g.fillStyle = '#ffe29a'; g.fillText('TANÁCSI KÚT', W / 2, 70 * d);
