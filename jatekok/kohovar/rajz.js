@@ -1,9 +1,9 @@
 // Kohóvár – kirajzolás. A blokkok, egységek, anyagok és a talaj képei a Mindustry (Anuke és közreműködők, GPLv3) sprite-jai,
 // a kepek/atlasz.png atlaszból; a lövedékek, hatások, köd és kisérkép kódból rajzoltak.
-import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611270951';
-import { FW } from './keret.js?v=202611270951';
-import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611270951';
-import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270951';
+import { TS, ITEMS, ITEM_IDS, LIQUIDS, STATUS, FLOORS, WALLS, TREES, BLOCKS, UNITS } from './adat.js?v=202611271006';
+import { FW } from './keret.js?v=202611271006';
+import { FL, WL, DX, DY, PLAYER, ENEMY, buildTime } from './vilag.js?v=202611271006';
+import { SN, ISN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271006';
 
 const TEAM = { [PLAYER]: '#ffd37f', [ENEMY]: '#f25555', 0: '#4d4e58' };
 const NX = [1, 0, -1, 0, 1, 1, -1, -1], NY = [0, 1, 0, -1, 1, -1, 1, -1];
@@ -295,6 +295,7 @@ export function render(g, W, R) {
     if (u.hp < u.U.hp && (u.team === ENEMY || u !== W.player)) { g.fillStyle = '#2a0f0f'; g.fillRect(u.x - r, u.y + r + 2, r * 2, 1); g.fillStyle = u.team === ENEMY ? '#ff6b5a' : '#84f491'; g.fillRect(u.x - r, u.y + r + 2, r * 2 * Math.max(0, u.hp / u.U.hp), 1); }
     if (u.beam && u.beam.x != null) { g.strokeStyle = u.team === ENEMY ? '#ff7a6a' : '#84f491'; g.lineWidth = 4; g.beginPath(); g.moveTo(u.x, u.y); g.lineTo(u.beam.x, u.beam.y); g.stroke(); g.strokeStyle = '#fff'; g.lineWidth = 1.4; g.stroke(); }
     if (u.mining && u.mine >= 0) { const mx = (u.mine % W.w + .5) * TS, my = (Math.floor(u.mine / W.w) + .5) * TS, it = W.mineItem(u.mine); g.strokeStyle = it ? ITEMS[it].c : '#fff'; g.globalAlpha = .6 + .3 * Math.sin(t * .3); g.lineWidth = .8; g.beginPath(); g.moveTo(u.x, u.y); g.lineTo(mx, my); g.stroke(); g.globalAlpha = 1; g.fillStyle = g.strokeStyle; g.fillRect(mx - 1, my - 1, 2, 2); }
+    if (u.carryB && FW.drawCarry) FW.drawCarry(g, u);
     if (u.stack) itemSq(g, u.stack.it, u.x - Math.cos(u.rot) * r * 1.3, u.y - Math.sin(u.rot) * r * 1.3, 4);
     if (u.building && !u.building.done) { const q = u.building, qx = (q.x + q.B.s / 2) * TS, qy = (q.y + q.B.s / 2) * TS, h = q.B.s * 4; g.fillStyle = q.brk ? 'rgba(255,90,77,.25)' : 'rgba(255,211,127,.25)'; g.beginPath(); g.moveTo(u.x, u.y); g.lineTo(qx - h, qy - h); g.lineTo(qx + h, qy + h); g.fill(); g.beginPath(); g.moveTo(u.x, u.y); g.lineTo(qx + h, qy - h); g.lineTo(qx - h, qy + h); g.fill(); }
   }
@@ -304,9 +305,11 @@ export function render(g, W, R) {
     if (b.k === 'flame') { g.fillStyle = `rgba(255,${120 + Math.random() * 100},60,${.4 + .6 * Math.min(1, b.life / 6)})`; circ(g, b.x, b.y, 1.5 + Math.max(0, 1 - b.life / 14) * 2); continue; }
     if (b.k === 'liq' || b.k === 'acid') { g.fillStyle = b.k === 'acid' ? '#ffa166' : b.c; g.globalAlpha = .8; circ(g, b.x, b.y, 1.6); g.globalAlpha = 1; continue; }
     if (b.k === 'drv') { g.fillStyle = '#ffd37f'; circ(g, b.x, b.y, 3); g.fillStyle = '#fff'; circ(g, b.x, b.y, 1.4); continue; }
-    const a = Math.atan2(b.vy, b.vx), big = b.d > 40 ? 1.6 : 1; g.save(); g.translate(b.x, b.y); g.rotate(a);
+    const a = Math.atan2(b.vy, b.vx), big = b.sz || (b.d > 40 ? 1.6 : 1);
+    if (b.tr) { const L = Math.min(b.tr, 30) * Math.hypot(b.vx, b.vy) * .5; g.strokeStyle = b.c; g.globalAlpha = .45; g.lineWidth = 1.2 * big; g.beginPath(); g.moveTo(b.x, b.y); g.lineTo(b.x - Math.cos(a) * L, b.y - Math.sin(a) * L); g.stroke(); g.globalAlpha = 1; }   // csóva
+    g.save(); g.translate(b.x, b.y); g.rotate(a);
     if (b.k === 'missile') { g.fillStyle = '#c9cbd4'; g.fillRect(-2.5, -.9, 4.5, 1.8); g.fillStyle = b.c; g.fillRect(-4, -.6, 1.6, 1.2); }
-    else { g.fillStyle = b.c; g.beginPath(); g.ellipse(0, 0, 3 * big, 1.1 * big, 0, 0, 7); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.ellipse(.4, 0, 1.8 * big, .55 * big, 0, 0, 7); g.fill(); }
+    else { g.fillStyle = b.c; g.beginPath(); g.ellipse(0, 0, 3 * big, 1.1 * big, 0, 0, 7); g.fill(); g.fillStyle = b.c2 || '#fff'; g.beginPath(); g.ellipse(.4, 0, 1.8 * big, .55 * big, 0, 0, 7); g.fill(); }
     g.restore();
   }
   if (!R.nofx) for (const f of W.fx) {

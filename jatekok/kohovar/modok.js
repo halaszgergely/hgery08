@@ -2,12 +2,12 @@
 // A mod egy Mindustry-formátumú .zip (mod.hjson / mod.json, content/{items,liquids,blocks,units}/*.json|hjson, sprites/**.png,
 // bundles/bundle*.properties). A tartalmat a Kohóvár saját blokkfajtáira fordítjuk le; amit nem ismerünk, azt kihagyjuk és jelezzük.
 // Forrás: a modok/lista.json-ban felsorolt, a játékkal együtt kiadott modok, és a játékos által betöltött .zip-ek (IndexedDB-ben, csak helyben).
-import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611270951';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611270951';
-import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611270951';
-import { FL, FLI, WL } from './vilag.js?v=202611270951';
-import { parseHjson } from './hjson.js?v=202611270951';
-import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611270951';
+import { ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, STATUS, FLOORS, WALLS, TREES, MPROP, WALL_SAND, WALL_DROP, BLOCKS, UNITS, BUILD_ORDER, TECH, EXTRA_ORES, MOD_ORE, MOD_DECO, rcost, ucost } from './adat.js?v=202611271006';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271006';
+import { SN, ISN, LSN, UW, LEG, FSPR, WSPR } from './kepadat.js?v=202611271006';
+import { FL, FLI, WL } from './vilag.js?v=202611271006';
+import { parseHjson } from './hjson.js?v=202611271006';
+import { addSprite, spritesReady, has as AT_HAS } from './rajz.js?v=202611271006';
 
 export const MODS = [];
 export const MOD_SECTORS = [], MOD_PLANETS = [];   // a modok szektorai (SectorPreset) és bolygói (Planet), a pályájuk a mod maps/ mappájából          // betöltött modok: { id, name, version, author, desc, src, warn: [] }
@@ -111,6 +111,10 @@ export function installMod(files, srcLabel) {
     if (b.buildingDamageMultiplier != null) o.bdm = +b.buildingDamageMultiplier;
     const fb = b.fragBullet || b.intervalBullet; if (fb) { const f = bullet(fb); if (f) o.frag = { n: +(b.fragBullets || (b.intervalBullet ? 3 : 9)), d: f.d, sp: f.sp, life: +(fb.lifetime || 20), spl: f.spl, splR: f.splR }; }
     if (b.lifetime) o.life = +b.lifetime;
+    { const cc = v => typeof v === 'string' && /^#?[0-9a-fA-F]{6}/.test(v) ? '#' + v.replace(/^#/, '').slice(0, 6) : null;   // a lövedék kinézete
+      const bc = cc(b.backColor) || cc(b.trailColor) || cc(b.hitColor) || cc(b.lightColor) || cc(b.color), fc = cc(b.frontColor); if (bc) o.c = bc; if (fc) o.c2 = fc;
+      const w = +(b.width ?? b.bulletWidth ?? 0), h = +(b.height ?? b.bulletHeight ?? 0); if (w || h) o.sz = Math.max(.6, Math.min(3, ((w || 5) + (h || 7)) / 12));
+      if (+b.trailLength > 0) o.tr = Math.min(30, +b.trailLength); }
     if (b.knockback) o.kb = +b.knockback;
     if (/artillery/.test(t)) o.k = 'art'; else if (/missile/.test(t)) o.k = 'missile'; else if (/flak/.test(t)) { o.k = 'flak'; o.gnd = b.collidesGround ? 1 : 0; if (!o.spl) { o.spl = o.d * 3; o.splR = 20; } }
     else if (/shrapnel/.test(t)) { o.k = 'shrap'; o.len = +(b.length || 100); } else if (/rail/.test(t)) { o.k = 'rail'; o.d = +(b.damage ?? 100); }
@@ -132,6 +136,7 @@ export function installMod(files, srcLabel) {
     const U = { ...(U0 || {}), n: label('unit', n, j), fam, tier: U0 ? U0.tier : 1, hp: +(j.health ?? (U0 ? U0.hp : 200)), sp: +(j.speed ?? (U0 ? U0.sp : .5)), r: j.hitSize != null ? +j.hitSize / 2 : U0 ? U0.r : 4, armor: +(j.armor ?? (U0 ? U0.armor : 0)), mod: id };
     U.air = fam === 'air' ? 1 : 0; U.legs = fam === 'legs' ? 1 : 0; U.naval = fam === 'naval' ? 1 : 0; if (T === 'tank') U.tank = 1; if (/hover/.test(T) || j.hovering) U.hov = 1;
     if (j.mineTier != null && j.mineTier >= 0) { U.mine = +(j.mineSpeed || 1); U.mineT = +j.mineTier; if (j.mineWalls) U.mineW = 1; }
+    if (j.payloadCapacity) U.payS = Math.floor(Math.sqrt(+j.payloadCapacity) / 8 + .01);
     if (j.buildSpeed) U.build = +j.buildSpeed; if (j.itemCapacity) U.icap = +j.itemCapacity;
     const ab = {}; for (const a of j.abilities || []) { const at = String(a.type || '').replace(/^.*\./, ''); if (/ForceField/.test(at)) ab.ff = [+(a.radius || 60), +(a.regen || .1), +(a.max || 200), +(a.cooldown || 300)]; else if (/RepairField/.test(at)) ab.rep = [+(a.amount || 30), +(a.reload || 120), +(a.range || 60)]; else if (/ShieldRegen/.test(at)) ab.regen = [+(a.amount || 10), +(a.max || 100), +(a.reload || 60), +(a.range || 60)]; }
     if (Object.keys(ab).length) U.ab = ab;
