@@ -1,13 +1,13 @@
 // HGWS – Netflix-stílusú filmes felület: kezdőlap, filmtár, saját lista, keresés, részletek, lejátszó
-import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611271253';
-import { stageHtml, confirmBox, modal } from './ui.js?v=202611271253';
-import * as Player from './player.js?v=202611271253';
-import * as Party from './party.js?v=202611271253';
-import * as Premier from './premier.js?v=202611271253';
-import * as VP from './vplayer.js?v=202611271253';
-import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611271253';
-import * as Promo from './promo.js?v=202611271253';
-import * as ArcL from './arcade-lista.js?v=202611271253';
+import { FB, db, $, $$, esc, ROLES, avatar, toDate, timeLabel, huDate, isOnline, toast, errText, notify, audit, OWNER_UID, reservedName, RESERVED_MSG, badName, BAD_MSG, badMsg, bigNum, lbEnc, lbDec } from './core.js?v=202611271305';
+import { stageHtml, confirmBox, modal } from './ui.js?v=202611271305';
+import * as Player from './player.js?v=202611271305';
+import * as Party from './party.js?v=202611271305';
+import * as Premier from './premier.js?v=202611271305';
+import * as VP from './vplayer.js?v=202611271305';
+import { bgOf, applyTint, ambilight, I } from './fx.js?v=202611271305';
+import * as Promo from './promo.js?v=202611271305';
+import * as ArcL from './arcade-lista.js?v=202611271305';
 
 let C = null;
 export function init(ctx) { C = ctx; Promo.setup({ videos: () => C.S.videos, open: id => detail(id) }); }
@@ -304,7 +304,7 @@ async function loadPlays() {
   return PLAYS;
 }
 /* felhőmentés idle játékokhoz: cloudsaves/{uid}/g/{játék} = { life, st, updatedAt } – a szabály csak nagyobb vagy egyenlő life-ot enged */
-const CS_GAMES = ['birodalom', 'szerver', 'szerver2', 'szerver3'], CS_GAP = 30 * 60e3; // automatikus mentés legfeljebb 30 percenként + kilépéskor; kézi mentést csak admin indíthat (minden felhőmentéses játékra)
+const CS_GAMES = ['birodalom', 'szerver', 'szerver2', 'szerver3', 'kohovar'], CS_GAP = 30 * 60e3; // automatikus mentés legfeljebb 30 percenként + kilépéskor; kézi mentést csak admin indíthat (minden felhőmentéses játékra)
 const csLast = g => { try { return +localStorage.getItem('hgws_cs_' + g) || 0; } catch (_) { return 0; } };
 const csMan = () => C.isOwner() || (!guest() && ((ROLES[S().me?.role] || ROLES.user).rank || 0) >= ((ROLES.moderator && ROLES.moderator.rank) || 40)); // kézi felhőmentés: csak rang alapján (moderátor és afölött), tagtől és külön engedélytől függetlenül
 async function cloudGet(win, game) {
