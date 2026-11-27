@@ -2,18 +2,18 @@
 // ResearchDialog, DatabaseDialog, SettingsMenuDialog, CustomGameDialog, PausedDialog, HudFragment, PlacementFragment),
 // kampány, egyéni játék, kutatás, irányítás, mentés.
 // A Mindustry (Anuke) alapján: https://store.steampowered.com/app/1127400/Mindustry/
-import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271349';
-import { FW, installFramework, loadAddon } from './keret.js?v=202611271349';
-import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271349';
-import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss } from './rajz.js?v=202611271349';
-import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271349';
-import { JS } from './jsapi.js?v=202611271349';
-import { initCloud, changed as cloudChanged, push as cloudPush, flush as cloudFlush } from './felho.js?v=202611271349';
-import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271349';
-import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271349';
-import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271349';
-import { toWorld } from './msav.js?v=202611271349';
-import { Story } from './logika.js?v=202611271349';
+import { TS, ITEMS, ITEM_IDS, ITEM_PL, LIQUIDS, BLOCKS, CATS, BUILD_ORDER, UNITS, TECH, LEGACY_SIZE, FREE_OPTS, FREE_DEF, MAPS, freeSector, freeRanked } from './adat.js?v=202611271357';
+import { FW, installFramework, loadAddon } from './keret.js?v=202611271357';
+import { World, PLAYER, isPow, genFor, prepContent } from './vilag.js?v=202611271357';
+import { makeTerrain, render, drawB, ghostOf, minimap, drawUnit, loadAtlas, spr, sprSize, icoCss, drawLanding } from './rajz.js?v=202611271357';
+import { MODS, MOD_SECTORS, MOD_PLANETS, MOD_MAPS, loadMods, builtinList, localMods, saveLocalMod, deleteLocalMod, modPrefs, setModPrefs, readZip } from './modok.js?v=202611271357';
+import { JS } from './jsapi.js?v=202611271357';
+import { initCloud, changed as cloudChanged, push as cloudPush, flush as cloudFlush } from './felho.js?v=202611271357';
+import { ISN, LSN, SN, SECSPR } from './kepadat.js?v=202611271357';
+import { SECTORS, GRID, GRIDS, TXT, PLANETS, TECH_ROOT, loadMap, sectorFor, contentOf, textsFor, addModSectors } from './kampany.js?v=202611271357';
+import { putSlot, getSlot, delSlot } from './mentes.js?v=202611271357';
+import { toWorld } from './msav.js?v=202611271357';
+import { Story } from './logika.js?v=202611271357';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], cv = $('#c'), g = cv.getContext('2d');
 const KEY = 'kohovar_v1', GAME = 'kohovar', INFRAME = window.top !== window;
@@ -57,7 +57,7 @@ const ic = (n, cls = '') => `<i class="ic ${cls} ic-${n}"></i>`;
 /* ---------- állapot ---------- */
 let W = null, TER = null, SEC = null, paused = false, acc = 0, last = performance.now(), T = 0;
 const cam = { x: 0, y: 0, z: 4, free: null }, keys = new Set(), M = { x: 0, y: 0, wx: 0, wy: 0, l: false, drag: null, rdrag: null };
-let selBlock = null, rot = 0, cat = 'turret', selB = null, hoverBlock = null, saveT = 0, bigMap = false, ready = false;
+let LAND = null, selBlock = null, rot = 0, cat = 'turret', selB = null, hoverBlock = null, saveT = 0, bigMap = false, ready = false;
 
 /* ---------- párbeszédablakok: verem, „Vissza” és Esc ---------- */
 const STACK = [];
@@ -487,6 +487,7 @@ async function start(sec, save) {
   if (save && save.gv === 2) sec = { ...sec, gen: 2 };   // a korábbi barlangos térkép
   if (save && !save.gv) sec = { ...sec, gen: 1, ...(LEGACY_SIZE[sec.id] ? { w: LEGACY_SIZE[sec.id][0], h: LEGACY_SIZE[sec.id][1] } : {}) };   // régi mentés: a régi térképével töltjük vissza
   SEC = sec; W = new World(sec, save); if (FW.js) FW.js.world(W); TER = makeTerrain(W); selB = null; selBlock = null; paused = false; cam.free = null; cam.z = 4; STORY = null;
+  LAND = !save && W.core && SET.fx !== 0 ? { t: 0, D: 160 } : null; if (LAND) W.core.__land = 1;   // a mag leszállása (Mindustry: új szektorra érkezéskor)
   if (sec.map) STORY = W.story = new Story(W, sec.map, textsFor(SECTORS.find(q => q.id === sec.id) || {}, sec.map), { unlocked: c => { const r = contentOf(c); if (!r) return true; if (r[0] === 'b' || r[0] === 'u') return S.research.includes(r[0] === 'u' ? 'u:' + r[1] : r[1]); if (r[0] === 's') return !!S.cap[r[1]]; return !!S.seen[r[0] + ':' + r[1]] || (W.core.items[r[1]] > 0); }, content: c => contentOf(c) || ['i', 'copper'], icon: (k, key) => k === 'b' ? `:${SN[key]}:` : k === 'u' ? `:${key}:` : k === 'i' ? `:${ISN[key]}:` : k === 'l' ? `:${LSN[key]}:` : '', name: (k, key) => k === 'b' ? BLOCKS[key].n : k === 'u' ? UNITS[key].n : k === 'i' ? ITEMS[key].n : k === 'l' ? LIQUIDS[key].n : key });
   if (MODS.length) sec.ranked = 0;   // modokkal nincs ranglista
   W.onWave = n => { W.msg(`${n}. hullám`); if (n > 1 && n % 3 === 0) setTimeout(() => addSlot(true), 0); if (sec.free && sec.ranked) { if (n > (S.best || 0)) { S.best = n; persist(); } try { if (INFRAME) parent.postMessage({ hgws: 'score', game: GAME, score: n }, location.origin); } catch (_) { } } };
@@ -757,6 +758,7 @@ function storyOverlay(gx, z) {
   gx.textBaseline = 'alphabetic';
 }
 function overlay(gx, z) {
+  if (LAND && W.core) { drawLanding(gx, W, Math.min(1, LAND.t / LAND.D), T + LAND.t); return; }
   storyOverlay(gx, z);
   const [tx, ty] = tileAt(M.wx, M.wy), lw = 1.5 / z, ring = (x, y, R, cross) => { gx.strokeStyle = 'rgba(255,211,127,.6)'; gx.lineWidth = lw; gx.setLineDash([3, 3]); gx.beginPath(); if (cross) { gx.rect(x - R - 4, y - 4, R * 2 + 8, 8); gx.rect(x - 4, y - R - 4, 8, R * 2 + 8); } else gx.arc(x, y, R, 0, 7); gx.stroke(); gx.setLineDash([]); };
   if (selBlock) {
@@ -784,7 +786,13 @@ function frame(now) {
   const dt = Math.min(100, now - last); last = now; fpsN++; if (now - fpsT > 1000) { fpsV = fpsN; fpsN = 0; fpsT = now; }
   if (!W) { T++; if ($('#planet').hidden && STACK.every(d => d.id !== '#dTech')) drawMenuBg(); return; }
   control();
-  if (!paused) { acc += dt; let n = 0; while (acc >= 1000 / 60 && n < 4) { try { W.step(); } catch (e) { console.error(e); if (!W.errShown) { W.errShown = 1; W.msg('Játékhiba: ' + (e && e.message || e), 'bad'); } } acc -= 1000 / 60; n++; T++; } if (n === 4) acc = 0; }
+  if (LAND) {   // leszállás: a szimuláció áll, a kamera a magra közelít
+    LAND.t += dt / (1000 / 60); const f = Math.min(1, LAND.t / LAND.D), c = W.center(W.core); cam.x = c.x; cam.y = c.y; cam.z = 1.5 + 2.5 * f ** 3; acc = 0;
+    if (f > .78) for (let yy = 0; yy < W.core.B.s; yy++) for (let xx = 0; xx < W.core.B.s; xx++) if (Math.random() < .25) { const x = (W.core.x + xx + .5) * TS, y = (W.core.y + yy + .5) * TS, fl = W.fl((W.core.y + yy) * W.w + W.core.x + xx); W.fx.push({ k: 'puff', x: x + (x - c.x) * .6, y: y + (y - c.y) * .6, life: 30, max: 30, c: (fl && fl.c) || '#8a8a8a' }); }
+    for (const q of W.fx) q.life--; W.fx = W.fx.filter(q => q.life > 0);
+    if (f >= 1) { W.core.__land = 0; LAND = null; cam.z = 4; }
+  }
+  if (!paused && !LAND) { acc += dt; let n = 0; while (acc >= 1000 / 60 && n < 4) { try { W.step(); } catch (e) { console.error(e); if (!W.errShown) { W.errShown = 1; W.msg('Játékhiba: ' + (e && e.message || e), 'bad'); } } acc -= 1000 / 60; n++; T++; } if (n === 4) acc = 0; }
   if (W.won) return endGame(true);
   if (W.lost) return endGame(false);
   const p = W.player;
