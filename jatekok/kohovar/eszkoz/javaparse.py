@@ -149,7 +149,12 @@ class P:
         if s.eat('~'): s.unary(); return U
         # típuskonverzió: (int)x, (float)(...)
         if s.at('(') and s.pk(1)[0] == 'id' and s.pk(1)[1] in ('int', 'float', 'double', 'long', 'short', 'byte') and s.at(')', 2):
-            s.i += 3; v = s.unary(); return int(v) if s.t[s.i - 1] and isinstance(v, (int, float)) and s.t[s.i][1] != '.' and False else v
+            s.i += 3; return s.unary()
+        if s.at('(') and s.pk(1)[0] == 'id' and s.pk(1)[1][:1].isupper():      # (Típus) kifejezés
+            j = s.i + 2
+            while s.t[j][1] == '.' and s.t[j + 1][0] == 'id': j += 2
+            if s.t[j][1] == ')' and (s.t[j + 1][0] in ('id', 'num', 'str') or s.t[j + 1][1] == '('):
+                s.i = j + 1; return s.unary()
         return s.postfix(s.primary())
 
     def primary(s):
@@ -209,14 +214,16 @@ class P:
             return []
         a = s.args() if s.at('(') else []
         o = Obj(typ.split('.')[-1], a)
-        if s.at('{') and s.at('{', 1):      # dupla zárójeles inicializáló
-            s.i += 2; s.body(o); s.eat('}'); s.eat('}')
+        if s.at('{') and s.at('{', 1):      # dupla zárójeles inicializáló (vagy névtelen osztály példány-blokkal)
+            s.i += 2; s.body(o); s.eat('}')
+            if not s.eat('}'): s.anon(o, True)
         elif s.at('{'):                     # névtelen osztály felülírt metódusokkal
             s.anon(o)
         return o
 
-    def anon(s, o):
-        s.nx(); d = 1; start = s.i
+    def anon(s, o, inside=False):
+        if not inside: s.nx()
+        d = 1
         while d and s.pk()[0] != 'eof':
             t = s.nx()
             if t[0] == 'op' and t[1] == '{':
