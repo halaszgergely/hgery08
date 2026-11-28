@@ -52,8 +52,8 @@ const AszalyBeta = (() => {
     kodliderc: { hp: 12, sp: 80, dmg: 7, r: 15, xp: 2, pt: 22, f: 'halo', ai: 'wobble', w: 2, n: 'Kódlidérc' },
     tonpecset: { hp: 5, sp: 0, dmg: 5, r: 13, xp: 1, pt: 10, f: 'halo', ai: 'trap', w: 1, n: 'TON-pecsét' },
     arnyfarkas: { hp: 26, sp: 132, dmg: 10, r: 16, xp: 3, pt: 42, f: 'halo', ai: 'flank', w: 2, pack: 3, n: 'Árnyfarkas' },
-    watchdog: { hp: 2600, sp: 74, dmg: 20, r: 34, xp: 0, pt: 1500, boss: 1, art: 'wdk', sz: 120, n: 'Watchdog Lovag' },
-    kiraly: { hp: 5800, sp: 60, dmg: 24, r: 38, xp: 0, pt: 2500, boss: 1, art: 'kk', sz: 130, n: 'Kaktuszkirály' },
+    watchdog: { hp: 7000, sp: 80, dmg: 26, r: 34, xp: 0, pt: 1500, boss: 1, art: 'wdk', sz: 120, n: 'Watchdog Lovag' },
+    kiraly: { hp: 10500, sp: 66, dmg: 30, r: 38, xp: 0, pt: 2500, boss: 1, art: 'kk', sz: 130, n: 'Kaktuszkirály' },
     ladder: { hp: 9000, sp: 58, dmg: 24, r: 34, xp: 0, pt: 3500, boss: 1, art: 'ldm', sz: 120, n: 'Ladder Mester' },
     fereg: { hp: 14500, sp: 150, dmg: 30, r: 40, xp: 0, pt: 4500, boss: 1, art: 'hf', sz: 150, n: 'Homokféreg' },
     boszi: { hp: 20000, sp: 68, dmg: 28, r: 34, xp: 0, pt: 6000, boss: 1, art: 'stw', sz: 120, n: 'Structured Text Boszorkány' },
@@ -175,14 +175,14 @@ const AszalyBeta = (() => {
     const b = S.bossE && !S.bossE.dead ? S.bossE : null, P = S.P, c = S.choose;
     const d = { v: 1, at: Date.now(), score: G.score, ch: S.ch, t: S.t, P: { x: P.x, y: P.y, hp: P.hp, lvl: P.lvl, xp: P.xp, need: P.need },
       up: S.up, evd: S.evd, evoN: S.evoN, rr: S.rr, rev: S.rev, gold: S.gold, kills: S.kills, bossN: S.bossN, bi: S.bi, bossCD: S.bossCD, minute: S.minute,
-      ph: S.ph, phT: S.phT, szN: S.szN, szKill: S.szKill, dmgBy: S.dmgBy, fused: S.fused, fz: S.fz, fzW: S.fzW, pending: S.pending + (c && !c.evo ? 1 : 0), evoQ: S.evoQ.concat(c && c.evo ? [c.evo] : []),
+      ph: S.ph, phT: S.phT, szN: S.szN, szKill: S.szKill, dmgBy: S.dmgBy, hmA: S.hmA, fused: S.fused, fz: S.fz, fzW: S.fzW, pending: S.pending + (c && !c.evo ? 1 : 0), evoQ: S.evoQ.concat(c && c.evo ? [c.evo] : []),
       boss: b ? { k: b.type, f: b.hp / b.mhp, shN: b.shN || 0, sh: b.shield ? 1 : 0 } : null };
     try { localStorage.setItem(SAVE, JSON.stringify(d)); } catch (_) {}
   }
   function loadRun(G) {
     const d = saveGet(); if (!d) return;
     Object.assign(S, { ch: d.ch, t: d.t, up: d.up, evd: d.evd || {}, evoN: d.evoN || 0, rr: d.rr, rev: d.rev || 0, gold: d.gold || 0, kills: d.kills || 0, bossN: d.bossN || 0, bi: d.bi || 0, bossCD: d.bossCD || 0,
-      minute: d.minute || 0, ph: d.ph || 'run', phT: d.phT || 0, szN: d.szN || 0, szKill: d.szKill || 0, dmgBy: d.dmgBy || {}, fused: d.fused || [], fz: d.fz || '', fzW: d.fzW || '', pending: d.pending || 0, evoQ: d.evoQ || [], sel: null, shop: null, started: 1, meta: metaGet() });
+      minute: d.minute || 0, ph: d.ph || 'run', phT: d.phT || 0, szN: d.szN || 0, szKill: d.szKill || 0, dmgBy: d.dmgBy || {}, hmA: d.hmA ?? Math.pow(d.t / 40, 1.15) * .2, fused: d.fused || [], fz: d.fz || '', fzW: d.fzW || '', pending: d.pending || 0, evoQ: d.evoQ || [], sel: null, shop: null, started: 1, meta: metaGet() });
     Object.assign(S.P, d.P); S.sigK = sigKeys(); stats(); S.P.hp = Math.min(S.P.mhp, d.P.hp); G.score = d.score || 0; S.dirty = 1;
     if (S.ph === 'wrath') S.wk = clamp(1 - S.phT / 240, 0, 1);
     if (S.ph === 'god' || (d.boss && d.boss.k === 'isten')) { godSpawn(G); const e = S.bossE; e.dsc = 0; e.hp = e.mhp * d.boss.f; e.shN = d.boss.sh ? Math.max(0, d.boss.shN - 1) : d.boss.shN; S.banner = null; S.say = null; }
@@ -248,11 +248,13 @@ const AszalyBeta = (() => {
   /* ---------- ellenségek ---------- */
   function edge() { const w = V.hw + 34, h = V.hh + 34, r = Math.random() * (w + h) * 2, s = Math.random() < .5 ? -1 : 1; return r < w * 2 ? [r - w, s * h] : [s * w, r - w * 2 - h]; }
   function spawn(type, ox, oy, mul = 1) {
-    const T = ET[type], P = S.P, m = S.t / 40, hm = (1 + Math.pow(m, 1.15) * .2) * (S.ph === 'wrath' ? 1.25 + S.wk * 1.25 : S.ph === 'god' ? 2.4 : 1);
+    const T = ET[type], P = S.P, hm = (1 + S.hmA) * (S.ph === 'wrath' ? 1.25 + S.wk * 1.25 : S.ph === 'god' ? 2.4 : 1);
     const hp = (T.boss ? T.hp * (1 + S.bossN * .04) : T.hp * hm) * mul;
     const e = { id: ++S.eid, type, T, x: P.x + ox, y: P.y + oy, hp, mhp: hp, r: T.r, sp: T.sp * (.9 + Math.random() * .2), flash: 0, kx: 0, ky: 0, slow: 0, freeze: 0, air: 0, oT: 0, rbT: 0, csT: 0, ph: Math.random() * 6, at: 1 + Math.random() * 2, side: Math.random() < .5 ? -1 : 1 };
     S.en.push(e); return e;
   }
+  /* kimaxolt kártyák aránya (evolúció is számít) */
+  function doneFrac() { let n = 0; for (const k in S.up) if (!S.fused.includes(k) && UP[k] && !UP[k].sp && (UP[k].evo || lv(k) >= bmx(k))) n++; return Math.min(1, n / (MAXW + MAXP)); }
   function pickType() {
     const m = S.t / 60, w = [];
     FAMS.forEach((f, i) => { const age = m - FAM_T[i]; if (age < 0 && S.ph === 'run') return; const fw = S.ph !== 'run' ? 1 : age < 6 ? 3 : age < 12 ? 1.4 : .6;
@@ -271,6 +273,7 @@ const AszalyBeta = (() => {
     S.bossE = e; banner(ET[k].n.toUpperCase() + '!', 3); G.shake = 12 * G.d; Sfx.boom(); [196, 147].forEach((f, i) => setTimeout(() => Sfx.blip(f, .35, 'sawtooth', .06, .8), i * 220));
   }
   function spawner(G, dt) {
+    if (S.ph === 'run') { if ((S.dfT = (S.dfT || 0) - dt) <= 0) { S.dfT = 1; S.done = doneFrac(); } S.hmA += dt / 60 * .85 * (1 - .65 * (S.done || 0)); }
     if (S.ph === 'descent' || S.ph === 'win') return;
     const cap = Math.round(clamp(Math.round(V.hw * V.hh / 420), 150, 300) * S.st.curse * (S.ph === 'bloom' ? .25 : S.ph === 'god' ? .45 : 1));
     S.sT -= dt;
@@ -374,7 +377,7 @@ const AszalyBeta = (() => {
     if (d < e.r + 10 && P.inv <= 0) hitPlayer(G, e);
   }
   const BPAT = { watchdog: ['roham', 'ugatas', 'pajzs', 'ketrec'], kiraly: ['tuskespiral', 'toviskert', 'rengés', 'tuskeeso'], ladder: ['racs', 'sorozat', 'alakzat', 'sopres'], boszi: ['kodspiral', 'teleport', 'atok', 'runakor'] };
-  const BCD = { watchdog: 3, kiraly: 3.2, ladder: 3.2, boszi: 2.8 };
+  const BCD = { watchdog: 2.4, kiraly: 2.6, ladder: 3.2, boszi: 2.8 };
   /* látványos támadás-építőkockák: késleltetett sor, spirál, lökéshullám, követő gömb, ketrec, eső, rács, söprés */
   const later = (t, f) => S.bq.push({ t, f });
   function spiral(e, n, arms, sp, dmg, c, rot = .33, gap = .07) { e.spA = e.spA || 0; for (let i = 0; i < n; i++) later(i * gap, () => { if (e.dead) return; for (let a = 0; a < arms; a++) shotAt(e, e.spA + a * TAU / arms, sp, dmg, c); e.spA += rot; }); }
@@ -734,7 +737,8 @@ const AszalyBeta = (() => {
     else { for (let i = 0, n = q.dbl ? 2 : 1; i < n; i++) { const ev = evoAvail(); if (ev) S.evoQ.push(ev); else S.pending++; }
       P.hp = Math.min(P.mhp, P.hp + 30); G.score += q.dbl ? 500 : 250; S.dirty = 1; G.float(G.W / 2, G.H / 2 - 40 * G.d, q.dbl ? 'DUPLA KINCS! +500' : 'KINCS! +250'); }
   }
-  function evoAvail() { for (const r of EVOR) if (lv(r[0]) >= bmx(r[0]) && lv(r[1]) >= 1 && !S.up[r[2]] && !S.evoQ.some(q => q[2] === r[2])) return r; return null; }
+  const maxedOther = w => Object.keys(S.up).filter(k => k !== w && UP[k] && !UP[k].sp && !S.fused.includes(k) && (UP[k].evo || lv(k) >= bmx(k))).length;
+  function evoAvail() { for (const r of EVOR) if (lv(r[0]) >= bmx(r[0]) && lv(r[1]) >= 1 && maxedOther(r[0]) >= 3 && !S.up[r[2]] && !S.evoQ.some(q => q[2] === r[2])) return r; return null; }
 
   /* ---------- karakterek feloldása ---------- */
   function checkUnlocks() {}
@@ -1029,7 +1033,7 @@ const AszalyBeta = (() => {
         eid: 0, sT: .6, minute: 0, bossN: 0, kills: 0, pending: 0, choose: null, orb: 0, sndT: -1, gsT: -1, hudT: 0, dirty: 0, banner: null,
         ch: 'gh', fused: [], fz: '', fzW: '', fuse: null, fzLater: 0, sigK: ['', ''], gold: 0, gcT: -9, meta: metaGet(), shop: null, sel: { i: 0, t: 0, shake: 0 }, started: 0, over: 0, paused: 0, dmgBy: {}, evd: {}, evoQ: [], evoN: 0, rr: 3, kingK: 0,
         ep: [], cans: [], geys: [], hail: [], heli: [], trail: [], bolts: [], beams: [], heliA: 0, rbA: 0, rbDir: 1, rbBase: 0, rbJet: 0,
-        heat: 0, zapor: 0, rainT: 0, green: 0, dry: 0, flash: 0, batT: 30, szE: null, szN: 0, szKill: 0, ph: 'run', phT: 0, wk: 0, bi: 0, bossCD: 0, bossE: null, warns: [], blasts: [], waves: [], bq: [], mel: [], hams: [], cracks: [], ltrail: [], balls: null, crystals: [], burst: [], cones: [], sig: {}, szRage: 0, taunt: null, say: null, melt: null, note: null, unT: 0 };
+        heat: 0, zapor: 0, rainT: 0, green: 0, dry: 0, flash: 0, batT: 30, szE: null, szN: 0, szKill: 0, ph: 'run', phT: 0, wk: 0, bi: 0, bossCD: 0, bossE: null, hmA: 0, done: 0, warns: [], blasts: [], waves: [], bq: [], mel: [], hams: [], cracks: [], ltrail: [], balls: null, crystals: [], burst: [], cones: [], sig: {}, szRage: 0, taunt: null, say: null, melt: null, note: null, unT: 0 };
       S.hasSave = saveGet(); sndT = {}; S.rr = 3 + (S.meta.rr || 0); stats(); view(G); joy = null; this.overTitle = 'KISZÁRADTÁL'; hideStats();
       const last = Math.round(store.get('aszb_last', 0)); if (CH[last] && chOpen(CH[last])) S.sel.i = last;
     },
