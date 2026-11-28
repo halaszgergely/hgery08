@@ -316,9 +316,9 @@ const AszalyBeta = (() => {
         else { S.zapor = 20; S.rainT = Math.max(S.rainT, 4); for (const q of S.gems) q.pull = 1; banner('ZÁPOR! +10% XP', 2.2, '#6cc6ff'); Sfx.splash(); } } }
   }
   /* szakaszok: virágzás (1 perc) → Szilárd haragja (10 perc) → leereszkedés → az Aszály Istene */
-  function dpsTick(dt) { if ((S.dpsT = (S.dpsT ?? 1) - dt) > 0) return; S.dpsT = 1; S.dpsW.push(S.dmgSec); S.dmgSec = 0; if (S.dpsW.length > 10) S.dpsW.shift(); S.dps = S.dpsW.reduce((a, b) => a + b, 0) / S.dpsW.length; }
+  function dpsTick(dt) { if ((S.dpsT = (S.dpsT ?? 1) - dt) > 0) return; S.dpsT = 1; S.dpsW.push(S.dmgSec); S.dmgSec = 0; if (S.dpsW.length > 10) S.dpsW.shift(); S.dps = S.dpsW.reduce((a, b) => a + b, 0) / S.dpsW.length; S.dpsMax = Math.max(S.dps, (S.dpsMax || 0) * .985); }
   /* a boss életének 70%-a a játékos sebzéséhez igazodik, hogy a harc nagyjából a célidőig tartson */
-  function scaleBoss(e, sec) { const base = e.mhp, d = Math.max(60, S.dps * .45), hp = Math.round(base * .3 + d * sec * .7 / (e.T.god ? 1 : 1)); e.mhp = e.hp = Math.max(hp, base * .3 + 2000); e.fightT = S.t; e.fsec = sec; e.fbase = base * .3; e.dmg0 = S.bossDmg; e.ck = 0; }
+  function scaleBoss(e, sec) { const base = e.mhp, d = Math.max(60, Math.max(S.dps, S.dpsMax || 0) * .45), hp = Math.round(base * .3 + d * sec * .7 / (e.T.god ? 1 : 1)); e.mhp = e.hp = Math.max(hp, base * .3 + 2000); e.fightT = S.t; e.fsec = sec; e.fbase = base * .3; e.dmg0 = S.bossDmg; e.ck = 0; }
   /* a harc 15. és 40. másodpercében a ténylegesen bossra jutó sebzés alapján újraszámol */
   function rescaleBoss() { const e = S.bossE; if (!e || e.dead || e.dsc > 0 || !e.fsec || e.ck > 1) return; const el = S.t - e.fightT; if (el < [15, 40][e.ck]) return; e.ck++;
     const bd = (S.bossDmg - e.dmg0) / el, tgt = e.fbase + .7 * bd * e.fsec, frac = e.hp / e.mhp, nm = Math.max(e.fbase + 2000, tgt); e.mhp = nm; e.hp = Math.max(1, nm * frac); }
