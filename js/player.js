@@ -1,5 +1,5 @@
 // HGWS – zenelejátszó (lapozás közben is szól tovább)
-import { $, esc, toast } from './core.js?v=202611281509';
+import { $, esc, toast } from './core.js?v=202611281512';
 
 const audio = new Audio();
 audio.preload = 'metadata';
