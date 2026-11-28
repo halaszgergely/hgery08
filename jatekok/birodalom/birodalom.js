@@ -425,7 +425,7 @@ const Birodalom = (() => {
   const starGain = () => starsAt(S.life).mul(1 + .15 * pk('pcsill')).floor().sub(S.starT).max(ZERO);
 
   function fresh(keep) {
-    const s = { money: B(60), life: ZERO, up: Object.fromEntries(Object.keys(UP).map(k => [k, 0])), k: Array(COLS * ROWS).fill(''), g: Array(COLS * ROWS).fill(0), t: Date.now(), sent: ZERO, star: ZERO, starT: ZERO, perk: {}, runs: 0, vc: {}, nek: ZERO, cp: ZERO, met: { vas: ZERO, rez: ZERO, tit: ZERO, iri: ZERO, neu: ZERO }, gx: { gals: [], cur: 0, sel: 0, up: {}, won: {} }, gv: false, loc: 'earth', locs: {}, unl: ['earth'], v3: 1 };
+    const s = { money: B(60), life: ZERO, up: Object.fromEntries(Object.keys(UP).map(k => [k, 0])), k: Array(COLS * ROWS).fill(''), g: Array(COLS * ROWS).fill(0), t: Date.now(), sent: ZERO, star: ZERO, starT: ZERO, perk: {}, runs: 0, vc: {}, nek: ZERO, cp: ZERO, met: { vas: ZERO, rez: ZERO, tit: ZERO, iri: ZERO, neu: ZERO }, gx: { gals: [], cur: 0, sel: 0, up: {}, won: {} }, cx: CX0(), gv: false, loc: 'earth', locs: {}, unl: ['earth'], v3: 1 };
     s.k[idx(...SRC)] = 'src';
     if (keep) Object.assign(s, keep);
     return s;
@@ -627,7 +627,7 @@ const Birodalom = (() => {
     return TEX.c;
   }
 
-  const tabsNow = () => galView() ? GTABS : TABS0;
+  const tabsNow = () => galView() ? [...(S.gx.gals.length ? GTABS : []), ...(cxOn() ? CTABS : [])] : TABS0;
   function items() {
     if (galView()) return galItems();
     const here = it => (it.loc || 'earth') === S.loc;
@@ -685,7 +685,7 @@ const Birodalom = (() => {
   function rebirth(G) {
     const sg = starGain();
     if (S.loc !== 'earth') { stash(); unstash('earth'); }
-    const keep = { life: S.life, sent: S.sent, star: S.star.add(sg), starT: S.starT.add(sg), perk: S.perk, runs: (S.runs || 0) + 1, tab: 'mod', tool: 'pipe' };
+    const keep = { cx: S.cx, life: S.life, sent: S.sent, star: S.star.add(sg), starT: S.starT.add(sg), perk: S.perk, runs: (S.runs || 0) + 1, tab: 'mod', tool: 'pipe' };
     const n = fresh(keep);
     if (S.perk.toke) n.money = B(5000);
     if (pk('pkezd')) n.money = n.money.max(pw(5000, 10, pk('pkezd') - 1));
@@ -1181,15 +1181,15 @@ const Birodalom = (() => {
   const DMT = { agri: 'vas', aqua: 'rez', ener: 'tit', banya: 'rez', meh: 'vas', cp: 'iri' };
   const lvlCost = (gi, p) => ({ c: pw(1e74, 2.6, p.lvl).mul(B(1e15).pow(gi)), mt: { [DMT[p.des] || 'vas']: pw(40, 2.2, p.lvl).mul((1 + gi) ** 3) } });
   const dyCost = (gi, st) => ({ c: pw(1e78, 30, st.dy).mul(B(1e15).pow(gi)), mt: { neu: pw(20, 3, st.dy).mul((1 + gi) ** 3), iri: pw(100, 2.5, st.dy).mul((1 + gi) ** 3) } });
-  const canPay = o => S.money.gte(o.c || 0) && S.nek.gte(o.ck || 0) && S.cp.gte(o.cc || 0) && Object.entries(o.mt || {}).every(([k, v]) => S.met[k].gte(v));
-  const pay = o => { S.money = S.money.sub(o.c || 0); S.nek = S.nek.sub(o.ck || 0); S.cp = S.cp.sub(o.cc || 0); for (const [k, v] of Object.entries(o.mt || {})) S.met[k] = S.met[k].sub(v); };
-  const costTxt = o => [o.c && B(o.c).gt(0) ? fmt(o.c) + ' Ft' : '', o.ck && B(o.ck).gt(0) ? nfmt(o.ck) + ' 🍯' : '', o.cc && B(o.cc).gt(0) ? nfmt(o.cc) + ' ✨' : '', ...Object.entries(o.mt || {}).map(([k, v]) => nfmt(v) + ' ' + MET[k].ic)].filter(Boolean).join(' + ');
+  const canPay = o => S.money.gte(o.c || 0) && S.nek.gte(o.ck || 0) && S.cp.gte(o.cc || 0) && Object.entries(o.mt || {}).every(([k, v]) => S.met[k].gte(v)) && (!o.x || (S.cx && canPayX(o)));
+  const pay = o => { S.money = S.money.sub(o.c || 0); S.nek = S.nek.sub(o.ck || 0); S.cp = S.cp.sub(o.cc || 0); for (const [k, v] of Object.entries(o.mt || {})) S.met[k] = S.met[k].sub(v); if (o.x) payX(o); };
+  const costTxt = o => [o.c && B(o.c).gt(0) ? fmt(o.c) + ' Ft' : '', o.ck && B(o.ck).gt(0) ? nfmt(o.ck) + ' 🍯' : '', o.cc && B(o.cc).gt(0) ? nfmt(o.cc) + ' ✨' : '', ...Object.entries(o.mt || {}).map(([k, v]) => nfmt(v) + ' ' + MET[k].ic), ...xTxt(o)].filter(Boolean).join(' + ');
   // galaxis-termelés másodpercenként (minden galaxisra külön víz- és energiakerettel)
   // egy bolygó termelése másodpercenként: [erőforrás, mennyiség] (a galaxis víz/energia-hatásfokával)
   function pOut(gi, st, p, eff) {
-    const W = S.gx.won, U = S.gx.up, L1 = B(1.6).pow(p.lvl), k = L1.mul(eff * (W.glocs ? 3 : 1)), GM = gmul(gi);
+    const W = S.gx.won, U = S.gx.up, L1 = B(1.6).pow(p.lvl), k = L1.mul(eff * (W.glocs ? 3 : 1)).mul(VR.g), GM = gmul(gi);
     if (p.des === 'agri') return ['ft', GM.mul(k).mul(1e70 * (W.ido ? 5 : 1)).mul(B(1.5).pow(U.gagri || 0))];
-    if (p.des === 'aqua') return ['viz', L1.mul(300 * (1 + .4 * (U.gviz || 0)) * (W.hiper ? 2 : 1))];
+    if (p.des === 'aqua') return ['viz', L1.mul(300 * (1 + .4 * (U.gviz || 0)) * (W.hiper ? 2 : 1) * VR.w)];
     if (p.des === 'ener') return ['en', L1.mul(250 * STY[st.ty].e * (1 + .4 * (U.gen || 0)))];
     if (p.des === 'banya') return [PCLS[p.c].met, k.mul(2 * (1 + gi) ** 2 * (1 + .5 * (U.gbanya || 0)) * metMul())];
     if (p.des === 'meh') return ['nek', GM.sqrt().mul(k).mul(1e6)];
@@ -1200,7 +1200,7 @@ const Birodalom = (() => {
   const resIc = r => RES[r] ? RES[r][0] : MET[r] ? MET[r].ic : '', resN = r => RES[r] ? RES[r][1] : MET[r] ? MET[r].n : '';
   const outTxt = o => resIc(o[0]) + ' +' + (o[0] === 'ft' ? fmt(o[1]) + ' Ft' : nfmt(o[1])) + '/mp'; // o[1] lehet nagy szám
   function gnet() {
-    const r = { ft: ZERO, nek: ZERO, cp: ZERO, met: { vas: ZERO, rez: ZERO, tit: ZERO, iri: ZERO, neu: ZERO }, gal: [], pl: {} }; if (!S.gx) return r;
+    const r = { ft: ZERO, nek: ZERO, cp: ZERO, met: { vas: ZERO, rez: ZERO, tit: ZERO, iri: ZERO, neu: ZERO }, gal: [], pl: {} }; VR = vnet(); if (!S.gx) return r;
     const W = S.gx.won, U = S.gx.up, tw = W.ido ? 1.5 : 1;
     S.gx.gals.forEach((gal, gi) => {
       let wc = B(100), ec = B(100), wd = ZERO, ed = ZERO;
@@ -1215,9 +1215,11 @@ const Birodalom = (() => {
     return r;
   }
 
-  const galView = () => S.gx && S.gv && S.gx.gals.length;
+  const galView = () => S.gx && S.gv && (S.gx.gals.length || cxOn());
+  const CTABS = [['hal', 'HALMAZOK'], ['ur', 'ÜRESSÉG']], isCx = () => S.tab === 'hal' || S.tab === 'ur';
   const curGal = () => S.gx.gals[S.gx.cur];
   function galItems() {
+    if (isCx()) return cxItems();
     const gal = curGal(), gi = S.gx.cur;
     if (S.tab === 'gsys') { const st = gal.stars[S.gx.sel] || gal.stars[0];
       return [{ k: 'dy', kind: 'dyson', n: 'Dyson-gömb ' + st.dy, ic: '🌞', cost: dyCost(gi, st) },
@@ -1231,6 +1233,7 @@ const Birodalom = (() => {
       ...Object.keys(WON).map(k => { const w = WON[k]; return { k, kind: 'wonder', n: w.n, ic: w.ic, cost: S.gx.won[k] ? null : { c: w.c, mt: w.mt }, lbl: S.gx.won[k] ? 'MEGÉPÜLT' : null, have: !!S.gx.won[k] }; })];
   }
   function galDesc(it) {
+    if (isCx()) return cxDesc(it);
     const gal = curGal(), st = gal.stars[S.gx.sel] || gal.stars[0];
     if (it.kind === 'dyson') return 'A ' + STY[st.ty].n.toLowerCase() + ' köré épülő Dyson-gömb rengeteg energiát ad (×' + STY[st.ty].e + ' a csillag típusa miatt). Következő szint: ' + costTxt(it.cost) + '.';
     if (it.kind === 'planet') { const p = st.pl[it.j], P = PCLS[p.c];
@@ -1243,6 +1246,7 @@ const Birodalom = (() => {
     return '';
   }
   function galBuy(G, it) {
+    if (isCx()) return cxBuy(G, it);
     S.info = { it, l: 5 }; const gal = curGal(), gi = S.gx.cur, st = gal.stars[S.gx.sel] || gal.stars[0];
     const no = () => Sfx.blip(140, .1, 'square', .05), yes = () => { Sfx.perfect(); GR = gnet(); save(); };
     if (it.kind === 'planet') { const p = st.pl[it.j]; if (!p.own) { if (!canPay(it.cost)) return no(); pay(it.cost); p.own = 1; if (!PCLS[p.c].al.includes(p.des)) p.des = PCLS[p.c].al[0]; return yes(); } S.gx.pick = { j: it.j }; return Sfx.blip(700, .04, 'sine', .05); }
@@ -1256,6 +1260,7 @@ const Birodalom = (() => {
   const pickBtns = G => { const R0 = pickRect(G), d = L.d, st0 = curGal().stars[S.gx.sel], p0 = S.gx.pick ? st0.pl[S.gx.pick.j] : null, ks = p0 ? PCLS[p0.c].al : [], bw = (R0.w - 24 * d - 6 * d * (ks.length - 1)) / Math.max(1, ks.length), out = ks.map((k, j) => ({ k, x: R0.x + 12 * d + j * (bw + 6 * d), y: R0.y + 84 * d, w: bw, h: 70 * d }));
     out.push({ k: 'up', x: R0.x + 12 * d, y: R0.y + R0.h - 62 * d, w: R0.w - 24 * d, h: 50 * d }); out.push({ k: 'x', x: R0.x + R0.w - 40 * d, y: R0.y + 8 * d, w: 32 * d, h: 32 * d }); return out; };
   function galDown(G, x, y) {
+    if (isCx()) return cxDown(G, x, y);
     const hit = o => x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h, gal = curGal(), gi = S.gx.cur, st = gal.stars[S.gx.sel] || gal.stars[0];
     if (S.gx.pick) { const b = pickBtns(G).find(hit), p = st.pl[S.gx.pick.j]; if (!b) { if (!hit(pickRect(G))) S.gx.pick = null; return true; }
       if (b.k === 'x') { S.gx.pick = null; return true; }
@@ -1269,6 +1274,7 @@ const Birodalom = (() => {
   const starXY = (G, st) => { const m = Math.min(L.fw, L.fh * 1.6); return [L.fx + L.fw / 2 + (st.x - .5) * m, L.fy + L.fh / 2 + (st.y - .5) * m / 1.6 * 1.25]; };
   const GALC = { key: '', cv: null };
   function drawGal(g, G, t) {
+    if (isCx()) return drawCx(g, G, t);
     const d = L.d, gal = curGal(), gi = S.gx.cur, gs = GR.gal[gi] || {};
     // spirálkarok előre rajzolva
     const key = gi + '|' + G.W + 'x' + G.H; if (GALC.key !== key) { GALC.key = key; const cv = GALC.cv = GALC.cv || document.createElement('canvas'); cv.width = G.W; cv.height = G.H; const x = cv.getContext('2d');
@@ -1319,7 +1325,190 @@ const Birodalom = (() => {
     g.restore();
   }
 
-  if (typeof window !== 'undefined') window.__bir = () => ({ S, items, buy, place, harvest, net, rebirth, save, val, price, speed, costOf, canPay, genGal, gnet, galBuy, galItems }); // teszt
+  /* ===== KOZMIKUS HÁLÓ (végjáték): galaxishalmazok felderítése flottákkal, és az Üresség – építhető tér a galaxisok között ===== */
+  const CX0 = () => ({ on: 0, cl: [], cur: 0, sel: -1, fl: [], up: {}, art: {}, kv: 0, sa: 0, aa: 0, ov: 0, grid: Array(VGW * VGH).fill(null), tool: null, vsel: -1, done: 0 });
+  const VGW = 10, VGH = 6;
+  const CLN = ['Helyi Csoport', 'Szűz-halmaz', 'Kóma-halmaz', 'Perzeusz-halmaz', 'Laniakea', 'Shapley-szuperhalmaz', 'A Nagy Fal', 'A Kozmikus Háló pereme'];
+  const NTY = { otthon: { n: 'Otthoni galaxis', ic: '🏠', col: '#ffe29a' }, sotet: { n: 'Sötétanyag-felhő', ic: '🌑', col: '#8f7cff' }, ures: { n: 'Üres tér', ic: '▫️', col: '#6b7280' },
+    kvazar: { n: 'Kvazár', ic: '🌟', col: '#7fe3ff' }, rom: { n: 'Ősi öntözőrom', ic: '🏛️', col: '#e8b656' }, kolonia: { n: 'Lakatlan galaxis', ic: '🌌', col: '#7ad06c' },
+    fluk: { n: 'Szupermasszív fekete lyuk', ic: '🕳️', col: '#b388ff' }, kapu: { n: 'Halmazkapu', ic: '🌀', col: '#ff9ec7' } };
+  const ART = { locsolo: { n: 'Az Első Locsolófej', ic: '🚿', d: '×2 galaxis-termelés' }, kut: { n: 'Ősforrás', ic: '⛲', d: '×2 víz a galaxisokban' },
+    terkep: { n: 'Csillagtérkép', ic: '🗺️', d: '−25% felderítési idő' }, mag: { n: 'Kozmikus vetőmag', ic: '🌰', d: '×2 sötét anyag' },
+    kristaly: { n: 'Antianyag-kristály', ic: '🔷', d: '×2 antianyag' }, kancso: { n: 'Ősvíz-kancsó', ic: '🏺', d: '×2 ősvíz' },
+    motor: { n: 'Hipermotor', ic: '🚀', d: '+1 flotta' }, korona: { n: 'Szilárd kiszáradt koronája', ic: '👑', d: '×3 galaxis-termelés' } };
+  const VS = { // en > 0: termel, en < 0: fogyaszt (az Üresség saját áramköre)
+    halo: { n: 'Sötétanyag-háló', ic: '🕸️', en: -20, m: 25, c: 1e80, x: { sa: 20 }, d: l => 'Sötét anyagot gyűjt: ' + nfmt(.2 * 1.5 ** (l - 1)) + ' 🌑/mp.' },
+    fuzio: { n: 'Fúziós gyűrű', ic: '☀️', en: 100, m: 12, c: 1e80, x: { sa: 10 }, d: l => 'Energiát ad az Ürességnek: ' + nfmt(100 * 1.6 ** (l - 1)) + ' ⚡.' },
+    koho: { n: 'Antianyag-kohó', ic: '🔥', en: -60, c: 1e82, x: { sa: 100 }, d: l => 'Sötét anyagból antianyagot éget: ' + nfmt(1.5 ** (l - 1)) + ' 🌑 → ' + nfmt(.1 * 1.5 ** (l - 1)) + ' ⚛️/mp.' },
+    kond: { n: 'Ősvíz-kondenzátor', ic: '💠', en: -150, c: 1e85, x: { aa: 20 }, d: l => 'Antianyagból ősvizet sűrít: ' + nfmt(.5 * 1.5 ** (l - 1)) + ' ⚛️ → ' + nfmt(.02 * 1.5 ** (l - 1)) + ' 🌊/mp.' },
+    emelo: { n: 'Csillagemelő', ic: '🏗️', en: -50, c: 1e81, x: { sa: 50 }, d: l => 'Csillaganyagot emel ki: mindegyik fémből ' + nfmt(50 * 1.6 ** (l - 1)) + '/mp.' },
+    agy: { n: 'Matrjoska-agy', ic: '🧠', en: -40, c: 1e84, x: { aa: 10 }, d: l => '+' + 25 * l + '% a szomszédos építmények teljesítményére.' },
+    gyuru: { n: 'Kozmikus öntözőgyűrű', ic: '💫', en: -80, c: 1e86, x: { aa: 50 }, d: l => '+' + 50 * l + '% minden galaxis termelésére.' },
+    torony: { n: 'Galaktikus víztorony', ic: '🗼', en: -30, c: 1e83, x: { sa: 200 }, d: l => '+' + 100 * l + '% víz minden galaxisban.' },
+    kapu: { n: 'Féregjárat-kapu', ic: '🌀', en: -300, c: 1e88, x: { ov: 5 }, one: 1, d: l => 'A halmazkapukon át ' + l + '. halmazig lehet továbbjutni.' },
+    kert: { n: 'A Végtelen Kert', ic: '🌳', en: -1000, c: 1e100, x: { ov: 1000 }, one: 1, d: l => '×' + nfmt(100 ** l) + ' minden galaxis termelésére. A birodalom koronája.' } };
+  let VR = { g: 1, w: 1, sa: 0, saC: 0, aaM: 0, aaC: 0, ovM: 0, met: 0, en: 0, ed: 0, eff: 1 };
+  const cxOn = () => S.cx && S.cx.on;
+  const fmtT = s => { s = Math.max(0, Math.ceil(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), q = s % 60; return h ? h + ':' + String(m).padStart(2, '0') + ':' + String(q).padStart(2, '0') : m + ':' + String(q).padStart(2, '0'); };
+  function genCl(ci) {
+    let sd = 777 + ci * 4241; const R = () => (sd = (sd * 16807) % 2147483647) / 2147483647, n = 10 + Math.min(4, ci), nodes = [];
+    nodes.push({ x: .08, y: .5, ty: 'otthon', ex: 1 });
+    while (nodes.length < n) { const p = { x: .14 + R() * .8, y: .1 + R() * .8 }; if (nodes.every(o => Math.hypot(o.x - p.x, (o.y - p.y) * .7) > .13)) nodes.push(p); }
+    let far = 1; nodes.forEach((o, j) => { if (o.x > nodes[far].x) far = j; });
+    const pool = ['rom', 'kolonia', 'kvazar', 'fluk', 'sotet', 'sotet', 'sotet', 'ures', 'ures', 'rom', 'sotet', 'kvazar', 'ures'];
+    let q = 0; nodes.forEach((o, j) => { if (j === 0) return; o.ex = 0; o.ty = j === far ? 'kapu' : pool[(q++ + ci) % pool.length]; o.nm = (R() < .5 ? 'NGC ' : 'IC ') + (1000 + Math.floor(R() * 8999)); });
+    // összefüggő háló: minimális feszítőfa + néhány rövid kerülő él
+    const ed = [], inT = [0], d2 = (a, b) => Math.hypot(nodes[a].x - nodes[b].x, (nodes[a].y - nodes[b].y) * .7);
+    while (inT.length < n) { let ba = -1, bb = -1, bd = 9; for (const a of inT) for (let b = 0; b < n; b++) if (!inT.includes(b) && d2(a, b) < bd) { bd = d2(a, b); ba = a; bb = b; } ed.push([ba, bb]); inT.push(bb); }
+    for (let a = 0; a < n; a++) for (let b = a + 1; b < n; b++) if (d2(a, b) < .2 && !ed.some(e => (e[0] === a && e[1] === b) || (e[0] === b && e[1] === a)) && R() < .5) ed.push([a, b]);
+    return { name: CLN[ci % CLN.length] + (ci >= CLN.length ? ' ' + (Math.floor(ci / CLN.length) + 1) : ''), nodes, ed };
+  }
+  const curCl = () => S.cx.cl[S.cx.cur];
+  const nbOf = (cl, j) => cl.ed.filter(e => e[0] === j || e[1] === j).map(e => e[0] === j ? e[1] : e[0]);
+  const reach = (cl, j) => !cl.nodes[j].ex && nbOf(cl, j).some(k => cl.nodes[k].ex);
+  const flying = (ci, j) => S.cx.fl.some(f => f.ci === ci && f.n === j);
+  const maxFl = () => 1 + (S.cx.up.flotta || 0) + (S.cx.art.motor ? 1 : 0);
+  const exCount = cl => cl.nodes.filter(o => o.ex).length;
+  const expCost = (ci, cl) => ({ c: pw(1e78, 1e4, ci).mul(B(1.6).pow(exCount(cl) - 1)), x: exCount(cl) > 2 || ci ? { sa: Math.round(15 * 1.7 ** (exCount(cl) - 3 + ci * 4)) } : {} });
+  const expDur = ci => (120 + 90 * ci) * (1 - .1 * (S.cx.up.hajto || 0)) * (S.cx.art.terkep ? .75 : 1);
+  const CUP = { flotta: { n: 'Új flotta', ic: '🛸', max: 4, c: n => pw(1e80, 1e3, n), x: n => ({ sa: Math.round(50 * 4 ** n) }), d: 'Még egy felderítő flotta, egyszerre több galaxist is felfedezhetsz.' },
+    hajto: { n: 'Hajtómű', ic: '🔭', max: 5, c: n => pw(1e79, 100, n), x: n => ({ sa: Math.round(30 * 3 ** n) }), d: '−10% felderítési idő.' } };
+  const vAdj = i => { const G2 = S.cx.grid, c = i % VGW, r = Math.floor(i / VGW); let a = 1; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const cc = c + dx, r2 = r + dy; if (cc < 0 || r2 < 0 || cc >= VGW || r2 >= VGH) continue; const s = G2[r2 * VGW + cc]; if (s && s.k === 'agy') a += .25 * s.l; } return a; };
+  const vCount = k => S.cx.grid.filter(s => s && s.k === k).length;
+  const vBuild = k => { const D = VS[k], n = vCount(k); return { c: B(D.c).mul(B(D.m || 50).pow(n)), x: Object.fromEntries(Object.entries(D.x).map(([q, v]) => [q, Math.round(v * 2.2 ** n)])) }; };
+  const vUp = s => { const D = VS[s.k]; return { c: B(D.c).mul(B(D.one ? 1e4 : 30).pow(s.l)), x: Object.fromEntries(Object.entries(D.x).map(([q, v]) => [q, Math.round(v * (D.one ? 4 : 2) ** s.l)])) }; };
+  function vnet() {
+    const r = { g: 1, w: 1, sa: 0, saC: 0, aaM: 0, aaC: 0, ovM: 0, met: 0, en: 0, ed: 0, eff: 1 }; if (!cxOn()) return r;
+    const C = S.cx, A = C.art; let gs = 0, ws = 0, kert = 0;
+    C.grid.forEach((s, i) => { if (!s) return; const D = VS[s.k]; if (D.en > 0) r.en += D.en * 1.6 ** (s.l - 1) * vAdj(i); else r.ed += -D.en * 1.3 ** (s.l - 1); });
+    r.eff = r.ed > 0 ? Math.min(1, r.en / r.ed) : 1;
+    C.grid.forEach((s, i) => { if (!s) return; const l = s.l, k = r.eff * (s.k === 'agy' || s.k === 'kapu' || s.k === 'kert' ? 1 : vAdj(i)), f = 1.5 ** (l - 1);
+      if (s.k === 'halo') r.sa += .2 * f * k * (A.mag ? 2 : 1);
+      else if (s.k === 'koho') { r.saC += f * k; r.aaM += .1 * f * k * (1 + .25 * C.kv) * (A.kristaly ? 2 : 1); }
+      else if (s.k === 'kond') { r.aaC += .5 * f * k; r.ovM += .02 * f * k * (A.kancso ? 2 : 1); }
+      else if (s.k === 'emelo') r.met += 50 * 1.6 ** (l - 1) * k;
+      else if (s.k === 'gyuru') gs += .5 * l * k;
+      else if (s.k === 'torony') ws += l * k;
+      else if (s.k === 'kert') kert = l * r.eff; });
+    r.g = (1 + gs) * (A.locsolo ? 2 : 1) * (A.korona ? 3 : 1) * 100 ** kert; r.w = (1 + ws) * (A.kut ? 2 : 1);
+    return r;
+  }
+  // az Üresség termelése dt másodpercre (a feldolgozók csak annyit dolgoznak, amennyi alapanyag van)
+  function vApply(dt) {
+    if (!cxOn() || dt <= 0) return; const C = S.cx, r = VR;
+    const need = r.saC * dt, av = C.sa + r.sa * dt, f = need > 0 ? Math.min(1, av / need) : 1; C.sa = Math.max(0, C.sa + r.sa * dt - need * f);
+    const aaG = r.aaM * dt * f, need2 = r.aaC * dt, av2 = C.aa + aaG, f2 = need2 > 0 ? Math.min(1, av2 / need2) : 1; C.aa = Math.max(0, C.aa + aaG - need2 * f2); C.ov += r.ovM * dt * f2;
+    if (r.met > 0) for (const k in S.met) S.met[k] = S.met[k].add(B(r.met * dt));
+  }
+  function cxTick() { // hazatérő flották
+    if (!cxOn()) return; const now = Date.now(), C = S.cx;
+    for (const f of C.fl.filter(f => now >= f.t0 + f.dur * 1000)) { C.fl.splice(C.fl.indexOf(f), 1); const cl = C.cl[f.ci], o = cl && cl.nodes[f.n]; if (!o || o.ex) continue; o.ex = 1; S.bgMsg = { t: cxReward(f.ci, o), l: 6 }; Sfx.perfect(); }
+  }
+  function cxReward(ci, o) {
+    const C = S.cx, m = 5 ** ci, nm = o.nm + ' (' + NTY[o.ty].n + '): ';
+    if (o.ty === 'sotet') { const v = Math.round(40 * (1 + ci) * m * (C.art.mag ? 2 : 1)); C.sa += v; return '🌑 ' + nm + '+' + nfmt(v) + ' sötét anyag'; }
+    if (o.ty === 'ures') { const v = Math.round(10 * m); C.sa += v; for (const k in S.met) S.met[k] = S.met[k].add(B(500 * m)); return '▫️ ' + nm + '+' + nfmt(v) + ' sötét anyag, némi fém'; }
+    if (o.ty === 'kvazar') { const v = Math.round(5 * m); C.aa += v; C.kv++; return '🌟 ' + nm + '+' + nfmt(v) + ' antianyag, +25% antianyag-termelés'; }
+    if (o.ty === 'fluk') { const v = Math.round(200 * m), w = +(0.5 * (1 + ci)).toFixed(1); C.sa += v; C.ov += w; return '🕳️ ' + nm + '+' + nfmt(v) + ' sötét anyag, +' + w + ' ősvíz'; }
+    if (o.ty === 'rom') { const free = Object.keys(ART).filter(k => !C.art[k]); if (!free.length) { const v = Math.round(500 * m); C.sa += v; return '🏛️ ' + nm + '+' + nfmt(v) + ' sötét anyag'; }
+      const k = free[(ci * 3 + C.cl[ci].nodes.indexOf(o)) % free.length]; C.art[k] = 1; return '🏛️ ' + nm + 'lelet: ' + ART[k].ic + ' ' + ART[k].n + ' (' + ART[k].d + ')'; }
+    if (o.ty === 'kolonia') { const gi = S.gx.gals.length; S.gx.gals.push(genGal(gi)); GR = gnet(); return '🌌 ' + nm + 'új galaxis a birodalomban: ' + S.gx.gals[gi].name; }
+    if (o.ty === 'kapu') return '🌀 ' + nm + 'a kapun túl a következő halmaz vár (Féregjárat-kapu kell hozzá)';
+    return nm;
+  }
+  const canPayX = o => !o.x || Object.entries(o.x).every(([k, v]) => S.cx[k] >= v);
+  const payX = o => { if (o.x) for (const [k, v] of Object.entries(o.x)) S.cx[k] -= v; };
+  const XIC = { sa: '🌑', aa: '⚛️', ov: '🌊' };
+  const xTxt = o => Object.entries(o.x || {}).filter(([, v]) => v > 0).map(([k, v]) => nfmt(v) + ' ' + XIC[k]);
+  function cxItems() {
+    const C = S.cx;
+    if (S.tab === 'hal') { const cl = curCl(), ci = C.cur, out = [], o = cl.nodes[C.sel];
+      if (o) { if (o.ex) out.push({ k: 'n', kind: 'cnode', n: (o.nm || 'Otthon') + ' · ' + NTY[o.ty].n, ic: NTY[o.ty].ic, lbl: 'Felderítve', have: true });
+        else if (flying(ci, C.sel)) { const f = C.fl.find(f => f.ci === ci && f.n === C.sel); out.push({ k: 'n', kind: 'cnode', n: o.nm, ic: '🛸', lbl: fmtT(f.t0 / 1000 + f.dur - Date.now() / 1000) }); }
+        else if (reach(cl, C.sel)) out.push({ k: 'exp', kind: 'cexp', n: 'Felderítés: ' + o.nm, ic: '🛸', cost: expCost(ci, cl) });
+        else out.push({ k: 'n', kind: 'cnode', n: o.nm + ' · ismeretlen', ic: '❔', lbl: 'Nem elérhető' }); }
+      C.fl.forEach((f, j) => out.push({ k: 'f' + j, kind: 'cfl', n: 'Flotta → ' + C.cl[f.ci].nodes[f.n].nm, ic: '🛸', lbl: fmtT(f.t0 / 1000 + f.dur - Date.now() / 1000) }));
+      if (C.fl.length < maxFl()) out.push({ k: 'free', kind: 'cfl', n: 'Szabad flották: ' + (maxFl() - C.fl.length), ic: '🛸', lbl: 'Indulásra kész' });
+      for (const k in CUP) { const u = CUP[k], lv = C.up[k] || 0, mx = lv >= u.max; out.push({ k, kind: 'cup', n: u.n + ' ' + lv, ic: u.ic, cost: mx ? null : { c: u.c(lv), x: u.x(lv) }, lbl: mx ? 'MAX' : null }); }
+      const last = C.cl[C.cl.length - 1], kapu = last.nodes.find(q => q.ty === 'kapu');
+      C.cl.forEach((c2, j) => out.push({ k: 'c' + j, kind: 'ccl', j, n: c2.name, ic: '✴️', lbl: j === C.cur ? 'Itt vagy' : 'Átváltás' }));
+      if (kapu && kapu.ex) { const kp = C.grid.find(s => s && s.k === 'kapu'), ok = kp && kp.l >= C.cl.length; out.push({ k: 'cnew', kind: 'cnew', n: 'Átkelés: ' + genCl(C.cl.length).name, ic: '🌀', lbl: ok ? 'Átkelés' : 'Kapu ' + C.cl.length + '. szint kell', ok }); }
+      return out; }
+    // ÜRESSÉG
+    const out = [], s = C.grid[C.vsel];
+    if (s) { const D = VS[s.k]; out.push({ k: 'vup', kind: 'vup', n: D.n + ' → ' + (s.l + 1), ic: D.ic, cost: vUp(s) }, { k: 'vdel', kind: 'vdel', n: 'Lebontás', ic: '🪓', lbl: 'Nincs visszatérítés' }); }
+    for (const k in VS) { const D = VS[k], one = D.one && vCount(k) > 0; out.push({ k, kind: 'vtool', n: D.n, ic: D.ic, cost: one ? null : vBuild(k), lbl: one ? 'MEGÉPÜLT' : null, have: one }); }
+    for (const k in ART) if (C.art[k]) out.push({ k, kind: 'art', n: ART[k].n, ic: ART[k].ic, lbl: ART[k].d, have: true });
+    return out;
+  }
+  function cxDesc(it) {
+    const C = S.cx;
+    if (it.kind === 'cexp') return 'Felderítő flotta indul ' + it.n.replace('Felderítés: ', '') + ' felé. Út: ' + fmtT(expDur(C.cur)) + '. Ára: ' + costTxt(it.cost) + '.';
+    if (it.kind === 'cnode') { const o = curCl().nodes[C.sel]; return o && o.ex ? NTY[o.ty].n + '.' : 'Csak felderített galaxis szomszédjába lehet flottát küldeni.'; }
+    if (it.kind === 'cfl') return 'A felderítő flották a halmaz galaxisait derítik fel; hazatérve hozzák a zsákmányt.';
+    if (it.kind === 'cup') return CUP[it.k].d + (it.cost ? ' Ára: ' + costTxt(it.cost) + '.' : '');
+    if (it.kind === 'ccl') return 'Átváltás erre a galaxishalmazra.';
+    if (it.kind === 'cnew') return it.ok ? 'A Féregjárat-kapun át a következő halmazba juthatsz.' : 'A halmazkapun való átkeléshez a Féregjárat-kapu ' + C.cl.length + '. szintje kell az Ürességben.';
+    if (it.kind === 'vtool') { const D = VS[it.k]; return D.d(1) + ' Energia: ' + (D.en > 0 ? '+' : '') + D.en + ' ⚡.' + (it.cost ? ' Ára: ' + costTxt(it.cost) + '.' : ''); }
+    if (it.kind === 'vup') { const s = C.grid[C.vsel], D = VS[s.k]; return D.d(s.l + 1) + ' Ára: ' + costTxt(it.cost) + '.'; }
+    if (it.kind === 'vdel') return 'Az építmény lebontása.';
+    if (it.kind === 'art') return ART[it.k].ic + ' ' + ART[it.k].d + '.';
+    return '';
+  }
+  function cxBuy(G, it) {
+    S.info = { it, l: 5 }; const C = S.cx, no = () => Sfx.blip(140, .1, 'square', .05), yes = () => { Sfx.perfect(); VR = vnet(); GR = gnet(); save(); };
+    if (it.kind === 'cexp') { if (C.fl.length >= maxFl()) { S.info = { it: { ...it, warn: 'Nincs szabad flotta.' }, l: 4 }; return no(); } if (!canPay(it.cost)) return no(); pay(it.cost); C.fl.push({ ci: C.cur, n: C.sel, t0: Date.now(), dur: expDur(C.cur) }); return yes(); }
+    if (it.kind === 'cup') { if (!it.cost || !canPay(it.cost)) return no(); pay(it.cost); C.up[it.k] = (C.up[it.k] || 0) + 1; return yes(); }
+    if (it.kind === 'ccl') { C.cur = it.j; C.sel = -1; return Sfx.blip(600, .04, 'sine', .05); }
+    if (it.kind === 'cnew') { if (!it.ok) return no(); C.cl.push(genCl(C.cl.length)); C.cur = C.cl.length - 1; C.sel = -1; return yes(); }
+    if (it.kind === 'vtool') { if (it.have) return no(); C.tool = C.tool === it.k ? null : it.k; C.vsel = -1; return Sfx.blip(700, .04, 'sine', .05); }
+    if (it.kind === 'vup') { const s = C.grid[C.vsel]; if (!s || !canPay(it.cost)) return no(); pay(it.cost); s.l++; if (s.k === 'kert' && !C.done) { C.done = 1; S.bgMsg = { t: '🌳 A Végtelen Kert virágzik – a kozmosz zöldbe borult.', l: 8 }; } return yes(); }
+    if (it.kind === 'vdel') { if (C.vsel >= 0) { C.grid[C.vsel] = null; C.vsel = -1; } return yes(); }
+  }
+  const vRect = G => { const d = L.d, top = L.fy + 84 * d, h = L.barY - top - 76 * d, w = L.fw - 20 * d, ts = Math.min(w / VGW, h / VGH); return { x: L.fx + (L.fw - ts * VGW) / 2, y: top + (h - ts * VGH) / 2, ts }; };
+  const clXY = (G, o) => { const d = L.d, top = L.fy + 90 * d, h = L.barY - top - 96 * d, w = L.fw - 40 * d; return [L.fx + 20 * d + o.x * w, top + o.y * h]; };
+  function cxDown(G, x, y) {
+    const C = S.cx;
+    if (S.tab === 'hal') { const cl = curCl(); let best = -1, bd = 30 * L.d; cl.nodes.forEach((o, j) => { const [px, py] = clXY(G, o), dd = Math.hypot(px - x, py - y); if (dd < bd) { bd = dd; best = j; } });
+      if (best >= 0) { C.sel = best; Sfx.blip(650, .03, 'sine', .04); } return true; }
+    const R0 = vRect(G), c = Math.floor((x - R0.x) / R0.ts), r = Math.floor((y - R0.y) / R0.ts); if (c < 0 || r < 0 || c >= VGW || r >= VGH) { C.vsel = -1; return true; }
+    const i = r * VGW + c, s = C.grid[i];
+    if (s) { C.vsel = i; C.tool = null; S.info = { it: { k: 'vup', kind: 'vup', n: VS[s.k].n, cost: vUp(s) }, l: 5 }; Sfx.blip(650, .03, 'sine', .04); return true; }
+    C.vsel = -1; if (!C.tool) return true; const cost = vBuild(C.tool);
+    if (VS[C.tool].one && vCount(C.tool)) { C.tool = null; return true; }
+    if (!canPay(cost)) { S.info = { it: { k: C.tool, kind: 'vtool', n: VS[C.tool].n, cost, warn: VS[C.tool].n + ': ' + costTxt(cost) + ' kell hozzá.' }, l: 4 }; Sfx.blip(140, .1, 'square', .05); return true; }
+    pay(cost); C.grid[i] = { k: C.tool, l: 1 }; if (VS[C.tool].one) C.tool = null; Sfx.perfect(); VR = vnet(); GR = gnet(); save(); return true;
+  }
+  function drawCx(g, G, t) {
+    const d = L.d, C = S.cx; g.textAlign = 'left'; g.font = `600 ${11 * d}px Inter, sans-serif`; g.fillStyle = 'rgba(255,255,255,.75)';
+    if (S.tab === 'hal') { const cl = curCl(), ci = C.cur;
+      g.fillText('✴️ ' + cl.name + ' · felderítve ' + exCount(cl) + '/' + cl.nodes.length + ' · flották ' + C.fl.length + '/' + maxFl(), L.fx + 4 * d, L.fy + 50 * d);
+      for (const [a, b] of cl.ed) { const [x1, y1] = clXY(G, cl.nodes[a]), [x2, y2] = clXY(G, cl.nodes[b]), lit = cl.nodes[a].ex && cl.nodes[b].ex; g.strokeStyle = lit ? 'rgba(232,182,86,.45)' : 'rgba(255,255,255,.12)'; g.lineWidth = (lit ? 2 : 1) * d; g.setLineDash(lit ? [] : [3 * d, 4 * d]); g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); }
+      g.setLineDash([]);
+      cl.nodes.forEach((o, j) => { const [x, y] = clXY(G, o), T = NTY[o.ty], r0 = (o.ty === 'otthon' ? 13 : 10) * d, rch = reach(cl, j), sel = j === C.sel;
+        const gl = g.createRadialGradient(x, y, 1, x, y, r0 * 2.6); gl.addColorStop(0, o.ex ? T.col : rch ? 'rgba(200,200,255,.5)' : 'rgba(120,120,160,.25)'); gl.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gl; g.fillRect(x - r0 * 3, y - r0 * 3, r0 * 6, r0 * 6);
+        g.save(); g.translate(x, y); g.rotate(t * .2 + j); g.strokeStyle = o.ex ? T.col : 'rgba(255,255,255,.35)'; g.lineWidth = 1.4 * d; for (let q = 0; q < 2; q++) { g.beginPath(); for (let s = 0; s < 14; s++) { const a = q * Math.PI + s * .3, rr2 = r0 * (.15 + s * .065); g.lineTo(Math.cos(a) * rr2, Math.sin(a) * rr2 * .75); } g.stroke(); } g.restore();
+        g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `${12 * d}px sans-serif`; g.fillText(o.ex ? T.ic : rch ? '❔' : '', x, y - r0 - 8 * d);
+        g.font = `${sel ? 800 : 600} ${(sel ? 11 : 9.5) * d}px Inter, sans-serif`; g.fillStyle = sel ? '#ffe29a' : o.ex ? 'rgba(255,255,255,.8)' : 'rgba(255,255,255,.4)'; g.fillText(o.ty === 'otthon' ? 'Otthon' : o.nm, x, y + r0 + 9 * d);
+        if (sel) { g.strokeStyle = '#ffe29a'; g.lineWidth = 1.5 * d; g.setLineDash([4 * d, 4 * d]); g.beginPath(); g.arc(x, y, r0 * 1.9, 0, 6.283); g.stroke(); g.setLineDash([]); } });
+      for (const f of C.fl) { if (f.ci !== ci) continue; const o = cl.nodes[f.n], src = cl.nodes[nbOf(cl, f.n).find(k => cl.nodes[k].ex) ?? 0], p = Math.min(1, (Date.now() - f.t0) / 1000 / f.dur), [x1, y1] = clXY(G, src), [x2, y2] = clXY(G, o);
+        const x = x1 + (x2 - x1) * p, y = y1 + (y2 - y1) * p; g.fillStyle = '#7fe3ff'; g.beginPath(); g.arc(x, y, 3 * d, 0, 6.283); g.fill(); g.strokeStyle = 'rgba(127,227,255,.4)'; g.lineWidth = d; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x, y); g.stroke(); }
+      g.textBaseline = 'alphabetic'; return; }
+    // ÜRESSÉG
+    g.fillStyle = VR.eff < 1 ? '#ff8a7a' : '#ffe066'; g.fillText('⚡ ' + nfmt(VR.ed) + ' / ' + nfmt(VR.en) + '   ·   hatásfok ' + Math.round(VR.eff * 100) + '%', L.fx + 4 * d, L.fy + 50 * d);
+    g.fillStyle = 'rgba(255,255,255,.75)'; g.fillText('🌑 ' + (VR.sa - VR.saC >= 0 ? '+' : '') + nfmt(VR.sa - VR.saC) + '/mp   ⚛️ +' + nfmt(VR.aaM) + '/mp   🌊 +' + nfmt(VR.ovM) + '/mp   💫 ×' + nfmt(VR.g) + ' galaxis', L.fx + 4 * d, L.fy + 66 * d, L.fw - 8 * d);
+    const R0 = vRect(G), ts = R0.ts;
+    for (let r = 0; r < VGH; r++) for (let c = 0; c < VGW; c++) { const i = r * VGW + c, x = R0.x + c * ts, y = R0.y + r * ts, s = C.grid[i];
+      g.strokeStyle = 'rgba(160,140,255,.14)'; g.lineWidth = d; g.strokeRect(x + .5, y + .5, ts - 1, ts - 1);
+      if (!s) continue; const D = VS[s.k], pulse = .5 + .5 * Math.sin(t * 2 + i);
+      const gl = g.createRadialGradient(x + ts / 2, y + ts / 2, 1, x + ts / 2, y + ts / 2, ts * .7); gl.addColorStop(0, `rgba(160,130,255,${.25 + .15 * pulse * VR.eff})`); gl.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gl; g.fillRect(x, y, ts, ts);
+      if (s.k === 'kert') { g.strokeStyle = `rgba(122,208,108,${.5 + .3 * pulse})`; g.lineWidth = 2 * d; g.beginPath(); g.arc(x + ts / 2, y + ts / 2, ts * .42, 0, 6.283); g.stroke(); }
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `${ts * .45}px sans-serif`; g.fillStyle = '#fff'; g.fillText(D.ic, x + ts / 2, y + ts * .45);
+      g.font = `800 ${Math.max(8, ts * .16)}px Inter, sans-serif`; g.fillStyle = '#ffe29a'; g.fillText(s.l, x + ts * .82, y + ts * .82);
+      if (C.vsel === i) { g.strokeStyle = '#ffe29a'; g.lineWidth = 2 * d; g.strokeRect(x + 2, y + 2, ts - 4, ts - 4); } }
+    g.textBaseline = 'alphabetic';
+  }
+  if (typeof window !== 'undefined') window.__bir = () => ({ S, items, buy, place, harvest, net, rebirth, save, val, price, speed, costOf, canPay, genGal, gnet, galBuy, galItems, genCl, vnet, cxItems, cxBuy, cxDown, cxTick, vApply }); // teszt
   return {
     sfmt: n => (S && n >= 1e300 ? sci(S.life) : sci(n)), fmt: n => sci(n),
     id: 'birodalom', name: 'ÖNTÖZŐ BIRODALOM', lives: 0, quit: false, idle: true, unit: ' FT', lb: 'Ft', sponsor: 'A Zerosites támogatásával',
@@ -1330,7 +1519,7 @@ const Birodalom = (() => {
       GG = G; if (inFrame() && !CL.asked) { CL.asked = 1; parent.postMessage({ hgws: 'csreq', game: 'birodalom' }, location.origin); }
       S = load(); sanit(true); S.tab = S.tab || 'mod'; S.tool = S.tool === undefined ? 'pipe' : S.tool; fl = []; dust = []; drag = null; confirmT = 0;
       MO = new Float32Array(COLS * ROWS); RP = new Float32Array(COLS * ROWS); CB = []; DR = []; syncCB(); panS = null; pinch = null; PT.clear();
-      S.nek = B(S.nek || 0); S.cp = B(S.cp || 0); S.met = { vas: ZERO, rez: ZERO, tit: ZERO, iri: ZERO, neu: ZERO, ...(S.met || {}) }; for (const k in S.met) S.met[k] = B(S.met[k]); S.gx = { gals: [], cur: 0, sel: 0, up: {}, won: {}, ...(S.gx || {}) }; S.gx.pick = null; for (const gal of S.gx.gals) for (const st of gal.stars) for (const p of st.pl) if (!PCLS[p.c].al.includes(p.des)) p.des = PCLS[p.c].al[0]; GR = gnet(); S.loc = S.loc || 'earth'; S.locs = S.locs || {}; S.unl = S.unl || ['earth']; S.anim = null; S.lp = false;
+      S.nek = B(S.nek || 0); S.cp = B(S.cp || 0); S.met = { vas: ZERO, rez: ZERO, tit: ZERO, iri: ZERO, neu: ZERO, ...(S.met || {}) }; for (const k in S.met) S.met[k] = B(S.met[k]); S.gx = { gals: [], cur: 0, sel: 0, up: {}, won: {}, ...(S.gx || {}) }; S.gx.pick = null; S.cx = { ...CX0(), ...(S.cx || {}) }; if (!Array.isArray(S.cx.grid) || S.cx.grid.length !== VGW * VGH) S.cx.grid = Array(VGW * VGH).fill(null); for (const k of ['sa', 'aa', 'ov']) S.cx[k] = +S.cx[k] > 0 && isFinite(+S.cx[k]) ? +S.cx[k] : 0; VR = vnet(); for (const gal of S.gx.gals) for (const st of gal.stars) for (const p of st.pl) if (!PCLS[p.c].al.includes(p.des)) p.des = PCLS[p.c].al[0]; GR = gnet(); S.loc = S.loc || 'earth'; S.locs = S.locs || {}; S.unl = S.unl || ['earth']; S.anim = null; S.lp = false;
       layout(G); net(); G.score = scoreOf();
       if (!wheelOn) { wheelOn = 1; const on = () => G.running && G.game && G.game.id === 'birodalom' && L;
         gc.addEventListener('wheel', e => { if (!on()) return; e.preventDefault(); const [x, y] = P(e); if (y < L.barY) zoomAt(G, x, y, Math.exp(-Math.max(-60, Math.min(60, e.deltaY)) * .004)); }, { passive: false });
@@ -1343,7 +1532,7 @@ const Birodalom = (() => {
         for (let i = 0; i < S.k.length; i++) { const p = PL[S.k[i]]; if (!p) continue; const w = netW(i); if (!w) continue;
           const grow = rate(i, w).mul(away).add(S.g[i]);
           if (auto()) { const n = grow.floor(), fr = grow.lt(1e15) ? grow.toNumber() - n.toNumber() : 0; got = got.add(n.mul(val(i)).mul(offF() * luck())); S.nek = S.nek.add(n.mul(nekOf(S.k[i]) * offF())); if (p.met) S.met[p.met] = S.met[p.met].add(n.mul(p.ma * metMul() * offF())); S.g[i] = fr; } else S.g[i] = Math.min(1, grow.toNumber()); }
-        lincAll(); GR = gnet(); got = got.add(GR.ft.mul(away)); payBg(away); S.nek = S.nek.add(GR.nek.mul(away)); S.cp = S.cp.add(GR.cp.mul(away)); for (const k in GR.met) S.met[k] = S.met[k].add(GR.met[k].mul(away)); S.nek = S.nek.add(B(S.linc[1]).add(NET.nekH).mul(away)); S.cp = S.cp.add(B(S.linc[2] || 0).add(NET.cpR).mul(away));
+        lincAll(); GR = gnet(); vApply(away); got = got.add(GR.ft.mul(away)); payBg(away); S.nek = S.nek.add(GR.nek.mul(away)); S.cp = S.cp.add(GR.cp.mul(away)); for (const k in GR.met) S.met[k] = S.met[k].add(GR.met[k].mul(away)); S.nek = S.nek.add(B(S.linc[1]).add(NET.nekH).mul(away)); S.cp = S.cp.add(B(S.linc[2] || 0).add(NET.cpR).mul(away));
         got = got.floor(); if (got.gt(0)) { earn(got); G.score = scoreOf(); }
         S.away = { got, sec: away, l: 6 };
       }
@@ -1369,7 +1558,7 @@ const Birodalom = (() => {
       const cbt = cloudBtn(); if (cbt && hit(cbt)) { cloudPush(true, true); Sfx.blip(760, .05, 'sine', .05); return; }
       const lpb = locPill(G); if (lpb && hit(lpb)) { S.lp = !S.lp; Sfx.blip(600, .03, 'sine', .04); return; }
       if (S.lp) { const row = locRows(G).find(hit); S.lp = false;
-        if (row && row.id === 'gal') { if (S.gx.gals.length) { S.gv = true; S.tab = 'gsys'; S.pg = {}; Sfx.blip(600, .05, 'sine', .05); return; }
+        if (row && row.id === 'gal') { if (S.gx.gals.length || cxOn()) { S.gv = true; S.tab = S.gx.gals.length ? 'gsys' : 'hal'; S.pg = {}; Sfx.blip(600, .05, 'sine', .05); return; }
           const c = galCost(0); if (!canPay(c)) { Sfx.blip(140, .1, 'square', .05); S.info = { it: { k: 'x', kind: 'x', n: 'Galaxis', warn: 'Az első galaxis ára: ' + costTxt(c) + '.' }, l: 4 }; return; }
           pay(c); S.gx.gals.push(genGal(0)); S.gx.cur = 0; S.gx.sel = 0; S.gv = true; S.tab = 'gsys'; S.pg = {}; GR = gnet(); Sfx.perfect(); save(); return; }
         if (row && galView()) { S.gv = false; S.tab = 'mod'; S.pg = {}; if (row.id === S.loc) return; }
@@ -1446,7 +1635,10 @@ const Birodalom = (() => {
       if ((S.bgT = (S.bgT || 0) + dt) >= 30) { const v = payBg(S.bgT); S.bgT = 0; lincAll(); if (v.gt(0)) S.bgMsg = { t: '🛰️ A többi helyszín: +' + fmt(v) + ' Ft', l: 3 }; }
       if (S.bgMsg) S.bgMsg.l -= dt;
       S.nek = S.nek.add(NET.nekH * dt); S.cp = S.cp.add(NET.cpR * dt);
-      if ((S.gxT = (S.gxT || 0) + dt) > 1) { S.gxT = 0; GR = gnet(); }
+      if ((S.gxT = (S.gxT || 0) + dt) > 1) { S.gxT = 0; GR = gnet(); cxTick();
+        if (!S.cx.on && S.gx.gals.length >= 2) { S.cx.on = 1; S.cx.cl = [genCl(0)]; S.bgMsg = { t: '✴️ Megnyílt a Kozmikus Háló: a galaxisok nézetében HALMAZOK és ÜRESSÉG', l: 8 }; save(); }
+        if (galView() && !tabsNow().some(([k]) => k === S.tab)) S.tab = tabsNow()[0][0]; }
+      vApply(dt);
       if (GR.ft.gt(0) || GR.nek.gt(0) || GR.cp.gt(0)) { earn(GR.ft.mul(dt)); S.nek = S.nek.add(GR.nek.mul(dt)); S.cp = S.cp.add(GR.cp.mul(dt)); } for (const k in GR.met) S.met[k] = S.met[k].add(GR.met[k].mul(dt));
       if (S.anim) { S.anim.t += dt; if (!S.anim.done && S.anim.t >= S.anim.dur * .55) { S.anim.done = 1; goLoc(G, S.anim.to); } if (S.anim.t >= S.anim.dur) S.anim = null; }
       const sc = scoreOf();
@@ -1523,7 +1715,7 @@ const Birodalom = (() => {
       { const totInc = B(NET.inc).add(S.linc ? S.linc[0] : 0).add(GR.ft), t1 = `+${totInc.lt(1e4) ? totInc.toNumber().toLocaleString('hu-HU', { maximumFractionDigits: 1 }) : fmt(totInc)} Ft/s   ·   `, t2 = `💧 ${NET.dem < 1e6 ? NET.dem.toLocaleString('hu-HU', { maximumFractionDigits: 1 }) : fmt(NET.dem)} / ${NET.capD.lt(1e6) ? NET.cap.toLocaleString('hu-HU') : fmt(NET.capD)} L/s`, w1 = g.measureText(t1).width, w2 = g.measureText(t2).width, x0 = G.W / 2 - (w1 + w2) / 2;
         g.textAlign = 'left'; g.fillStyle = 'rgba(255,255,255,.7)'; g.fillText(t1, x0, 89 * d); g.fillStyle = NET.capD.lt(NET.dem) ? '#ff8a7a' : '#9fd6f5'; g.fillText(t2, x0 + w1, 89 * d); g.textAlign = 'center'; }
       if (S.gx.gals.length || Object.values(S.met).some(v => B(v).gt(0))) { g.font = `600 ${10 * d}px Inter, sans-serif`; g.fillStyle = 'rgba(255,255,255,.6)'; g.textAlign = 'center';
-        g.fillText(Object.keys(MET).map(k => MET[k].ic + ' ' + nfmt(S.met[k])).join('   '), G.W / 2, 104 * d, G.W - 20 * d); }
+        g.fillText(Object.keys(MET).map(k => MET[k].ic + ' ' + nfmt(S.met[k])).join('   ') + (cxOn() ? '   ·   🌑 ' + nfmt(S.cx.sa) + '   ⚛️ ' + nfmt(S.cx.aa) + '   🌊 ' + nfmt(S.cx.ov) : ''), G.W / 2, 104 * d, G.W - 20 * d); }
       // alsó sáv
       const b = bar(G);
       const bg2 = g.createLinearGradient(0, L.barY, 0, G.H); bg2.addColorStop(0, 'rgba(12,18,28,.96)'); bg2.addColorStop(1, 'rgba(4,7,14,.98)'); g.fillStyle = bg2; g.fillRect(0, L.barY, G.W, G.H - L.barY); g.fillStyle = 'rgba(232,182,86,.35)'; g.fillRect(0, L.barY, G.W, 1 * d);
@@ -1582,8 +1774,8 @@ const Birodalom = (() => {
           g.textAlign = 'left'; g.textBaseline = 'middle'; lines.forEach((l, j) => { g.font = `${j ? 500 : 800} ${fs}px Inter, sans-serif`; g.fillStyle = j ? 'rgba(255,255,255,.82)' : '#ffe29a'; g.fillText(l, bx + pad, by + pad * .7 + fs * 1.35 * (j + .5)); }); g.textAlign = 'center'; } }
       { const cbt = cloudBtn(); if (cbt) { g.fillStyle = 'rgba(4,7,14,.82)'; g.strokeStyle = 'rgba(159,214,245,.6)'; g.lineWidth = d; rr(cbt.x, cbt.y, cbt.w, cbt.h, 9 * d); g.fill(); g.stroke(); g.font = `${15 * d}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.fillText('☁️', cbt.x + cbt.w / 2, cbt.y + cbt.h / 2 + d); } }
       { const lpb = locPill(G); if (lpb) { const LCc = LOCS[S.loc]; g.fillStyle = 'rgba(4,7,14,.82)'; g.strokeStyle = 'rgba(232,182,86,.6)'; g.lineWidth = d; rr(lpb.x, lpb.y, lpb.w, lpb.h, lpb.h / 2); g.fill(); g.stroke();
-          g.fillStyle = '#ffe29a'; g.font = `800 ${12 * d}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText((galView() ? '🌌 ' + curGal().name : LCc.ic + ' ' + LCc.n) + (S.lp ? '  ▴' : '  ▾'), lpb.x + lpb.w / 2, lpb.y + lpb.h / 2 + d);
-          for (const r of locRows(G)) { if (r.id === 'gal') { const own = S.gx.gals.length, c = galCost(0), ok = own || canPay(c), cur = galView();
+          g.fillStyle = '#ffe29a'; g.font = `800 ${12 * d}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText((galView() ? (isCx() ? '✴️ ' + (S.tab === 'hal' ? curCl().name : 'Az Üresség') : '🌌 ' + curGal().name) : LCc.ic + ' ' + LCc.n) + (S.lp ? '  ▴' : '  ▾'), lpb.x + lpb.w / 2, lpb.y + lpb.h / 2 + d);
+          for (const r of locRows(G)) { if (r.id === 'gal') { const own = S.gx.gals.length || cxOn(), c = galCost(0), ok = own || canPay(c), cur = galView();
               g.fillStyle = cur ? 'rgba(232,182,86,.25)' : 'rgba(10,6,30,.95)'; g.strokeStyle = cur ? '#e8b656' : 'rgba(192,132,252,.5)'; rr(r.x, r.y, r.w, r.h, 10 * d); g.fill(); g.stroke();
               g.textAlign = 'left'; g.fillStyle = '#fff'; g.font = `700 ${13 * d}px Inter, sans-serif`; g.fillText('🌌  Galaxisok', r.x + 12 * d, r.y + r.h / 2 + d);
               g.textAlign = 'right'; g.font = `700 ${11 * d}px Inter, sans-serif`; g.fillStyle = cur ? '#ffe29a' : own ? '#c084fc' : ok ? '#ffe29a' : '#ff8a7a'; g.fillText(cur ? 'Itt vagy' : own ? 'Megnyitás' : costTxt(c), r.x + r.w - 12 * d, r.y + r.h / 2 + d, r.w * .62); g.textAlign = 'center'; continue; }
