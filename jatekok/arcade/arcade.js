@@ -18,6 +18,8 @@ const ZeroChip = { id: 'zerochip', name: 'ZERO CHIP', ext: 'jatekok/zerochip/ind
 /* zárt béta: csak adminok és „Béta-tesztelő” taggel rendelkezők látják és indíthatják (a jogosultságot a főoldal küldi) */
 const ZeroQuest = { id: 'zeroquest', name: 'ZERO QUEST', ext: 'jatekok/zeroquest/index.html', tag: 'ZÁRT BÉTA', lock: 1,
   desc: 'Felülnézetes akció-szerepjáték Hajnalrév völgyében: küldetések, szintlépés, felszerelés és egy ébredő őr a romok alatt. Zárt béta.' };
+const Olomtel = { id: 'olomtel', name: 'ÓLOMTÉL', ext: 'jatekok/olomtel/index.html', tag: 'ZÁRT BÉTA', lock: 1, icon: '☢️',
+  desc: 'Nehézipar a nukleáris télben: sérült reaktor, olajfinomító és kohászat csövekkel összekötve, fagyó vezetékek, rendeletek és egyre mélyebb hideg. Zárt béta.' };
 const Kohovar = { id: 'kohovar', name: 'KOHÓVÁR', ext: 'jatekok/kohovar/index.html', tag: 'ÚJ', lbx: 1, icon: '⛏️', fmt: v => Math.floor(v) + '. hullám',
   desc: 'Bányássz, építs szállítószalagokat, gyárakat és áramhálózatot, és védd meg a magot a hullámokban érkező ellenség ellen. Óriási barlangtérképek, három kampány és szabad játék. A Mindustry alapján készült.' };
 const Drift = window.HGDrift ? window.HGDrift({ G, Sfx, rr, store, hud }) : null;
@@ -34,7 +36,7 @@ const LocsoloVaros = { id: 'locsolovaros', name: 'HGWS: LOCSOLÓ VÁROS', ext: '
   desc: 'Nyitott világú akciójáték egy kitalált, Miskolc ihlette városban: Halász Gergelyként vízfegyverekkel szállsz szembe Szilárddal, vezetsz Trabantot, Ikarust, helikoptert – és egy tankot.' };
 const WaterBlast = { id: 'waterblast', name: 'HGWS WATER BLAST', ext: 'jatekok/waterblast/index.html', tag: 'ÚJ', lbx: 1, icon: '💧', fmt: v => Math.floor(v).toLocaleString('hu-HU') + ' p',
   desc: 'Blokk-kirakós 8×8-as táblán, HGWS-víztömbökkel: rakd le a három elemet, a teli sorok és oszlopok vízzé válnak. Kombók, sorozatok, tiszta tábla.' };
-const GAMES = [Locsolo, Nyomas, Anya, Vizagyu, Csepp, Ugro, Torony, Birodalom, BoOnline, Aszaly, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, Atemelotelep, Vasut, Szerver, Kohovar, LegiOntozes, Vizfuvar, LocsoloVaros, WaterBlast, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest, AszalyBeta];
+const GAMES = [Locsolo, Nyomas, Anya, Vizagyu, Csepp, Ugro, Torony, Birodalom, BoOnline, Aszaly, ...(Drift ? [Drift] : []), ...(Zombi ? [Zombi] : []), AranyLocsolofej, Atemelotelep, Vasut, Szerver, Kohovar, LegiOntozes, Vizfuvar, LocsoloVaros, WaterBlast, LocsoloHaboru, VizagyuIo, ZeroSpace, ZeroChip, ZeroQuest, AszalyBeta, Olomtel];
 const NOSPON = ['locsolo', 'vizagyu', 'csepp', 'vizfuvar'];
 GAMES.forEach(g => { if (NOSPON.includes(g.id)) delete g.sponsor; else g.sponsor = 'A Zerosites támogatásával'; });
 /* népszerűség: a főoldal küldi a játékonkénti indításszámot (plays), helyben is megjegyezzük a gyors sorrendhez */
@@ -78,6 +80,10 @@ const ARTS = {
       x.strokeStyle = `rgba(150,215,255,${.35 + .2 * Math.sin(t * 6)})`; for (let j = 0; j < 8; j++) { const a = j * .785, rr2 = s * (.6 + .6 * ((t + j * .3) % 1)); x.beginPath(); x.arc(cx, cy, rr2, a - .2, a + .2); x.stroke(); } }
     for (const [q, r, col] of [[2, 0, '#e5533d'], [4, 0, '#e5533d'], [2, 2, '#ff6fa8'], [4, 1, '#9be36a'], [6, 3, '#ffa531'], [8, 4, '#8e5bd6'], [6, 2, '#ffa531'], [8, 2, '#8e5bd6']]) {
       const cx = ox + q * s + s / 2, cy = oy + r * s + s / 2, k = .7 + .3 * Math.sin(t * 2 + q); x.fillStyle = '#4fae46'; x.beginPath(); x.arc(cx, cy, 7 * k, 0, 6.283); x.fill(); x.fillStyle = col; x.beginPath(); x.arc(cx + 2, cy - 2, 2.6 * k, 0, 6.283); x.fill(); } },
+  olomtel: (c, x, t) => { const W = c.width, H = c.height, g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1c2634'); g.addColorStop(1, '#93a3b3'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    x.fillStyle = '#c9d2da'; x.fillRect(0, H * .72, W, H * .28); x.fillStyle = '#55565a'; x.fillRect(W * .18, H * .45, W * .3, H * .3); x.fillStyle = '#6e6c68'; x.beginPath(); x.arc(W * .6, H * .62, W * .14, Math.PI, 0); x.fill(); x.fillRect(W * .46, H * .62, W * .28, H * .13);
+    x.fillStyle = '#59e6ff'; x.fillRect(W * .58, H * .5, W * .05, H * .04); x.fillStyle = '#74726d'; x.fillRect(W * .8, H * .2, W * .035, H * .55); x.fillStyle = '#a8372c'; x.fillRect(W * .8, H * .2, W * .035, H * .06);
+    x.fillStyle = '#ffb347'; for (let i = 0; i < 5; i++) x.fillRect(W * (.21 + i * .05), H * .55, W * .02, H * .04); x.fillStyle = '#fff'; for (let i = 0; i < 40; i++) x.fillRect((i * 53.7 + t * 30) % W, (i * 31.3 + t * 40 + i * i) % H, 2, 2); },
   zeroquest: (c, x, t) => { const W = c.width, H = c.height, g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#14261c'); g.addColorStop(1, '#2f5a34'); x.fillStyle = g; x.fillRect(0, 0, W, H);
     for (let i = 0; i < 9; i++) { const px = (i * 41 + 12) % W, py = 30 + (i * 53) % (H - 50); x.fillStyle = 'rgba(0,0,0,.25)'; x.beginPath(); x.ellipse(px + 3, py + 14, 13, 4, 0, 0, 6.283); x.fill(); x.fillStyle = i & 1 ? '#2f6b34' : '#3f8a3f'; x.beginPath(); x.arc(px, py, 13, 0, 6.283); x.fill(); x.fillStyle = 'rgba(160,220,120,.35)'; x.beginPath(); x.arc(px - 4, py - 4, 6, 0, 6.283); x.fill(); }
     const cx = W / 2, cy = H / 2 + 8, a = Math.sin(t * 3) * 1.2; x.fillStyle = 'rgba(0,0,0,.3)'; x.beginPath(); x.ellipse(cx, cy + 18, 14, 5, 0, 0, 6.283); x.fill(); x.fillStyle = '#3f6fb5'; x.beginPath(); x.ellipse(cx, cy + 2, 10, 13, 0, 0, 6.283); x.fill(); x.fillStyle = '#f0c9a4'; x.beginPath(); x.arc(cx, cy - 15, 8, 0, 6.283); x.fill(); x.fillStyle = '#6b3f1f'; x.beginPath(); x.arc(cx, cy - 17, 8, 3.14, 6.283); x.fill();
