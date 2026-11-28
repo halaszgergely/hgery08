@@ -58,7 +58,8 @@ const AszalyBeta = (() => {
     fereg: { hp: 14500, sp: 150, dmg: 30, r: 40, xp: 0, pt: 4500, boss: 1, art: 'hf', sz: 150, n: 'Homokféreg' },
     boszi: { hp: 20000, sp: 68, dmg: 28, r: 34, xp: 0, pt: 6000, boss: 1, art: 'stw', sz: 120, n: 'Structured Text Boszorkány' },
     szilard: { hp: 32000, sp: 54, dmg: 32, r: 36, xp: 0, pt: 10000, boss: 1, final: 1, art: 'szl', sz: 130, n: 'Szikkadt Szilárd' },
-    isten: { hp: 10000000, sp: 30, dmg: 40, r: 95, xp: 0, pt: 0, boss: 1, god: 1, art: 'god', sz: 420, n: 'Szikkadt Szilárd, az Aszály Istene' }
+    isten: { hp: 10000000, sp: 30, dmg: 40, r: 95, xp: 0, pt: 0, boss: 1, god: 1, art: 'god', sz: 280, n: 'Szikkadt Szilárd, az Aszály Istene' },
+    isten2: { hp: 15000000, sp: 42, dmg: 50, r: 100, xp: 0, pt: 0, boss: 1, god: 1, art: 'god2', sz: 330, n: 'A Felszabadult Napmag' }
   };
   const FAMS = ['kert', 'sivatag', 'varos', 'meder', 'halo'], FAM_T = [0, 6, 12, 18, 24];
   const FCOL = { kert: '150,160,80', sivatag: '207,174,116', varos: '160,120,100', meder: '110,150,140', halo: '150,90,170' };
@@ -190,7 +191,7 @@ const AszalyBeta = (() => {
       minute: d.minute || 0, ph: d.ph || 'run', phT: d.phT || 0, szN: d.szN || 0, szKill: d.szKill || 0, dmgBy: d.dmgBy || {}, hmA: d.hmA ?? Math.pow(d.t / 40, 1.15) * .2, pf: d.pf || [], wf: d.wf || {}, fzTok: d.fzTok || 0, dropTok: d.dropTok || 0, fused: d.fused || [], fz: d.fz || '', fzW: d.fzW || '', pending: d.pending || 0, evoQ: d.evoQ || [], sel: null, shop: null, started: 1, meta: metaGet() });
     Object.assign(S.P, d.P); S.sigK = sigKeys(); stats(); S.P.hp = Math.min(S.P.mhp, d.P.hp); G.score = d.score || 0; S.dirty = 1;
     if (S.ph === 'wrath') S.wk = clamp(1 - S.phT / 240, 0, 1);
-    if (S.ph === 'god' || (d.boss && d.boss.k === 'isten')) { godSpawn(G); const e = S.bossE; e.dsc = 0; e.hp = e.mhp * d.boss.f; e.shN = d.boss.sh ? Math.max(0, d.boss.shN - 1) : d.boss.shN; S.banner = null; S.say = null; }
+    if (S.ph === 'god' || (d.boss && (d.boss.k === 'isten' || d.boss.k === 'isten2'))) { godSpawn(G); const e = S.bossE; e.dsc = 0; if (d.boss && d.boss.k === 'isten2') { e.p2 = 1; e.type = 'isten2'; e.T = ET.isten2; e.mhp = ET.isten2.hp; e.r = ET.isten2.r; e.sp = ET.isten2.sp; } e.hp = e.mhp * d.boss.f; e.shN = d.boss.sh ? Math.max(0, d.boss.shN - 1) : d.boss.shN; S.banner = null; S.say = null; }
     else if (d.boss) { if (d.boss.k === 'szilard') szSpawn(G); else spawnBoss(G, d.boss.k); const e = S.bossE; if (e) e.hp = e.mhp * d.boss.f; S.banner = null; S.say = null; }
     S.paused = 1; S.saveT = 10; Sfx.coin(); hud();
   }
@@ -348,6 +349,15 @@ const AszalyBeta = (() => {
   function godAI(G, e, dt) {
     const P = S.P, dx = P.x - e.x, dy = P.y - e.y, d = Math.hypot(dx, dy) || 1, k = e.hp / e.mhp, rage = k < .33 ? 2 : k < .66 ? 1 : 0;
     if (e.dsc > 0) { e.dsc -= dt; return; }
+    if (e.trans > 0) { e.trans -= dt; if ((S.t * 10 | 0) % 2 === 0) part(e.x + rnd(-60, 60), e.y + rnd(-90, 30), 2, '255,200,90', 200, .6); return; }
+    if (e.p2) { // lángoló föld a lába alatt
+      if ((e.flT = (e.flT || 0) - dt) <= 0) { e.flT = .1; S.fires.push({ x: e.x + rnd(-30, 30), y: e.y + e.r * .5, r: 52, l: 6, m: 6 }); }
+      if ((e.p2T = (e.p2T ?? 3) - dt) <= 0) { const pt = ['napvihar', 'feketenap', 'lancok', 'magkitores', 'tuzgyuru'][e.p2q = ((e.p2q ?? -1) + 1) % 5]; e.p2T = rage > 1 ? 3 : rage ? 3.8 : 4.6;
+        if (pt === 'napvihar') { spiral(e, 50, 6, 170, 18, '255,140,40', .15, .04); for (let i = 0; i < 3; i++) later(.5 + i * .5, () => { if (!e.dead) wave(e.x, e.y, 560, 320, 26, '255,200,90', 18); }); banner('NAPVIHAR', 1.1, '#ffb040'); }
+        else if (pt === 'feketenap') { S.dark = 3.2; rain(28, 360, 58, 1.3, 30, .05); for (const w of S.warns.slice(-28)) w.pc = 1; banner('FEKETE NAP', 1.4, '#ff3a1a'); S.say = { t: 'NINCS TÖBBÉ FÉNY.', l: 1.6 }; }
+        else if (pt === 'lancok') { const b = Math.atan2(dy, dx); for (let k = 0; k < 4; k++) sweep(e, b + k * Math.PI / 2 - .9, 1.8, 10, 1100, 20, 30); }
+        else if (pt === 'magkitores') { homing(e, 14 + rage * 4, 170, 22, '255,90,30', 1.9); wave(e.x, e.y, 480, 260, 26, '255,120,40', 20); }
+        else { for (let i = 0; i < 22; i++) { const a = i / 22 * TAU; S.fires.push({ x: P.x + Math.cos(a) * 230, y: P.y + Math.sin(a) * 230, r: 44, l: 9, m: 9 }); } later(1, () => { if (!e.dead) cage(S.P.x, S.P.y, 10, 120, 46, 1, 30); }); banner('TŰZGYŰRŰ', 1.1, '#ff6a2a'); } } }
     // pajzs: a 66% és 33% élet alatt, a három vízkristály aktiválásával tűnik el
     if (!e.shield && e.shN < rage) { e.shN = rage; e.shield = 1; S.crystals = [0, 1, 2].map(i => { const a = Math.random() * TAU + i * TAU / 3, R = 260 + Math.random() * 80; return { x: P.x + Math.cos(a) * R, y: P.y + Math.sin(a) * R, p: 0, on: 0 }; });
       banner('ISTENI PAJZS – ÁLLJ A VÍZKRISTÁLYOKRA!', 3.2, '#6cc6ff'); S.say = { t: rage > 1 ? 'MÉG MINDIG ÁLLSZ?!' : 'A VIZED SEMMIT SEM ÉR!', l: 3 }; }
@@ -357,7 +367,7 @@ const AszalyBeta = (() => {
     const sp = e.sp * (1 + rage * .3) * (e.slow > 0 ? .7 : 1); e.slow -= dt;
     if (d > 280) { e.x += dx / d * sp * dt; e.y += dy / d * sp * dt; } else if (d < 170) { e.x -= dx / d * sp * .6 * dt; e.y -= dy / d * sp * .6 * dt; }
     if ((e.at -= dt) <= 0) { const pat = ['nova', 'landzsa', 'pillars', 'spiral', 'beams', 'itelet', 'napkorong', 'summon', 'sweep', 'landzsa', 'homing', 'grid', 'meteor', 'itelet'][e.pat = ((e.pat || 0) + 1) % 14];
-      e.at = 2.4 - rage * .5;
+      e.at = (e.p2 ? 1.7 : 2.4) - rage * (e.p2 ? .35 : .5);
       if (pat === 'nova') { sandWave(e, 22 + rage * 6, 165 + rage * 20, S.t); if (rage > 1) later(.45, () => !e.dead && sandWave(e, 22, 190, S.t + .15)); }
       else if (pat === 'pillars') { for (let i = 0, n = 5 + rage * 2; i < n; i++) { const a = Math.random() * TAU, R = i ? 40 + Math.random() * 190 : 0; S.warns.push({ x: P.x + Math.cos(a) * R, y: P.y + Math.sin(a) * R, R: 58, t: -i * .12, d: 1.1, dmg: 24 }); } }
       else if (pat === 'beams') { const a0 = Math.atan2(dy, dx); for (let i = 0, n = 3 + rage; i < n; i++) S.warns.push({ line: 1, x: e.x, y: e.y, a: a0 + (i - (n - 1) / 2) * .32, L: 1100, w: 20, t: 0, d: 1, dmg: 28 }); Sfx.blip(160, .6, 'sawtooth', .05, 1.6); }
@@ -423,7 +433,7 @@ const AszalyBeta = (() => {
   function sweep(e, a0, span, steps, L, w, dmg, d = .55) { for (let i = 0; i <= steps; i++) later(i * .09, () => { if (!e.dead) S.warns.push({ line: 1, x: e.x, y: e.y, a: a0 + span * i / steps, L, w, t: 0, d, dmg }); }); }
   const shotAt = (e, a, sp, dmg, c) => { if (S.ep.length < 220) S.ep.push({ x: e.x, y: e.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, l: 3.4, dmg, c }); };
   function hurt(G, e, dmg, kx, ky, src) {
-    if (e.dead || e.under || e.dsc > 0 || e.hp <= 0) return; dmg *= S.st.dmg; if (e.wet > S.t) dmg *= 1.2; if (S.pf.includes('nyomas') && Math.random() < .12) dmg *= 2; if (src && (S.wf[src] || (UP[src] && UP[src].evo && S.wf[UP[src].from]))) dmg *= 1.3; const wm = msOf(src); if (wm.length) { if (wm.includes('crit') && Math.random() < .15) dmg *= 2; if (wm.includes('dmg')) dmg *= 1.35; if (wm.includes('knock')) { kx *= 2; ky *= 2; } if (wm.includes('boss') && e.T.boss) dmg *= 1.4;
+    if (e.dead || e.under || e.dsc > 0 || e.trans > 0 || e.hp <= 0) return; dmg *= S.st.dmg; if (e.wet > S.t) dmg *= 1.2; if (S.pf.includes('nyomas') && Math.random() < .12) dmg *= 2; if (src && (S.wf[src] || (UP[src] && UP[src].evo && S.wf[UP[src].from]))) dmg *= 1.3; const wm = msOf(src); if (wm.length) { if (wm.includes('crit') && Math.random() < .15) dmg *= 2; if (wm.includes('dmg')) dmg *= 1.35; if (wm.includes('knock')) { kx *= 2; ky *= 2; } if (wm.includes('boss') && e.T.boss) dmg *= 1.4;
       if (wm.includes('execute') && !e.T.boss && e.hp - dmg < e.mhp * .15) dmg = e.hp + 1; if (wm.includes('freeze')) { if (e.T.boss) e.slow = Math.max(e.slow, .5); else e.freeze = Math.max(e.freeze, .35); }
       if (wm.includes('wet')) e.wet = S.t + 2.5; if (wm.includes('heal')) S.P.hp = Math.min(S.P.mhp, S.P.hp + .25); }
     if (has('gcrit') && Math.random() < .1) dmg *= 2; if (has('gboss') && e.T.boss) dmg *= 1.25; if (has('gdmg')) dmg *= 1.1; if (has('gknock')) { kx *= 1.5; ky *= 1.5; } const sigH = S.fz && src && (src === S.sigK[0] || src === S.sigK[1]); if (sigH && S.fz === 'pisztoly') { dmg *= 1.35; kx *= 2; ky *= 2; } if (e.shield) dmg *= .02;
@@ -435,6 +445,7 @@ const AszalyBeta = (() => {
       if (wm.includes('chain') && Math.random() < .2) { let b = null, bd = 150 * 150; near(e.x, e.y, 150, (o, dx, dy) => { const q = dx * dx + dy * dy; if (o !== e && q < bd) { bd = q; b = o; } }); if (b) { S.bolts.push({ x1: e.x, y1: e.y, x2: b.x, y2: b.y, l: .2, s: Math.random() * 99 }); hurt(G, b, dmg * .7, 0, 0, 'mester'); } } }
     if (S.nums.length < 28) S.nums.push({ x: e.x + (Math.random() - .5) * 10, y: e.y - e.r, v: Math.max(1, Math.round(dmg)), l: .6 });
     if (e.hp > 0) return;
+    if (e.T.god && !e.p2) return godPhase2(G, e);
     e.dead = 1; S.kills++; G.score += e.T.pt; S.dirty = 1; e.xpM = wm.includes('xp') ? 2 : 1;
     if (wm.includes('gold') && Math.random() < .03) S.gems.push({ k: 'g', x: e.x, y: e.y - 6, v: 1 });
     if (has('reset') && Math.random() < .01) { for (const k in S.wt) S.wt[k] = 0; part(S.P.x, S.P.y, 12, '255,210,63', 140); }
@@ -558,8 +569,14 @@ const AszalyBeta = (() => {
     goldPile(e.x, e.y, 40); S.gems.push({ k: 'c', x: e.x - 22, y: e.y + 8, v: 0, dbl: 1, boss: 1 }, { k: 'c', x: e.x + 22, y: e.y + 8, v: 0, dbl: 1 });
     for (const o of S.ep) o.dead = 1; G.shake = 16 * G.d; Sfx.boom(); setTimeout(() => Sfx.perfect(), 300);
   }
+  /* 2. fázis: ha az Isten mégis elesik, felszabadul a Napmag */
+  function godPhase2(G, e) { e.p2 = 1; e.type = 'isten2'; e.T = ET.isten2; e.mhp = e.hp = ET.isten2.hp; e.trans = 3.4; e.shield = 0; e.shN = 0; e.at = 4.5; S.crystals = []; e.r = ET.isten2.r; e.sp = ET.isten2.sp;
+    for (const o of S.ep) o.dead = 1; S.warns = []; S.waves = []; for (const o of S.en) if (!o.T.boss && !o.dead) { o.dead = 1; part(o.x, o.y, 3, '255,170,60', 120); }
+    banner('A MASZK ELTÖRT…', 2.2, '#ffd23f'); later(1.6, () => banner('A FELSZABADULT NAPMAG', 4, '#ff5a1a')); S.say = { t: 'AZT HITTED, EZ VOLT AZ ARCOM?', l: 3.2 };
+    for (let i = 0; i < 6; i++) later(i * .4, () => { S.rings.push({ x: e.x, y: e.y, R: 120 + i * 70, l: 1, w: 1, c: i % 2 ? '255,240,200' : '255,110,30' }); G.shake = 20 * G.d; Sfx.boom(); });
+    S.flash = .8; [82, 73, 65, 55].forEach((f, i) => setTimeout(() => Sfx.blip(f, .9, 'sawtooth', .09, .5), i * 420)); }
   function godDeath(G, e) {
-    S.bossE = null; S.gold += Math.round(150 * S.st.gold); store.set('aszb_gold', store.get('aszb_gold') + Math.round(150 * S.st.gold)); G.score += 50000; S.dirty = 1; S.green = 30; S.rainT = 20; S.dry = 0; S.warns = []; for (const o of S.ep) o.dead = 1; for (const o of S.en) o.dead = 1;
+    S.bossE = null; S.fires = []; S.gold += Math.round(150 * S.st.gold); store.set('aszb_gold', store.get('aszb_gold') + Math.round(150 * S.st.gold)); G.score += 120000; S.dirty = 1; S.green = 30; S.rainT = 20; S.dry = 0; S.warns = []; for (const o of S.ep) o.dead = 1; for (const o of S.en) o.dead = 1;
     banner('AZ ASZÁLY VÉGET ÉRT!', 6, '#7ef0a4'); G.shake = 24 * G.d; Sfx.boom(); setTimeout(() => Sfx.perfect(), 400); part(e.x, e.y, 60, '255,220,140', 260, .9);
     me.overTitle = 'AZ ASZÁLY VÉGET ÉRT · ' + fmtT(S.t); G.win = true; S.ph = 'win'; setTimeout(() => { if (S && G.running) G.end(); }, 3500);
   }
@@ -1092,8 +1109,8 @@ const AszalyBeta = (() => {
     const R = window.ABR; ART = {};
     const add = (k, inner, vb, ar) => { const im = new Image(); im.onload = () => { artDirty = 1; }; im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(R.svgOf(inner, vb)); ART[k] = { im, ar }; };
     for (const e of R.EN) add(e[0], e[7], '0 0 120 120', 1);
-    const BA = { watchdog: R.wdk('f', 'calm'), kiraly: R.kk('f', 'calm'), ladder: R.ldm('f', 'calm'), fereg: R.hf('f', 'calm'), boszi: R.stw('f', 'calm'), szilard: R.szl('f', 'smirk'), isten: R.god('f', 'calm') };
-    for (const k in BA) add(k, BA[k], k === 'kiraly' ? '24 0 152 300' : '0 0 200 300', k === 'kiraly' ? 152 / 300 : 2 / 3); }
+    const BA = { watchdog: R.wdk('f', 'calm'), kiraly: R.kk('f', 'calm'), ladder: R.ldm('f', 'calm'), fereg: R.hf('f', 'calm'), boszi: R.stw('f', 'calm'), szilard: R.szl('f', 'smirk'), isten: R.god('f', 'calm'), isten2: R.god2('f', 'angry') };
+    for (const k in BA) add(k, BA[k], k === 'kiraly' ? '24 0 152 300' : k === 'isten2' ? '-20 -30 240 340' : '0 0 200 300', k === 'kiraly' ? 152 / 300 : k === 'isten2' ? 240 / 340 : 2 / 3); }
   function buildSpr() { loadArt(); let miss = 0;
     for (const k in ET) { const T = ET[k], A = ART && ART[k]; if (!A || !A.im.complete || !A.im.naturalWidth) { miss = 1; continue; }
       const sh = (T.boss ? T.sz * 1.15 : T.r * 3.4), sw = T.boss ? sh * A.ar : sh, c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(sw * V.sc)); c.height = Math.max(1, Math.ceil(sh * V.sc)); c.getContext('2d').drawImage(A.im, 0, 0, c.width, c.height);
@@ -1274,11 +1291,11 @@ const AszalyBeta = (() => {
         const gl = .55 + .45 * Math.sin(t * 6); g.fillStyle = `rgba(255,40,30,${.22 * gl})`; circ(g, x, y - sp.sh * .5 + sp.oy + sp.sh * .2, 14 * sc); g.globalAlpha = 1; };
       if (szDraw) { const [e, x, y] = szDraw; drawSz(x, y, 1, e.flash > 0); }
       // az Aszály Istene: aura, lebegés, leereszkedés
-      if (godDraw && SPR.isten) { const [e, x, y0] = godDraw, sp = SPR.isten, dn = e.dsc > 0 ? e.dsc / 3 : 0, y = y0 - dn * dn * H * .9 + Math.sin(t * 1.4) * 6 * sc;
-        const gr = g.createRadialGradient(x, y - sp.sh * .2, 0, x, y - sp.sh * .2, sp.sh * .75); gr.addColorStop(0, `rgba(255,200,90,${.35 + .1 * Math.sin(t * 3)})`); gr.addColorStop(1, 'rgba(255,120,30,0)'); g.fillStyle = gr; circ(g, x, y - sp.sh * .2, sp.sh * .75);
+      if (godDraw && SPR[godDraw[0].type]) { const [e, x, y0] = godDraw, sp = SPR[e.type], dn = e.dsc > 0 ? e.dsc / 3 : 0, y = y0 - dn * dn * H * .9 + Math.sin(t * 1.4) * 6 * sc;
+        const gr = g.createRadialGradient(x, y - sp.sh * .08, 0, x, y - sp.sh * .08, sp.sh * .75); gr.addColorStop(0, `rgba(255,200,90,${.35 + .1 * Math.sin(t * 3)})`); gr.addColorStop(1, 'rgba(255,120,30,0)'); g.fillStyle = gr; circ(g, x, y - sp.sh * .08, sp.sh * .75);
         g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(x, y0 + e.r * .6 * sc, e.r * 1.2 * sc * (1 - dn * .6), e.r * .35 * sc * (1 - dn * .6), 0, 0, TAU); g.fill();
-        if (e.shield) { g.strokeStyle = `rgba(255,220,120,${.5 + .3 * Math.sin(t * 8)})`; g.lineWidth = 4 * d; g.beginPath(); g.arc(x, y - sp.sh * .2, sp.sh * .48, 0, TAU); g.stroke(); }
-        g.drawImage(sp.c, Math.round(x - sp.sw / 2), Math.round(y - sp.sh / 2 + sp.oy)); if (e.flash > 0) { g.globalAlpha = .4; g.drawImage(sp.w, Math.round(x - sp.sw / 2), Math.round(y - sp.sh / 2 + sp.oy)); g.globalAlpha = 1; }
+        if (e.shield) { g.strokeStyle = `rgba(255,220,120,${.5 + .3 * Math.sin(t * 8)})`; g.lineWidth = 4 * d; g.beginPath(); g.arc(x, y - sp.sh * .08, sp.sh * .48, 0, TAU); g.stroke(); }
+        g.drawImage(sp.c, Math.round(x - sp.sw / 2), Math.round(y - sp.sh * .58)); if (e.trans > 0) { g.globalAlpha = .4 + .4 * Math.sin(t * 30); g.drawImage(sp.w, Math.round(x - sp.sw / 2), Math.round(y - sp.sh * .58)); g.globalAlpha = 1; } if (e.flash > 0) { g.globalAlpha = .4; g.drawImage(sp.w, Math.round(x - sp.sw / 2), Math.round(y - sp.sh * .58)); g.globalAlpha = 1; }
         for (const c of S.crystals) { const cx = X(c.x), cy = Y(c.y), on = c.on; g.fillStyle = on ? 'rgba(108,198,255,.35)' : 'rgba(108,198,255,.15)'; g.beginPath(); g.ellipse(cx, cy, 34 * sc, 18 * sc, 0, 0, TAU); g.fill(); g.fillStyle = on ? '#bfe9ff' : '#6cc6ff'; g.beginPath(); g.moveTo(cx, cy - 26 * sc); g.lineTo(cx + 9 * sc, cy - 6 * sc); g.lineTo(cx, cy + 4 * sc); g.lineTo(cx - 9 * sc, cy - 6 * sc); g.fill();
           if (c.p > 0) { g.strokeStyle = '#fff'; g.lineWidth = 3 * d; g.beginPath(); g.arc(cx, cy - 10 * sc, 20 * sc, -Math.PI / 2, -Math.PI / 2 + TAU * c.p); g.stroke(); } } }
       // képernyőn kívüli boss jelzése a szélen
@@ -1419,6 +1436,7 @@ const AszalyBeta = (() => {
       if (S.bossE && !S.bossE.dead && !(S.bossE.dsc > 0)) { const e = S.bossE, nm = e.T.n.toUpperCase() + (e.shield ? ' · PAJZS' : ''), w = Math.min(W - 40 * d, 460 * d), x = (W - w) / 2, y = ty + 60 * d; g.fillStyle = 'rgba(4,7,14,.75)'; rrp(g, x - 3 * d, y - 3 * d, w + 6 * d, 16 * d, 8 * d);
         g.fillStyle = e.shield ? '#6cc6ff' : e.hp / e.mhp > .6 ? '#d9a441' : e.hp / e.mhp > .25 ? '#e5772a' : '#e5432a'; rrp(g, x, y, Math.max(0, w * e.hp / e.mhp), 10 * d, 5 * d); g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(x + w * .6, y, 1.5 * d, 10 * d); g.fillRect(x + w * .25, y, 1.5 * d, 10 * d);
         g.font = `900 ${12 * d}px Cinzel, serif`; g.textAlign = 'center'; g.strokeText(nm, W / 2, y + 24 * d, W - 20 * d); g.fillStyle = e.shield ? '#9fdcff' : '#ffd23f'; g.fillText(nm, W / 2, y + 24 * d, W - 20 * d); }
+      if (S.dark > 0) { S.dark -= 1 / 60; g.fillStyle = `rgba(0,0,0,${Math.min(.55, S.dark * .4)})`; g.fillRect(0, 0, W, H); }
       // kiszáradás: Szilárd haragja alatt töltődik, ha megtelik, jön az Aszály Istene
       if (S.ph === 'wrath' || S.ph === 'descent') { const k = S.ph === 'descent' ? 1 : S.wk, w = Math.min(W - 40 * d, 460 * d), x = (W - w) / 2, y = ty + 60 * d, hot = .5 + .5 * Math.sin(t * (4 + k * 8));
         g.fillStyle = 'rgba(4,7,14,.78)'; rrp(g, x - 3 * d, y - 3 * d, w + 6 * d, 16 * d, 8 * d);
