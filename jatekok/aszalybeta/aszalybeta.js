@@ -1138,7 +1138,7 @@ const AszalyBeta = (() => {
       // felső sáv: XP, szint, idő, fejlesztések
       const bx = 12 * d, by = 60 * d, bw = W - 24 * d, bh = 9 * d; g.fillStyle = 'rgba(4,7,14,.7)'; rrp(g, bx, by, bw, bh, bh / 2); g.fillStyle = '#3aa6f5'; if (P.xp > 0) rrp(g, bx, by, Math.max(bh, bw * Math.min(1, P.xp / P.need)), bh, bh / 2);
       g.font = `800 ${13 * d}px Inter, sans-serif`; g.textBaseline = 'middle'; g.lineWidth = 3.5 * d; g.strokeStyle = 'rgba(0,0,0,.65)'; g.lineJoin = 'round';
-      const ty = by + bh + 15 * d; g.textAlign = 'right'; const info = P.lvl + '. SZINT · ' + fmtT(S.t) + (S.ph === 'wrath' ? ' · HARAG ' + fmtT(S.phT) : S.ph === 'bloom' ? ' · VIRÁGZÁS' : ''); g.strokeText(info, W - 12 * d, ty); g.fillStyle = '#ffe29a'; g.fillText(info, W - 12 * d, ty);
+      const ty = by + bh + 15 * d; g.textAlign = 'right'; const info = P.lvl + '. SZINT · ' + fmtT(S.t) + (S.ph === 'bloom' ? ' · VIRÁGZÁS' : ''); g.strokeText(info, W - 12 * d, ty); g.fillStyle = '#ffe29a'; g.fillText(info, W - 12 * d, ty);
       g.font = `800 ${9 * d}px Inter, sans-serif`; g.textAlign = 'center';
       const row = (keys, yy) => { let ix = 12 * d + 11 * d; for (const k of keys) { g.fillStyle = UP[k].evo ? 'rgba(80,60,4,.75)' : 'rgba(4,7,14,.6)'; circ(g, ix, yy, 12 * d); ico(g, k, ix, yy, 17 * d); const s = UP[k].evo ? '★' : S.up[k];
         g.fillStyle = S.up[k] >= mxl(k) ? '#ffd23f' : '#fff'; g.strokeText(s, ix + 9 * d, yy + 8 * d); g.fillText(s, ix + 9 * d, yy + 8 * d); ix += 27 * d; } };
@@ -1150,6 +1150,13 @@ const AszalyBeta = (() => {
       if (S.bossE && !S.bossE.dead && !(S.bossE.dsc > 0)) { const e = S.bossE, nm = e.T.n.toUpperCase() + (e.shield ? ' · PAJZS' : ''), w = Math.min(W - 40 * d, 460 * d), x = (W - w) / 2, y = ty + 60 * d; g.fillStyle = 'rgba(4,7,14,.75)'; rrp(g, x - 3 * d, y - 3 * d, w + 6 * d, 16 * d, 8 * d);
         g.fillStyle = e.shield ? '#6cc6ff' : e.hp / e.mhp > .6 ? '#d9a441' : e.hp / e.mhp > .25 ? '#e5772a' : '#e5432a'; rrp(g, x, y, Math.max(0, w * e.hp / e.mhp), 10 * d, 5 * d); g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(x + w * .6, y, 1.5 * d, 10 * d); g.fillRect(x + w * .25, y, 1.5 * d, 10 * d);
         g.font = `900 ${12 * d}px Cinzel, serif`; g.textAlign = 'center'; g.strokeText(nm, W / 2, y + 24 * d, W - 20 * d); g.fillStyle = e.shield ? '#9fdcff' : '#ffd23f'; g.fillText(nm, W / 2, y + 24 * d, W - 20 * d); }
+      // kiszáradás: Szilárd haragja alatt töltődik, ha megtelik, jön az Aszály Istene
+      if (S.ph === 'wrath' || S.ph === 'descent') { const k = S.ph === 'descent' ? 1 : S.wk, w = Math.min(W - 40 * d, 460 * d), x = (W - w) / 2, y = ty + 60 * d, hot = .5 + .5 * Math.sin(t * (4 + k * 8));
+        g.fillStyle = 'rgba(4,7,14,.78)'; rrp(g, x - 3 * d, y - 3 * d, w + 6 * d, 16 * d, 8 * d);
+        const gr = g.createLinearGradient(x, 0, x + w, 0); gr.addColorStop(0, '#c9a24f'); gr.addColorStop(.6, '#e5772a'); gr.addColorStop(1, '#e5432a'); g.fillStyle = gr; if (k > 0) rrp(g, x, y, Math.max(10 * d, w * k), 10 * d, 5 * d);
+        if (k > .85) { g.fillStyle = `rgba(255,220,150,${.35 * hot})`; rrp(g, x, y, w * k, 10 * d, 5 * d); }
+        g.strokeStyle = 'rgba(40,20,6,.55)'; g.lineWidth = 1.2 * d; for (let i = 1; i < 8; i++) { const cx = x + w * i / 8; ln(g, cx - 3 * d, y, cx + 2 * d, y + 10 * d); }
+        g.font = `900 ${12 * d}px Cinzel, serif`; g.textAlign = 'center'; g.lineWidth = 3.5 * d; g.strokeStyle = 'rgba(0,0,0,.65)'; const lb = 'KISZÁRADÁS · ' + Math.floor(k * 100) + '%'; g.strokeText(lb, W / 2, y + 24 * d); g.fillStyle = k > .85 ? `rgb(255,${Math.round(140 + 80 * hot)},90)` : '#e8b656'; g.fillText(lb, W / 2, y + 24 * d); }
       if (S.banner && !S.choose && !S.paused && !S.sel) { g.globalAlpha = Math.min(1, S.banner.l * 2); const fs = Math.min(34 * d, W / (S.banner.t.length > 22 ? 22 : 13)); g.font = `900 ${fs}px Cinzel, serif`; g.textAlign = 'center'; g.lineWidth = 6 * d; g.strokeStyle = 'rgba(0,0,0,.7)'; g.strokeText(S.banner.t, W / 2, H * .3, W - 20 * d); g.fillStyle = S.banner.c || '#ff5a4d'; g.fillText(S.banner.t, W / 2, H * .3, W - 20 * d); g.globalAlpha = 1; }
       if (S.note) { g.globalAlpha = Math.min(1, S.note.l * 2); g.font = `800 ${14 * d}px Inter, sans-serif`; g.textAlign = 'center'; const w = g.measureText(S.note.t).width + 28 * d; g.fillStyle = 'rgba(60,44,4,.92)'; rrp(g, (W - w) / 2, H * .38, w, 30 * d, 15 * d); g.fillStyle = '#ffd23f'; g.fillText(S.note.t, W / 2, H * .38 + 15 * d); g.globalAlpha = 1; }
       if (S.flash > 0) { g.fillStyle = `rgba(255,236,170,${Math.min(.85, S.flash * 1.4)})`; g.fillRect(0, 0, W, H); }
