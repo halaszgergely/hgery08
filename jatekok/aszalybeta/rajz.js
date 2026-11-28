@@ -493,5 +493,39 @@ function god2(v='f',e='angry'){
   return s;
 }
 export { god2 };
+/* ---------- Szikkadt Szilárd, 2. fázis: A Porvihar ---------- */
+DEFS+=(gr('gSd','#e8cf9a','#b08a52','#6a4a24')+gr('gCl','#8a5a3a','#4a2a1a','#1a0c08')+`<radialGradient id="gEm" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff2d0"/><stop offset=".35" stop-color="#ff5a2a"/><stop offset=".75" stop-color="#a8140a"/><stop offset="1" stop-color="#5a0606" stop-opacity="0"/></radialGradient>`);
+const wellStone=(x,y,r,a)=>`<g transform="rotate(${a} ${x} ${y})">`+P(`M${x-r} ${y-r*.55} L${x+r} ${y-r*.7} L${x+r*1.1} ${y+r*.5} L${x-r*.9} ${y+r*.65}Z`,'#7a7064')+P(`M${x-r} ${y-r*.55} L${x+r} ${y-r*.7} L${x+r*.9} ${y-r*.2} L${x-r*.9} ${y-r*.1}Z`,'#a89a86')+B(`M${x-r*.3} ${y-r*.5} L${x-r*.1} ${y+r*.5} M${x+r*.4} ${y-r*.6} L${x+r*.2} ${y+r*.1}`,1,'#3a3028')+`</g>`+GL(x,y+r,3,'#ff5a2a',.5);
+const sandBlade=k=>{const bx=100+k*36,by=110;return L(`M${bx} ${by} Q${100+k*62} 132 ${100+k*70} 160`,'url(#gCo)',10)+B(`M${bx} ${by} Q${100+k*62} 132 ${100+k*70} 160`,1.6,'#c42a20',.9)
+  +P(`M${100+k*68} 156 Q${100+k*104} 150 ${100+k*96} 92 Q${100+k*92} 60 ${100+k*74} 40 Q${100+k*86} 84 ${100+k*78} 124 Q${100+k*74} 146 ${100+k*64} 162Z`,'url(#gSd)')
+  +B(`M${100+k*74} 44 Q${100+k*90} 86 ${100+k*80} 128 Q${100+k*76} 148 ${100+k*66} 160`,2.2,'#ff4a2a',.9)+B(`M${100+k*74} 44 Q${100+k*90} 86 ${100+k*80} 128`,.8,'#ffe0b0')
+  +[0,1,2,3].map(i=>runeTxt((100+k*(86-i*2)).toFixed(1),(70+i*18).toFixed(1),'ᛉᚦᛊᛟ'[i],'#ff8a6a',6)).join('')
+  +`<g fill="#e8cf9a" opacity=".75">${[0,1,2,3,4,5].map(i=>`<circle cx="${(100+k*(98+i*3)).toFixed(1)}" cy="${(70+i*16).toFixed(1)}" r="${1.2+i%2}"/>`).join('')}</g>`;};
+function szl2(v='f',e='angry'){
+  let s='';
+  // porvihar-alsótest
+  const storm=P('M62 160 Q30 210 56 250 Q78 280 100 300 Q122 280 144 250 Q170 210 138 160Z','url(#gSd)','opacity=".55"')+P('M70 160 Q50 206 74 240 Q90 262 100 284 Q110 262 126 240 Q150 206 130 160Z','#3a2414','opacity=".7"')
+    +[[-1,0],[1,0],[-1,1],[1,1],[0,2]].map(([k,j])=>`<path d="M${100+k*(14+j*12)} 166 Q${100+k*(64+j*10)} ${206+j*12} ${100+k*(24+j*8)} ${240+j*8} Q${100+k*6} 262 ${100+k*(38+j*14)} 292" stroke="${j>1?'#fff0d0':'#d8b98a'}" stroke-width="${4-j}" fill="none" opacity="${.8-j*.2}" stroke-linecap="round"/>`).join('')
+    +`<g fill="#e8cf9a">${[[40,200],[160,206],[48,236],[152,244],[72,276],[128,272],[34,178],[166,182],[60,218],[140,226],[86,256],[114,262]].map(([x,y],i)=>`<circle cx="${x}" cy="${y}" r="${1.1+i%3*.7}" opacity="${.45+i%2*.4}"/>`).join('')}</g>`;
+  // kiszáradt gyökérindák
+  const roots=[[-1,0],[1,0],[-1,1],[1,1]].map(([k,j])=>B(`M${100+k*20} ${150+j*10} Q${100+k*(52+j*18)} ${170+j*20} ${100+k*(46+j*30)} ${206+j*24} Q${100+k*(60+j*30)} ${226+j*20} ${100+k*(78+j*20)} ${236+j*14}`,3-j,'#5a3a24')).join('');
+  // tépett köpeny, megrepedt agyagtest, izzó mag
+  const coat=P('M68 96 Q54 130 56 168 L66 160 L70 178 L80 162 L88 180 L100 166 L112 180 L120 162 L130 178 L134 160 L144 168 Q146 130 132 96Z','url(#gCo)')+B('M56 168 L66 160 L70 178 L80 162 L88 180 L100 166 L112 180 L120 162 L130 178 L134 160 L144 168',2,'#c42a20');
+  const torso=P('M80 96 L120 96 L124 160 L76 160Z','url(#gCl)')+B('M86 102 L92 120 L84 138 L92 156 M114 102 L108 122 L116 140 L110 156 M92 120 L100 128 L108 122',1.6,'#ff4a2a',.85)
+    +GL(100,128,20,'#ff3a1a',.8)+`<circle cx="100" cy="128" r="12" fill="url(#gEm)" ${G}/>`+P('M100 116 L109 128 L100 142 L91 128Z','url(#gC)')+`<polygon points="${st(100,128,18,6,6)}" fill="none" stroke="#ffb08a" stroke-width="1"/>`
+    +[[70,152],[66,162],[134,150],[138,160]].map(([x,y])=>`<ellipse cx="${x}" cy="${y}" rx="2.6" ry="3.6" fill="none" stroke="#9aa3ae" stroke-width="1.8"/>`).join('')+B('M70 166 L66 172 M136 164 L140 170',1.6,'#9aa3ae');
+  // széttépett csuklya, gyökérkorona
+  const head=P('M68 100 Q60 40 100 18 Q140 40 132 100 Q118 86 100 88 Q82 86 68 100Z','url(#gCo)')+P('M70 98 L64 70 L74 80 L72 52 L84 66 L86 36 L96 58 L100 26 L104 58 L114 36 L116 66 L128 52 L126 80 L136 70 L130 98Z','#0a0608','opacity=".35"')+B('M70 98 Q62 42 100 20 Q138 42 130 98',2.2,'#c42a20')
+    +P('M80 86 Q78 46 100 38 Q122 46 120 86 Q100 94 80 86Z','#030203')+B('M84 50 L92 60 L88 72 M116 52 L110 62 L114 74 M100 40 L98 52',1.2,'#ff4a2a',.8)
+    +GL(100,64,14,'#ff2a1a',.7)+(e==='angry'?Y(92,64,'#ff2a1a',9,-1.6)+Y(108,64,'#ff2a1a',9,1.6):Y(92,64,'#ff2a1a',7,-.6)+Y(108,64,'#ff2a1a',7,.6))
+    +P('M90 78 L94 82 L98 78 L102 82 L106 78 L110 82 L106 86 L94 86Z','#ff5a2a','opacity=".85"');
+  const crownR=[[-30,0],[-18,-10],[-6,-18],[6,-18],[18,-10],[30,0]].map(([dx,dy])=>B(`M${100+dx*.6} ${26} Q${100+dx} ${16+dy*.5} ${100+dx*1.3} ${8+dy}`,2.4,'#4a2e1a')+`<circle cx="${(100+dx*1.3).toFixed(1)}" cy="${8+dy}" r="1.8" fill="#ff5a2a"/>`).join('');
+  // lebegő kútkő-gyűrű
+  const stones=[[48,96,9,-20],[152,92,8,18],[40,140,7,10],[160,140,8,-12],[60,58,6,30],[140,54,7,-28]].map(([x,y,r,a])=>wellStone(x,y,r,a)).join('')+`<ellipse cx="100" cy="100" rx="64" ry="20" fill="none" stroke="#d8b98a" stroke-width="1" stroke-dasharray="2 6" opacity=".7"/>`;
+  if(v==='b'){ s+=stones+storm+roots+coat+P('M80 96 L120 96 L124 160 L76 160Z','url(#gCo)')+P('M68 100 Q60 40 100 18 Q140 40 132 100 Q100 114 68 100Z','url(#gCo)')+crownR; return s; }
+  s+=stones+storm+roots+coat+torso+sandBlade(-1)+sandBlade(1)+head+crownR;
+  return s;
+}
+export { szl2 };
 export const svgOf=(inner,vb='0 0 120 120')=>`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}"><defs>${DEFS}</defs>${inner}</svg>`;
 export { EN, BI, kk, hf, stw, ldm, wdk, szl, god, pGh, pRl, pGt, pKt, pZr, pBt, sigil, sunHalo, drop };
