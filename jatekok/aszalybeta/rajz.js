@@ -457,5 +457,41 @@ function god(v='f',e='calm',scale=0){
   if(scale) s+=`<g transform="translate(150 246) scale(.16) translate(-100 -150)">${pGh('f','calm')}</g>`+`<text x="160" y="298" font-size="7" fill="#6a5a4a" font-family="serif" text-anchor="middle">Gergő mérete</text>`;
   return s;
 }
+/* ---------- Az Aszály Istene, 2. fázis: A Felszabadult Napmag ---------- */
+DEFS+=(gr('gOx','#2a1a16','#120806','#040202')+gr('gMg','#fff6c8','#ff7a1a','#a81a06')+`<radialGradient id="gEc" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#000"/><stop offset=".7" stop-color="#000"/><stop offset=".8" stop-color="#ff3a0a"/><stop offset=".88" stop-color="#ffe8a0"/><stop offset="1" stop-color="#ff7a1a" stop-opacity="0"/></radialGradient><radialGradient id="gCore" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="#ffe27a"/><stop offset=".7" stop-color="#ff4a0a"/><stop offset="1" stop-color="#ff2a0a" stop-opacity="0"/></radialGradient>`);
+const eclipse=(x,y,r)=>`<circle cx="${x}" cy="${y}" r="${r*1.9}" fill="url(#gHeat)"/>`+`<polygon points="${st(x,y,r*1.75,r*1.1,24,.13)}" fill="url(#gMg)" opacity=".85" ${G}/>`+`<polygon points="${st(x,y,r*1.45,r*1.05,12,.4)}" fill="#ffe8a0" opacity=".55"/>`+`<circle cx="${x}" cy="${y}" r="${r*1.12}" fill="url(#gEc)"/>`+`<circle cx="${x}" cy="${y}" r="${r}" fill="#020101"/>`+`<circle cx="${x}" cy="${y}" r="${r*1.5}" fill="none" stroke="#ff8a2a" stroke-width="1" stroke-dasharray="1 6"/>`+[...Array(12)].map((_,i)=>{const a=i*Math.PI/6;return runeTxt((x+Math.cos(a)*r*1.5).toFixed(1),(y+Math.sin(a)*r*1.5+2).toFixed(1),'ᛊᛏᚾᛞᚷᛟᚱᛉᚦᛗᛚᛁ'[i],'#fff0b0',5.5)}).join('');
+const shard=(x,y,a,l,w)=>{const c=Math.cos(a),s2=Math.sin(a),px=-s2*w,py=c*w,tx=x+c*l,ty=y+s2*l;return P(`M${(x+px).toFixed(1)} ${(y+py).toFixed(1)} L${tx.toFixed(1)} ${ty.toFixed(1)} L${(x-px).toFixed(1)} ${(y-py).toFixed(1)} L${(x-c*w*.8).toFixed(1)} ${(y-s2*w*.8).toFixed(1)}Z`,'url(#gOx)')+B(`M${x.toFixed(1)} ${y.toFixed(1)} L${(x+c*l*.85).toFixed(1)} ${(y+s2*l*.85).toFixed(1)}`,1.4,'#ff6a1a',.95)+GL(tx.toFixed(1),ty.toFixed(1),3,'#ffb04a',.8)};
+const brokenWing=k=>[0,1,2,3,4].map(i=>{const a=(k<0?Math.PI:0)+k*(-.25-i*.3),d0=26+i*4,bx=100+k*20+Math.cos(a)*d0,by=100+i*7+Math.sin(a)*d0;return shard(bx,by,a,62-i*7,6)+shard(bx+Math.cos(a)*(70-i*7),by+Math.sin(a)*(70-i*7),a+k*.15,22-i*2,4)}).join('');
+const veins=(d,o=1)=>B(d,2.4,'#ff4a0a',.55*o)+B(d,1,'#ffe8a0',o);
+function god2(v='f',e='angry'){
+  let s='';
+  // tűz-homok örvény alsótest
+  const storm=P('M64 196 Q40 240 72 266 Q90 280 100 300 Q110 280 128 266 Q160 240 136 196Z','url(#gMg)','opacity=".55"')+P('M74 200 Q58 236 84 258 Q96 270 100 288 Q104 270 116 258 Q142 236 126 200Z','#1a0806','opacity=".85"')
+    +[[-1,0],[1,0],[-1,1],[1,1],[0,2]].map(([k,j])=>`<path d="M${100+k*(16+j*12)} 204 Q${100+k*(58+j*10)} ${236+j*12} ${100+k*(20+j*8)} ${262+j*8} Q${100+k*8} 284 ${100+k*(34+j*16)} 298" stroke="${j>1?'#ffe8a0':'#ff7a1a'}" stroke-width="${3.6-j}" fill="none" opacity="${.85-j*.2}" stroke-linecap="round"/>`).join('')
+    +`<g fill="#ffd27a">${[[48,226],[152,232],[56,262],[146,268],[78,292],[122,290],[38,206],[162,210],[66,244],[134,250],[90,276],[112,278]].map(([x,y],i)=>`<circle cx="${x}" cy="${y}" r="${1.2+i%3*.6}" opacity="${.5+i%2*.4}"/>`).join('')}</g>`;
+  // obszidián-test, izzó erekkel, megrepedt mellvérttel
+  const torso=P('M70 100 Q58 150 64 204 L136 204 Q142 150 130 100 Q116 92 100 96 Q84 92 70 100Z','url(#gOx)')
+    +veins('M80 112 L88 134 L82 156 L90 182 L86 202 M120 110 L112 136 L118 160 L110 186 L114 202 M88 134 L100 142 L112 136 M82 156 L70 170 M118 160 L132 172')
+    +GL(100,140,22,'#ff6a1a',.75)+`<circle cx="100" cy="140" r="14" fill="url(#gCore)" ${G}/>`+`<polygon points="${st(100,140,20,7,6,.26)}" fill="none" stroke="#fff0b0" stroke-width="1.2"/>`
+    +P('M74 196 L82 214 L90 198 L100 222 L110 198 L118 214 L126 196Z','url(#gOx)')+B('M74 196 L82 214 L90 198 L100 222 L110 198 L118 214 L126 196',1.6,'#ff8a2a');
+  // vállak: lebegő láva-kövek
+  const pauldron=k=>P(`M${100+k*30} 96 Q${100+k*52} 80 ${100+k*58} 102 L${100+k*50} 124 L${100+k*30} 116Z`,'url(#gOx)')+veins(`M${100+k*34} 100 L${100+k*48} 108 L${100+k*44} 120`)+`<polygon points="${st(100+k*52,90,9,3.5,5,k*.3)}" fill="url(#gMg)" ${G}/>`;
+  // négy kar: kettő a pálcával és a napgolyóval, kettő tűzláncokkal
+  const armA=L('M70 110 L44 88 L34 60','url(#gOx)',10)+veins('M66 108 L46 90 L38 66',.8)+L('M28 290 L40 22','#1a0806',5)+B('M28 290 L40 22',1.4,'#ff6a1a',.9)+eclipse(40,16,9);
+  const armB=L('M130 110 L158 132 L170 144','url(#gOx)',10)+veins('M134 112 L156 132',.8)+GL(176,150,20,'#ff3a0a',.6)+`<circle cx="176" cy="150" r="11" fill="url(#gCore)" ${G}/>`+`<ellipse cx="176" cy="150" rx="22" ry="7" fill="none" stroke="#ffb04a" stroke-width="1.4" transform="rotate(-20 176 150)"/>`;
+  const armC=k=>L(`M${100+k*30} 128 Q${100+k*58} 150 ${100+k*66} 182`,'url(#gOx)',8)+[0,1,2,3,4].map(i=>`<ellipse cx="${(100+k*(68+i*4)).toFixed(1)}" cy="${(188+i*9).toFixed(1)}" rx="2.8" ry="4" fill="none" stroke="#ff8a2a" stroke-width="1.8"/>`).join('')+GL(100+k*86,236,6,'#ff6a1a',.8);
+  // fej: széttört maszk, alóla izzó napmag
+  const head=P('M70 98 Q60 42 100 22 Q140 42 130 98 Q116 84 100 86 Q84 84 70 98Z','url(#gOx)')+B('M72 96 Q62 44 100 24 Q138 44 128 96',2,'#ff6a1a',.9)
+    +P('M80 84 Q78 44 100 36 Q122 44 120 84 Q100 94 80 84Z','#020101')+GL(100,62,18,'#ff4a0a',.8)+`<circle cx="100" cy="62" r="13" fill="url(#gCore)" ${G}/>`
+    +P('M82 46 Q92 38 100 40 L98 54 L90 60 L84 58Z','url(#gMask)')+B('M84 48 L90 52 L88 58',1,'#5a3a10')+P('M116 64 L120 72 L112 80 L106 74Z','url(#gMask)','opacity=".9"')
+    +(e==='angry'?Y(93,60,'#fff',8,-1.4)+Y(107,60,'#fff',8,1.4):Y(93,60,'#fff',6,-.6)+Y(107,60,'#fff',6,.6))
+    +B('M100 48 L98 56 M100 72 L102 80',1.2,'#fff0b0');
+  // lebegő tüskekorona
+  const crown2=[[-34,26],[-24,16],[-12,8],[0,2],[12,8],[24,16],[34,26]].map(([dx,dy],i)=>{const x=100+dx*1.2,y=12-dy*.6+(i%2?8:0);return P(`M${x-4} ${y+18} L${x} ${y-10} L${x+4} ${y+18}Z`,'url(#gOx)')+B(`M${x} ${y-8} L${x} ${y+14}`,1,'#ff8a2a')+GL(x,y-10,3,'#ffe27a',.9)}).join('');
+  if(v==='b'){ s+=eclipse(100,70,48)+brokenWing(-1)+brokenWing(1)+storm+P('M68 100 Q58 150 64 204 L136 204 Q142 150 132 100Z','url(#gOx)')+veins('M100 104 L98 140 L102 180 L100 202')+pauldron(-1)+pauldron(1)+P('M66 98 Q58 40 100 22 Q142 40 134 98 Q100 112 66 98Z','url(#gOx)')+crown2; return s; }
+  s+=eclipse(100,70,48)+brokenWing(-1)+brokenWing(1)+storm+armC(-1)+armC(1)+torso+pauldron(-1)+pauldron(1)+armA+armB+head+crown2;
+  return s;
+}
+export { god2 };
 export const svgOf=(inner,vb='0 0 120 120')=>`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}"><defs>${DEFS}</defs>${inner}</svg>`;
 export { EN, BI, kk, hf, stw, ldm, wdk, szl, god, pGh, pRl, pGt, pKt, pZr, pBt, sigil, sunHalo, drop };
