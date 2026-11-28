@@ -1369,13 +1369,13 @@ const Birodalom = (() => {
   const flying = (ci, j) => S.cx.fl.some(f => f.ci === ci && f.n === j);
   const maxFl = () => 1 + (S.cx.up.flotta || 0) + (S.cx.art.motor ? 1 : 0);
   const exCount = cl => cl.nodes.filter(o => o.ex).length;
-  const expCost = (ci, cl) => ({ c: pw(1e78, 1e4, ci).mul(B(1.6).pow(exCount(cl) - 1)), x: exCount(cl) > 2 || ci ? { sa: Math.round(15 * 1.7 ** (exCount(cl) - 3 + ci * 4)) } : {} });
+  const expCost = (ci, cl) => ({ c: pw(1e78, 1e4, ci).mul(B(1.6).pow(exCount(cl) - 1)), mt: { [['vas', 'rez', 'tit', 'iri', 'neu'][Math.min(4, ci)]]: pw(200, 1.8, exCount(cl) - 1 + ci * 3) } });   // csak pénz és fém: sötét anyag nélkül is mindig lehet felderíteni
   const expDur = ci => (120 + 90 * ci) * (1 - .1 * (S.cx.up.hajto || 0)) * (S.cx.art.terkep ? .75 : 1);
   const CUP = { flotta: { n: 'Új flotta', ic: '🛸', max: 4, c: n => pw(1e80, 1e3, n), x: n => ({ sa: Math.round(50 * 4 ** n) }), d: 'Még egy felderítő flotta, egyszerre több galaxist is felfedezhetsz.' },
     hajto: { n: 'Hajtómű', ic: '🔭', max: 5, c: n => pw(1e79, 100, n), x: n => ({ sa: Math.round(30 * 3 ** n) }), d: '−10% felderítési idő.' } };
   const vAdj = i => { const G2 = S.cx.grid, c = i % VGW, r = Math.floor(i / VGW); let a = 1; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const cc = c + dx, r2 = r + dy; if (cc < 0 || r2 < 0 || cc >= VGW || r2 >= VGH) continue; const s = G2[r2 * VGW + cc]; if (s && s.k === 'agy') a += .25 * s.l; } return a; };
   const vCount = k => S.cx.grid.filter(s => s && s.k === k).length;
-  const vBuild = k => { const D = VS[k], n = vCount(k); return { c: B(D.c).mul(B(D.m || 50).pow(n)), x: Object.fromEntries(Object.entries(D.x).map(([q, v]) => [q, Math.round(v * 2.2 ** n)])) }; };
+  const vBuild = k => { const D = VS[k], n = vCount(k); if (k === 'halo' && !n) return { c: B(D.c) }; return { c: B(D.c).mul(B(D.m || 50).pow(n)), x: Object.fromEntries(Object.entries(D.x).map(([q, v]) => [q, Math.round(v * 2.2 ** n)])) }; };
   const vUp = s => { const D = VS[s.k]; return { c: B(D.c).mul(B(D.one ? 1e4 : 30).pow(s.l)), x: Object.fromEntries(Object.entries(D.x).map(([q, v]) => [q, Math.round(v * (D.one ? 4 : 2) ** s.l)])) }; };
   function vnet() {
     const r = { g: 1, w: 1, sa: 0, saC: 0, aaM: 0, aaC: 0, ovM: 0, met: 0, en: 0, ed: 0, eff: 1 }; if (!cxOn()) return r;
@@ -1402,7 +1402,7 @@ const Birodalom = (() => {
   }
   function cxTick() { // hazatérő flották
     if (!cxOn()) return; const now = Date.now(), C = S.cx;
-    for (const f of C.fl.filter(f => now >= f.t0 + f.dur * 1000)) { C.fl.splice(C.fl.indexOf(f), 1); const cl = C.cl[f.ci], o = cl && cl.nodes[f.n]; if (!o || o.ex) continue; o.ex = 1; S.bgMsg = { t: cxReward(f.ci, o), l: 6 }; Sfx.perfect(); }
+    for (const f of C.fl.filter(f => now >= f.t0 + f.dur * 1000)) { C.fl.splice(C.fl.indexOf(f), 1); const cl = C.cl[f.ci], o = cl && cl.nodes[f.n]; if (!o || o.ex) continue; o.ex = 1; const base = Math.round(5 * (1 + f.ci) * 5 ** f.ci); C.sa += base; S.bgMsg = { t: cxReward(f.ci, o) + ' · +' + nfmt(base) + ' 🌑', l: 6 }; Sfx.perfect(); }
   }
   function cxReward(ci, o) {
     const C = S.cx, m = 5 ** ci, nm = o.nm + ' (' + NTY[o.ty].n + '): ';
