@@ -58,7 +58,7 @@ const AszalyBeta = (() => {
     fereg: { hp: 14500, sp: 150, dmg: 30, r: 40, xp: 0, pt: 4500, boss: 1, art: 'hf', sz: 150, n: 'Homokféreg' },
     boszi: { hp: 20000, sp: 68, dmg: 28, r: 34, xp: 0, pt: 6000, boss: 1, art: 'stw', sz: 120, n: 'Structured Text Boszorkány' },
     szilard: { hp: 32000, sp: 54, dmg: 32, r: 36, xp: 0, pt: 10000, boss: 1, final: 1, art: 'szl', sz: 130, n: 'Szikkadt Szilárd' },
-    isten: { hp: 380000, sp: 30, dmg: 40, r: 95, xp: 0, pt: 0, boss: 1, god: 1, art: 'god', sz: 420, n: 'Szikkadt Szilárd, az Aszály Istene' }
+    isten: { hp: 10000000, sp: 30, dmg: 40, r: 95, xp: 0, pt: 0, boss: 1, god: 1, art: 'god', sz: 420, n: 'Szikkadt Szilárd, az Aszály Istene' }
   };
   const FAMS = ['kert', 'sivatag', 'varos', 'meder', 'halo'], FAM_T = [0, 6, 12, 18, 24];
   const FCOL = { kert: '150,160,80', sivatag: '207,174,116', varos: '160,120,100', meder: '110,150,140', halo: '150,90,170' };
@@ -342,7 +342,7 @@ const AszalyBeta = (() => {
   function descent(G) { S.ph = 'descent'; S.phT = 4.5; S.bossE = null;
     for (const e of S.en) { if (e.dead) continue; e.dead = 1; part(e.x, e.y, 3, FCOL[e.T.f] || '207,174,116', 120); if (!e.T.boss) S.gems.push({ k: 'x', x: e.x, y: e.y, v: e.T.xp, pull: 1 }); }
     for (const o of S.ep) o.dead = 1; S.warns = []; S.waves = []; S.bq = []; S.fires = []; banner('A PÁLYA KIÜRÜLT… AZ ÉG MEGNYÍLIK', 4.2, '#ffd23f'); G.shake = 10 * G.d; Sfx.blip(90, 1.4, 'sawtooth', .07, .4); }
-  function godSpawn(G) { const e = spawn('isten', 0, -Math.min(260, V.hh * .55)); scaleBoss(e, 170); e.dsc = 3; e.at = 4; e.shN = 0; S.bossE = e; S.ph = 'god'; S.crystals = [];
+  function godSpawn(G) { const e = spawn('isten', 0, -Math.min(260, V.hh * .55)); e.mhp = e.hp = ET.isten.hp; e.dsc = 3; e.at = 4; e.shN = 0; S.bossE = e; S.ph = 'god'; S.crystals = [];
     banner('SZIKKADT SZILÁRD, AZ ASZÁLY ISTENE', 4.5, '#ffd23f'); S.say = { t: 'TÉRDRE, KERTÉSZ. ÉN VAGYOK A SZÁRAZSÁG.', l: 4 };
     setTimeout(() => { if (!S) return; G.shake = 22 * G.d; Sfx.boom(); }, 2900); [110, 98, 82, 73].forEach((f, i) => setTimeout(() => Sfx.blip(f, .7, 'sawtooth', .08, .6), i * 500)); }
   function godAI(G, e, dt) {
