@@ -72,16 +72,16 @@ const AszalyBeta = (() => {
     kalapacs: { n: 'Szivattyúkalapács', w: 1, d: ['Lecsapó kalapács: lökéshullám és kábítás', 'Nagyobb hullám', 'Erősebb, tovább kábít', 'Gyakoribb', 'Két becsapódás'] },
     kard: { n: 'Vízpenge', w: 1, d: ['Hármas kardkombó a legközelebbire', 'Nagyobb pengeív', 'Gyorsabb kombó', 'Négyes kombó', 'Erősebb, a végén szúrás'] },
     lanc: { n: 'Láncos csőgolyó', w: 1, d: ['Nehéz golyó pörög láncon körülötted', 'Nagyobb golyó, erősebb', 'Gyorsabban pörög', 'Hosszabb lánc', 'Hatalmas lökés'] },
-    ostor: { n: 'Slagostor', w: 1, d: ['Végigcsap előtted a slag', 'Hosszabb és erősebb', 'Hátrafelé is csap', 'Hosszabb és gyorsabb', 'Sokkal gyorsabb és hosszabb'] },
+    ostor: { n: 'Slagostor', w: 1, d: ['Célzott slagcsapás, a végén csattanó robbanás', 'Hosszabb és erősebb', 'Hátrafelé is csap', 'Hosszabb és gyorsabb', 'Négyirányú csapássorozat'] },
     bomba: { n: 'Vízibomba', w: 1, d: ['Felrobbanó vízibombát dob', 'Nagyobb robbanás', '+1 bomba', 'Nagyobb robbanás', '+1 bomba'] },
     felho: { n: 'Esőfelhő', w: 1, d: ['Áztat és lelassít egy területet', 'Tovább tart', 'Nagyobb és erősebb', '+1 felhő', 'Sokkal tovább tart'] },
     pocsolya: { n: 'Pocsolya', w: 1, d: ['Sebző tócsa a lábad körül', 'Nagyobb és erősebb', 'Nagyobb és erősebb', 'Nagyobb és erősebb', 'Nagyobb és erősebb'] },
     sugar: { n: 'Nagynyomású sugár', w: 1, d: ['Folyamatos sugár a legközelebbi ellenségre', 'Erősebb sugár', '+1 sugár', 'Erősebb, messzebb ér', 'Átüt mindenen'] },
-    rainbird: { n: 'Rain Bird szektorszóró', w: 1, d: ['Körbe söprő vízív', 'Szélesebb söprés, erősebb', 'Szélesebb söprés', 'Erősebb, messzebb ér', 'Szinte teljes kör, erősebb'] },
+    rainbird: { n: 'Rain Bird szektorszóró', w: 1, d: ['Söprő vízív és körkörös cseppzápor', 'Szélesebb söprés, erősebb', 'A sugár lassít', 'Gyakoribb cseppzápor, messzebb ér', 'Szinte teljes kör, átütő cseppek'] },
     kanna: { n: 'Visszatérő locsolókanna', w: 1, d: ['Kidobod, visszajön, oda-vissza sebez', 'Erősebb, messzebb repül', '+1 kanna', 'Erősebb és gyorsabb', '+1 kanna'] },
     gejzir: { n: 'Gejzír', w: 1, d: ['Vízoszlop tör fel az ellenség alatt', '+1 gejzír', 'Nagyobb és erősebb', '+1 gejzír', 'Sűrűbb kitörések'] },
     jeg: { n: 'Jégkocka-szóró', w: 1, d: ['Legyezőben szórt, fagyasztó jégkockák', '+1 jégkocka', 'Hosszabb fagyasztás', '+1 jégkocka', 'Erősebb, hosszabb fagyasztás'] },
-    heli: { n: 'HGWS Ka-26 mini helikopter', w: 1, d: ['Követ és permetez alattad', 'Szélesebb permetsáv', 'Erősebb permet', '+1 helikopter', 'Szélesebb, erősebb permet'] },
+    heli: { n: 'HGWS Ka-26 mini helikopter', w: 1, d: ['Permetez alattad és vízbombát dob', 'Szélesebb permetsáv, nagyobb bombák', 'Gyakoribb bombázás', '+1 helikopter', 'Ikergéppuska a bombák mellé'] },
     cso: { n: 'Csepegtető cső', w: 1, d: ['Sebző vízcsík a nyomodban', 'Erősebb', 'Hosszabb nyom', 'Erősebb', 'Szélesebb, hosszabb nyom'] },
     por: { n: 'Porszóró kanna', w: 1, hid: 1, d: ['Homokot szór a legközelebbi ellenségre', '+1 lövedék', 'Átüt még egy ellenségen', '+1 lövedék', 'Gyorsabb szórás, +1 átütés'] },
     csizma: { n: 'Gumicsizma', d: '+12% mozgási sebesség' },
@@ -101,16 +101,16 @@ const AszalyBeta = (() => {
     pont: { n: 'Aranycsepp', sp: 1, d: '+500 pont' },
     vizagyu: { n: 'VÍZÁGYÚ', w: 1, evo: 1, from: 'pisztoly', d: 'Hatalmas, mindenen átütő lövedék, hátralökéssel' },
     korforgo: { n: 'KÖRFORGÓ ESŐZTETŐ', w: 1, evo: 1, from: 'szoro', d: 'Két ellentétes irányban forgó cseppgyűrű' },
-    tuzolto: { n: 'TŰZOLTÓCSŐ', w: 1, evo: 1, from: 'ostor', d: '360°-os vízcsapás körös-körül' },
+    tuzolto: { n: 'TŰZOLTÓCSŐ', w: 1, evo: 1, from: 'ostor', d: '360°-os vízcsapás és tíz átütő vízsugár körbe' },
     bombazapor: { n: 'BOMBAZÁPOR', w: 1, evo: 1, from: 'bomba', d: 'Bombaeső, a robbanások láncban folytatódnak' },
     zivatar: { n: 'ZIVATAR', w: 1, evo: 1, from: 'felho', d: 'Villám csap le a felhőkből a közeli ellenségekre' },
     gyogyforras: { n: 'GYÓGYFORRÁS', w: 1, evo: 1, from: 'pocsolya', d: 'Sebez, és gyógyít, amíg benne állsz' },
     hidromonitor: { n: 'HIDROMONITOR', w: 1, evo: 1, from: 'sugar', d: '3 mindenen átütő, hatalmas nyomású sugár' },
-    ontozohid: { n: 'KÖRFORGÓ ÖNTÖZŐHÍD', w: 1, evo: 1, from: 'rainbird', d: 'Hosszú, körbeforgó öntözőkar, ami mindent elsöpör' },
+    ontozohid: { n: 'KÖRFORGÓ ÖNTÖZŐHÍD', w: 1, evo: 1, from: 'rainbird', d: 'Hosszú, gyors körforgó kar; a végei cseppzáport szórnak' },
     kannavihar: { n: 'KANNAVIHAR', w: 1, evo: 1, from: 'kanna', d: 'Hat kanna repül szét minden irányba' },
     gejzirmezo: { n: 'GEJZÍRMEZŐ', w: 1, evo: 1, from: 'gejzir', d: 'Sorozatos, tartós kitörések az egész képernyőn' },
     jegeso: { n: 'JÉGESŐ', w: 1, evo: 1, from: 'jeg', d: 'Fagyasztó jégeső zúdul az ellenségekre' },
-    legiflotta: { n: 'HGWS LÉGIFLOTTA', w: 1, evo: 1, from: 'heli', d: 'Négy helikopter, széles permetsávval' },
+    legiflotta: { n: 'HGWS LÉGIFLOTTA', w: 1, evo: 1, from: 'heli', d: 'Négy helikopter: erős permet, bombázás és géppuska' },
     csatorna: { n: 'ÖNTÖZŐCSATORNA', w: 1, evo: 1, from: 'cso', d: 'Széles, hosszan sebző és lassító vízcsatorna' },
     /* saját fegyverek: csak a saját karakterük kapja meg */
     aranyfej: { n: 'Arany locsolófej', w: 1, mx: 8, sig: 'gh', d: ['Forgó, átütő aranysugarak', '+1 sugár', 'Messzebb ér, gyorsabban forog', '+1 sugár, erősebb', 'Kritikus találatok', '+1 sugár', 'Gyorsabb forgás, erősebb', 'Átütőbb, nagyobb kritikus esély'] },
@@ -573,14 +573,19 @@ const AszalyBeta = (() => {
       for (const [R, s] of [[70 * ar, 1], [124 * ar, -1]]) for (let i = 0; i < 6; i++) { const a = s * S.orb * (s > 0 ? 1 : .8) + i / 6 * TAU, ox = P.x + Math.cos(a) * R, oy = P.y + Math.sin(a) * R;
         near(ox, oy, 12, e => { if (S.t < e.oT) return; e.oT = S.t + .4; hurt(G, e, 22, Math.cos(a) * 200, Math.sin(a) * 200, 'korforgo'); }); } }
     // slagostor / tűzoltócső
-    if ((L = lvW('ostor')) && ready('ostor', [1.3, 1.3, 1.2, 1.1, .9][L - 1], dt)) {
-      const len = [110, 125, 125, 145, 170][L - 1] * ar, hw = 26 * ar;
-      for (const dir of L >= 3 ? [P.face, -P.face] : [P.face]) { S.slashes.push({ x: P.x, y: P.y, dir, len, l: .22 });
-        for (const e of S.en) { if (e.under) continue; const dx = (e.x - P.x) * dir, dy = e.y - P.y; if (dx > -e.r && dx < len + e.r && Math.abs(dy) < hw + e.r) hurt(G, e, 9 + L * 4, dir * 170, 0, 'ostor'); } }
-      Sfx.blip(180, .12, 'sawtooth', .04, 2.5);
+    if ((L = lvW('ostor')) && ready('ostor', [1.1, 1, .95, .85, .7][L - 1], dt)) {
+      const len = [130, 150, 155, 175, 200][L - 1] * ar, hw = 24 * ar, tg = nearest(len + 80), a0 = tg ? Math.atan2(tg.y - P.y, tg.x - P.x) : (P.face > 0 ? 0 : Math.PI), dm = 16 + L * 7;
+      const angs = L >= 5 ? [a0 - .5, a0, a0 + .5, a0 + Math.PI] : L >= 3 ? [a0, a0 + Math.PI] : [a0];
+      angs.forEach((a, i) => later(i * .06, () => { const ca = Math.cos(a), sa = Math.sin(a), tx = P.x + ca * len, ty = P.y + sa * len; S.slashes.push({ x: P.x, y: P.y, a, len, l: .26 });
+        near(P.x, P.y, len + 20, (e, dx, dy) => { const t2 = dx * ca + dy * sa; if (t2 > 0 && t2 < len + e.r && Math.abs(dx * sa - dy * ca) < hw + e.r) hurt(G, e, dm, ca * 200, sa * 200, 'ostor'); });
+        // csattanás a slag végén
+        S.rings.push({ x: tx, y: ty, R: (38 + L * 5) * ar, l: 1, c: '90,200,120' }); part(tx, ty, 8, '200,240,255', 170, .35);
+        near(tx, ty, (38 + L * 5) * ar, (e, dx, dy) => { const d = Math.hypot(dx, dy) || 1; hurt(G, e, dm * .9, dx / d * 260, dy / d * 260, 'ostor'); if (!e.T.boss) e.freeze = Math.max(e.freeze, .25); }); }));
+      Sfx.blip(180, .12, 'sawtooth', .04, 2.5); setTimeout(() => Sfx.noise(.08, .12, 3200), 90);
     }
-    if (lvW('tuzolto') && ready('tuzolto', .85, dt)) { const R = 185 * ar; S.rings.push({ x: P.x, y: P.y, R, l: 1, w: 1 });
-      near(P.x, P.y, R, (e, dx, dy) => { const d = Math.hypot(dx, dy) || 1; hurt(G, e, 40, dx / d * 260, dy / d * 260, 'tuzolto'); }); snd('tuzolto'); }
+    if (lvW('tuzolto') && ready('tuzolto', .75, dt)) { const R = 200 * ar; S.rings.push({ x: P.x, y: P.y, R, l: 1, w: 1 });
+      near(P.x, P.y, R, (e, dx, dy) => { const d = Math.hypot(dx, dy) || 1; hurt(G, e, 55, dx / d * 300, dy / d * 300, 'tuzolto'); });
+      S.tzA = (S.tzA || 0) + .2; for (let i = 0; i < 10; i++) { const a = S.tzA + i * TAU / 10; S.pr.push({ x: P.x, y: P.y, vx: Math.cos(a) * 480, vy: Math.sin(a) * 480, r: 12, dmg: 30, pierce: 99, life: .8, hit: [], src: 'tuzolto', big: 1, kb: 1.5 }); } snd('tuzolto'); }
     // vízibomba / bombazápor
     if ((L = lvW('bomba')) && ready('bomba', 2.6, dt)) {
       for (let i = 0, n = [1, 1, 2, 2, 3][L - 1] + ex; i < n; i++) { const e = randEnemy(330); if (!e) { if (!i) S.wt.bomba = .3; break; }
@@ -614,12 +619,14 @@ const AszalyBeta = (() => {
     // rain bird / öntözőhíd
     if ((L = lvW('rainbird'))) { S.rbBase += dt * .45; const sw = [1.6, 2.2, 2.6, 3.4, 4.6][L - 1];
       if (ready('rainbird', .1, dt)) { S.rbA += .16 * S.rbDir; if (Math.abs(S.rbA) > sw / 2) { S.rbDir *= -1; S.rbA = clamp(S.rbA, -sw / 2, sw / 2); }
-        const a = S.rbBase + S.rbA, R = (120 + L * 12) * ar, ca = Math.cos(a), sa = Math.sin(a); S.rbJet = a;
-        near(P.x, P.y, R, (e, dx, dy) => { if (S.t < e.rbT) return; const t = dx * ca + dy * sa; if (t < 0) return; if (Math.abs(dx * sa - dy * ca) < e.r + 12 + t * .08) { e.rbT = S.t + .3; hurt(G, e, 4 + L * 2.2, ca * 90, sa * 90, 'rainbird'); } });
-        if ((S.rbN = (S.rbN || 0) + 1) % 2 === 0) snd('rainbird', .05); } }
-    if (lvW('ontozohid')) { S.rbA += dt * 1.5; S.rbJet = S.rbA; const R = 250 * ar;
+        const a = S.rbBase + S.rbA, R = (150 + L * 16) * ar, ca = Math.cos(a), sa = Math.sin(a); S.rbJet = a;
+        near(P.x, P.y, R, (e, dx, dy) => { if (S.t < e.rbT) return; const t = dx * ca + dy * sa; if (t < 0) return; if (Math.abs(dx * sa - dy * ca) < e.r + 14 + t * .1) { e.rbT = S.t + .25; hurt(G, e, 9 + L * 4, ca * 140, sa * 140, 'rainbird'); if (L >= 3) e.slow = Math.max(e.slow, .5); } });
+        if ((S.rbN = (S.rbN || 0) + 1) % 2 === 0) snd('rainbird', .05); }
+      if (ready('rbPulse', L >= 4 ? 2 : 2.6, dt)) { const n = 10 + L * 2; for (let i = 0; i < n; i++) { const b = i / n * TAU + S.t; S.pr.push({ x: P.x, y: P.y - 4, vx: Math.cos(b) * 330, vy: Math.sin(b) * 330, r: 7, dmg: 10 + L * 3.5, pierce: L >= 5 ? 3 : 1, life: .65 + L * .05, hit: [], src: 'rainbird' }); } S.rings.push({ x: P.x, y: P.y, R: 60, l: 1, c: '150,215,255' }); Sfx.splash(); } }
+    if (lvW('ontozohid')) { S.rbA += dt * 1.8; S.rbJet = S.rbA; const R = 280 * ar;
+      if (ready('ohSpray', .35, dt)) for (const sg of [1, -1]) { const b = S.rbA + (sg < 0 ? Math.PI : 0), ex = P.x + Math.cos(b) * R, ey = P.y + Math.sin(b) * R; for (let i = 0; i < 3; i++) { const c = b + Math.PI / 2 * sg + rnd(-.4, .4); S.pr.push({ x: ex, y: ey, vx: Math.cos(c) * 260, vy: Math.sin(c) * 260, r: 7, dmg: 22, pierce: 2, life: .5, hit: [], src: 'ontozohid' }); } }
       if (ready('ontozohid', .1, dt)) { const ca = Math.cos(S.rbA), sa = Math.sin(S.rbA);
-        near(P.x, P.y, R, (e, dx, dy) => { if (S.t < e.rbT) return; if (Math.abs(dx * sa - dy * ca) < e.r + 18) { e.rbT = S.t + .3; const s = Math.sign(dx * ca + dy * sa) || 1; hurt(G, e, 18, -sa * 140 * s, ca * 140 * s, 'ontozohid'); } }); } }
+        near(P.x, P.y, R, (e, dx, dy) => { if (S.t < e.rbT) return; if (Math.abs(dx * sa - dy * ca) < e.r + 18) { e.rbT = S.t + .25; const s = Math.sign(dx * ca + dy * sa) || 1; hurt(G, e, 36, -sa * 180 * s, ca * 180 * s, 'ontozohid'); e.slow = Math.max(e.slow, .8); } }); } }
     // locsolókanna / kannavihar
     { const E = lvW('kannavihar'); L = lvW('kanna');
       if ((L || E) && ready('kanna', E ? 1.25 : 1.6, dt)) { const e = nearest(320), a0 = e ? Math.atan2(e.y - P.y, e.x - P.x) : (P.face > 0 ? 0 : Math.PI), n = E ? 6 : (L >= 5 ? 3 : L >= 3 ? 2 : 1) + ex;
@@ -650,8 +657,9 @@ const AszalyBeta = (() => {
     { const E = lvW('legiflotta'); L = lvW('heli');
       if (L || E) { const n = E ? 4 : L >= 4 ? 2 : 1; S.heliA += dt * .9; while (S.heli.length < n) S.heli.push({ x: P.x, y: P.y - 40 });
         S.heli.length = n; S.heli.forEach((h, i) => { const a = S.heliA + i / n * TAU, R = E ? 88 : 58, tx = P.x + Math.cos(a) * R, ty = P.y + Math.sin(a) * R * .7 - 10, k = Math.min(1, dt * 3); h.x += (tx - h.x) * k; h.y += (ty - h.y) * k; });
-        if (ready('heli', .3, dt)) { const R = (E ? 64 : 24 + L * 6) * ar, dm = E ? 13 : 2.5 + L * 1.4; for (const h of S.heli) near(h.x, h.y + 8, R, e => { hurt(G, e, dm, 0, 0, E ? 'legiflotta' : 'heli'); e.slow = Math.max(e.slow, .35); }); snd('heli', .35); } }
-      else S.heli.length = 0; }
+        if (ready('heli', .3, dt)) { const R = (E ? 70 : 30 + L * 7) * ar, dm = E ? 24 : 6 + L * 3; for (const h of S.heli) near(h.x, h.y + 8, R, e => { hurt(G, e, dm, 0, 0, E ? 'legiflotta' : 'heli'); e.slow = Math.max(e.slow, .35); }); snd('heli', .35); } }
+      if ((L || E) && ready('heliB', E ? 1.2 : L >= 3 ? 1.8 : 2.4, dt)) for (const h of S.heli) { const e = randEnemy(320); if (!e) break; S.bombs.push({ x0: h.x, y0: h.y + 10, tx: e.x, ty: e.y, t: 0, R: (E ? 75 : 45 + L * 5) * ar, dmg: E ? 48 : 14 + L * 6, src: E ? 'legiflotta' : 'heli' }); if (E || L >= 5) for (let i = 0; i < 2; i++) S.pr.push({ x: h.x, y: h.y, vx: Math.cos(Math.atan2(e.y - h.y, e.x - h.x) + (i - .5) * .3) * 520, vy: Math.sin(Math.atan2(e.y - h.y, e.x - h.x) + (i - .5) * .3) * 520, r: 6, dmg: E ? 30 : 18, pierce: 1, life: .9, hit: [], src: E ? 'legiflotta' : 'heli', kind: 'bullet' }); }
+      else if (!(L || E)) S.heli.length = 0; }
     // csepegtető cső / öntözőcsatorna
     { const E = lvW('csatorna'); L = lvW('cso');
       if (L || E) { const life = (E ? 6 : 2.2 + L * .35) * du, mx = E ? 60 : 40, last = S.trail[S.trail.length - 1];
@@ -1245,7 +1253,11 @@ const AszalyBeta = (() => {
       if (S.sig.cubes) { const cs = S.sig.cubes; if (lv('releevo')) { g.strokeStyle = `rgba(120,200,255,${.5 + .3 * Math.sin(t * 20)})`; g.lineWidth = 2 * d; g.beginPath(); cs.forEach((c, i) => i ? g.lineTo(X(c.x), Y(c.y)) : g.moveTo(X(c.x), Y(c.y))); g.closePath(); g.stroke(); }
         for (const c of cs) { g.save(); g.translate(X(c.x), Y(c.y)); g.rotate(t * 2); g.fillStyle = '#2a5ab8'; rrp(g, -6 * sc, -6 * sc, 12 * sc, 12 * sc, 2 * sc); g.strokeStyle = '#bfe8ff'; g.lineWidth = 1.2 * sc; g.strokeRect(-3 * sc, -3 * sc, 6 * sc, 6 * sc); g.restore(); } }
       // slagostor
-      for (const s of S.slashes) { const a = s.l / .22, x = X(s.x), y = Y(s.y), len = s.len * sc * (1 - a * .25); g.globalAlpha = a; g.lineCap = 'round';
+      for (const s of S.slashes) { if (s.a == null) s.a = s.dir > 0 ? 0 : Math.PI; const a = s.l / .26, x = X(s.x), y = Y(s.y), len = s.len * sc * Math.min(1, (1 - a) * 4 + .3), ca = Math.cos(s.a), sa = Math.sin(s.a), bend = 34 * sc * a * Math.sin(t * 30);
+        g.globalAlpha = Math.min(1, a * 1.6); g.lineCap = 'round'; g.save(); g.translate(x, y); g.rotate(s.a); s.dir = 1; const ex = len, ey = 0;
+        g.strokeStyle = '#14592a'; g.lineWidth = 11 * sc; g.beginPath(); g.moveTo(10 * sc, 0); g.bezierCurveTo(len * .3, -bend, len * .65, bend, ex, ey); g.stroke(); g.strokeStyle = '#49c468'; g.lineWidth = 6 * sc; g.stroke(); g.strokeStyle = 'rgba(200,255,210,.7)'; g.lineWidth = 2 * sc; g.stroke();
+        g.fillStyle = '#e8b656'; rrp(g, ex - 7 * sc, -5 * sc, 12 * sc, 10 * sc, 2 * sc); g.fillStyle = 'rgba(200,240,255,.9)'; for (let i = 0; i < 9; i++) { const k = (1 - a) * (14 + i * 5) * sc; circ(g, ex + k, Math.sin(i * 2.2) * k * .6, (3.4 - i * .25) * sc); }
+        g.restore(); g.globalAlpha = 1; continue;
         g.strokeStyle = '#1d7a36'; g.lineWidth = 9 * sc; g.beginPath(); g.moveTo(x + s.dir * 10 * sc, y); g.quadraticCurveTo(x + s.dir * len * .5, y - 28 * sc * a, x + s.dir * len, y + 4 * sc); g.stroke();
         g.strokeStyle = '#49c468'; g.lineWidth = 5 * sc; g.stroke(); g.fillStyle = 'rgba(200,235,255,.9)'; for (let i = 0; i < 5; i++) circ(g, x + s.dir * (len + (i * 7 - 6) * sc), y + (Math.sin(i * 2.4) * 16 - 4) * sc * (1 - a), 3 * sc); g.globalAlpha = 1; }
       // nagynyomású sugár
@@ -1253,10 +1265,10 @@ const AszalyBeta = (() => {
         g.strokeStyle = b.w ? 'rgba(80,170,255,.45)' : 'rgba(80,170,255,.35)'; g.lineWidth = (b.w ? 14 : 8) * sc; ln(g, x1, y1, x2, y2); g.strokeStyle = 'rgba(220,245,255,.9)'; g.lineWidth = (b.w ? 5 : 3) * sc; ln(g, x1, y1, x2, y2);
         g.fillStyle = 'rgba(200,235,255,.8)'; for (let i = 0; i < 3; i++) circ(g, x2 + Math.sin(t * 40 + i * 2) * 6 * sc, y2 + Math.cos(t * 33 + i) * 6 * sc, 2.2 * sc); } }
       // rain bird / öntözőhíd
-      if (lv('rainbird')) { const a = S.rbJet, R = (120 + lv('rainbird') * 12) * ar * sc, cx = W / 2, cy = H / 2;
+      if (lv('rainbird')) { const a = S.rbJet, R = (150 + Math.min(5, lv('rainbird')) * 16) * ar * sc, cx = W / 2, cy = H / 2;
         g.strokeStyle = 'rgba(150,215,255,.55)'; g.lineWidth = 3 * sc; g.lineCap = 'round'; g.beginPath(); g.moveTo(cx, cy); g.quadraticCurveTo(cx + Math.cos(a) * R * .5, cy + Math.sin(a) * R * .5 - 18 * sc, cx + Math.cos(a) * R, cy + Math.sin(a) * R); g.stroke();
         g.fillStyle = 'rgba(200,235,255,.85)'; for (let i = 0; i < 6; i++) { const k = .45 + i * .1; circ(g, cx + Math.cos(a + Math.sin(i * 7) * .06) * R * k, cy + Math.sin(a + Math.sin(i * 7) * .06) * R * k - Math.sin(k * Math.PI) * 18 * sc * .5, 2.2 * sc); } }
-      if (lv('ontozohid')) { const a = S.rbJet, R = 250 * ar * sc, cx = W / 2, cy = H / 2, ca = Math.cos(a), sa = Math.sin(a);
+      if (lv('ontozohid')) { const a = S.rbJet, R = 280 * ar * sc, cx = W / 2, cy = H / 2, ca = Math.cos(a), sa = Math.sin(a);
         g.strokeStyle = '#8c98a6'; g.lineWidth = 4 * sc; g.lineCap = 'butt'; ln(g, cx - ca * R, cy - sa * R, cx + ca * R, cy + sa * R); g.strokeStyle = '#5a6672'; g.lineWidth = 1.5 * sc;
         for (let i = -6; i <= 6; i++) { const px = cx + ca * R * i / 6, py = cy + sa * R * i / 6; ln(g, px, py, px - sa * 7 * sc, py + ca * 7 * sc); g.fillStyle = 'rgba(150,215,255,.55)'; circ(g, px - sa * 12 * sc + Math.sin(t * 30 + i) * 3 * sc, py + ca * 12 * sc, 6 * sc); } }
       drawPlayer(g, G, t);
@@ -1299,7 +1311,7 @@ const AszalyBeta = (() => {
       for (const b of S.bolts) { const x1 = X(b.x1), y1 = Y(b.y1), x2 = X(b.x2), y2 = Y(b.y2); g.globalAlpha = b.l / .2; g.strokeStyle = '#fff6b0'; g.lineWidth = 3 * sc; g.lineJoin = 'miter'; g.beginPath(); g.moveTo(x1, y1);
         for (let i = 1; i < 6; i++) { const k = i / 6; g.lineTo(x1 + (x2 - x1) * k + Math.sin(b.s + i * 3.7) * 12 * sc, y1 + (y2 - y1) * k); } g.lineTo(x2, y2); g.stroke(); g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 1.2 * sc; g.stroke(); g.globalAlpha = 1; }
       // helikopterek
-      for (const h of S.heli) { const x = X(h.x), y = Y(h.y), E = lv('legiflotta'), R = (E ? 64 : 24 + lv('heli') * 6) * ar * sc;
+      for (const h of S.heli) { const x = X(h.x), y = Y(h.y), E = lv('legiflotta'), R = (E ? 70 : 30 + Math.min(5, lv('heli')) * 7) * ar * sc;
         g.fillStyle = 'rgba(80,170,255,.16)'; g.beginPath(); g.ellipse(x, y + 8 * sc + 34 * sc, R, R * .55, 0, 0, TAU); g.fill(); g.strokeStyle = 'rgba(160,215,255,.5)'; g.lineWidth = 1.3 * sc;
         for (let i = 0; i < 7; i++) { const k = (t * 3 + i * .17) % 1, px = x + Math.sin(i * 4.1) * R * .7; ln(g, px, y + 4 * sc + k * 38 * sc, px, y + 9 * sc + k * 38 * sc); }
         g.fillStyle = 'rgba(0,0,0,.2)'; g.beginPath(); g.ellipse(x, y + 42 * sc, 12 * sc, 4 * sc, 0, 0, TAU); g.fill();
