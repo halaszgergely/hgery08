@@ -496,6 +496,12 @@ export { god2 };
 /* ---------- Szikkadt Szilárd, 2. fázis: A Porvihar ---------- */
 DEFS+=(gr('gSd','#e8cf9a','#b08a52','#6a4a24')+gr('gCl','#8a5a3a','#4a2a1a','#1a0c08')+`<radialGradient id="gEm" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff2d0"/><stop offset=".35" stop-color="#ff5a2a"/><stop offset=".75" stop-color="#a8140a"/><stop offset="1" stop-color="#5a0606" stop-opacity="0"/></radialGradient>`);
 const wellStone=(x,y,r,a)=>`<g transform="rotate(${a} ${x} ${y})">`+P(`M${x-r} ${y-r*.55} L${x+r} ${y-r*.7} L${x+r*1.1} ${y+r*.5} L${x-r*.9} ${y+r*.65}Z`,'#7a7064')+P(`M${x-r} ${y-r*.55} L${x+r} ${y-r*.7} L${x+r*.9} ${y-r*.2} L${x-r*.9} ${y-r*.1}Z`,'#a89a86')+B(`M${x-r*.3} ${y-r*.5} L${x-r*.1} ${y+r*.5} M${x+r*.4} ${y-r*.6} L${x+r*.2} ${y+r*.1}`,1,'#3a3028')+`</g>`+GL(x,y+r,3,'#ff5a2a',.5);
+const magicHand=k=>{const hx=100+k*66,hy=128;return L(`M${100+k*30} 104 Q${100+k*50} 112 ${hx} ${hy}`,'url(#gCo)',10)+B(`M${100+k*30} 104 Q${100+k*50} 112 ${hx} ${hy}`,1.6,'#c42a20',.9)+`<circle cx="${hx}" cy="${hy}" r="5" fill="url(#gSk)" ${G}/>`
+  +GL(hx+k*6,hy-4,26,'#ff3a1a',.45)+`<circle cx="${hx+k*6}" cy="${hy-4}" r="24" fill="none" stroke="#ff4a2a" stroke-width="1.8"/><circle cx="${hx+k*6}" cy="${hy-4}" r="17" fill="none" stroke="#e8cf9a" stroke-width="1.2" stroke-dasharray="3 3"/><circle cx="${hx+k*6}" cy="${hy-4}" r="30" fill="none" stroke="#ff8a6a" stroke-width=".8" stroke-dasharray="1 5"/>`
+  +`<polygon points="${st(hx+k*6,hy-4,22,8,7,k*.3)}" fill="none" stroke="#ffb08a" stroke-width="1"/>`+[0,1,2,3,4,5].map(i=>{const a=i*Math.PI/3;return runeTxt((hx+k*6+Math.cos(a)*27).toFixed(1),(hy-4+Math.sin(a)*27+2).toFixed(1),'ᛉᚦᛊᛟᚱᛞ'[i],'#ffd0c0',5.5)}).join('')
+  +`<circle cx="${hx+k*6}" cy="${hy-4}" r="8" fill="url(#gEm)" ${G}/>`
+  +[0,1,2,3,4,5,6].map(i=>{const a=i*.9+k,r=36+i*3;return `<circle cx="${(hx+k*6+Math.cos(a)*r).toFixed(1)}" cy="${(hy-4+Math.sin(a)*r*.7).toFixed(1)}" r="${1.2+i%3*.6}" fill="${i%2?'#e8cf9a':'#ff7a4a'}" opacity=".85"/>`}).join('')
+  +B(`M${hx+k*6} ${hy-30} Q${hx+k*20} ${hy-52} ${hx+k*8} ${hy-70}`,1.6,'#ff5a2a',.7)+B(`M${hx+k*6} ${hy+22} Q${hx-k*10} ${hy+40} ${hx+k*4} ${hy+58}`,1.4,'#e8cf9a',.6);};
 const sandBlade=k=>{const bx=100+k*36,by=110;return L(`M${bx} ${by} Q${100+k*62} 132 ${100+k*70} 160`,'url(#gCo)',10)+B(`M${bx} ${by} Q${100+k*62} 132 ${100+k*70} 160`,1.6,'#c42a20',.9)
   +P(`M${100+k*68} 156 Q${100+k*104} 150 ${100+k*96} 92 Q${100+k*92} 60 ${100+k*74} 40 Q${100+k*86} 84 ${100+k*78} 124 Q${100+k*74} 146 ${100+k*64} 162Z`,'url(#gSd)')
   +B(`M${100+k*74} 44 Q${100+k*90} 86 ${100+k*80} 128 Q${100+k*76} 148 ${100+k*66} 160`,2.2,'#ff4a2a',.9)+B(`M${100+k*74} 44 Q${100+k*90} 86 ${100+k*80} 128`,.8,'#ffe0b0')
@@ -522,8 +528,11 @@ function szl2(v='f',e='angry'){
   const crownR=[[-30,0],[-18,-10],[-6,-18],[6,-18],[18,-10],[30,0]].map(([dx,dy])=>B(`M${100+dx*.6} ${26} Q${100+dx} ${16+dy*.5} ${100+dx*1.3} ${8+dy}`,2.4,'#4a2e1a')+`<circle cx="${(100+dx*1.3).toFixed(1)}" cy="${8+dy}" r="1.8" fill="#ff5a2a"/>`).join('');
   // lebegő kútkő-gyűrű
   const stones=[[48,96,9,-20],[152,92,8,18],[40,140,7,10],[160,140,8,-12],[60,58,6,30],[140,54,7,-28]].map(([x,y,r,a])=>wellStone(x,y,r,a)).join('')+`<ellipse cx="100" cy="100" rx="64" ry="20" fill="none" stroke="#d8b98a" stroke-width="1" stroke-dasharray="2 6" opacity=".7"/>`;
-  if(v==='b'){ s+=stones+storm+roots+coat+P('M80 96 L120 96 L124 160 L76 160Z','url(#gCo)')+P('M68 100 Q60 40 100 18 Q140 40 132 100 Q100 114 68 100Z','url(#gCo)')+crownR; return s; }
-  s+=stones+storm+roots+coat+torso+sandBlade(-1)+sandBlade(1)+head+crownR;
+  const coatL=P('M68 96 Q50 170 44 262 L58 252 L64 272 L76 254 L84 276 L92 256 L100 270 L108 256 L116 276 L124 254 L136 272 L142 252 L156 262 Q150 170 132 96Z','url(#gCo)')+B('M44 262 L58 252 L64 272 L76 254 L84 276 L92 256 L100 270 L108 256 L116 276 L124 254 L136 272 L142 252 L156 262',2,'#c42a20')+P('M86 150 L114 150 L118 262 L82 262Z','#0a0608','opacity=".55"');
+  const feet=legs('#141018',11,'#1a1014')+B('M80 262 L94 262 M106 262 L120 262',2,'#c42a20');
+  const dust=[[-1,0],[1,0],[-1,1],[1,1]].map(([k,j])=>`<path d="M${100+k*(12+j*12)} 290 Q${100+k*(44+j*16)} ${272-j*10} ${100+k*(30+j*20)} ${250-j*10}" stroke="#d8b98a" stroke-width="${3-j}" fill="none" opacity="${.7-j*.25}" stroke-linecap="round"/>`).join('')+`<ellipse cx="100" cy="288" rx="58" ry="9" fill="#d8b98a" opacity=".22"/>`;
+  if(v==='b'){ s+=stones+roots+coatL+feet+P('M80 96 L120 96 L124 160 L76 160Z','url(#gCo)')+P('M68 100 Q60 40 100 18 Q140 40 132 100 Q100 114 68 100Z','url(#gCo)')+crownR; return s; }
+  s+=stones+roots+coatL+feet+dust+torso+magicHand(-1)+magicHand(1)+head+crownR;
   return s;
 }
 export { szl2 };

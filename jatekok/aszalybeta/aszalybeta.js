@@ -58,7 +58,7 @@ const AszalyBeta = (() => {
     fereg: { hp: 14500, sp: 150, dmg: 30, r: 40, xp: 0, pt: 4500, boss: 1, art: 'hf', sz: 150, n: 'Homokféreg' },
     boszi: { hp: 20000, sp: 68, dmg: 28, r: 34, xp: 0, pt: 6000, boss: 1, art: 'stw', sz: 120, n: 'Structured Text Boszorkány' },
     szilard: { hp: 32000, sp: 54, dmg: 32, r: 36, xp: 0, pt: 10000, boss: 1, final: 1, art: 'szl', sz: 130, n: 'Szikkadt Szilárd' },
-    szilard2: { hp: 40000, sp: 88, dmg: 36, r: 40, xp: 0, pt: 15000, boss: 1, final: 1, art: 'szl2', sz: 175, n: 'Szikkadt Szilárd, a Porvihar' },
+    szilard2: { hp: 40000, sp: 88, dmg: 36, r: 40, xp: 0, pt: 15000, boss: 1, final: 1, art: 'szl2', sz: 215, n: 'Szikkadt Szilárd, a Porvihar' },
     isten: { hp: 10000000, sp: 30, dmg: 40, r: 95, xp: 0, pt: 0, boss: 1, god: 1, art: 'god', sz: 280, n: 'Szikkadt Szilárd, az Aszály Istene' },
     isten2: { hp: 15000000, sp: 42, dmg: 50, r: 100, xp: 0, pt: 0, boss: 1, god: 1, art: 'god2', sz: 330, n: 'Szikkadt Szilárd, A Napisten' }
   };
@@ -594,7 +594,7 @@ const AszalyBeta = (() => {
     if (pt === 'homokkaszak') { // két söprő homokkasza + két visszatérő pengehullám
       sweep(e, a - 1.6, 2.2, 10, 330, 24, dm); sweep(e, a + 1.6, -2.2, 10, 330, 24, dm);
       later(.5, () => { if (e.dead) return; for (const o of [-.5, .5]) { const b = Math.atan2(S.P.y - e.y, S.P.x - e.x) + o; S.ep.push({ x: e.x, y: e.y, vx: Math.cos(b) * 380, vy: Math.sin(b) * 380, l: 3, dmg: dm, c: '232,207,154', big: 1, bm: 1, own: e }); } Sfx.noise(.3, .12, 1600); });
-      S.say = { t: 'Kaszálok!', l: 1.2 }; }
+      S.say = { t: 'Porpengék!', l: 1.2 }; }
     else if (pt === 'kutkovek') { // a lebegő kútkövek becsapódnak
       for (let i = 0; i < 6 + (mad > 1 ? 3 : 0); i++) later(i * .14, () => { if (e.dead) return; const b = Math.random() * TAU, R2 = i ? 30 + Math.random() * 150 : 0; S.warns.push({ x: S.P.x + Math.cos(b) * R2, y: S.P.y + Math.sin(b) * R2, R: 52, t: 0, d: .9, dmg: dm + 6, stone: 1 }); });
       banner('KÚTKÖVEK!', 1, '#c9c0b0'); }
