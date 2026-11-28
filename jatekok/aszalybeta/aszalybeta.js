@@ -180,14 +180,14 @@ const AszalyBeta = (() => {
     const b = S.bossE && !S.bossE.dead ? S.bossE : null, P = S.P, c = S.choose;
     const d = { v: 1, at: Date.now(), score: G.score, ch: S.ch, t: S.t, P: { x: P.x, y: P.y, hp: P.hp, lvl: P.lvl, xp: P.xp, need: P.need },
       up: S.up, evd: S.evd, evoN: S.evoN, rr: S.rr, rev: S.rev, gold: S.gold, kills: S.kills, bossN: S.bossN, bi: S.bi, bossCD: S.bossCD, minute: S.minute,
-      ph: S.ph, phT: S.phT, szN: S.szN, szKill: S.szKill, dmgBy: S.dmgBy, hmA: S.hmA, pf: S.pf, wf: S.wf, fzTok: S.fzTok, fused: S.fused, fz: S.fz, fzW: S.fzW, pending: S.pending + (c && !c.evo ? 1 : 0), evoQ: S.evoQ.concat(c && c.evo ? [c.evo] : []),
+      ph: S.ph, phT: S.phT, szN: S.szN, szKill: S.szKill, dmgBy: S.dmgBy, hmA: S.hmA, pf: S.pf, wf: S.wf, fzTok: S.fzTok, dropTok: S.dropTok, fused: S.fused, fz: S.fz, fzW: S.fzW, pending: S.pending + (c && !c.evo ? 1 : 0), evoQ: S.evoQ.concat(c && c.evo ? [c.evo] : []),
       boss: b ? { k: b.type, f: b.hp / b.mhp, shN: b.shN || 0, sh: b.shield ? 1 : 0 } : null };
     try { localStorage.setItem(SAVE, JSON.stringify(d)); } catch (_) {}
   }
   function loadRun(G) {
     const d = saveGet(); if (!d) return;
     Object.assign(S, { ch: d.ch, t: d.t, up: d.up, evd: d.evd || {}, evoN: d.evoN || 0, rr: d.rr, rev: d.rev || 0, gold: d.gold || 0, kills: d.kills || 0, bossN: d.bossN || 0, bi: d.bi || 0, bossCD: d.bossCD || 0,
-      minute: d.minute || 0, ph: d.ph || 'run', phT: d.phT || 0, szN: d.szN || 0, szKill: d.szKill || 0, dmgBy: d.dmgBy || {}, hmA: d.hmA ?? Math.pow(d.t / 40, 1.15) * .2, pf: d.pf || [], wf: d.wf || {}, fzTok: d.fzTok || 0, fused: d.fused || [], fz: d.fz || '', fzW: d.fzW || '', pending: d.pending || 0, evoQ: d.evoQ || [], sel: null, shop: null, started: 1, meta: metaGet() });
+      minute: d.minute || 0, ph: d.ph || 'run', phT: d.phT || 0, szN: d.szN || 0, szKill: d.szKill || 0, dmgBy: d.dmgBy || {}, hmA: d.hmA ?? Math.pow(d.t / 40, 1.15) * .2, pf: d.pf || [], wf: d.wf || {}, fzTok: d.fzTok || 0, dropTok: d.dropTok || 0, fused: d.fused || [], fz: d.fz || '', fzW: d.fzW || '', pending: d.pending || 0, evoQ: d.evoQ || [], sel: null, shop: null, started: 1, meta: metaGet() });
     Object.assign(S.P, d.P); S.sigK = sigKeys(); stats(); S.P.hp = Math.min(S.P.mhp, d.P.hp); G.score = d.score || 0; S.dirty = 1;
     if (S.ph === 'wrath') S.wk = clamp(1 - S.phT / 240, 0, 1);
     if (S.ph === 'god' || (d.boss && d.boss.k === 'isten')) { godSpawn(G); const e = S.bossE; e.dsc = 0; e.hp = e.mhp * d.boss.f; e.shN = d.boss.sh ? Math.max(0, d.boss.shN - 1) : d.boss.shN; S.banner = null; S.say = null; }
@@ -247,6 +247,7 @@ const AszalyBeta = (() => {
       else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') S.sel.i = (S.sel.i + cols) % n; else if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') S.sel.i = (S.sel.i + n - cols % n) % n;
       if (k) e.preventDefault(); return; }
     if (k) { K[k] = 1; if (G.running) e.preventDefault(); }
+    else if (G.running && S.drop) { if (S.drop.t >= .4) { if (/^[1-9]$/.test(e.key) && S.drop.o[+e.key - 1]) S.drop.sel = S.drop.o[+e.key - 1]; else if (e.key === 'Enter') doDrop(G); else if (e.key === 'x' || e.key === 'X') keepAll(); } }
     else if (G.running && S.fuse) { if (S.fuse.t >= .4) { if (/^[1-9]$/.test(e.key) && S.fuse.o[+e.key - 1]) doFuse(G, S.fuse.o[+e.key - 1]); else if (e.key === 'x' || e.key === 'X') { S.fuse = null; S.fzLater = S.P.lvl + 3; } } }
     else if (G.running && S.choose) { if (/^[1-4]$/.test(e.key)) pick(G, +e.key - 1); else if ((e.key === 'r' || e.key === 'R') && !e.repeat) reroll(); else if ((e.key === 'x' || e.key === 'X') && !e.repeat) skip(); } });
   addEventListener('keyup', e => { const k = KEYS[e.key]; if (k) K[k] = 0; });
@@ -806,7 +807,7 @@ const AszalyBeta = (() => {
       if (S.t - S.gsT > .05) { S.gsT = S.t; Sfx.blip(900 + Math.random() * 300, .04, 'sine', .03); } }
     else if (q.k === 'h') { P.hp = Math.min(P.mhp, P.hp + 25); G.float(G.W / 2, G.H / 2 - 40 * G.d, '+25 ❤'); Sfx.coin(); }
     else if (q.k === 'm') { for (const o of S.gems) o.pull = 1; Sfx.perfect(); }
-    else { if (q.boss) S.fzTok++; for (let i = 0, n = (q.dbl ? 2 : 1) * (has('dblchest') && Math.random() < .25 ? 2 : 1); i < n; i++) { const ev = evoAvail(); if (ev) S.evoQ.push(ev); else S.pending++; }
+    else { if (q.boss) { S.fzTok++; S.dropTok++; } for (let i = 0, n = (q.dbl ? 2 : 1) * (has('dblchest') && Math.random() < .25 ? 2 : 1); i < n; i++) { const ev = evoAvail(); if (ev) S.evoQ.push(ev); else S.pending++; }
       P.hp = Math.min(P.mhp, P.hp + 30); G.score += q.dbl ? 500 : 250; S.dirty = 1; G.float(G.W / 2, G.H / 2 - 40 * G.d, q.dbl ? 'DUPLA KINCS! +500' : 'KINCS! +250'); }
   }
   const maxedOther = w => Object.keys(S.up).filter(k => k !== w && UP[k] && !UP[k].sp && !S.fused.includes(k) && (UP[k].evo || lv(k) >= bmx(k))).length;
@@ -859,6 +860,15 @@ const AszalyBeta = (() => {
     : { tag: 'FEGYVERFÚZIÓ', n: UP[q.a].n + ' + ' + UP[q.b].n, d: 'Mindkettő +30% sebzés és 15%-kal gyorsabb; felszabadul egy hely' };
   function fuseRows(G) { const d = G.d, o = S.fuse.o, cols = G.W / d > 760 && o.length > 3 ? 2 : 1, cw = Math.min((G.W - 30 * d) / cols, 420 * d), rh = Math.min(84 * d, (G.H - 290 * d) / Math.ceil(o.length / cols)), x0 = (G.W - cols * cw) / 2;
     return o.map((q, i) => ({ q, x: x0 + (i % cols) * cw + 5 * d, y: 190 * d + Math.floor(i / cols) * rh, w: cw - 10 * d, h: rh - 10 * d })); }
+  /* kártya eldobása boss után: a saját fegyver és az összeolvasztott kártyák nem dobhatók el */
+  const dropList = () => { const sg = sigKeys(), wfk = Object.keys(S.wf); return Object.keys(S.up).filter(k => UP[k] && !UP[k].sp && !sg.includes(k) && !S.fused.includes(k) && !S.pf.includes(k) && !wfk.includes(k)); };
+  function dropRows(G) { const d = G.d, o = S.drop.o, cols = 2, cw = Math.min((G.W - 24 * d) / cols, 300 * d), rh = Math.min(56 * d, (G.H - 270 * d) / Math.ceil(o.length / cols)), x0 = (G.W - cols * cw) / 2;
+    return o.map((k, i) => ({ k, i, x: x0 + (i % cols) * cw + 4 * d, y: 150 * d + Math.floor(i / cols) * rh, w: cw - 8 * d, h: rh - 6 * d })); }
+  const dropBtns = G => { const d = G.d, w = Math.min(160 * d, (G.W - 40 * d) / 2); return [{ x: G.W / 2 - w - 6 * d, y: G.H - 76 * d, w, h: 44 * d, t: 'ELDOBÁS' }, { x: G.W / 2 + 6 * d, y: G.H - 76 * d, w, h: 44 * d, t: 'MEGTARTOM' }]; };
+  function doDrop(G) { const k = S.drop && S.drop.sel; if (!k) { S.drop.shake = .3; return; } delete S.up[k]; S.dropTok = Math.max(0, S.dropTok - 1); S.drop = null; stats();
+    if (k === 'orbpajzs' || k === 'egisz') S.plates = null; if (k === 'lanc' || k === 'orveny_lanc') S.balls = null; if (k === 'heli' || k === 'legiflotta') S.heli.length = 0;
+    banner(UP[k].n.toUpperCase() + ' ELDOBVA', 2, '#ff7a6a'); Sfx.blip(220, .25, 'sawtooth', .05, .5); }
+  const keepAll = () => { S.dropTok = Math.max(0, S.dropTok - 1); S.drop = null; };
   const fuseLater = G => ({ x: G.W / 2 - 90 * G.d, y: G.H - 72 * G.d, w: 180 * G.d, h: 44 * G.d, t: 'KÉSŐBB' });
   function doFuse(G, q) { const P = S.P; S.fzTok = Math.max(0, S.fzTok - 1); S.fuse = null; P.inv = Math.max(P.inv, 1); S.flash = .5;
     if (q.t === 's') { S.fz = baseW(q.a); S.fzW = q.a; S.fused.push(q.a); } else if (q.t === 'p') { S.fused.push(q.b); S.pf.push(q.a, q.b); } else { S.fused.push(q.b); S.wf[q.a] = S.wf[q.b] = 1; }
@@ -1131,7 +1141,7 @@ const AszalyBeta = (() => {
     init(G) {
       S = { t: 0, P: { x: 0, y: 0, hp: 100, mhp: 100, inv: 0, face: 1, walk: 0, mov: 0, lvl: 1, xp: 0, need: 7 }, up: { pisztoly: 1 }, wt: {}, en: [], pr: [], gems: [], bombs: [], clouds: [], rings: [], slashes: [], pt: [], nums: [],
         eid: 0, sT: .6, minute: 0, bossN: 0, kills: 0, pending: 0, choose: null, orb: 0, sndT: -1, gsT: -1, hudT: 0, dirty: 0, banner: null,
-        ch: 'gh', fused: [], pf: [], wf: {}, fzTok: 0, fz: '', fzW: '', fuse: null, fzLater: 0, sigK: ['', ''], gold: 0, gcT: -9, meta: metaGet(), shop: null, sel: { i: 0, t: 0, shake: 0 }, started: 0, over: 0, paused: 0, dmgBy: {}, evd: {}, evoQ: [], evoN: 0, rr: 3, kingK: 0,
+        ch: 'gh', fused: [], pf: [], wf: {}, fzTok: 0, dropTok: 0, drop: null, fz: '', fzW: '', fuse: null, fzLater: 0, sigK: ['', ''], gold: 0, gcT: -9, meta: metaGet(), shop: null, sel: { i: 0, t: 0, shake: 0 }, started: 0, over: 0, paused: 0, dmgBy: {}, evd: {}, evoQ: [], evoN: 0, rr: 3, kingK: 0,
         ep: [], cans: [], geys: [], hail: [], heli: [], trail: [], bolts: [], beams: [], heliA: 0, rbA: 0, rbDir: 1, rbBase: 0, rbJet: 0,
         heat: 0, zapor: 0, rainT: 0, green: 0, dry: 0, flash: 0, batT: 30, szE: null, szN: 0, szKill: 0, ph: 'run', phT: 0, wk: 0, bi: 0, bossCD: 0, bossE: null, hmA: 0, done: 0, dmgSec: 0, dpsW: [], dps: 0, bossDmg: 0, fires: [], warns: [], blasts: [], waves: [], bq: [], mel: [], hams: [], cracks: [], ltrail: [], balls: null, crystals: [], burst: [], cones: [], sig: {}, szRage: 0, taunt: null, say: null, melt: null, note: null, unT: 0 };
       S.hasSave = saveGet(); sndT = {}; S.rr = 3 + (S.meta.rr || 0); stats(); view(G); joy = null; this.overTitle = 'KISZÁRADTÁL'; hideStats();
@@ -1142,6 +1152,7 @@ const AszalyBeta = (() => {
       if (S.shop) { const r = shopRows(G).find(r => inR(r, x, y)); if (r) buyMeta(r.i); else if (inR(shopClose(G), x, y)) { S.shop = null; Sfx.blip(500, .06, 'square', .04); } return; }
       if (S.sel) { if (S.hasSave && inR(contBtn(G), x, y)) return loadRun(G); if (inR(kutBtn(G), x, y)) { S.shop = { t: 0, i: -1, shake: 0 }; S.meta = metaGet(); Sfx.blip(700, .07, 'square', .04); return; } const c = selCards(G).find(c => inR(c, x, y)); if (c) selPick(G, c.i); return; }
       if (S.paused) { const b = pauseBtns(G).find(b => inR(b, x, y)); if (b) { if (b.id === 'go') togglePause(); else { S.paused = 0; G.end(); } } return; }
+      if (S.drop) { if (S.drop.t < .4) return; const r = dropRows(G).find(r => inR(r, x, y)); if (r) { S.drop.sel = S.drop.sel === r.k ? null : r.k; Sfx.blip(700, .05, 'square', .03); return; } const [b1, b2] = dropBtns(G); if (inR(b1, x, y)) return doDrop(G); if (inR(b2, x, y)) return keepAll(); return; }
       if (S.fuse) { if (S.fuse.t < .4) return; const r = fuseRows(G).find(r => inR(r, x, y)); if (r) return doFuse(G, r.q); if (inR(fuseLater(G), x, y)) { S.fuse = null; S.fzLater = S.P.lvl + 3; } return; }
       if (S.choose) { const c = cards(G).findIndex(c => inR(c, x, y)); if (c >= 0) return pick(G, c); const b = cardBtns(G).find(b => inR(b, x, y)); if (b) b.id === 'rr' ? reroll() : skip(); return; }
       const pb = pauseBtn(G); if (Math.hypot(x - pb.x, y - pb.y) < pb.r * 1.4) return togglePause();
@@ -1158,8 +1169,10 @@ const AszalyBeta = (() => {
       if (S.sel) { S.sel.t += dt; S.sel.shake = Math.max(0, S.sel.shake - dt); return; }
       if (S.paused) return;
       if (S.fuse) { S.fuse.t += dt; return; }
+      if (S.drop) { S.drop.t += dt; S.drop.shake = Math.max(0, (S.drop.shake || 0) - dt); return; }
       if (S.choose) { S.choose.t += dt; S.flash = Math.max(0, S.flash - dt); return; }
       if (S.evoQ.length) return openEvo(S.evoQ.shift());
+      if (S.dropTok > 0 && !S.fuse && (S.fzTok <= 0 || !fuseOpts().length || S.P.lvl < S.fzLater)) { const o = dropList(); if (o.length) { S.drop = { o, t: 0, sel: null }; joy = null; Sfx.blip(330, .2, 'triangle', .05, .7); return; } S.dropTok = 0; }
       if (S.fzTok > 0 && S.P.lvl >= S.fzLater && (S.fzChk = (S.fzChk || 0) - dt) <= 0 && (S.fzChk = 1) && fuseOpts().length) { S.fuse = { o: fuseOpts(), t: 0 }; joy = null; Sfx.perfect(); setTimeout(() => Sfx.blip(988, .3, 'triangle', .06, 1.5), 200); return; }
       if (S.pending > 0) { S.pending--; return openChoice(); }
       S.t += dt; const st = S.st;
@@ -1443,6 +1456,16 @@ const AszalyBeta = (() => {
           g.font = `500 ${11 * d}px Inter, sans-serif`; g.fillStyle = '#e8d6c0'; g.fillText(f.d, r.x + 92 * d, cy + 10 * d, r.w - 104 * d);
           g.font = `800 ${9 * d}px Inter, sans-serif`; g.fillStyle = col; g.textAlign = 'right'; g.fillText(f.tag, r.x + r.w - 10 * d, r.y + 11 * d); g.textAlign = 'center'; });
         g.textAlign = 'center'; btn(g, G, fuseLater(G)); g.globalAlpha = 1; }
+      if (S.drop && G.running) { const dr = S.drop, a = Math.min(1, dr.t * 5); g.fillStyle = `rgba(14,4,4,${.9 * a})`; g.fillRect(0, 0, W, H); g.globalAlpha = a; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.font = `900 ${Math.min(28 * d, W / 13)}px Cinzel, serif`; g.fillStyle = '#ff7a6a'; g.fillText('KÁRTYA ELDOBÁSA', W / 2, 84 * d);
+        g.save(); g.translate(W / 2, 118 * d); g.strokeStyle = 'rgba(255,122,106,.8)'; g.lineWidth = 2.4 * d; g.lineCap = 'round'; ln(g, -9 * d, -9 * d, 9 * d, 9 * d); ln(g, 9 * d, -9 * d, -9 * d, 9 * d); g.restore();
+        for (const r of dropRows(G)) { const u = UP[r.k], sel = dr.sel === r.k, ev = u.evo, x = r.x + (sel && dr.shake > 0 ? Math.sin(dr.shake * 60) * 4 * d : 0);
+          g.fillStyle = sel ? 'rgba(90,20,16,.96)' : 'rgba(14,24,44,.95)'; rrp(g, x, r.y, r.w, r.h, 10 * d); g.strokeStyle = sel ? '#ff5a4d' : ev ? '#e8b656' : 'rgba(120,190,255,.35)'; g.lineWidth = (sel ? 2.4 : 1.2) * d; g.beginPath(); g.roundRect(x, r.y, r.w, r.h, 10 * d); g.stroke();
+          const cy = r.y + r.h / 2, ir = Math.min(18 * d, r.h * .4); g.fillStyle = 'rgba(108,198,255,.12)'; circ(g, x + 24 * d, cy, ir); ico(g, r.k, x + 24 * d, cy, ir * 1.5);
+          g.textAlign = 'left'; g.font = `800 ${Math.min(13 * d, r.h * .3)}px Inter, sans-serif`; g.fillStyle = sel ? '#ffb0a0' : ev ? '#ffd23f' : '#fff'; g.fillText(u.n, x + 48 * d, cy, r.w - 84 * d);
+          g.textAlign = 'right'; g.font = `800 ${12 * d}px Inter, sans-serif`; g.fillStyle = '#bfe6ff'; g.fillText(ev ? '★' : lv(r.k), x + r.w - 10 * d, cy); g.textAlign = 'center';
+          if (sel) { g.strokeStyle = 'rgba(255,90,77,.85)'; g.lineWidth = 2 * d; ln(g, x + 8 * d, r.y + 6 * d, x + r.w - 8 * d, r.y + r.h - 6 * d); } }
+        const [b1, b2] = dropBtns(G); g.globalAlpha = a * (dr.sel ? 1 : .45); btn(g, G, b1, true); g.globalAlpha = a; btn(g, G, b2); g.globalAlpha = 1; }
       // szünet: build lista
       if (S.paused && G.running) { g.fillStyle = 'rgba(2,4,9,.86)'; g.fillRect(0, 0, W, H); g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `900 ${Math.min(30 * d, W / 13)}px Cinzel, serif`; g.fillStyle = '#ffe29a'; g.fillText('SZÜNET', W / 2, 92 * d);
         const ks = Object.keys(S.up).sort((a, b) => isW(b) - isW(a)), cols = W / d > 700 ? 2 : 1, cw = Math.min((W - 30 * d) / cols, 420 * d), rh = Math.min(48 * d, (H - 230 * d) / Math.ceil(ks.length / cols)), x0 = (W - cols * cw) / 2;

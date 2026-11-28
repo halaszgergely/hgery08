@@ -2,7 +2,7 @@
    Minden fül egy útvonalat (hash) tárol. A játékot futtató fül iframe-je életben marad, amíg a fül nyitva van:
    ha játék közben máshova navigálunk, az új oldal másik fülre kerül (vagy egy meglévő, nem játékos fülre).
    Fülek száma: legfeljebb 5, vendégnek 3. A fülek a munkamenet végéig megmaradnak (sessionStorage). */
-import { $, esc, toast } from './core.js?v=202611281632';
+import { $, esc, toast } from './core.js?v=202611281637';
 
 const SK = 'hgws_tabs';
 let T = [], act = 0, seq = 1, C = { guest: () => false }, fresh = false, bar, list;
