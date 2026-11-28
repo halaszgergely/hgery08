@@ -278,7 +278,7 @@ const AszalyBeta = (() => {
   /* ---------- ellenségek ---------- */
   function edge() { const w = V.hw + 34, h = V.hh + 34, r = Math.random() * (w + h) * 2, s = Math.random() < .5 ? -1 : 1; return r < w * 2 ? [r - w, s * h] : [s * w, r - w * 2 - h]; }
   function spawn(type, ox, oy, mul = 1) {
-    const T = ET[type], P = S.P, hm = (1 + S.hmA) * (S.ph === 'wrath' ? 1.8 + S.wk * 3 : S.ph === 'god' ? 2.4 : 1);
+    const T = ET[type], P = S.P, hm = (1 + S.hmA) * (S.ph === 'wrath' ? 1.8 + S.wk * 1.6 : S.ph === 'god' ? 2.4 : 1);
     const hp = (T.boss ? T.hp * (1 + S.bossN * .04) : T.hp * hm) * mul;
     const e = { id: ++S.eid, type, T, x: P.x + ox, y: P.y + oy, hp, mhp: hp, r: T.r, sp: T.sp * (.9 + Math.random() * .2), flash: 0, kx: 0, ky: 0, slow: 0, freeze: 0, air: 0, oT: 0, rbT: 0, csT: 0, ph: Math.random() * 6, at: 1 + Math.random() * 2, side: Math.random() < .5 ? -1 : 1 };
     S.en.push(e); return e;
@@ -308,7 +308,7 @@ const AszalyBeta = (() => {
     if (S.ph === 'descent' || S.ph === 'win') return;
     const cap = Math.round(clamp(Math.round(V.hw * V.hh / 420), 150, 300) * S.st.curse * (S.ph === 'bloom' ? .25 : S.ph === 'god' ? .45 : 1));
     S.sT -= dt;
-    const rate = S.ph === 'bloom' ? 1.4 : S.ph === 'wrath' ? Math.max(.06, .16 - S.wk * .1) : S.ph === 'god' ? .55 : Math.max(.16, .5 - S.t * .0009);
+    const rate = S.ph === 'bloom' ? 1.4 : S.ph === 'wrath' ? Math.max(.08, .16 - S.wk * .06) : S.ph === 'god' ? .55 : Math.max(.16, .5 - S.t * .0009);
     while (S.sT <= 0) { S.sT += rate / S.st.curse; for (let i = 0, n = 1 + Math.floor(Math.min(S.t, 2000) / 200); i < n && S.en.length < cap; i++) spawnOne(cap); }
     if (S.ph !== 'run' && S.ph !== 'wrath') return;
     // varjúraj
@@ -335,7 +335,7 @@ const AszalyBeta = (() => {
       for (const f of S.flw) { if (S.ph === 'bloom') f.g = Math.min(1, f.g + dt * (.5 + f.s * .4)); else f.w = Math.min(1, f.w + dt * (.08 + f.s * .1)); } if (S.ph === 'wrath') S.flw = S.flw.filter(f => f.w < 1 || Math.random() > dt * .4); }
     if (S.ph === 'bloom') { S.phT -= dt; S.green = Math.max(S.green, 1.5); if (S.phT <= 0) { S.ph = 'wrath'; S.phT = 240; S.wk = 0; S.green = 0; banner('SZILÁRD HARAGJÁNAK ASZÁLYA ELINDULT!', 5, '#ff7a2a'); G.shake = 14 * G.d; Sfx.boom(); [220, 185, 147, 110].forEach((f, i) => setTimeout(() => Sfx.blip(f, .4, 'sawtooth', .07, .7), i * 240)); } }
     else if (S.ph === 'wrath') { S.phT -= dt; S.wk = clamp(1 - S.phT / 240, 0, 1); S.dry = Math.max(S.dry, .4);
-      if ((S.wrT = (S.wrT ?? 6) - dt) <= 0) { S.wrT = 7 - S.wk * 3.5; rain(4 + Math.round(S.wk * 6), 260, 50, 1.1, 20 + S.wk * 14, .12); if (S.wk > .5) wave(S.P.x + rnd(-200, 200), S.P.y + rnd(-200, 200), 320, 220, 18, '255,140,60', 14); }
+      if ((S.wrT = (S.wrT ?? 6) - dt) <= 0) { S.wrT = 7 - S.wk * 2; rain(4 + Math.round(S.wk * 3), 260, 50, 1.1, 20 + S.wk * 6, .12); if (S.wk > .6) wave(S.P.x + rnd(-200, 200), S.P.y + rnd(-200, 200), 320, 220, 18, '255,140,60', 14); }
       if ((S.wfT = (S.wfT ?? 2) - dt) <= 0) { S.wfT = 1.2 - S.wk * .6; const a = Math.random() * TAU, R2 = 120 + Math.random() * 380; S.fires.push({ x: S.P.x + Math.cos(a) * R2, y: S.P.y + Math.sin(a) * R2, r: 30 + S.wk * 16, l: 6, m: 6 }); } if (S.phT <= 0) descent(G); }
     else if (S.ph === 'descent') { S.phT -= dt; S.dry = Math.max(S.dry, .4); if (S.phT <= 0) godSpawn(G); }
     for (const w of S.warns) { w.t += dt; if (w.sink && w.t > 0) { const P = S.P, dx = w.x - P.x, dy = w.y - P.y, dd = Math.hypot(dx, dy) || 1; if (dd < w.R * 2.2) { P.x += dx / dd * 70 * dt; P.y += dy / dd * 70 * dt; } } if (w.t >= w.d) { w.dead = 1; blast(G, w); } }
@@ -473,7 +473,7 @@ const AszalyBeta = (() => {
     if (S.t - S.sndT > .07) { S.sndT = S.t; Sfx.blip(260 + Math.random() * 180, .05, 'triangle', .035, .6); }
   }
   function hitPlayer(G, e, dm, pc) {
-    const P = S.P; let hd = Math.max(1, (dm != null ? dm : e.T.dmg) * (1 + S.t / 1600) * (S.ph === 'wrath' ? 1.3 + S.wk * 1 : S.ph === 'god' ? 1.2 : 1) - (pc ? 0 : S.st.armor));
+    const P = S.P; let hd = Math.max(1, (dm != null ? dm : e.T.dmg) * (1 + S.t / 1600) * (S.ph === 'wrath' ? 1.3 + S.wk * .5 : S.ph === 'god' ? 1.2 : 1) - (pc ? 0 : S.st.armor));
     hd *= 1 - Math.min(.4, .05 * lv('sisak')); if (e && e.T.boss && (S.pf || []).includes('sisak')) hd *= .8; if (!e) hd *= 1 - Math.min(.45, .08 * lv('kopeny') + .2 * ((S.pf || []).includes('kopeny') ? 1 : 0));
     if (e && lv('tuskevert') && !e.dead) hurt(G, e, 8 * lv('tuskevert') * ((S.pf || []).includes('tuskevert') ? 2 : 1), 0, 0, 'tuskevert'); P.shT = S.t; if (e && S.pf.includes('kesztyu') && !e.dead) hurt(G, e, 30, 0, 0, 'fuzio'); if (e && has('thorns') && !e.dead) hurt(G, e, 25, 0, 0, 'mester');
     if (has('dodge') && Math.random() < .1) { P.inv = .3; G.float(G.W / 2, G.H / 2 - 40 * G.d, 'KITÉRÉS'); return; } if (has('cap')) hd = Math.min(hd, P.mhp * .35);
@@ -485,7 +485,7 @@ const AszalyBeta = (() => {
     if (P.hp <= 0) { P.hp = 0; me.overTitle = (S.ph === 'god' ? 'AZ ISTEN GYŐZÖTT · ' : 'KISZÁRADTÁL · ') + fmtT(S.t); G.end(); }
   }
   function enemies(G, dt) {
-    const P = S.P, kd = Math.pow(.002, dt), hot = (S.heat > 0 || S.szRage ? 1.35 : 1) * (S.ph === 'wrath' ? 1.2 + S.wk * .45 : 1);
+    const P = S.P, kd = Math.pow(.002, dt), hot = (S.heat > 0 || S.szRage ? 1.35 : 1) * (S.ph === 'wrath' ? 1.2 + S.wk * .25 : 1);
     for (const e of S.en) {
       e.flash -= dt;
       if (e.type === 'fereg') { wormAI(G, e, dt); continue; }
@@ -1016,6 +1016,8 @@ const AszalyBeta = (() => {
   const ICU = {}; function icoURL(k) { if (ICU[k]) return ICU[k]; const c = document.createElement('canvas'); c.width = c.height = 48; ico(c.getContext('2d'), k, 24, 24, 44); return (ICU[k] = c.toDataURL()); }
   const hideStats = () => { const el = document.getElementById('aszbStat'); if (el) el.hidden = true; };
 
+  /* képernyőméretű segédrétegek (a felhők átfedése ne sötétítsen tovább) */
+  const LAY = []; function layer(w, h, i = 0) { let c = LAY[i]; if (!c) c = LAY[i] = document.createElement('canvas'); if (c.width !== Math.ceil(w) || c.height !== Math.ceil(h)) { c.width = Math.ceil(w); c.height = Math.ceil(h); } return c; }
   /* ---------- rajz: ikonok ---------- */
   const circ = (g, x, y, r) => { g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); };
   const rrp = (g, x, y, w, h, r) => { g.beginPath(); g.roundRect(x, y, w, h, r); g.fill(); };
@@ -1292,7 +1294,10 @@ const AszalyBeta = (() => {
       if (pr) { const R = pr * sc, E = lv('gyogyforras'); g.fillStyle = E ? 'rgba(40,200,170,.36)' : 'rgba(25,135,255,.34)'; g.beginPath(); g.ellipse(W / 2, H / 2 + 6 * sc, R, R * .92, 0, 0, TAU); g.fill(); g.strokeStyle = E ? 'rgba(170,255,220,.6)' : 'rgba(150,215,255,.55)'; g.lineWidth = 2 * d; g.stroke();
         g.strokeStyle = 'rgba(190,230,255,.4)'; g.lineWidth = 1.5 * d; for (let i = 0; i < 2; i++) { const k = (t * .7 + i * .5) % 1; g.globalAlpha = 1 - k; g.beginPath(); g.ellipse(W / 2, H / 2 + 6 * sc, R * k, R * .92 * k, 0, 0, TAU); g.stroke(); } g.globalAlpha = 1;
         if (E) { g.fillStyle = 'rgba(126,240,164,.8)'; for (let i = 0; i < 5; i++) { const k = (t * .8 + i * .2) % 1, a = i * 1.3; g.globalAlpha = 1 - k; heart(g, W / 2 + Math.cos(a) * R * .5, H / 2 + Math.sin(a) * R * .4 - k * 30 * sc, 3 * sc); } g.globalAlpha = 1; } }
-      for (const c of S.clouds) { const a = Math.min(1, c.l0 * 4, c.life * 3), x = X(c.x), y = Y(c.y), R = c.R * sc; g.fillStyle = c.storm ? `rgba(90,110,200,${.07 * a})` : `rgba(60,150,245,${.07 * a})`; g.beginPath(); g.ellipse(x, y, R, R * .9, 0, 0, TAU); g.fill(); g.strokeStyle = `rgba(140,200,255,${.22 * a})`; g.lineWidth = 1.2 * sc; g.stroke(); }
+      if (S.clouds.length) { const L2 = layer(W, H), q = L2.getContext('2d'); q.clearRect(0, 0, W, H); q.fillStyle = '#5a96f0';
+        for (const c of S.clouds) { const x = X(c.x), y = Y(c.y), R = c.R * sc; q.beginPath(); q.ellipse(x, y, R, R * .9, 0, 0, TAU); q.fill(); }
+        g.globalAlpha = .08; g.drawImage(L2, 0, 0, W, H); g.globalAlpha = 1;
+        for (const c of S.clouds) { const a = Math.min(1, c.l0 * 4, c.life * 3), x = X(c.x), y = Y(c.y), R = c.R * sc; g.strokeStyle = `rgba(140,200,255,${.18 * a})`; g.lineWidth = 1 * sc; g.beginPath(); g.ellipse(x, y, R, R * .9, 0, 0, TAU); g.stroke(); } }
       // gejzírek figyelmeztetése, féreg/Szilárd repedései
       for (const q of S.geys) { const x = X(q.x), y = Y(q.y), R = q.R * sc; if (q.t < 0) { g.strokeStyle = `rgba(150,215,255,${.5 + .5 * Math.sin(t * 30)})`; g.lineWidth = 2 * d; g.setLineDash([5 * d, 4 * d]); g.beginPath(); g.ellipse(x, y, R, R * .6, 0, 0, TAU); g.stroke(); g.setLineDash([]); } }
       for (const e of S.en) { if (e.st === 'warn') { const x = X(e.wx), y = Y(e.wy), R = (e.type === 'szilard' ? 62 : 58) * sc, k = 1 - e.stT / (e.type === 'szilard' ? .9 : .75);
@@ -1462,9 +1467,11 @@ const AszalyBeta = (() => {
       for (const w of S.waves) { const k = 1 - w.r / w.max, x = X(w.x), y = Y(w.y); g.strokeStyle = `rgba(${w.c},${.25 * k})`; g.lineWidth = w.w * 2.6 * sc; g.beginPath(); g.arc(x, y, w.r * sc, 0, TAU); g.stroke(); g.strokeStyle = `rgba(255,250,230,${.85 * k})`; g.lineWidth = w.w * .5 * sc; g.stroke(); }
       for (const p of S.ep) { const x = X(p.x), y = Y(p.y); if (!vis(x, y, 20)) continue; if (p.big) { g.fillStyle = `rgba(${p.c},${.22 + .12 * Math.sin(t * 12 + p.x)})`; circ(g, x, y, 15 * sc); g.fillStyle = '#fff'; circ(g, x, y, 3 * sc); } g.fillStyle = p.c ? `rgba(${p.c},.4)` : 'rgba(160,120,60,.45)'; circ(g, x, y, 8 * sc); g.fillStyle = p.c ? `rgb(${p.c})` : '#e0c38f'; circ(g, x, y, 4.5 * sc); }
       // esőfelhők, villámok
-      for (const c of S.clouds) { const pd = Math.hypot(S.P.x - c.x, S.P.y - (c.y - c.R * 1.05)), near2 = clamp((pd - c.R * .6) / (c.R * 1.2), 0, 1), a = Math.min(1, c.l0 * 4, c.life * 3) * (.1 + .35 * near2), x = X(c.x), y = Y(c.y), R = c.R * sc; g.globalAlpha = a; g.strokeStyle = 'rgba(160,215,255,.7)'; g.lineWidth = 1.6 * sc;
-        for (let i = 0; i < 12; i++) { const px = x + Math.sin(i * 5.3) * R * .85, k = (t * 2.2 + i * .37) % 1, py = y - R * .9 + k * R * 1.5; ln(g, px, py, px - 3 * sc, py + 9 * sc); }
-        g.fillStyle = c.storm ? 'rgba(96,104,128,.94)' : 'rgba(214,222,232,.92)'; const cy = y - R * 1.05; circ(g, x - R * .42, cy + R * .06, R * .3); circ(g, x, cy - R * .08, R * .4); circ(g, x + R * .45, cy + R * .08, R * .28); rrp(g, x - R * .62, cy, R * 1.24, R * .32, R * .16); g.globalAlpha = 1; }
+      if (S.clouds.length) { const L2 = layer(W, H, 1), q = L2.getContext('2d'); q.clearRect(0, 0, W, H);
+        for (const c of S.clouds) { const pd = Math.hypot(S.P.x - c.x, S.P.y - (c.y - c.R * 1.05)), near2 = clamp((pd - c.R * .6) / (c.R * 1.2), 0, 1), a = Math.min(1, c.l0 * 4, c.life * 3) * (.25 + .75 * near2), x = X(c.x), y = Y(c.y), R = c.R * sc; q.globalAlpha = a;
+          q.strokeStyle = 'rgba(160,215,255,1)'; q.lineWidth = 1.6 * sc; q.lineCap = 'round'; for (let i = 0; i < 12; i++) { const px = x + Math.sin(i * 5.3) * R * .85, k = (t * 2.2 + i * .37) % 1, py = y - R * .9 + k * R * 1.5; q.beginPath(); q.moveTo(px, py); q.lineTo(px - 3 * sc, py + 9 * sc); q.stroke(); }
+          q.fillStyle = c.storm ? '#606880' : '#d6dee8'; const cy = y - R * 1.05; for (const [ox, oy, rr] of [[-.42, .06, .3], [0, -.08, .4], [.45, .08, .28]]) { q.beginPath(); q.arc(x + R * ox, cy + R * oy, R * rr, 0, TAU); q.fill(); } q.beginPath(); q.roundRect(x - R * .62, cy, R * 1.24, R * .32, R * .16); q.fill(); }
+        q.globalAlpha = 1; g.globalAlpha = .38; g.drawImage(L2, 0, 0, W, H); g.globalAlpha = 1; }
       for (const b of S.bolts) { const x1 = X(b.x1), y1 = Y(b.y1), x2 = X(b.x2), y2 = Y(b.y2); g.globalAlpha = b.l / .2; g.strokeStyle = '#fff6b0'; g.lineWidth = 3 * sc; g.lineJoin = 'miter'; g.beginPath(); g.moveTo(x1, y1);
         for (let i = 1; i < 6; i++) { const k = i / 6; g.lineTo(x1 + (x2 - x1) * k + Math.sin(b.s + i * 3.7) * 12 * sc, y1 + (y2 - y1) * k); } g.lineTo(x2, y2); g.stroke(); g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 1.2 * sc; g.stroke(); g.globalAlpha = 1; }
       // helikopterek
